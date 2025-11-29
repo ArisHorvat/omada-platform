@@ -416,3 +416,83 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+#==================================================================
+# Node.js, Expo, and React Native section added by Gemini
+#==================================================================
+
+# Dependency directories
+# These should already be covered by the VS section, but are included for clarity
+# node_modules/
+.pnp/
+.pnp.js
+/ios/Pods/
+
+# Expo files
+.expo/
+.expo-shared/
+
+# Build and distribution output
+/dist/
+/build/
+/web-build/
+.next/
+
+# Metro bundler cache
+.metro-cache/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Android build files
+/android/build/
+/android/.gradle/
+/android/app/build/
+/android/app/src/main/assets/
+*.apk
+*.aab
+*.keystore
+/android/local.properties
+/android/*.iml
+/android/.idea/
+
+# iOS build files
+/ios/build/
+/ios/DerivedData/
+/ios/*.xcworkspace
+/ios/*.xcuserstate
+/ios/*.actool
+/ios/*.ipa
+/ios/*.dSYM.zip
+/ios/*.app
+/ios/.xcode.env.local
+
+# Test reports
+/coverage/
+
+# Editor specific
+.idea/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+#==================================================================
+# Stitch AI generated files
+#==================================================================
+/stitch/
