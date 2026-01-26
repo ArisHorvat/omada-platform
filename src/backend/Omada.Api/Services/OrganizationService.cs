@@ -3,6 +3,7 @@ using Omada.Api.Services.Interfaces;
 using Omada.Api.Repositories.Interfaces;
 using Omada.Api.Entities;
 using Omada.Api.WebSocketHandlers;
+using Omada.Api.DTOs.Organizations;
 
 namespace Omada.Api.Services;
 
@@ -14,6 +15,7 @@ public class OrganizationService : IOrganizationService
     private readonly IWidgetRepository _widgetRepository;
     private readonly IDbConnection _dbConnection;
     private readonly IWebSocketHandler _webSocketHandler;
+    private readonly IEmailService _emailService;
     private readonly ILogger<OrganizationService> _logger;
 
     public OrganizationService(IOrganizationRepository organizationRepository, 
@@ -22,6 +24,7 @@ public class OrganizationService : IOrganizationService
         IWidgetRepository widgetRepository,
         IDbConnection dbConnection,
         IWebSocketHandler webSocketHandler,
+        IEmailService emailService,
         ILogger<OrganizationService> logger)
     {
         _organizationRepository = organizationRepository;
@@ -30,17 +33,14 @@ public class OrganizationService : IOrganizationService
         _widgetRepository = widgetRepository;
         _dbConnection = dbConnection;
         _webSocketHandler = webSocketHandler;
+        _emailService = emailService;
         _logger = logger;
     }
 
-    public async Task<Result<Organization>> CreateOrganizationAsync(CreateOrganizationRequest request)
+    public async Task<Result<Organization>> CreateOrganizationAsync(RegisterOrganizationRequest request)
     {
         // Before starting a transaction, do checks that don't require one.
-        if (await _organizationRepository.ExistsByDomainAsync(request.EmailDomain))
-        {
-            _logger.LogWarning("Attempted to create organization with existing domain: {Domain}", request.EmailDomain);
-            return Result<Organization>.Failure("An organization with this email domain already exists.");
-        }
+        // Domain check removed as we allow generic domains or duplicates for testing/BYOE
 
         _logger.LogInformation("Starting transaction for creating organization: {Name}", request.Name);
         _dbConnection.Open();
@@ -50,7 +50,7 @@ public class OrganizationService : IOrganizationService
             // 1. Use the Domain entity's factory to create a valid object
             var organizationResult = Organization.Create(
                 request.Name, request.ShortName, request.EmailDomain, request.LogoUrl,
-                request.PrimaryColor, request.SecondaryColor, request.AccentColor
+                request.PrimaryColor, request.SecondaryColor, request.TertiaryColor
             );
             if (organizationResult.IsFailure) return Result<Organization>.Failure(organizationResult.Error!);
             var organization = organizationResult.Value!;
@@ -59,22 +59,82 @@ public class OrganizationService : IOrganizationService
             await _organizationRepository.CreateAsync(organization, transaction);
 
             // 3. Create the admin user associated with this organization.
-            var userResult = User.Create(organization.Id, request.AdminName, request.AdminEmail, request.Password, organization.EmailDomain);
-            if (userResult.IsFailure)
-            {
-                // This will trigger the catch block and roll back the transaction
-                // We return a failure result which will be caught and handled.
-                return Result<Organization>.Failure(userResult.Error!);
-            }
-            await _userRepository.CreateAsync(userResult.Value!, transaction);
+            // Check if user exists globally first
+            var existingAdmin = await _userRepository.GetByEmailAsync(request.AdminEmail, transaction);
+            Guid adminId;
 
-            // 4. Create the custom roles
-            var roles = request.Roles.Select(roleName => Role.Create(organization.Id, roleName));
-            await _roleRepository.AddRangeAsync(roles, transaction);
+            if (existingAdmin != null)
+            {
+                adminId = existingAdmin.Id;
+            }
+            else
+            {
+                var userResult = User.Create(request.AdminFirstName, request.AdminLastName, request.AdminEmail, request.Password);
+                if (userResult.IsFailure) return Result<Organization>.Failure(userResult.Error!);
+                adminId = userResult.Value!.Id;
+                await _userRepository.CreateAsync(userResult.Value!, transaction);
+            }
+            await _userRepository.AddMemberAsync(organization.Id, adminId, "Admin", transaction);
+
+            // 4. Create Roles based on Template (University vs Corporate)
+            // If custom roles are provided in request, use them, otherwise use template
+            var rolesToCreate = InitializeOrganizationRoles(request.OrganizationType, request.Roles);
+            var createdRoles = new List<Role>();
+            
+            foreach (var roleName in rolesToCreate)
+            {
+                var role = Role.Create(organization.Id, roleName);
+                createdRoles.Add(role);
+            }
+            await _roleRepository.AddRangeAsync(createdRoles, transaction);
 
             // 5. Save the selected widgets
-            var widgets = request.Widgets.Select(widgetName => Widget.Create(organization.Id, widgetName));
-            await _widgetRepository.AddRangeAsync(widgets, transaction);
+            // Efficiently save just the keys (strings)
+            await _widgetRepository.SetEnabledWidgetsAsync(organization.Id, request.Widgets, transaction);
+
+            // 6. Apply Default Access Levels based on Template
+            await ApplyDefaultAccessLevels(organization.Id, request.OrganizationType, createdRoles, transaction);
+
+            // 7. Create Users from Excel/Import list
+            if (request.Users != null && request.Users.Any())
+            {
+                foreach (var userDto in request.Users)
+                {
+                    // Generate a random temporary password that the user won't know.
+                    // They must use the invitation link to set it.
+                    // var tempPassword = Guid.NewGuid().ToString();
+
+                    var tempPassword = request.DefaultUserPassword ?? "Welcome123!";
+
+                    var existingUser = await _userRepository.GetByEmailAsync(userDto.Email, transaction);
+                    if (existingUser != null)
+                    {
+                        // User exists, just link them
+                        await _userRepository.AddMemberAsync(organization.Id, existingUser.Id, userDto.Role, transaction);
+                        // Optionally send "You've been added" email
+                    }
+                    else
+                    {
+                        // Create new user
+                        var importedUser = User.Create(
+                            userDto.FirstName, userDto.LastName, userDto.Email, tempPassword, 
+                            userDto.CNP, userDto.PhoneNumber, userDto.Address
+                        );
+                        
+                        if (importedUser.IsFailure) continue;
+
+                        var user = importedUser.Value!;
+                        // Generate invitation token
+                        var token = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+                        user.SetPasswordResetToken(token, DateTime.UtcNow.AddDays(7)); // 7 day expiry for invites
+                        
+                        await _userRepository.CreateAsync(user, transaction);
+                        await _userRepository.AddMemberAsync(organization.Id, user.Id, userDto.Role, transaction);
+                        
+                        await _emailService.SendInvitationEmailAsync(user.Email, user.FirstName, organization.Name, token);
+                    }
+                }
+            }
 
             // If all operations succeed, commit the transaction
             transaction.Commit();
@@ -89,11 +149,11 @@ public class OrganizationService : IOrganizationService
                 organization.LogoUrl,
                 organization.PrimaryColor,
                 organization.SecondaryColor,
-                organization.AccentColor,
+                organization.TertiaryColor,
                 Roles = request.Roles,
                 Widgets = request.Widgets
             };
-            await _webSocketHandler.BroadcastAsync(new { type = "create", data = broadcastData });
+            await _webSocketHandler.BroadcastAsync(new { type = "create", data = broadcastData }, organization.Id);
             return Result<Organization>.Success(organization);
         }
         catch (Exception ex)
@@ -102,7 +162,7 @@ public class OrganizationService : IOrganizationService
             // If any operation fails, roll back all changes
             transaction.Rollback();
             // Return a generic failure message to avoid leaking implementation details.
-            return Result<Organization>.Failure("An unexpected error occurred during registration. Please try again.");
+            return Result<Organization>.Failure($"An unexpected error occurred during registration: {ex.Message}");
         }
         finally
         {
@@ -127,7 +187,7 @@ public class OrganizationService : IOrganizationService
                 return Result<Organization>.Failure("Organization not found.");
             }
 
-            organization.Update(request.Name, request.EmailDomain, request.PrimaryColor, request.SecondaryColor, request.AccentColor);
+            organization.Update(request.Name, request.EmailDomain, request.PrimaryColor, request.SecondaryColor, request.TertiaryColor);
             await _organizationRepository.UpdateAsync(organization, transaction);
 
             // Update Roles: Delete existing and add new ones
@@ -136,9 +196,8 @@ public class OrganizationService : IOrganizationService
             await _roleRepository.AddRangeAsync(roles, transaction);
 
             // Update Widgets: Delete existing and add new ones
-            await _widgetRepository.DeleteByOrganizationIdAsync(id, transaction);
-            var widgets = request.Widgets.Select(widgetName => Widget.Create(id, widgetName));
-            await _widgetRepository.AddRangeAsync(widgets, transaction);
+            // Efficiently update keys
+            await _widgetRepository.SetEnabledWidgetsAsync(id, request.Widgets, transaction);
 
             transaction.Commit();
             _logger.LogInformation("Organization updated successfully: {Id}", id);
@@ -152,11 +211,11 @@ public class OrganizationService : IOrganizationService
                 organization.LogoUrl,
                 organization.PrimaryColor,
                 organization.SecondaryColor,
-                organization.AccentColor,
+                organization.TertiaryColor,
                 Roles = request.Roles,
                 Widgets = request.Widgets
             };
-            await _webSocketHandler.BroadcastAsync(new { type = "update", data = broadcastData });
+            await _webSocketHandler.BroadcastAsync(new { type = "update", data = broadcastData }, id);
             return Result<Organization>.Success(organization);
         }
         catch (Exception ex)
@@ -189,15 +248,14 @@ public class OrganizationService : IOrganizationService
             }
 
             await _roleRepository.DeleteByOrganizationIdAsync(id, transaction);
-            await _widgetRepository.DeleteByOrganizationIdAsync(id, transaction);
-            // Note: Users should also be deleted here if cascading delete is not enabled in the database.
-            // await _userRepository.DeleteByOrganizationIdAsync(id, transaction);
+            // Widget keys in OrganizationEnabledWidgets cascade delete automatically via FK on OrganizationId
+            await _userRepository.DeleteByOrganizationIdAsync(id, transaction);
 
             await _organizationRepository.DeleteAsync(id, transaction);
 
             transaction.Commit();
             _logger.LogInformation("Organization deleted successfully: {Id}", id);
-            await _webSocketHandler.BroadcastAsync(new { type = "delete", id = id });
+            await _webSocketHandler.BroadcastAsync(new { type = "delete", id = id }, id);
             return Result<bool>.Success(true);
         }
         catch (Exception ex)
@@ -223,7 +281,7 @@ public class OrganizationService : IOrganizationService
         foreach (var org in organizations)
         {
             var roles = await _roleRepository.GetByOrganizationIdAsync(org.Id);
-            var widgets = await _widgetRepository.GetByOrganizationIdAsync(org.Id);
+            var widgets = await _widgetRepository.GetEnabledWidgetsAsync(org.Id);
 
             result.Add(new OrganizationDetailsDto
             {
@@ -234,9 +292,9 @@ public class OrganizationService : IOrganizationService
                 LogoUrl = org.LogoUrl,
                 PrimaryColor = org.PrimaryColor,
                 SecondaryColor = org.SecondaryColor,
-                AccentColor = org.AccentColor,
+                TertiaryColor = org.TertiaryColor,
                 Roles = roles.Select(r => r.Name),
-                Widgets = widgets.Select(w => w.Name)
+                Widgets = widgets
             });
         }
 
@@ -249,7 +307,15 @@ public class OrganizationService : IOrganizationService
         if (organization == null) return null;
 
         var roles = await _roleRepository.GetByOrganizationIdAsync(id);
-        var widgets = await _widgetRepository.GetByOrganizationIdAsync(id);
+        var widgets = await _widgetRepository.GetEnabledWidgetsAsync(id);
+        var mappings = await _roleRepository.GetRoleWidgetAccessAsync(id);
+
+        var mappingDict = mappings
+            .GroupBy(m => m.RoleName)
+            .ToDictionary(
+                g => g.Key, 
+                g => g.Select(m => m.WidgetKey).ToList() // Just return the list of widgets they have access to for now
+            );
 
         return new OrganizationDetailsDto
         {
@@ -260,9 +326,62 @@ public class OrganizationService : IOrganizationService
             LogoUrl = organization.LogoUrl,
             PrimaryColor = organization.PrimaryColor,
             SecondaryColor = organization.SecondaryColor,
-            AccentColor = organization.AccentColor,
+            TertiaryColor = organization.TertiaryColor,
             Roles = roles.Select(r => r.Name),
-            Widgets = widgets.Select(w => w.Name)
+            Widgets = widgets,
+            RoleWidgetMappings = mappingDict
         };
+    }
+
+    // --- Helper Methods for Templates ---
+
+    private List<string> InitializeOrganizationRoles(string orgType, List<string> customRoles)
+    {
+        if (customRoles != null && customRoles.Any()) return customRoles;
+
+        return orgType.ToLower() switch
+        {
+            "university" => new List<string> { "Student", "Professor", "Teaching Assistant", "Dean", "Registrar", "Operations", "Admin" },
+            "corporate" => new List<string> { "Employee", "Team Lead", "Project Manager", "Director", "HR Manager", "Operations", "Admin" },
+            _ => new List<string> { "Admin", "User" }
+        };
+    }
+
+    private async Task ApplyDefaultAccessLevels(Guid orgId, string orgType, List<Role> roles, IDbTransaction transaction)
+    {
+        // Define defaults
+        var defaults = new List<(string Role, string WidgetKey, string Access)>();
+
+        if (orgType.ToLower() == "university")
+        {
+            defaults.Add(("Professor", "attendance", "admin"));
+            defaults.Add(("Professor", "grades", "admin"));
+            defaults.Add(("Professor", "assignments", "admin"));
+            defaults.Add(("Student", "attendance", "view_own"));
+            defaults.Add(("Student", "grades", "view_own"));
+            defaults.Add(("Student", "assignments", "view_own"));
+            defaults.Add(("Dean", "news", "editor"));
+            defaults.Add(("Registrar", "grades", "admin")); // Registrar can manage all grades
+            defaults.Add(("Registrar", "attendance", "admin")); // and all attendance
+        }
+        else if (orgType.ToLower() == "corporate")
+        {
+            defaults.Add(("Team Lead", "tasks", "admin"));
+            defaults.Add(("HR Manager", "news", "editor"));
+            defaults.Add(("Director", "news", "editor"));
+        }
+
+        // Admin always gets full access to everything (handled via 'SuperAdmin' check usually, but explicit here for clarity)
+        defaults.Add(("Admin", "news", "admin"));
+        defaults.Add(("Admin", "users", "admin"));
+
+        foreach (var def in defaults)
+        {
+            var role = roles.FirstOrDefault(r => r.Name.Equals(def.Role, StringComparison.OrdinalIgnoreCase));
+            if (role != null)
+            {
+                await _roleRepository.SaveRoleWidgetAccessAsync(role.Id, def.WidgetKey, def.Access, transaction);
+            }
+        }
     }
 }

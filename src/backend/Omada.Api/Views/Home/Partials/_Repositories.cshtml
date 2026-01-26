@@ -1,0 +1,17 @@
+@model RepositoriesViewModel
+
+<div id="repositories" class="tab-pane">
+    <div class="page-header">
+        <h2>Data Access (Repositories)</h2>
+        <p>Dapper implementations for SQL Server interaction.</p>
+    </div>
+    <div class="grid">
+        @foreach (var repo in Model.Repositories)
+        {
+            <div class="card">
+                <h2>@repo.Name</h2>
+                <p style="color: #64748b;">@repo.Description</p>
+            </div>
+        }
+    </div>
+</div>

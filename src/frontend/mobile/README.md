@@ -1,50 +1,74 @@
-# Welcome to your Expo app 👋
+# Omada Platform - Mobile App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+This is the mobile client for the Omada Platform, built with **Expo**, **React Native**, and **TypeScript**. It is designed to be a "Plug and Play" app for organizations, adapting its look and feel based on the user's organization.
 
-## Get started
+## 🏗 Architecture
 
-1. Install dependencies
+The app uses a robust architecture to handle state, offline capabilities, and navigation:
 
+- **Expo Router**: File-based routing located in the `app/` directory.
+- **Context API**: Manages global state (`AuthContext`, `OrganizationThemeContext`, `RegistrationContext`).
+- **Repository Pattern**: Abstracts API calls and handles offline synchronization logic (`OrganizationRepository`, `MyOrganizationRepository`).
+
+## ✨ Current Features
+
+### 1. Dynamic Theming
+- **Organization Context**: The app automatically applies the Primary, Secondary, and Tertiary colors of the logged-in user's organization.
+- **Hooks**: `useThemeColors()` provides easy access to these dynamic colors throughout the UI.
+
+### 2. Offline-First & Sync
+- **Offline Queue**: `OrganizationRepository` detects network status. If offline, actions (Create, Update, Delete) are queued locally.
+- **Auto-Sync**: When the connection is restored, the queue is processed and synced with the backend.
+- **Optimistic UI**: The UI updates immediately even before the server responds.
+
+### 3. Real-Time Updates
+- **WebSockets**: The app connects to the backend via WebSockets to receive live updates. If an admin updates an organization on the web, the mobile app reflects changes instantly.
+
+### 4. Registration Flow
+- **Multi-Step Wizard**: A comprehensive flow for creating new organizations:
+  1. Organization Details
+  2. Admin Account Setup
+  3. Branding (Logo upload + Color picking)
+  4. Custom Roles definition
+  5. User Import (CSV parsing)
+  6. Widget Selection
+
+### 5. Widget System
+- **Modular Widgets**: The dashboard renders widgets dynamically based on what is enabled for the organization.
+- **Implemented Widgets**:
+  - News / Announcements
+  - Schedule
+  - Grades
+  - Map
+  - Users Directory
+  - Assignments
+  - Tasks
+
+## 📂 Project Structure
+
+| Folder | Description |
+|--------|-------------|
+| `app/(app)` | Protected routes (Dashboard, Tabs, Profile). |
+| `app/(auth)` | Public routes (Login, Registration Flow). |
+| `components` | Reusable UI components (`FormInput`, `CustomTabBar`, `DynamicListWidget`). |
+| `context` | State providers (`Auth`, `Theme`, `Preferences`, `Permissions`). |
+| `repositories` | Data layer handling API calls, caching, and offline sync. |
+| `hooks` | Custom hooks (`useThemeColors`). |
+
+## 🚀 Getting Started
+
+1. **Install Dependencies**:
    ```bash
    npm install
    ```
-
-2. Start the app
-
+2. **Run the App**:
    ```bash
-   npx expo start
+   npx expo start --go
    ```
+3. **Config**: Ensure `config.ts` points to your running backend instance (IP address if testing on physical device).
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## 🔄 Recent Additions
+- **Registration Context**: Centralized state for the multi-step registration wizard.
+- **Color Picker**: Integrated color picker for branding setup.
+- **Document Picker**: Added support for uploading Logos and CSV files for user import.
+- **Custom Tab Bar**: A dynamic tab bar that pins user-favorite widgets.

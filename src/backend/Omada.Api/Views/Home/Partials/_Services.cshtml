@@ -1,0 +1,42 @@
+@model ServicesViewModel
+
+<div id="services" class="tab-pane">
+    <div class="page-header">
+        <h2>Business Logic (Services)</h2>
+        <p>Core workflows handled by the service layer.</p>
+    </div>
+    <div class="grid">
+        <div class="card">
+            <h2>🔐 Auth Workflow</h2>
+            <ul>
+                @foreach (var step in Model.AuthWorkflow) {
+                    <li style="display: block;"><div style="font-weight: 600;">@step.Step</div><div style="font-size: 0.85rem; color: #64748b;">@step.Details</div></li>
+                }
+            </ul>
+        </div>
+        <div class="card">
+            <h2>🏢 Organization Workflow</h2>
+            <ul>
+                @foreach (var step in Model.OrganizationsWorkflow) {
+                    <li style="display: block;"><div style="font-weight: 600;">@step.Step</div><div style="font-size: 0.85rem; color: #64748b;">@step.Details</div></li>
+                }
+            </ul>
+        </div>
+        <div class="card">
+            <h2>💾 Widget Data Strategy</h2>
+            <ul>
+                @foreach (var step in Model.CustomDataWorkflow) {
+                    <li style="display: block;"><div style="font-weight: 600;">@step.Step</div><div style="font-size: 0.85rem; color: #64748b;">@step.Details</div></li>
+                }
+            </ul>
+        </div>
+        <div class="card">
+            <h2>🛠 Tools & Utilities</h2>
+            <ul>
+                @foreach (var step in Model.ToolsWorkflow) {
+                    <li style="display: block;"><div style="font-weight: 600;">@step.Step</div><div style="font-size: 0.85rem; color: #64748b;">@step.Details</div></li>
+                }
+            </ul>
+        </div>
+    </div>
+</div>

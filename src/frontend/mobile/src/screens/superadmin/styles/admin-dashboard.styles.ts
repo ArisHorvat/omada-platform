@@ -1,0 +1,57 @@
+import { StyleSheet } from 'react-native';
+
+export const createStyles = (colors: any) => StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1 },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
+  },
+  headerTitle: { fontSize: 20, fontWeight: 'bold', color: colors.text },
+  orgItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    padding: 16,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  logo: { width: 50, height: 50, borderRadius: 25, marginRight: 16 },
+  logoPlaceholder: {
+    width: 50, height: 50, borderRadius: 25, marginRight: 16,
+    backgroundColor: colors.border, justifyContent: 'center', alignItems: 'center'
+  },
+  orgInfo: { flex: 1 },
+  orgName: { fontSize: 16, fontWeight: 'bold', color: colors.text },
+  orgDomain: { fontSize: 14, color: colors.subtle },
+  actions: { flexDirection: 'row' },
+  actionButton: { padding: 8 },
+  offlineBanner: { backgroundColor: colors.notification, padding: 8, alignItems: 'center' },
+  offlineText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    height: 48,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 16,
+    color: colors.text,
+  },
+});

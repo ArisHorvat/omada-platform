@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Omada.Api.Services.Interfaces;
 using Omada.Api.WebSocketHandlers;
+using Omada.Api.Services; 
+using Omada.Api.DTOs.Organizations;
 
 namespace Omada.Api.Controllers;
 
@@ -23,7 +25,7 @@ public class OrganizationsController : ControllerBase
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> Create(CreateOrganizationRequest request)
+    public async Task<IActionResult> Create(RegisterOrganizationRequest request)
     {
         _logger.LogInformation("Received request to create organization: {Name}", request.Name);
         var result = await _organizationService.CreateOrganizationAsync(request);
@@ -95,13 +97,13 @@ public class OrganizationsController : ControllerBase
     }
 
     [HttpGet("/ws/organizations")]
-    public async Task GetWebSocket()
+    public async Task GetWebSocket([FromQuery] Guid orgId)
     {
         if (HttpContext.WebSockets.IsWebSocketRequest)
         {
-            _logger.LogInformation("Accepting WebSocket connection");
+            _logger.LogInformation("Accepting WebSocket connection for Org: {OrgId}", orgId);
             using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
-            await _webSocketHandler.HandleAsync(webSocket);
+            await _webSocketHandler.HandleAsync(webSocket, orgId);
         }
         else
         {

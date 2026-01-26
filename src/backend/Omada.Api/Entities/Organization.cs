@@ -9,13 +9,13 @@ public class Organization
     public string? LogoUrl { get; private set; }
     public string PrimaryColor { get; private set; } = string.Empty;
     public string SecondaryColor { get; private set; } = string.Empty;
-    public string AccentColor { get; private set; } = string.Empty;
+    public string TertiaryColor { get; private set; } = string.Empty;
 
     private Organization() { }
 
     public static Result<Organization> Create(
         string name, string? shortName, string emailDomain, string? logoUrl,
-        string primaryColor, string secondaryColor, string accentColor)
+        string primaryColor, string secondaryColor, string tertiaryColor)
     {
         if (string.IsNullOrWhiteSpace(name))
             return Result<Organization>.Failure("Organization name cannot be empty.");
@@ -32,13 +32,13 @@ public class Organization
             LogoUrl = logoUrl,
             PrimaryColor = primaryColor,
             SecondaryColor = secondaryColor,
-            AccentColor = accentColor
+            TertiaryColor = tertiaryColor
         };
 
         return Result<Organization>.Success(organization);
     }
 
-    public void Update(string name, string emailDomain, string primaryColor, string secondaryColor, string accentColor)
+    public void Update(string name, string emailDomain, string primaryColor, string secondaryColor, string tertiaryColor)
     {
         if (!string.IsNullOrWhiteSpace(name))
             Name = name;
@@ -52,7 +52,7 @@ public class Organization
         if (!string.IsNullOrWhiteSpace(secondaryColor))
             SecondaryColor = secondaryColor;
         
-        if (!string.IsNullOrWhiteSpace(accentColor))
-            AccentColor = accentColor;
+        if (!string.IsNullOrWhiteSpace(tertiaryColor))
+            TertiaryColor = tertiaryColor;
     }
 }

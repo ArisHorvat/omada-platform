@@ -17,8 +17,8 @@ public class OrganizationRepository : IOrganizationRepository
     public async Task CreateAsync(Organization organization, IDbTransaction transaction)
     {
         const string sql = """
-            INSERT INTO Organizations (Id, Name, ShortName, EmailDomain, LogoUrl, PrimaryColor, SecondaryColor, AccentColor)
-            VALUES (@Id, @Name, @ShortName, @EmailDomain, @LogoUrl, @PrimaryColor, @SecondaryColor, @AccentColor);
+            INSERT INTO Organizations (Id, Name, ShortName, EmailDomain, LogoUrl, PrimaryColor, SecondaryColor, TertiaryColor)
+            VALUES (@Id, @Name, @ShortName, @EmailDomain, @LogoUrl, @PrimaryColor, @SecondaryColor, @TertiaryColor);
         """;
         await transaction.Connection.ExecuteAsync(sql, organization, transaction);
     }
@@ -36,7 +36,7 @@ public class OrganizationRepository : IOrganizationRepository
             UPDATE Organizations 
             SET Name = @Name, 
                 EmailDomain = @EmailDomain,
-                PrimaryColor = @PrimaryColor, SecondaryColor = @SecondaryColor, AccentColor = @AccentColor
+                PrimaryColor = @PrimaryColor, SecondaryColor = @SecondaryColor, TertiaryColor = @TertiaryColor
             WHERE Id = @Id;
         """;
         await transaction.Connection.ExecuteAsync(sql, organization, transaction);
@@ -46,13 +46,6 @@ public class OrganizationRepository : IOrganizationRepository
     {
         const string sql = "DELETE FROM Organizations WHERE Id = @Id;";
         await transaction.Connection.ExecuteAsync(sql, new { Id = id }, transaction);
-    }
-
-    public async Task<bool> ExistsByDomainAsync(string emailDomain)
-    {
-        const string sql = "SELECT COUNT(1) FROM Organizations WHERE EmailDomain = @EmailDomain;";
-
-        return await _dbConnection.ExecuteScalarAsync<bool>(sql, new { EmailDomain = emailDomain });
     }
 
     public async Task<IEnumerable<Organization>> GetAllAsync()

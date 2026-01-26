@@ -1,0 +1,59 @@
+@model TutorialViewModel
+
+<div id="tutorial" class="tab-pane">
+    <div class="page-header">
+        <h2>Developer Guide</h2>
+        <p>Strict workflow for adding new features to the backend.</p>
+    </div>
+    
+    <!-- Path 1: New Feature -->
+    <div class="tutorial-section">
+        <h3>@Model.NewFeatureFlow.Title</h3>
+        <p class="tutorial-desc">@Model.NewFeatureFlow.Description</p>
+        
+        <div style="max-width: 800px;">
+            @foreach (var step in Model.NewFeatureFlow.Steps)
+            {
+                <div class="card">
+                    <h2 style="font-size: 1.1rem; color: var(--primary);">@step.Title</h2>
+                    <p style="color: #64748b; margin-bottom: 10px;">@step.Description</p>
+                    <div class="code-block">@step.CodeSnippet</div>
+                </div>
+                @if (step != Model.NewFeatureFlow.Steps.Last())
+                {
+                    <div class="step-arrow">↓</div>
+                }
+            }
+        </div>
+    </div>
+
+    <!-- Path 2: Existing Feature -->
+    <div class="tutorial-section">
+        <h3>@Model.ExistingFeatureFlow.Title</h3>
+        <p class="tutorial-desc">@Model.ExistingFeatureFlow.Description</p>
+        <div class="grid">
+            @foreach (var step in Model.ExistingFeatureFlow.Steps)
+            {
+                <div class="card">
+                    <h2 style="font-size: 1.1rem;">@step.Title</h2>
+                    <p style="color: #64748b; margin-bottom: 10px;">@step.Description</p>
+                    <div class="code-block">@step.CodeSnippet</div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Pro Tips -->
+    <div class="tutorial-section">
+        <h3>💡 Architectural Thoughts & Pro Tips</h3>
+        <div class="grid">
+            @foreach (var tip in Model.ProTips)
+            {
+                <div class="pro-tip-card">
+                    <h4>@tip.Title</h4>
+                    <p style="color: #1e3a8a; font-size: 0.95rem;">@tip.Content</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>

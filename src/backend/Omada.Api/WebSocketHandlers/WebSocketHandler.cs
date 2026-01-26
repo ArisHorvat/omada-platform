@@ -7,7 +7,7 @@ namespace Omada.Api.WebSocketHandlers;
 
 public class WebSocketHandler : IWebSocketHandler
 {
-    private readonly ConcurrentDictionary<string, WebSocket> _sockets = new();
+    private readonly ConcurrentDictionary<string, (WebSocket Socket, Guid OrgId)> _sockets = new();
     private readonly ILogger<WebSocketHandler> _logger;
 
     public WebSocketHandler(ILogger<WebSocketHandler> logger)
@@ -15,10 +15,10 @@ public class WebSocketHandler : IWebSocketHandler
         _logger = logger;
     }
 
-    public async Task HandleAsync(WebSocket webSocket)
+    public async Task HandleAsync(WebSocket webSocket, Guid organizationId)
     {
         var socketId = Guid.NewGuid().ToString();
-        _sockets.TryAdd(socketId, webSocket);
+        _sockets.TryAdd(socketId, (webSocket, organizationId));
         _logger.LogInformation("New WebSocket connection: {SocketId}", socketId);
 
         try
@@ -50,7 +50,7 @@ public class WebSocketHandler : IWebSocketHandler
         }
     }
 
-    public async Task BroadcastAsync(object message)
+    public async Task BroadcastAsync(object message, Guid organizationId)
     {
         var options = new JsonSerializerOptions
         {
@@ -60,9 +60,11 @@ public class WebSocketHandler : IWebSocketHandler
         var bytes = Encoding.UTF8.GetBytes(json);
         var buffer = new ArraySegment<byte>(bytes);
 
-        _logger.LogInformation("Broadcasting message to {Count} clients", _sockets.Count);
+        var targets = _sockets.Values.Where(x => x.OrgId == organizationId).Select(x => x.Socket).ToList();
+        _logger.LogInformation("Broadcasting message to {Count} clients in Org {OrgId}", targets.Count, organizationId);
+        
         var tasks = new List<Task>();
-        foreach (var socket in _sockets.Values)
+        foreach (var socket in targets)
         {
             if (socket.State == WebSocketState.Open)
             {

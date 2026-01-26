@@ -1,0 +1,24 @@
+@model ArchitectureViewModel
+
+<div id="architecture" class="tab-pane">
+    <div class="page-header">
+        <h2>System Architecture</h2>
+        <p>High-level design and technology stack.</p>
+    </div>
+    <div class="card">
+        <h2>🏗 Design Patterns</h2>
+        <p style="color: #64748b; margin-bottom: 20px;">@Model.Info.Description</p>
+        <ul style="font-size: 0.95rem;">
+            @foreach (var layer in Model.Info.Layers)
+            {
+                <li>@layer</li>
+            }
+        </ul>
+        <div class="tech-stack" style="margin-top: 20px;">
+            @foreach (var tech in Model.Info.TechStack)
+            {
+                <span class="tag">@tech</span>
+            }
+        </div>
+    </div>
+</div>

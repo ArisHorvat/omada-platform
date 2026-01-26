@@ -1,0 +1,43 @@
+@model HomeViewModel
+@{
+    ViewData["Title"] = "Status";
+}
+
+<link rel="stylesheet" href="~/css/dashboard.css" />
+
+<div class="layout">
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h1>Omada API</h1>
+            <div class="subtitle">Backend Dashboard</div>
+        </div>
+        <ul class="nav-menu">
+            <li class="nav-item active" onclick="showTab('overview')">Overview</li>
+            <li class="nav-item" onclick="showTab('architecture')">Architecture</li>
+            <li class="nav-item" onclick="showTab('controllers')">Controllers</li>
+            <li class="nav-item" onclick="showTab('services')">Services</li>
+            <li class="nav-item" onclick="showTab('repositories')">Repositories</li>
+            <li class="nav-item" onclick="showTab('entities')">Entities</li>
+            <li class="nav-item" onclick="showTab('websockets')">WebSockets</li>
+            <li class="nav-item" onclick="showTab('tutorial')">Dev Tutorial</li>
+        </ul>
+        <div class="sidebar-footer">
+            <a href="/swagger" target="_blank" class="btn-swagger">Swagger UI</a>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <partial name="Partials/_Overview" model="Model.Overview" />
+        <partial name="Partials/_Architecture" model="Model.Architecture" />
+        <partial name="Partials/_Controllers" model="Model.Controllers" />
+        <partial name="Partials/_Services" model="Model.Services" />
+        <partial name="Partials/_Repositories" model="Model.Repositories" />
+        <partial name="Partials/_Entities" model="Model.Entities" />
+        <partial name="Partials/_WebSockets" model="Model.WebSockets" />
+        <partial name="Partials/_Tutorial" model="Model.Tutorial" />
+    </main>
+</div>
+
+<script src="~/js/dashboard.js"></script>

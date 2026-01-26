@@ -1,0 +1,41 @@
+@model OverviewViewModel
+
+<div id="overview" class="tab-pane active">
+    <div class="page-header">
+        <h2>Project Overview</h2>
+        <p>Current status and roadmap of the Omada Platform backend.</p>
+    </div>
+    <div class="grid">
+        <div class="card">
+            <h2>❤️ System Health</h2>
+            <ul>
+                <li>
+                    <span>Database Connection</span> 
+                    <span class="status-badge @(Model.DatabaseStatus == "Online" ? "done" : "todo")">@Model.DatabaseStatus</span>
+                </li>
+                <li>
+                    <span>Query Latency</span> 
+                    <span class="tag">@Model.DatabaseLatency</span>
+                </li>
+            </ul>
+        </div>
+        <div class="card">
+            <h2>✅ Feature Status</h2>
+            <ul>
+                @foreach (var feature in Model.Features)
+                {
+                    <li><span>@feature.Name</span> <span class="status-badge @feature.CssClass">@feature.Status</span></li>
+                }
+            </ul>
+        </div>
+        <div class="card">
+            <h2>🚧 Development Roadmap</h2>
+            <ul>
+                @foreach (var item in Model.Roadmap)
+                {
+                    <li><span>@item.Name</span> <span class="status-badge @item.CssClass">@item.Status</span></li>
+                }
+            </ul>
+        </div>
+    </div>
+</div>

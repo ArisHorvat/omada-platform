@@ -4,6 +4,6 @@ namespace Omada.Api.WebSocketHandlers;
 
 public interface IWebSocketHandler
 {
-    Task HandleAsync(WebSocket webSocket);
-    Task BroadcastAsync(object message);
+    Task HandleAsync(WebSocket webSocket, Guid organizationId);
+    Task BroadcastAsync(object message, Guid organizationId);
 }

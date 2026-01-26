@@ -1,0 +1,19 @@
+@model Omada.Api.ViewModels.WebSocketsViewModel
+
+<div id="websockets" class="tab-pane">
+    <div class="page-header">
+        <h2>Real-Time Communication</h2>
+        <p>WebSocket implementation for live updates.</p>
+    </div>
+    <div class="card">
+        <h2>📡 WebSocket Handler</h2>
+        <p style="margin-bottom: 20px;">@Model.Info.Description</p>
+        <h3>Broadcast Events</h3>
+        <div class="tech-stack" style="margin-top: 10px;">
+            @foreach (var evt in Model.Info.Events)
+            {
+                <span class="tag">@evt</span>
+            }
+        </div>
+    </div>
+</div>

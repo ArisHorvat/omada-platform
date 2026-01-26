@@ -1,0 +1,34 @@
+@model ControllersViewModel
+
+<div id="controllers" class="tab-pane">
+    <div class="page-header">
+        <h2>API Controllers</h2>
+        <p>List of all exposed HTTP endpoints.</p>
+    </div>
+    
+    @foreach (var group in Model.EndpointGroups)
+    {
+        <div class="card" style="margin-bottom: 24px;">
+            <h3>@group.Name</h3>
+            <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 16px;">@group.Description</p>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Method</th>
+                            <th>Endpoint</th>
+                            <th>Description</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var endpoint in group.Endpoints)
+                        {
+                            <tr><td class="method @endpoint.MethodCssClass">@endpoint.Method</td><td>@endpoint.Route</td><td>@endpoint.Description</td><td><span class="status-badge done">@endpoint.Status</span></td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>

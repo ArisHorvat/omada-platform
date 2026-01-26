@@ -1,0 +1,18 @@
+@model EntitiesViewModel
+
+<div id="entities" class="tab-pane">
+    <div class="page-header">
+        <h2>Domain Entities</h2>
+        <p>Core data models representing the database schema.</p>
+    </div>
+    <div class="grid">
+        @foreach (var entity in Model.Entities)
+        {
+            <div class="card">
+                <h2>@entity.Name</h2>
+                <p style="font-size: 0.9rem; margin-bottom: 8px;">@entity.Description</p>
+                <div style="font-size: 0.8rem; color: var(--primary); font-weight: 600;">🔗 @entity.Relations</div>
+            </div>
+        }
+    </div>
+</div>
