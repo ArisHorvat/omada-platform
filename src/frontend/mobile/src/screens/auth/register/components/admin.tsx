@@ -1,49 +1,70 @@
-import React, { useMemo } from 'react';
-import { View, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useThemeColors } from '@/src/hooks/use-theme-color';
-import { FormInput } from '@/src/components/FormInput';
-import { WizardLayout } from '@/src/components/WizardLayout';
-import { createStyles } from '@/src/screens/auth/register/styles/admin.styles';
+import { WizardLayout } from '@/src/components/layout';
+import { IconInput } from '@/src/components/ui';
 import { useAdminDetailsLogic } from '../hooks/useAdminDetailsLogic';
 
 export default function AdminDetailsScreen() {
   const router = useRouter();
-  const colors = useThemeColors();
-  const styles = useMemo(() => createStyles(colors), [colors]);
   const { adminData, setAdminData, handleNext } = useAdminDetailsLogic();
+  const [showPass, setShowPass] = useState(false);
 
   return (
-    <WizardLayout step={2} totalSteps={6} title="Admin Account" onBack={() => router.back()} onNext={handleNext}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <View style={styles.formSection}>
-          <FormInput 
-              label="First Name" placeholder="John" 
-              value={adminData.firstName} onChangeText={(t) => setAdminData({...adminData, firstName: t})} 
-              styles={styles} placeholderTextColor={colors.subtle} 
-          />
-          <FormInput 
-              label="Last Name" placeholder="Doe" 
-              value={adminData.lastName} onChangeText={(t) => setAdminData({...adminData, lastName: t})} 
-              styles={styles} placeholderTextColor={colors.subtle} 
-          />
-          <FormInput 
-              label="Admin Email" placeholder="admin@hogwarts.edu" 
-              value={adminData.email} onChangeText={(t) => setAdminData({...adminData, email: t})} 
-              styles={styles} placeholderTextColor={colors.subtle} autoCapitalize="none"
-          />
-          <FormInput 
-              label="Password" placeholder="******" 
-              value={adminData.password} onChangeText={(t) => setAdminData({...adminData, password: t})} 
-              secureTextEntry styles={styles} placeholderTextColor={colors.subtle} 
-          />
-          <FormInput 
-              label="Repeat Password" placeholder="******" 
-              value={adminData.repeatPassword} onChangeText={(t) => setAdminData({...adminData, repeatPassword: t})} 
-              secureTextEntry styles={styles} placeholderTextColor={colors.subtle} 
-          />
+    <WizardLayout 
+        step={1} 
+        totalSteps={6} 
+        title="Admin Account"
+        subtitle="Create your superuser credentials"
+        onBack={() => router.back()} 
+        onNext={handleNext}
+    >
+        <View style={{ gap: 16 }}>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+                <View style={{ flex: 1 }}>
+                    <IconInput 
+                        icon="person"
+                        placeholder="First Name"
+                        value={adminData.firstName}
+                        onChangeText={(t) => setAdminData({...adminData, firstName: t})}
+                    />
+                </View>
+                <View style={{ flex: 1 }}>
+                    <IconInput 
+                        placeholder="Last Name"
+                        value={adminData.lastName}
+                        onChangeText={(t) => setAdminData({...adminData, lastName: t})}
+                    />
+                </View>
+            </View>
+
+            <IconInput 
+                icon="mail"
+                placeholder="Admin Email"
+                value={adminData.email}
+                onChangeText={(t) => setAdminData({...adminData, email: t})}
+                keyboardType="email-address"
+                autoCapitalize="none"
+            />
+
+            <IconInput 
+                icon="lock"
+                rightIcon={showPass ? 'visibility' : 'visibility-off'}
+                onRightIconPress={() => setShowPass(!showPass)}
+                placeholder="Password"
+                value={adminData.password}
+                onChangeText={(t) => setAdminData({...adminData, password: t})}
+                secureTextEntry={!showPass}
+            />
+
+            <IconInput 
+                icon="lock-clock"
+                placeholder="Confirm Password"
+                value={adminData.repeatPassword}
+                onChangeText={(t) => setAdminData({...adminData, repeatPassword: t})}
+                secureTextEntry={!showPass}
+            />
         </View>
-      </ScrollView>
     </WizardLayout>
   );
 }

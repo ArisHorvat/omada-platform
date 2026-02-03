@@ -349,34 +349,104 @@ public class OrganizationService : IOrganizationService
 
     private async Task ApplyDefaultAccessLevels(Guid orgId, string orgType, List<Role> roles, IDbTransaction transaction)
     {
-        // Define defaults
+        // Define defaults: (RoleName, WidgetKey, AccessLevel)
         var defaults = new List<(string Role, string WidgetKey, string Access)>();
+
+        // --- 1. CORE WIDGETS (Standard access for everyone) ---
+        // We iterate through all created roles to give them base access
+        foreach (var role in roles)
+        {
+            defaults.Add((role.Name, "schedule", "view"));
+            defaults.Add((role.Name, "chat", "view"));
+            defaults.Add((role.Name, "news", "view"));
+            defaults.Add((role.Name, "profile", "view"));
+            defaults.Add((role.Name, "dashboard", "view"));
+        }
 
         if (orgType.ToLower() == "university")
         {
-            defaults.Add(("Professor", "attendance", "admin"));
-            defaults.Add(("Professor", "grades", "admin"));
-            defaults.Add(("Professor", "assignments", "admin"));
-            defaults.Add(("Student", "attendance", "view_own"));
+            // --- STUDENT ---
             defaults.Add(("Student", "grades", "view_own"));
             defaults.Add(("Student", "assignments", "view_own"));
-            defaults.Add(("Dean", "news", "editor"));
-            defaults.Add(("Registrar", "grades", "admin")); // Registrar can manage all grades
-            defaults.Add(("Registrar", "attendance", "admin")); // and all attendance
+            defaults.Add(("Student", "attendance", "view_own"));
+            defaults.Add(("Student", "documents", "view_own")); // Transcripts
+            defaults.Add(("Student", "transport", "view"));
+            defaults.Add(("Student", "map", "view"));
+            defaults.Add(("Student", "events", "view"));
+            defaults.Add(("Student", "rooms", "view")); // Library pods
+
+            // --- PROFESSOR ---
+            defaults.Add(("Professor", "attendance", "edit"));
+            defaults.Add(("Professor", "grades", "edit"));
+            defaults.Add(("Professor", "assignments", "edit"));
+            defaults.Add(("Professor", "users", "view")); // Directory
+            defaults.Add(("Professor", "transport", "view"));
+
+            // --- TEACHING ASSISTANT ---
+            defaults.Add(("Teaching Assistant", "attendance", "edit"));
+            defaults.Add(("Teaching Assistant", "grades", "edit"));
+            defaults.Add(("Teaching Assistant", "assignments", "edit"));
+
+            // --- DEAN ---
+            defaults.Add(("Dean", "news", "editor")); // Can post announcements
+            defaults.Add(("Dean", "users", "view"));
+            defaults.Add(("Dean", "map", "view"));
+
+            // --- REGISTRAR ---
+            defaults.Add(("Registrar", "grades", "admin")); // Manage all grades
+            defaults.Add(("Registrar", "attendance", "admin"));
+            defaults.Add(("Registrar", "documents", "admin")); // Manage Transcripts/Diplomas
+            defaults.Add(("Registrar", "users", "edit")); // Manage Student Records
+
+            // --- OPERATIONS (Uni) ---
+            defaults.Add(("Operations", "map", "admin"));
+            defaults.Add(("Operations", "transport", "admin")); // Manage Shuttles
+            defaults.Add(("Operations", "rooms", "admin"));
         }
-        else if (orgType.ToLower() == "corporate")
+        else // CORPORATE
         {
-            defaults.Add(("Team Lead", "tasks", "admin"));
-            defaults.Add(("HR Manager", "news", "editor"));
+            // --- EMPLOYEE ---
+            defaults.Add(("Employee", "tasks", "view_own"));
+            defaults.Add(("Employee", "documents", "view_own")); // Contracts/Payslips
+            defaults.Add(("Employee", "finance", "view_own")); // Expenses
+            defaults.Add(("Employee", "map", "view"));
+            defaults.Add(("Employee", "rooms", "view"));
+
+            // --- TEAM LEAD ---
+            defaults.Add(("Team Lead", "tasks", "edit")); // Manage team tasks
+            defaults.Add(("Team Lead", "users", "view"));
+            defaults.Add(("Team Lead", "rooms", "edit"));
+
+            // --- PROJECT MANAGER ---
+            defaults.Add(("Project Manager", "tasks", "admin"));
+            defaults.Add(("Project Manager", "documents", "edit")); // Project specs
+            defaults.Add(("Project Manager", "finance", "view_team")); // Project Budget
+
+            // --- DIRECTOR ---
             defaults.Add(("Director", "news", "editor"));
+            defaults.Add(("Director", "finance", "view_all")); // Dept Budget
+
+            // --- HR MANAGER ---
+            defaults.Add(("HR Manager", "news", "editor"));
+            defaults.Add(("HR Manager", "users", "admin")); // Hiring/Firing
+            defaults.Add(("HR Manager", "documents", "admin")); // Contracts
+            defaults.Add(("HR Manager", "finance", "admin")); // Payroll
+
+            // --- OPERATIONS (Corp) ---
+            defaults.Add(("Operations", "map", "admin"));
+            defaults.Add(("Operations", "transport", "admin"));
+            defaults.Add(("Operations", "rooms", "admin"));
         }
 
-        // Admin always gets full access to everything (handled via 'SuperAdmin' check usually, but explicit here for clarity)
+        // --- ADMIN (SuperUser) ---
         defaults.Add(("Admin", "news", "admin"));
         defaults.Add(("Admin", "users", "admin"));
+        defaults.Add(("Admin", "settings", "admin"));
 
+        // Apply to Database
         foreach (var def in defaults)
         {
+            // Find the role in the list we created earlier
             var role = roles.FirstOrDefault(r => r.Name.Equals(def.Role, StringComparison.OrdinalIgnoreCase));
             if (role != null)
             {

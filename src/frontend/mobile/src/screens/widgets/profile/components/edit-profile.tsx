@@ -3,10 +3,10 @@ import { View, Text, TouchableOpacity, ScrollView, Image, ActivityIndicator } fr
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useThemeColors } from '@/src/hooks/use-theme-color';
-import { FormInput } from '@/src/components/FormInput';
+import { useThemeColors } from '@/src/hooks';
 import { createStyles } from '@/src/screens/widgets/profile/styles/edit-profile.styles';
 import { useEditProfileLogic } from '@/src/screens/widgets/profile/hooks/useEditProfileLogic';
+import { AppFormField, ProgressiveImage } from '@/src/components/ui';
 
 export default function EditProfileScreen() {
   const colors = useThemeColors();
@@ -31,7 +31,7 @@ export default function EditProfileScreen() {
         <View style={styles.content}>
           <TouchableOpacity style={styles.avatarContainer} onPress={pickImage}>
             {displayImage ? (
-              <Image source={displayImage} style={styles.avatar} />
+              <ProgressiveImage source={displayImage} style={styles.avatar} />
             ) : (
               <View style={styles.avatarPlaceholder}>
                 <MaterialIcons name="person" size={48} color={colors.card} />
@@ -42,21 +42,19 @@ export default function EditProfileScreen() {
             </View>
           </TouchableOpacity>
 
-          <FormInput 
+          <AppFormField 
             label="Phone Number" 
             placeholder="e.g. +1 234 567 890" 
             value={phone} 
             onChangeText={setPhone} 
-            styles={styles} 
             placeholderTextColor={colors.subtle}
           />
 
-          <FormInput 
+          <AppFormField 
             label="Address" 
             placeholder="e.g. 123 Main St" 
             value={address} 
             onChangeText={setAddress} 
-            styles={styles} 
             placeholderTextColor={colors.subtle}
           />
 

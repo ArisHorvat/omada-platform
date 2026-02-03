@@ -6,7 +6,7 @@ export default function AuthLayout() {
       <Stack.Screen name="index" />
       <Stack.Screen name="login-flow" />
       <Stack.Screen name="register-flow" />
-      <Stack.Screen name="status-project" />
+      <Stack.Screen name="design-system" />
     </Stack>
   );
 }

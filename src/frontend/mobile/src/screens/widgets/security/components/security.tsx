@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, Switch, TextInput, ScrollView } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useThemeColors } from '@/src/hooks/use-theme-color';
+import { useThemeColors } from '@/src/hooks';
 import { createStyles } from '@/src/screens/widgets/security/styles/security.styles';
 import { useSecurityLogic } from '@/src/screens/widgets/security/hooks/useSecurityLogic';
 

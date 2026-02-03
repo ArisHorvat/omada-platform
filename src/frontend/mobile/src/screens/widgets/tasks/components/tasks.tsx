@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, TextInput, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Modal, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useThemeColors } from '@/src/hooks/use-theme-color';
+import { useThemeColors } from '@/src/hooks';
 import { MaterialIcons } from '@expo/vector-icons';
 import { TaskItem } from '@/src/services/TaskService';
 import { createStyles } from '@/src/screens/widgets/tasks/styles/tasks.styles';

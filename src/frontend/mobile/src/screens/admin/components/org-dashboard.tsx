@@ -2,9 +2,10 @@ import React, { useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useThemeColors } from '@/src/hooks/use-theme-color';
+import { useThemeColors } from '@/src/hooks';
 import { createStyles } from '@/src/screens/admin/styles/org-dashboard.styles';
 import { useOrgAdminDashboardLogic } from '../hooks/useOrgAdminDashboardLogic';
+import { ProgressiveImage } from '@/src/components/ui/ProgressiveImage';
 
 export default function OrgAdminDashboard() {
   const colors = useThemeColors();
@@ -46,7 +47,7 @@ export default function OrgAdminDashboard() {
         <View style={styles.card}>
           <View style={styles.orgHeader}>
             {org.logoUrl ? (
-              <Image source={{ uri: org.logoUrl }} style={styles.logo} />
+              <ProgressiveImage source={{ uri: org.logoUrl }} style={styles.logo} />
             ) : (
               <View style={[styles.logo, { justifyContent: 'center', alignItems: 'center' }]}>
                 <MaterialIcons name="business" size={32} color={colors.subtle} />

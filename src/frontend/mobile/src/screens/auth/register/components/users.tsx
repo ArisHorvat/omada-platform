@@ -1,96 +1,97 @@
-import React, { useMemo } from 'react';
-import { View, TouchableOpacity, Text, ScrollView, ActivityIndicator } from 'react-native';
+import React from 'react';
+import { View, TouchableOpacity, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useThemeColors } from '@/src/hooks/use-theme-color';
-import { MaterialIcons } from '@expo/vector-icons';
-import { WizardLayout } from '@/src/components/WizardLayout';
-import { FormInput } from '@/src/components/FormInput';
-import { createStyles } from '@/src/screens/auth/register/styles/users.styles';
+import { useThemeColors } from '@/src/hooks';
+import { WizardLayout } from '@/src/components/layout';
+import { AppText, GlassView, Icon, SegmentedControl, AppButton } from '@/src/components/ui';
 import { useUsersImportLogic } from '../hooks/useUsersImportLogic';
 
 export default function UsersScreen() {
   const router = useRouter();
   const colors = useThemeColors();
-  const styles = useMemo(() => createStyles(colors), [colors]);
-  const { importedUsers, submitRegistration, isSubmitting, defaultUserPassword, setDefaultUserPassword, activeTab, setActiveTab, isLoading, handleInviteLink, pickDocument } = useUsersImportLogic();
+  const { importedUsers, submitRegistration, isSubmitting, activeTab, setActiveTab, handleInviteLink, pickDocument } = useUsersImportLogic();
 
-  const renderContent = () => {
-    switch (activeTab) {
-        case 'email':
-            return (
-                <View style={styles.emailCard}>
-                    <View style={styles.emailIcon}><MaterialIcons name="email" size={40} color={colors.primary} /></View>
-                    <Text style={styles.emailTitle}>Invite via Email</Text>
-                    <Text style={styles.emailDesc}>We'll generate a magic link you can share with your team to let them join automatically.</Text>
-                    <TouchableOpacity style={styles.emailBtn} onPress={handleInviteLink}>
-                        <Text style={styles.emailBtnText}>Copy Invite Link</Text>
-                    </TouchableOpacity>
-                </View>
-            );
-        case 'upload':
-            return (
-                <View>
-                    <TouchableOpacity style={styles.uploadBtn} onPress={pickDocument}>
-                        {isLoading ? <ActivityIndicator color={colors.primary} /> : <MaterialIcons name="cloud-upload" size={32} color={colors.subtle} />}
-                        <Text style={{ marginLeft: 12, color: colors.subtle, fontWeight: '600' }}>{isLoading ? 'Extracting...' : 'Tap to upload CSV/Excel'}</Text>
-                    </TouchableOpacity>
-                    
-                    <View style={{ marginTop: 24 }}>
-                        <FormInput 
-                            label="Default Password for New Users" 
-                            placeholder="Welcome123!" 
-                            value={defaultUserPassword} 
-                            onChangeText={setDefaultUserPassword} 
-                            styles={{ inputGroup: { marginBottom: 16 }, label: { fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 8 }, input: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, fontSize: 16, color: colors.text } }}
-                            description="Users will be prompted to change this on first login."
-                        />
-                    </View>
-
-                    <Text style={{ marginTop: 16, fontWeight: 'bold', color: colors.text }}>Imported Users ({importedUsers.length})</Text>
-                    {isLoading ? (
-                        <View style={{ padding: 20, alignItems: 'center' }}>
-                            <ActivityIndicator size="large" color={colors.primary} />
-                            <Text style={{ marginTop: 10, color: colors.subtle }}>Processing file...</Text>
-                        </View>
-                    ) : importedUsers.map((u, i) => (
-                        <View key={i} style={styles.userCard}>
-                            <View style={styles.userAvatar}>
-                                <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.primary }}>{u.firstName?.charAt(0) || 'U'}</Text>
-                            </View>
-                            <View style={styles.userInfo}>
-                                <Text style={styles.userName}>{u.firstName} {u.lastName}</Text>
-                                <Text style={styles.userEmail}>{u.email}</Text>
-                                <Text style={styles.userRole}>{u.role}</Text>
-                            </View>
-                        </View>
-                    ))}
-                </View>
-            );
-    }
-  };
+  // Helper to convert tabs
+  const tabIndex = activeTab === 'email' ? 0 : 1;
+  const handleTabChange = (idx: number) => setActiveTab(idx === 0 ? 'email' : 'upload');
 
   return (
     <WizardLayout 
-        step={6} 
+        step={5} 
         totalSteps={6} 
         title="Add Users" 
+        subtitle="Invite your team"
         onBack={() => router.back()} 
         onNext={submitRegistration} 
-        nextLabel={isSubmitting ? "Creating..." : "Finish"}
+        nextLabel={isSubmitting ? "Creating Organization..." : "Finish Setup"}
         isNextDisabled={isSubmitting}
+        isNextLoading={isSubmitting}
     >
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.tabs}>
-            {(['email', 'upload'] as const).map(t => (
-                <TouchableOpacity key={t} style={[styles.tab, activeTab === t && styles.tabActive]} onPress={() => setActiveTab(t)}>
-                    <Text style={[styles.tabText, activeTab === t && styles.tabTextActive]}>
-                        {t === 'email' ? 'Email Link' : 'Upload'}
-                    </Text>
-                </TouchableOpacity>
-            ))}
-        </View>
-        {renderContent()}
-      </ScrollView>
+      <View style={{ marginBottom: 24 }}>
+        <SegmentedControl 
+            options={['Invite via Email', 'Bulk Upload']}
+            selectedIndex={tabIndex}
+            onChange={handleTabChange}
+        />
+      </View>
+
+      {activeTab === 'email' ? (
+          <GlassView intensity={10} style={{ padding: 24, borderRadius: 20, alignItems: 'center', gap: 16 }}>
+              <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: colors.primary + '20', alignItems: 'center', justifyContent: 'center' }}>
+                <Icon name="mail" size={32} color={colors.primary} />
+              </View>
+              <View style={{ alignItems: 'center' }}>
+                <AppText variant="h3">Share Magic Link</AppText>
+                <AppText style={{ textAlign: 'center', color: colors.subtle, marginTop: 8 }}>
+                    We'll generate a secure link. Anyone with this link can join your organization.
+                </AppText>
+              </View>
+              <AppButton 
+                title="Generate & Share Link" 
+                variant="outline" 
+                onPress={handleInviteLink} 
+                style={{ width: '100%' }}
+                icon="share"
+              />
+          </GlassView>
+      ) : (
+          <GlassView intensity={10} style={{ padding: 24, borderRadius: 20, alignItems: 'center', gap: 16 }}>
+              <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: colors.secondary + '20', alignItems: 'center', justifyContent: 'center' }}>
+                <Icon name="cloud-upload" size={32} color={colors.secondary} />
+              </View>
+              <View style={{ alignItems: 'center' }}>
+                <AppText variant="h3">Upload CSV</AppText>
+                <AppText style={{ textAlign: 'center', color: colors.subtle, marginTop: 8 }}>
+                    Upload a spreadsheet with columns: First Name, Last Name, Email, Role.
+                </AppText>
+              </View>
+              <AppButton 
+                title="Select File" 
+                variant="outline" 
+                onPress={pickDocument} 
+                style={{ width: '100%' }}
+              />
+          </GlassView>
+      )}
+
+      {/* Imported Users List */}
+      {importedUsers.length > 0 && (
+          <View style={{ marginTop: 24 }}>
+              <AppText variant="caption" style={{ marginBottom: 12, color: colors.subtle }}>READY TO IMPORT ({importedUsers.length})</AppText>
+              {importedUsers.map((u, idx) => (
+                  <GlassView key={idx} intensity={15} style={{ padding: 12, borderRadius: 12, marginBottom: 8, flexDirection: 'row', alignItems: 'center' }}>
+                      <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.text, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                          <AppText style={{ color: colors.background, fontWeight: 'bold' }}>{u.firstName?.charAt(0)}</AppText>
+                      </View>
+                      <View>
+                          <AppText weight="bold">{u.firstName} {u.lastName}</AppText>
+                          <AppText variant="caption" style={{ color: colors.subtle }}>{u.role}</AppText>
+                      </View>
+                  </GlassView>
+              ))}
+          </View>
+      )}
+
     </WizardLayout>
   );
 }

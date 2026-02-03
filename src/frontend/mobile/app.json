@@ -51,7 +51,18 @@
         }
       ],
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-localization",
+      [
+        "expo-dynamic-app-icon",
+        {
+          "default": "./assets/icon.png",
+          "dark": "./assets/icon-dark.png",
+          "retro": "./assets/icon-retro.png"
+        }
+      ],
+      "expo-audio",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,

@@ -12,7 +12,6 @@ export const createStyles = (colors: any) => StyleSheet.create({
   editBadge: { position: 'absolute', bottom: 0, right: 0, backgroundColor: colors.text, width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: colors.background },
   button: { backgroundColor: colors.primary, padding: 16, borderRadius: 8, alignItems: 'center', marginTop: 24 },
   buttonText: { color: colors.card, fontWeight: 'bold', fontSize: 16 },
-  inputGroup: { marginBottom: 16 },
   label: { fontSize: 14, fontWeight: '500', color: colors.text, marginBottom: 8 },
   input: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12, fontSize: 16, color: colors.text },
 });

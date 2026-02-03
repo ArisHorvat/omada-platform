@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useThemeColors } from '@/src/hooks/use-theme-color';
+import { useThemeColors } from '@/src/hooks';
 import { createStyles } from '@/src/screens/widgets/schedule/styles/schedule.styles';
 
 const SCHEDULE = [

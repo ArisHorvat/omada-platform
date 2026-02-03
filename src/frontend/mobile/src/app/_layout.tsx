@@ -1,14 +1,19 @@
+import '@/src/i18n';
 import { Slot, SplashScreen, useSegments, Redirect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useColorScheme, View, ActivityIndicator, Text } from 'react-native';
 import 'react-native-reanimated';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
+// 1. IMPORT FONTS
+import { useFonts, Outfit_400Regular, Outfit_600SemiBold, Outfit_800ExtraBold } from '@expo-google-fonts/outfit';
 
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { OrganizationThemeProvider } from '../context/OrganizationThemeContext';
 import { UserPreferencesProvider } from '../context/UserPreferencesContext';
 import { PermissionProvider } from '../context/PermissionContext';
 import { useEffect } from 'react';
-import { useThemeColors } from '@/src/hooks/use-theme-color';
+import { useThemeColors } from '@/src/hooks';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -57,16 +62,32 @@ function AuthLayout() {
 export default function RootLayout() {
   const colorScheme = useColorScheme();
 
+  // 2. LOAD FONTS
+  const [fontsLoaded] = useFonts({
+    'Body': Outfit_400Regular,
+    'Heading': Outfit_600SemiBold,
+    'Display': Outfit_800ExtraBold,
+  });
+
+  // 3. WAIT FOR FONTS
+  // If fonts aren't loaded, return null. 
+  // This keeps the Splash Screen visible because AuthLayout (which hides it) hasn't rendered yet.
+  if (!fontsLoaded) {
+    return null;
+  }
+
   return (
-    <AuthProvider>
-      <UserPreferencesProvider>
-        <OrganizationThemeProvider>
-          <PermissionProvider>
-            <AuthLayout />
-            <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-          </PermissionProvider>
-        </OrganizationThemeProvider>
-      </UserPreferencesProvider>
-    </AuthProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AuthProvider>
+        <UserPreferencesProvider>
+          <OrganizationThemeProvider>
+            <PermissionProvider>
+              <AuthLayout />
+              <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+            </PermissionProvider>
+          </OrganizationThemeProvider>
+        </UserPreferencesProvider>
+      </AuthProvider>
+    </GestureHandlerRootView>
   );
 }

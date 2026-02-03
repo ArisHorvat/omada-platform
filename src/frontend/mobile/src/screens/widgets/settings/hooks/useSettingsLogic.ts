@@ -15,10 +15,21 @@ export const useSettingsLogic = () => {
   }, []);
 
   const handleThemeChange = () => {
+    const getLabel = (mode: string) => themeMode === mode ? '(Current)' : '';
+
     Alert.alert('Select Theme', 'Choose your preferred appearance', [
-      { text: 'Light Mode', onPress: () => setThemeMode('light') },
-      { text: 'Dark Mode', onPress: () => setThemeMode('dark') },
-      { text: 'System Default', onPress: () => setThemeMode('system') },
+      { 
+        text: `Light Mode ${getLabel('light')}`, 
+        onPress: () => setThemeMode('light') 
+      },
+      { 
+        text: `Dark Mode ${getLabel('dark')}`, 
+        onPress: () => setThemeMode('dark') 
+      },
+      { 
+        text: `System Default ${getLabel('system')}`, 
+        onPress: () => setThemeMode('system') 
+      },
       { text: 'Cancel', style: 'cancel' }
     ]);
   };

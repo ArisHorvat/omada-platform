@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, FlatList, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useThemeColors } from '@/src/hooks/use-theme-color';
+import { useThemeColors } from '@/src/hooks';
 import { MaterialIcons } from '@expo/vector-icons';
 import { createStyles } from '@/src/screens/widgets/users/styles/users.styles';
 import { useUsersListLogic } from '@/src/screens/widgets/users/hooks/useUsersListLogic';

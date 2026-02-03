@@ -1,8 +1,16 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList } from 'react-native';
+import { View, FlatList, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useThemeColors } from '@/src/hooks/use-theme-color';
-import { createStyles } from '@/src/screens/widgets/grades/styles/grades.styles';
+import Animated from 'react-native-reanimated';
+import { useRouter } from 'expo-router';
+
+// UI Kit
+import { useThemeColors } from '@/src/hooks';
+import { GlassView, AppText, Icon } from '@/src/components/ui';
+import { AnimatedItem } from '@/src/components/animations/AnimatedItem';
+import { createStyles } from '../styles/grades.styles';
+
+const AnimatedView = Animated.View as any;
 
 const GRADES = [
   { id: '1', subject: 'Mathematics', grade: 'A', score: '95%' },
@@ -15,25 +23,93 @@ const GRADES = [
 export default function GradesScreen() {
   const colors = useThemeColors();
   const styles = createStyles(colors);
+  const router = useRouter();
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <Text style={[styles.header, { color: colors.text }]}>Academic Record</Text>
-      <FlatList
-        data={GRADES}
-        keyExtractor={item => item.id}
-        renderItem={({ item }) => (
-          <View style={[styles.item, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View>
-                <Text style={[styles.subject, { color: colors.text }]}>{item.subject}</Text>
-                <Text style={[styles.score, { color: colors.subtle }]}>{item.score}</Text>
-            </View>
-            <View style={[styles.gradeBadge, { backgroundColor: colors.primary }]}>
-                <Text style={[styles.gradeText, { color: colors.onPrimary }]}>{item.grade}</Text>
-            </View>
-          </View>
-        )}
-      />
-    </SafeAreaView>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      
+      {/* HERO HEADER (Animated Container) */}
+      <AnimatedView 
+        sharedTransitionTag="widget-grades" 
+        style={styles.heroContainer}
+      >
+        <GlassView 
+          intensity={90} 
+          style={[styles.heroGlass, { backgroundColor: colors.secondary }]}
+        >
+           {/* Use SafeAreaView to ensure content doesn't hit the notch */}
+           <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1 }}>
+              
+              {/* 1. NEW NAV BAR (Back Button + Title) */}
+              <View style={styles.navBar}>
+                <TouchableOpacity 
+                    onPress={() => router.back()} 
+                    activeOpacity={0.7}
+                    style={styles.backButton}
+                >
+                    <Icon name="arrow-back" size={24} color={colors.onSecondary} />
+                </TouchableOpacity>
+                <AppText variant="h3" weight="bold" style={{ color: colors.onSecondary, marginLeft: 16 }}>
+                    Academic Record
+                </AppText>
+              </View>
+
+              {/* 2. METRICS DISPLAY */}
+              <View style={styles.heroContent}>
+                 <View>
+                    <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                        <AppText variant="display" weight="bold" style={{ color: colors.onSecondary, fontSize: 64, lineHeight: 70 }}>
+                            3.8
+                        </AppText>
+                        <AppText variant="h2" style={{ color: colors.onSecondary, opacity: 0.8, marginLeft: 8 }}>
+                            GPA
+                        </AppText>
+                    </View>
+                    <AppText variant="caption" style={{ color: colors.onSecondary, opacity: 0.7, marginTop: -4 }}>
+                        Cumulative • Fall 2024
+                    </AppText>
+                 </View>
+                 
+                 {/* Decorative Icon */}
+                 <View style={styles.heroIcon}>
+                    <Icon name="school" size={60} color={colors.onSecondary} style={{ opacity: 0.3 }} />
+                 </View>
+              </View>
+
+           </SafeAreaView>
+        </GlassView>
+      </AnimatedView>
+
+      {/* LIST CONTENT */}
+      <View style={styles.listContainer}>
+        <FlatList
+          data={GRADES}
+          keyExtractor={item => item.id}
+          contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
+          renderItem={({ item, index }) => (
+            <AnimatedItem index={index} delay={100}>
+              <View style={[styles.item, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    {/* Subject Icon Placeholder */}
+                    <View style={[styles.subjectIcon, { backgroundColor: colors.background }]}>
+                        <AppText weight="bold" style={{ color: colors.subtle }}>{item.subject.charAt(0)}</AppText>
+                    </View>
+                    <View>
+                        <AppText variant="body" weight="bold">{item.subject}</AppText>
+                        <AppText variant="caption" style={{ color: colors.subtle }}>Score: {item.score}</AppText>
+                    </View>
+                </View>
+
+                <View style={[styles.gradeBadge, { backgroundColor: colors.primary + '15' }]}>
+                  <AppText variant="h3" weight="bold" style={{ color: colors.primary }}>
+                    {item.grade}
+                  </AppText>
+                </View>
+              </View>
+            </AnimatedItem>
+          )}
+        />
+      </View>
+    </View>
   );
 }

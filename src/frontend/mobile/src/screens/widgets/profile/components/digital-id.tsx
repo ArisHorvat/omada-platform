@@ -3,11 +3,12 @@ import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useThemeColors } from '@/src/hooks/use-theme-color';
+import { useThemeColors } from '@/src/hooks';
 import { useAuth } from '@/src/context/AuthContext';
 import QRCode from 'react-native-qrcode-svg';
 import { UserService } from '@/src/services/UserService';
 import { CurrentOrganizationService } from '@/src/services/CurrentOrganizationService';
+import { ProgressiveImage } from '@/src/components/ui/ProgressiveImage';
 
 const { width } = Dimensions.get('window');
 
@@ -79,13 +80,13 @@ export default function DigitalIDScreen() {
             
             <View style={styles.idHeader}>
                 <Text style={[styles.idOrgName, { color: onPrimary }]}>{org.name}</Text>
-                {org.logoUrl && <Image source={{ uri: org.logoUrl }} style={{ width: 32, height: 32, borderRadius: 16 }} />}
+                {org.logoUrl && <ProgressiveImage source={{ uri: org.logoUrl }} style={{ width: 32, height: 32, borderRadius: 16 }} />}
             </View>
             
             <View style={styles.idContent}>
                 <View style={styles.idAvatar}>
                     {user.profilePictureUrl ? (
-                        <Image source={{ uri: user.profilePictureUrl }} style={styles.idAvatarImage} />
+                        <ProgressiveImage source={{ uri: user.profilePictureUrl }} style={styles.idAvatarImage} />
                     ) : (
                         <MaterialIcons name="person" size={40} color={onPrimary} />
                     )}

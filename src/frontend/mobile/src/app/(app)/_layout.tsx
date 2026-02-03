@@ -7,6 +7,13 @@ export default function AppLayout() {
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="(admin)" />
       <Stack.Screen name="(superadmin)" />
+
+      <Stack.Screen 
+        name="(widgets)" 
+        options={{ 
+          animation: 'fade', 
+        }} 
+      />
     </Stack>
   );
 }

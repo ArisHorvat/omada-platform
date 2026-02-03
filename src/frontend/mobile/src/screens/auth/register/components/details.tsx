@@ -1,22 +1,19 @@
-import React, { useMemo } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, ScrollView, Alert } from 'react-native';
+import React from 'react';
+import { View, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useThemeColors } from '@/src/hooks/use-theme-color';
+import { useThemeColors } from '@/src/hooks';
 import { useRegistrationLogic } from '@/src/screens/auth/register/hooks/useRegistrationLogic';
-import { FormInput } from '@/src/components/FormInput';
-import { WizardLayout } from '@/src/components/WizardLayout';
-import { MaterialIcons } from '@expo/vector-icons';
-import { createStyles } from '@/src/screens/auth/register/styles/details.styles';
+import { AppText, IconInput, GlassView, Icon } from '@/src/components/ui';
+import { WizardLayout } from '@/src/components/layout';
 
 export default function OrgDetailsScreen() {
   const router = useRouter();
   const colors = useThemeColors();
   const { orgData, setOrgData, setRoles } = useRegistrationLogic();
 
-  const styles = useMemo(() => createStyles(colors), [colors]);
-
   const handleTypeSelect = (type: string) => {
     setOrgData({ ...orgData, type });
+    // Pre-fill default roles
     if (type === 'university') {
         setRoles(['Student', 'Professor', 'Teaching Assistant', 'Dean', 'Registrar', 'Operations', 'Admin']);
     } else {
@@ -26,50 +23,72 @@ export default function OrgDetailsScreen() {
 
   const handleNext = () => {
     if (!orgData.name.trim() || !orgData.shortName.trim()) {
-      Alert.alert('Validation Error', 'Please fill all organization details.');
+      Alert.alert('Missing Info', 'Please fill in all details.');
       return;
     }
     router.push('/register-flow/admin');
   };
 
   return (
-    <WizardLayout step={1} totalSteps={6} title="Identity" onBack={() => router.back()} onNext={handleNext}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.sectionHeader}>Organization Type</Text>
-        <View style={styles.typeGrid}>
-          <TouchableOpacity 
-            style={[styles.typeCard, orgData.type === 'university' && styles.typeCardActive]} 
-            onPress={() => handleTypeSelect('university')}
-          >
-            <MaterialIcons name="school" size={32} color={orgData.type === 'university' ? colors.primary : colors.subtle} style={styles.typeIcon} />
-            <Text style={[styles.typeTitle, orgData.type === 'university' && { color: colors.primary }]}>University</Text>
-            <Text style={styles.typeSubtitle}>Faculty, Students, Campus</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={[styles.typeCard, orgData.type === 'corporate' && styles.typeCardActive]} 
-            onPress={() => handleTypeSelect('corporate')}
-          >
-            <MaterialIcons name="business" size={32} color={orgData.type === 'corporate' ? colors.primary : colors.subtle} style={styles.typeIcon} />
-            <Text style={[styles.typeTitle, orgData.type === 'corporate' && { color: colors.primary }]}>Corporate</Text>
-            <Text style={styles.typeSubtitle}>Teams, Employees, Offices</Text>
-          </TouchableOpacity>
+    <WizardLayout 
+        step={0} 
+        totalSteps={6} 
+        title="Organization" 
+        subtitle="Tell us about your workspace"
+        onBack={() => router.back()} 
+        onNext={handleNext}
+    >
+        {/* Type Selection Grid */}
+        <AppText variant="caption" style={{ marginBottom: 12, color: colors.subtle }}>INSTITUTION TYPE</AppText>
+        <View style={{ flexDirection: 'row', gap: 12, marginBottom: 32 }}>
+            {['university', 'corporate'].map((type) => {
+                const isActive = orgData.type === type;
+                return (
+                    <TouchableOpacity key={type} style={{ flex: 1 }} onPress={() => handleTypeSelect(type)}>
+                        <GlassView 
+                            intensity={isActive ? 40 : 10}
+                            style={{ 
+                                padding: 16, 
+                                borderRadius: 16, 
+                                alignItems: 'center',
+                                borderWidth: 2,
+                                borderColor: isActive ? colors.primary : 'transparent',
+                                backgroundColor: isActive ? colors.primary + '15' : undefined
+                            }}
+                        >
+                            <Icon 
+                                name={type === 'university' ? 'school' : 'business'} 
+                                size={32} 
+                                color={isActive ? colors.primary : colors.subtle} 
+                            />
+                            <AppText weight="bold" style={{ marginTop: 8, textTransform: 'capitalize' }}>
+                                {type}
+                            </AppText>
+                        </GlassView>
+                    </TouchableOpacity>
+                );
+            })}
         </View>
 
-        <Text style={styles.sectionHeader}>Basic Details</Text>
-        <View style={styles.formSection}>
-          <FormInput 
-              label="Organization Name" placeholder="e.g. Hogwarts University" 
-              value={orgData.name} onChangeText={(t) => setOrgData({...orgData, name: t})} 
-              styles={styles} placeholderTextColor={colors.subtle} 
-          />
-          <FormInput 
-              label="Short Name (Abbreviation)" placeholder="e.g. HU" 
-              value={orgData.shortName} onChangeText={(t) => setOrgData({...orgData, shortName: t})} 
-              styles={styles} placeholderTextColor={colors.subtle} 
-          />
-        </View>
-      </ScrollView>
+        {/* Form */}
+        <AppText variant="caption" style={{ marginBottom: 12, color: colors.subtle }}>BASIC INFO</AppText>
+        
+        <IconInput 
+            icon="business"
+            placeholder="Organization Name"
+            value={orgData.name}
+            onChangeText={(t) => setOrgData({...orgData, name: t})}
+            style={{ marginBottom: 16 }}
+        />
+        
+        <IconInput 
+            icon="short-text"
+            placeholder="Short Name (e.g. 'MIT')"
+            value={orgData.shortName}
+            onChangeText={(t) => setOrgData({...orgData, shortName: t})}
+            maxLength={10}
+        />
+
     </WizardLayout>
   );
 }

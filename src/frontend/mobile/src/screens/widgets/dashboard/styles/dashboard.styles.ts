@@ -1,7 +1,10 @@
 import { StyleSheet, Dimensions } from 'react-native';
 
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = width * 0.75;
+
+export const CARD_WIDTH = width * 0.75; 
+export const CARD_MARGIN = 16;
+export const SNAP_INTERVAL = CARD_WIDTH + CARD_MARGIN;
 
 export const createStyles = (colors: any) => StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
@@ -13,8 +16,32 @@ export const createStyles = (colors: any) => StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 16,
   },
+  stickyHeaderContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 90, // Covers status bar + a bit of header
+  },
+  stickyGlass: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-end', // Align text to bottom (like iOS nav bar)
+    paddingBottom: 15,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border + '40',
+    backgroundColor: colors.card + 'CC', // High opacity for readability
+  },
   greetingContainer: { flex: 1 },
-  dateText: { fontSize: 13, fontWeight: '600', color: colors.primary, textTransform: 'uppercase', marginBottom: 4, letterSpacing: 0.5 },
+  dateText: { 
+    fontSize: 13, 
+    fontWeight: '600', 
+    color: colors.primary, 
+    textTransform: 'uppercase', 
+    marginBottom: 4, 
+    letterSpacing: 0.5 
+  },
   greeting: { fontSize: 32, fontWeight: '800', color: colors.text, letterSpacing: -0.5 },
   orgName: { fontSize: 15, color: colors.subtle, marginTop: 4, fontWeight: '500' },
   scrollContent: { paddingBottom: 120, paddingTop: 10 },
@@ -29,7 +56,13 @@ export const createStyles = (colors: any) => StyleSheet.create({
   divider: { height: 1, backgroundColor: colors.border, marginHorizontal: 20, marginVertical: 24, opacity: 0.2 },
 
   // Horizontal Deck (Highlights)
-  deckContainer: { paddingLeft: 20, paddingRight: 4 },
+  deckContainer: {
+    paddingLeft: 20, 
+    paddingRight: width - CARD_WIDTH - 20, 
+    paddingBottom: 10,
+  },
+
+  // Widget Card
   widgetCard: {
     width: CARD_WIDTH,
     height: 180,
@@ -43,13 +76,28 @@ export const createStyles = (colors: any) => StyleSheet.create({
     shadowRadius: 12,
     elevation: 5,
   },
+  widgetWrapper: {
+    marginRight: CARD_MARGIN,
+  },
+
+  // Card Content
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   cardIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   cardTitle: { fontSize: 22, fontWeight: 'bold', marginTop: 12 },
   cardSubtitle: { fontSize: 15, marginTop: 4, fontWeight: '500', opacity: 0.9 },
   cardFooter: { flexDirection: 'row', alignItems: 'center', marginTop: 'auto' },
-  cardTag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginRight: 8 },
-  cardTagText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
+  cardTag: { 
+    paddingHorizontal: 10, 
+    paddingVertical: 4, 
+    borderRadius: 8, 
+    marginRight: 8,
+    backgroundColor: colors.primary 
+  },
+  cardTagText: { 
+    color: colors.onPrimary, 
+    fontSize: 12, 
+    fontWeight: 'bold' 
+  },
 
   // Apps Rail
   appsContainer: { paddingLeft: 20, paddingRight: 4 },

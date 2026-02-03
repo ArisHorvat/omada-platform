@@ -3,9 +3,10 @@ import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Modal, Fla
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useThemeColors } from '@/src/hooks/use-theme-color';
+import { useThemeColors } from '@/src/hooks';
 import { createStyles } from '@/src/screens/widgets/profile/styles/profile.styles';
 import { useProfileLogic } from '@/src/screens/widgets/profile/hooks/useProfileLogic';
+import { ProgressiveImage } from '@/src/components/ui/ProgressiveImage';
 
 export default function ProfileScreen() {
   const colors = useThemeColors();
@@ -34,7 +35,7 @@ export default function ProfileScreen() {
         <View style={styles.profileCard}>
           <View style={styles.avatarContainer}>
             {user?.profilePictureUrl ? (
-                <Image source={{ uri: user.profilePictureUrl }} style={styles.avatarImage} />
+                <ProgressiveImage source={{ uri: user.profilePictureUrl }} style={styles.avatarImage} />
             ) : (
                 <Text style={styles.avatarText}>{initial}</Text>
             )}

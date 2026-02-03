@@ -13,7 +13,7 @@ export default function RegisterFlowLayout() {
         <Stack.Screen name="roles" options={{ title: 'Custom Roles' }} />
         <Stack.Screen name="users" options={{ title: 'Import Users' }} />
         <Stack.Screen name="widgets" options={{ title: 'Assign Widgets' }} />
-        <Stack.Screen name="registration-succes" />
+        <Stack.Screen name="registration-success" />
       </Stack>
     </RegistrationProvider>
   );

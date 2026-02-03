@@ -5,7 +5,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
 
 interface Session {
-  token: string;
+  token: string; // Will be empty string "" for inactive sessions in the list
+  email: string;
+  role: string;
+  orgId: string;
+  exp: number;
+}
+
+// We define a separate interface for what we actually save to disk (No Token)
+interface StoredSessionMetadata {
   email: string;
   role: string;
   orgId: string;
@@ -23,7 +31,7 @@ interface AuthContextType {
   setToken: (token: string | null) => Promise<void>;
   addAccount: (token: string) => Promise<void>;
   switchSession: (orgId: string) => Promise<void>;
-  removeSession: (orgId: string) => Promise<void>;
+  removeSession: (orgId: string, isLoggingOut?: boolean) => Promise<void>; 
   setIsSwitching: (value: boolean) => void;
   logout: () => Promise<void>;
 }
@@ -41,30 +49,45 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSwitching, setIsSwitching] = useState(false);
 
+  // Helper to get a unique secure key for each organization's token
+  const getSecureKey = (targetOrgId: string) => `session_token_${targetOrgId}`;
+
   useEffect(() => {
     loadState();
   }, []);
 
   const loadState = async () => {
-    console.log('[AuthContext] Loading state...');
+    console.log('[AuthContext] Loading secure state...');
     try {
-      // 1. Load Sessions
-      const storedSessions = await AsyncStorage.getItem('authSessions');
-      let loadedSessions: Session[] = storedSessions ? JSON.parse(storedSessions) : [];
-      
-      // Filter expired sessions
-      const now = Date.now() / 1000;
-      loadedSessions = loadedSessions.filter(s => s.exp > now);
-      setSessions(loadedSessions);
+      // 1. Load Session Metadata (Safe in AsyncStorage)
+      const storedMetadata = await AsyncStorage.getItem('authSessions');
+      let loadedSessions: Session[] = [];
+
+      if (storedMetadata) {
+        const metadata: StoredSessionMetadata[] = JSON.parse(storedMetadata);
+        
+        // Convert metadata to Session objects (token is empty initially)
+        loadedSessions = metadata.map(m => ({
+          ...m,
+          token: '' // We don't load the token yet for security/performance
+        }));
+
+        // Filter expired
+        const now = Date.now() / 1000;
+        loadedSessions = loadedSessions.filter(s => s.exp > now);
+        setSessions(loadedSessions);
+      }
 
       // 2. Load Active Token
+      // We still keep the *Active* token in a standard slot for quick access
       const storedToken = await SecureStore.getItemAsync('authToken');
+      
       if (storedToken) {
         await handleTokenUpdate(storedToken);
       } 
       else if (loadedSessions.length > 0) {
         // Fallback: If no active token but sessions exist, switch to the first one
-        await switchSessionInternal(loadedSessions[0]);
+        await switchSession(loadedSessions[0].orgId);
       }
     } catch (error) {
       console.error('[AuthContext] Failed to load state', error);
@@ -78,7 +101,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const decoded: any = jwtDecode(newToken);
       
-      // Check expiry
       if (decoded.exp && decoded.exp * 1000 < Date.now()) {
         console.log('[AuthContext] Token expired');
         await logout();
@@ -89,7 +111,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setEmail(decoded.email);
       setRole(decoded.role || 'User');
       setOrgId(decoded.organizationId);
-      console.log('[AuthContext] State updated with new token');
     } 
     catch (e) {
       console.error('[AuthContext] Invalid token format', e);
@@ -105,49 +126,64 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const addAccount = async (newToken: string) => {
-    console.log('[AuthContext] Adding account');
+    console.log('[AuthContext] Adding account securely');
     try {
       const decoded: any = jwtDecode(newToken);
-      const newSession: Session = {
-        token: newToken,
+      const newOrgId = decoded.organizationId;
+
+      // 1. Save Token to SecureStore
+      await SecureStore.setItemAsync(getSecureKey(newOrgId), newToken);
+
+      // 2. Create Metadata (No Token)
+      const newMetadata: StoredSessionMetadata = {
         email: decoded.email,
         role: decoded.role || 'User',
-        orgId: decoded.organizationId,
+        orgId: newOrgId,
         exp: decoded.exp
       };
 
-      // Update sessions list (remove existing for same org/email to avoid dupes)
-      const updatedSessions = sessions.filter(s => s.orgId !== newSession.orgId || s.email !== newSession.email);
-      updatedSessions.push(newSession);
-      setSessions(updatedSessions);
-      await AsyncStorage.setItem('authSessions', JSON.stringify(updatedSessions));
-      console.log('[AuthContext] Session saved to storage');
+      // 3. Update State & AsyncStorage
+      // We remove any existing session for this org to prevent duplicates
+      const otherSessions = sessions.filter(s => s.orgId !== newOrgId);
+      
+      // For the in-memory state, we can keep the token if we want, or keep it empty.
+      // Let's keep it empty to enforce the pattern that "Active Token = state.token"
+      // and "Inactive Tokens = SecureStore".
+      const newSessionList = [...otherSessions, { ...newMetadata, token: '' }];
+      
+      setSessions(newSessionList);
+      
+      // Save ONLY metadata to AsyncStorage
+      const metadataList = newSessionList.map(({ token, ...meta }) => meta);
+      await AsyncStorage.setItem('authSessions', JSON.stringify(metadataList));
 
-      // Set as active
-      await SecureStore.deleteItemAsync('authToken'); // Clear old first to be safe
+      // 4. Set as Active
       await SecureStore.setItemAsync('authToken', newToken);
       await handleTokenUpdate(newToken);
+
     } catch (e) {
       console.error('[AuthContext] Failed to add account', e);
     }
   };
 
   const switchSession = async (targetOrgId: string) => {
-    const session = sessions.find(s => s.orgId === targetOrgId);
-    if (session) {
-      await switchSessionInternal(session);
-    } else {
-      Alert.alert("Error", "Session not found.");
-    }
-  };
-
-  const switchSessionInternal = async (session: Session) => {
+    setIsSwitching(true);
     try {
-      await SecureStore.deleteItemAsync('authToken');
-      await SecureStore.setItemAsync('authToken', session.token);
-      await handleTokenUpdate(session.token);
+      // 1. Retrieve the specific token from SecureStore
+      const targetToken = await SecureStore.getItemAsync(getSecureKey(targetOrgId));
+      
+      if (targetToken) {
+        // 2. Set as Active
+        await SecureStore.setItemAsync('authToken', targetToken);
+        await handleTokenUpdate(targetToken);
+      } else {
+        Alert.alert("Error", "Session expired or invalid. Please log in again.");
+        await removeSession(targetOrgId);
+      }
     } catch (e) {
       console.error('[AuthContext] Failed to switch session', e);
+    } finally {
+      setIsSwitching(false);
     }
   };
 
@@ -159,13 +195,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const removeSession = async (targetOrgId: string) => {
+  const removeSession = async (targetOrgId: string, isLoggingOut = false) => {
+    // 1. Remove metadata from List/Storage
     const updatedSessions = sessions.filter(s => s.orgId !== targetOrgId);
     setSessions(updatedSessions);
-    await AsyncStorage.setItem('authSessions', JSON.stringify(updatedSessions));
     
-    // If removing current session, logout or switch
-    if (orgId === targetOrgId) {
+    const metadataList = updatedSessions.map(({ token, ...meta }) => meta);
+    await AsyncStorage.setItem('authSessions', JSON.stringify(metadataList));
+
+    // 2. Remove Token from SecureStore
+    await SecureStore.deleteItemAsync(getSecureKey(targetOrgId));
+    
+    // 3. THE FIX: Only trigger logout if we are NOT already logging out
+    if (!isLoggingOut && orgId === targetOrgId) {
         await logout();
     }
   };
@@ -173,20 +215,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const logout = async () => {
     console.log('[AuthContext] Logging out...');
     try {
-      // Remove current session from list
-      if (orgId && email) {
-        const updatedSessions = sessions.filter(s => s.orgId !== orgId || s.email !== email);
-        setSessions(updatedSessions);
-        await AsyncStorage.setItem('authSessions', JSON.stringify(updatedSessions));
+      // If we are logged in, remove THIS session from the list
+      if (orgId) {
+        // THE FIX: Pass 'true' to prevent the infinite loop
+        await removeSession(orgId, true); 
         
-        if (updatedSessions.length > 0) {
-            // Switch to another session if available
-            await switchSessionInternal(updatedSessions[0]);
+        // Check if other sessions exist to switch to
+        // Note: We use the filtered list logic manually here because state updates are async
+        const remainingSessions = sessions.filter(s => s.orgId !== orgId);
+        
+        if (remainingSessions.length > 0) {
+            // Switch to the next available one
+            await switchSession(remainingSessions[0].orgId);
             return;
         }
       }
-      
-      // No sessions left, full logout
+
+      // If no sessions left or just a general logout
       await SecureStore.deleteItemAsync('authToken');
       await AsyncStorage.removeItem('authSessions');
       setSessions([]);

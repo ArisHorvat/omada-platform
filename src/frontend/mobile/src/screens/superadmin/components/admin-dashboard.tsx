@@ -3,9 +3,10 @@ import { View, Text, FlatList, TouchableOpacity, Image, Alert, TextInput } from 
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useThemeColors } from '@/src/hooks/use-theme-color';
+import { useThemeColors } from '@/src/hooks';
 import { createStyles } from '@/src/screens/superadmin/styles/admin-dashboard.styles';
 import { useSuperAdminDashboardLogic } from '@/src/screens/superadmin/hooks/useSuperAdminDashboardLogic';
+import { ProgressiveImage } from '@/src/components/ui/ProgressiveImage';
 
 export default function SuperAdminDashboard() {
   const router = useRouter();
@@ -14,9 +15,9 @@ export default function SuperAdminDashboard() {
   const { filteredOrganizations, isOffline, searchQuery, setSearchQuery, handleLogout, deleteOrganization } = useSuperAdminDashboardLogic();
 
   const renderItem = ({ item }: { item: any }) => (
-    <TouchableOpacity style={styles.orgItem} onPress={() => router.push(`/organization/${item.id}`)}>
+    <TouchableOpacity style={styles.orgItem} onPress={() => router.push("..")}>
       {item.logoUrl ? (
-        <Image source={{ uri: item.logoUrl }} style={styles.logo} />
+        <ProgressiveImage source={{ uri: item.logoUrl }} style={styles.logo} />
       ) : (
         <View style={styles.logoPlaceholder}>
           <MaterialIcons name="business" size={24} color={colors.subtle} />
@@ -27,7 +28,7 @@ export default function SuperAdminDashboard() {
         <Text style={styles.orgDomain}>{item.emailDomain}</Text>
       </View>
       <View style={styles.actions}>
-        <TouchableOpacity style={styles.actionButton} onPress={() => router.push(`/organization/edit/${item.id}`)}>
+        <TouchableOpacity style={styles.actionButton} onPress={() => router.push(`..`)}>
           <MaterialIcons name="edit" size={24} color={colors.primary} />
         </TouchableOpacity>
         <TouchableOpacity style={styles.actionButton} onPress={() => Alert.alert('Delete', `Are you sure you want to delete ${item.name}?`, [
@@ -51,7 +52,7 @@ export default function SuperAdminDashboard() {
             <MaterialIcons name="logout" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>All Organizations</Text>
-          <TouchableOpacity onPress={() => router.push('/register')}>
+          <TouchableOpacity onPress={() => router.push('/register-flow')}>
             <MaterialIcons name="add-business" size={28} color={colors.primary} />
           </TouchableOpacity>
         </View>

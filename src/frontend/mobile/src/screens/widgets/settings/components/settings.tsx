@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useThemeColors } from '@/src/hooks/use-theme-color';
+import { useThemeColors } from '@/src/hooks';
 import { ThemeMode } from '@/src/context/UserPreferencesContext';
 import { createStyles } from '@/src/screens/widgets/settings/styles/settings.styles';
 import { useSettingsLogic } from '@/src/screens/widgets/settings/hooks/useSettingsLogic';

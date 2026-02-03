@@ -1,12 +1,13 @@
 import React, { useMemo } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Modal, TextInput, ActivityIndicator, RefreshControl, ScrollView, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useThemeColors } from '@/src/hooks/use-theme-color';
+import { useThemeColors } from '@/src/hooks';
 import { MaterialIcons } from '@expo/vector-icons';
 import { usePermission } from '@/src/context/PermissionContext';
 import * as Linking from 'expo-linking';
 import { createStyles } from '@/src/screens/widgets/news/styles/news.styles';
 import { useNewsLogic, NewsItem } from '@/src/screens/widgets/news/hooks/useNewsLogic';
+import { ProgressiveImage } from '@/src/components/ui/ProgressiveImage';
 
 export default function NewsScreen() {
   const colors = useThemeColors();
@@ -66,7 +67,7 @@ export default function NewsScreen() {
         <TouchableOpacity activeOpacity={0.9} onPress={onPress} style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
             {coverSource && (
             <TouchableOpacity onPress={onImagePress} disabled={!onImagePress} activeOpacity={0.9}>
-                <Image 
+                <ProgressiveImage 
                     source={coverSource} 
                     style={styles.cardImage} 
                     resizeMode="cover"
@@ -111,7 +112,7 @@ export default function NewsScreen() {
         <ScrollView style={{ flex: 1 }}>
             {coverSource && (
                 <TouchableOpacity onPress={onImagePress} disabled={!onImagePress} activeOpacity={0.9}>
-                    <Image 
+                    <ProgressiveImage 
                     source={coverSource} 
                     style={styles.articleImage} 
                     resizeMode="contain"
@@ -143,7 +144,7 @@ export default function NewsScreen() {
                                 style={[styles.attachmentItem, { backgroundColor: colors.card, borderColor: colors.border }]}
                             >
                                 {file.type.startsWith('image/') ? (
-                                    <Image source={{ uri: file.url }} style={styles.attachmentThumb} />
+                                    <ProgressiveImage source={{ uri: file.url }} style={styles.attachmentThumb} />
                                 ) : (
                                     <View style={[styles.attachmentIcon, { backgroundColor: colors.background }]}>
                                         <MaterialIcons name="description" size={24} color={colors.primary} />

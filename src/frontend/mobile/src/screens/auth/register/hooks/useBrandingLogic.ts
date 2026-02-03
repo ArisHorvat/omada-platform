@@ -44,17 +44,22 @@ const getLuminance = (hex: string) => {
   return 0.2126 * lr + 0.7152 * lg + 0.0722 * lb;
 };
 
-export const getContrastColor = (hex: string) => getLuminance(hex) > 0.5 ? '#000000' : '#ffffff';
+export const getContrastColor = (hex: string) => {
+  const lum = getLuminance(hex);
+  return lum > 0.5 ? '#000000' : '#ffffff';
+};
 
-const sortColors = (colors: string[]) => {
-  if (colors.length <= 1) return colors;
-  const [first, ...rest] = colors;
-  return [first, ...rest.sort((a, b) => {
-    const hslA = hexToHsl(a);
-    const hslB = hexToHsl(b);
-    if (Math.abs(hslA.h - hslB.h) > 5) return hslA.h - hslB.h;
-    return hslA.l - hslB.l;
-  })];
+export const ensureReadable = (hex: string, isDark: boolean) => {
+  const { h, s, l } = hexToHsl(hex);
+  
+  if (isDark) {
+    // In Dark Mode: If color is too dark (L < 40%), lighten it
+    if (l < 40) return hslToHex(h, s, 50); 
+  } else {
+    // In Light Mode: If color is too light (L > 60%), darken it
+    if (l > 60) return hslToHex(h, s, 45);
+  }
+  return hex;
 };
 
 export interface Palette { name: string; primary: string; secondary: string; tertiary: string; }
@@ -71,6 +76,35 @@ const generatePalettes = (baseColor: string): Palette[] => {
     { name: 'Switch Palette', primary: baseColor, secondary: '#ffffff', tertiary: '#000000' },
     { name: 'Natural Palette', primary: baseColor, secondary: hslToHex(h, 20, 90), tertiary: hslToHex((h + 30) % 360, 40, 40) }
   ];
+};
+
+export const generateThemeFromPalette = (palette: Palette, isDark: boolean) => {
+  // First, ensure the main colors are readable against the background
+  const safePrimary = ensureReadable(palette.primary, isDark);
+  const safeSecondary = ensureReadable(palette.secondary, isDark);
+  const safeTertiary = ensureReadable(palette.tertiary, isDark);
+
+  return {
+    primary: safePrimary,
+    secondary: safeSecondary,
+    tertiary: safeTertiary,
+    
+    // Dynamic 'On' Colors: Text color that sits ON TOP of the colored buttons
+    onPrimary: getContrastColor(safePrimary),
+    onSecondary: getContrastColor(safeSecondary),
+    onTertiary: getContrastColor(safeTertiary),
+  };
+};
+
+const sortColors = (colors: string[]) => {
+  if (colors.length <= 1) return colors;
+  const [first, ...rest] = colors;
+  return [first, ...rest.sort((a, b) => {
+    const hslA = hexToHsl(a);
+    const hslB = hexToHsl(b);
+    if (Math.abs(hslA.h - hslB.h) > 5) return hslA.h - hslB.h;
+    return hslA.l - hslB.l;
+  })];
 };
 
 export const DEFAULT_BASE_COLORS = ['#3b82f6', '#ef4444', '#22c55e', '#eab308', '#8b5cf6', '#ec4899'];

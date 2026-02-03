@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text, TouchableOpacity, ScrollView } from 'react-native';
-import { useThemeColors } from '@/src/hooks/use-theme-color';
+import { useThemeColors } from '@/src/hooks';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -8,20 +8,30 @@ import { createStyles } from '@/src/screens/widgets/more/styles/more.styles';
 import { useMoreLogic } from '@/src/screens/widgets/more/hooks/useMoreLogic';
 
 const WIDGET_INFO: Record<string, { name: string; icon: keyof typeof MaterialIcons.glyphMap }> = {
-  news: { name: 'News', icon: 'article' },
+  // Core
   schedule: { name: 'Schedule', icon: 'calendar-today' },
-  grades: { name: 'Grades', icon: 'school' },
-  assignments: { name: 'Assignments', icon: 'assignment' },
-  attendance: { name: 'Attendance', icon: 'check-circle' },
-  library: { name: 'Library Loans', icon: 'menu-book' },
-  digital_id: { name: 'Digital ID', icon: 'badge' },
-  tuition: { name: 'Tuition', icon: 'payment' },
-  directory: { name: 'Directory', icon: 'supervisor-account' },
-  map: { name: 'Campus Map', icon: 'map' },
-  room_booking: { name: 'Room Booking', icon: 'meeting-room' },
-  parking: { name: 'Parking', icon: 'local-parking' },
   chat: { name: 'Chat', icon: 'chat' },
-  tasks: { name: 'Tasks', icon: 'list-alt' },
+  news: { name: 'News', icon: 'campaign' },
+  
+  // Academic
+  grades: { name: 'Grades', icon: 'analytics' },
+  assignments: { name: 'Assignments', icon: 'assignment' },
+  attendance: { name: 'Attendance', icon: 'how-to-reg' },
+  
+  // Corporate
+  finance: { name: 'Finance', icon: 'attach-money' },
+  documents: { name: 'Documents', icon: 'folder-shared' },
+  tasks: { name: 'Tasks', icon: 'check-circle' },
+  
+  // Shared
+  map: { name: 'Map', icon: 'map' },
+  transport: { name: 'Transport', icon: 'directions-bus' },
+  rooms: { name: 'Room Booking', icon: 'meeting-room' },
+  events: { name: 'Events', icon: 'event' },
+  users: { name: 'Directory', icon: 'group' },
+  
+  // Other
+  profile: { name: 'Profile', icon: 'person' }, // Usually filtered out but good to have
 };
 
 export default function MoreScreen() {
