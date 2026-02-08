@@ -1,155 +1,156 @@
 import React, { useMemo } from 'react';
-import { View, TouchableOpacity, StatusBar } from 'react-native';
+import { View, TouchableOpacity, DimensionValue } from 'react-native';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { 
   useAnimatedScrollHandler, 
   useSharedValue, 
   useAnimatedStyle, 
   interpolate, 
-  Extrapolate 
 } from 'react-native-reanimated';
 
 import { useThemeColors } from '@/src/hooks';
-import { createStyles } from '@/src/screens/widgets/dashboard/styles/dashboard.styles';
+import { createStyles, SNAP_INTERVAL } from '@/src/screens/widgets/dashboard/styles/dashboard.styles'; 
 import { useDashboardLogic } from '@/src/screens/widgets/dashboard/hooks/useDashboardLogic';
 import { DashboardWidget } from '@/src/components/dashboard/DashboardWidget';
-import { AppText, GlassView, Icon, BentoGrid } from '@/src/components/ui';
+import { AppText, ClayView, BentoGrid, Divider } from '@/src/components/ui';
 import { AnimatedItem } from '@/src/components/animations';
-import { CARD_WIDTH, SNAP_INTERVAL } from '../styles/dashboard.styles';
 import { SearchBar } from '@/src/components/dashboard/SearchBar';
 import { DateStrip } from '@/src/components/dashboard/DateStrip';
+import { ClayAnimations } from '@/src/constants/animations';
+import { BOTTOM_SPACER } from '@/src/constants/layout';
 
 export default function DashboardScreen() {
   const colors = useThemeColors();
   const router = useRouter();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
   
-  const { 
-    organization, 
-    widgets, 
-    sortedWidgets, 
-    widgetConfig, 
-    pinnedWidgets, 
-    greeting, 
-    currentDate 
-  } = useDashboardLogic();
+  const { meta, data, config, user } = useDashboardLogic();
 
+  // 1. HELPERS
   const getWidgetSize = (id: string) => {
-      if (id === 'map') return 'large';      // 2x2
-      if (id === 'schedule') return 'wide';  // 2x1
-      if (id === 'news') return 'wide';      // 2x1
-      return 'small';                        // 1x1
+      if (id === 'map') return 'large';      
+      if (id === 'schedule') return 'wide';  
+      if (id === 'news') return 'wide';      
+      if (id === 'grades') return 'wide';
+      return 'small';                        
   };
 
-  // 1. Scroll Handler for Sticky Blur
+  // 2. SCROLL ANIMATION LOGIC (STICKY HEADER)
   const scrollY = useSharedValue(0);
   const scrollHandler = useAnimatedScrollHandler((event) => {
     scrollY.value = event.contentOffset.y;
   });
 
-  // 2. Animated Header Styles
   const headerStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(scrollY.value, [0, 60], [0, 1], Extrapolate.CLAMP);
-    return { opacity };
+    // Fade in between scroll Y 110 and 160
+    const opacity = interpolate(scrollY.value, [110, 160], [0, 1], 'clamp');
+    const translateY = interpolate(scrollY.value, [110, 160], [-10, 0], 'clamp');
+    return { 
+        opacity, 
+        transform: [{ translateY }],
+        // Hide pointer events when invisible so it doesn't block touch
+        pointerEvents: opacity === 0 ? 'none' : 'auto', 
+    };
   });
 
+  // 3. DEFINE HIGHLIGHTS (Widgets meant for the top carousel)
+  const highlightWidgets = data.allWidgets.filter(w => 
+    ['schedule', 'tasks', 'news', 'grades', 'assignments', 'attendance', 'chat', 'map', 'users'].includes(w)
+  );
+
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <StatusBar barStyle="light-content" />
+    <View style={styles.container}>
       
-      {/* 3. STICKY GLASS HEADER (Absolute Positioned) */}
-      {/* This sits ON TOP of the scrollview. Initially invisible, appears on scroll. */}
-      <Animated.View style={[styles.stickyHeaderContainer, headerStyle, { zIndex: 100 }]}>
-         <GlassView intensity={95} style={styles.stickyGlass}>
-             <AppText variant="h3" weight="bold">{organization?.name || 'Dashboard'}</AppText>
-             {/* Small Avatar or Menu icon here */}
-         </GlassView>
+      {/* --- STICKY HEADER (Restored) --- */}
+      <Animated.View style={[
+          styles.stickyHeaderWrapper,
+          { top: -50, height: 120 + insets.top }, // Adjust height to fit content
+          headerStyle
+      ]}>
+         <ClayView 
+            depth={10} 
+            puffy={5} 
+            color={colors.card} 
+            style={[
+                styles.stickyHeaderContent,
+                { paddingTop: insets.top + 50 } 
+            ]}
+         >
+             <View style={styles.stickyHeaderTitleContainer}>
+                 <AppText variant="h3" weight="bold" numberOfLines={1} style={styles.stickyHeaderTitleText}>
+                     {data.organization?.name || 'Dashboard'}
+                 </AppText>
+             </View>
+
+             <View style={styles.stickyHeaderSearchContainer}>
+                <SearchBar onPress={() => router.push('..')} compact />
+             </View>
+         </ClayView>
       </Animated.View>
 
       <Animated.ScrollView 
         onScroll={scrollHandler}
         scrollEventThrottle={16}
-        contentContainerStyle={styles.scrollContent} 
+        contentContainerStyle={{ paddingBottom: BOTTOM_SPACER }} 
         showsVerticalScrollIndicator={false}
       >
         
-        {/* BIG HEADER (Disappears on scroll) */}
-        <SafeAreaView edges={['top']} style={{ paddingBottom: 10 }}>
-          <View style={styles.header}>
-            <View style={styles.greetingContainer}>
-              <AppText style={styles.dateText}>{currentDate}</AppText>
-              <AppText variant="display" weight="bold" style={styles.greeting}>{greeting}</AppText>
-              <AppText variant="h3" style={styles.orgName}>{organization?.name || 'Loading...'}</AppText>
+        {/* --- MAIN HEADER --- */}
+        <AnimatedItem animation={ClayAnimations.Header}>
+            <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 10, marginBottom: 10 }}>
+                <View style={styles.greetingContainer}>
+                    <AppText style={styles.dateText}>{meta.currentDate}</AppText>
+                    <AppText variant="display" weight="bold" style={styles.greeting}>{meta.greeting}</AppText>
+                    <AppText variant="h3" style={styles.orgName}>{data.organization?.name || 'Loading...'}</AppText>
+                </View>
             </View>
-          </View>
-        </SafeAreaView>
+        </AnimatedItem>
 
-        {/* 2. Universal Search */}
-        <SearchBar onPress={() => router.push('..')} />
-        <View style={{ height: 20 }} />
-
-        {/* 3. Date Strip (Great for Schedule context) */}
-        <DateStrip />
-        <View style={{ height: 20 }} />
-
-        {/* 4. CASCADING SECTIONS */}
-        
-        {/* Highlights Deck */}
+        {/* --- SEARCH & DATE --- */}
         <AnimatedItem index={0}>
+          <SearchBar onPress={() => router.push('..')} />
+        </AnimatedItem>
+        
+        <View style={styles.spacer} />
+
+        <AnimatedItem index={1}>
+             <DateStrip />
+        </AnimatedItem>
+        
+        <View style={styles.spacer} />
+
+        {/* --- 1. HIGHLIGHTS SECTION (Restored) --- */}
+        <AnimatedItem index={2}>
           <View style={styles.sectionContainer}>
             <View style={styles.sectionHeader}>
               <AppText style={styles.sectionTitle}>Highlights</AppText>
             </View>
             
             <Animated.ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false} 
-              contentContainerStyle={styles.deckContainer}
-              
-              // SNAP PROPS
-              snapToInterval={SNAP_INTERVAL} // The width of one item (Card + Margin)
-              decelerationRate="fast"        // Makes it stop quickly like a carousel
-              snapToAlignment="start"        // Aligns the card to the left edge (plus padding)
-              disableIntervalMomentum={true} // Prevents scrolling through 10 cards at once
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              snapToInterval={SNAP_INTERVAL} 
+              decelerationRate="fast" 
+              contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 10 }}
+              onScroll={scrollHandler}
+              scrollEventThrottle={16}
             >
-              {widgets.filter(w => ['schedule', 'tasks', 'news', 'grades', 'assignments', 'attendance', 'chat', 'map', 'users'].includes(w)).map((w, i) => (
-                // WRAPPER WITH EXACT MARGIN
-                <View key={w} style={{ marginRight: 16 /* Must match CARD_MARGIN */ }}>
-                    <AnimatedItem index={i} delay={50}>
-                      <DashboardWidget id={w} config={widgetConfig[w]} variant="card" />
-                    </AnimatedItem>
-                </View>
+              {highlightWidgets.map((w, i) => (
+                <AnimatedItem key={w} animation={ClayAnimations.SlideInFlow(i)}>
+                    {/* Note: using config[w] instead of config.definitions[w] based on new hook */}
+                    <DashboardWidget id={w} config={config.definitions[w]} variant="card" />
+                </AnimatedItem>
               ))}
             </Animated.ScrollView>
           </View>
         </AnimatedItem>
 
-        <View style={styles.divider} />
+        <Divider margin={24} />
 
-        {/* Apps Rail */}
-        <AnimatedItem index={1}>
-            <View style={styles.sectionContainer}>
-              <View style={styles.sectionHeader}>
-                <AppText style={styles.sectionTitle}>All Apps</AppText>
-                <TouchableOpacity onPress={() => router.push('/more')}>
-                    <AppText style={styles.sectionAction}>See All</AppText>
-                </TouchableOpacity>
-              </View>
-              <Animated.ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.appsContainer}>
-                {sortedWidgets.map((w, i) => (
-                  <AnimatedItem key={w} index={i} delay={30}>
-                     <DashboardWidget id={w} config={widgetConfig[w]} variant="rail" />
-                  </AnimatedItem>
-                ))}
-              </Animated.ScrollView>
-            </View>
-        </AnimatedItem>
-
-        <View style={styles.divider} />
-
-        {/* FAVORITES BENTO GRID */}
-       <AnimatedItem index={2}>
+        {/* --- 2. FAVORITES BENTO --- */}
+        <AnimatedItem index={3}>
             <View style={styles.sectionContainer}>
               <View style={styles.sectionHeader}>
                 <AppText style={styles.sectionTitle}>My Favorites</AppText>
@@ -160,18 +161,52 @@ export default function DashboardScreen() {
               
               <View style={{ paddingHorizontal: 20 }}>
                   <BentoGrid gap={12}>
-                    {pinnedWidgets.filter(w => widgets.includes(w)).map((w, i) => (
-                        <DashboardWidget 
-                            key={w} 
-                            id={w} 
-                            config={widgetConfig[w]} 
-                            variant="bento" 
-                            size={getWidgetSize(w)} 
-                        />
-                    ))}
+                    {user.favorites.filter(w => data.allWidgets.includes(w)).map((w, i) => {
+                        const size = getWidgetSize(w);
+                        const isWide = size === 'large' || size === 'wide';
+
+                        const wrapperStyle: { width: DimensionValue } = {
+                            width: isWide ? '100%' : '48%',
+                        };
+
+
+                        return (
+                            <AnimatedItem 
+                                key={w} 
+                                style={wrapperStyle}
+                            >
+                                <DashboardWidget 
+                                    id={w} 
+                                    config={config.definitions[w]} 
+                                    variant="bento" 
+                                    size={size} 
+                                />
+                            </AnimatedItem>
+                        );
+                    })}
                   </BentoGrid>
               </View>
+            </View>
+        </AnimatedItem>
 
+        <Divider margin={24} />
+
+        {/* --- 3. APPS RAIL --- */}
+        <AnimatedItem index={4}>
+            <View style={styles.sectionContainer}>
+              <View style={styles.sectionHeader}>
+                <AppText style={styles.sectionTitle}>All Apps</AppText>
+                <TouchableOpacity onPress={() => router.push('/more')}>
+                    <AppText style={styles.sectionAction}>See All</AppText>
+                </TouchableOpacity>
+              </View>
+              <Animated.ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.appsContainer}>
+                {data.sortedWidgets.map((w, i) => (
+                  <AnimatedItem key={w} animation={ClayAnimations.SlideInFlow(i)}>
+                      <DashboardWidget id={w} config={config.definitions[w]} variant="rail" />
+                  </AnimatedItem>
+                ))}
+              </Animated.ScrollView>
             </View>
         </AnimatedItem>
 

@@ -1,36 +1,96 @@
-import { DefaultTheme, DarkTheme } from '@react-navigation/native';
+// src/styles/theme.ts
+import { DefaultTheme, DarkTheme, Theme } from '@react-navigation/native';
 import { Platform } from 'react-native';
+
+// ------------------------------------------------------------
+// 1. TYPE EXTENSION (CRITICAL FOR TS)
+// ------------------------------------------------------------
+declare module '@react-navigation/native' {
+  export type ExtendedTheme = {
+    dark: boolean;
+    colors: Theme['colors'] & {
+      primary: string;
+      onPrimary: string;
+      primaryContainer: string;
+      onPrimaryContainer: string;
+
+      secondary: string;
+      onSecondary: string;
+      secondaryContainer: string;
+      onSecondaryContainer: string;
+
+      tertiary: string;
+      onTertiary: string;
+      tertiaryContainer: string;
+      onTertiaryContainer: string;
+
+      brandSurface: string;
+      onBrandSurface: string;
+
+      primaryOriginal: string;
+      secondaryOriginal: string;
+      tertiaryOriginal: string;
+
+      subtle: string;
+      success: string;
+      error: string;
+      info: string;
+      disabled: string;
+      disabledText: string;
+    };
+  };
+  export function useTheme(): ExtendedTheme;
+}
 
 export const AppLightTheme = {
   ...DefaultTheme,
   dark: false,
   colors: {
     ...DefaultTheme.colors,
-    card: '#ffffff',
-    text: '#111827',
-    subtle: '#6b7280',
-    border: '#d1d5db',
-    success: '#22c55e',
-    error: '#FF3B30',
-    info: '#3b82f6',
-    disabled: '#E5E5E5',    
-    disabledText: '#A1A1A1',
 
-    // Primary, Secondary, and Tertiary colors adjusted for light mode
-    primary: '#137fec',
-    primaryLight: '#5faaff',
-    primaryDark: '#005bb5',
+    /* --------------------------------------------------
+     * CORE SURFACES
+     * -------------------------------------------------- */
     background: '#f6f7f8',
-    secondary: '#64748b',
-    secondaryLight: '#94a3b8',
-    secondaryDark: '#475569',
-    tertiary: '#eab308',
-    tertiaryLight: '#fde047',
-    tertiaryDark: '#ca8a04',
-    onPrimary: '#ffffff', 
+    card: '#ffffff',
+    border: '#e5e7eb',
+    text: '#111827',
+
+    /* --------------------------------------------------
+     * UTILITIES
+     * -------------------------------------------------- */
+    subtle: '#6b7280',
+    success: '#22c55e',
+    error: '#ef4444',
+    info: '#3b82f6',
+    disabled: '#e5e7eb',
+    disabledText: '#9ca3af',
+    notification: '#ff3b30',
+
+    /* --------------------------------------------------
+     * BRAND ROLES (DEFAULT FALLBACKS)
+     * These will be overridden by OrganizationTheme
+     * -------------------------------------------------- */
+    primary: '#0066CC',
+    onPrimary: '#ffffff',
+    primaryContainer: '#e6f2ff',
+    onPrimaryContainer: '#004080',
+
+    secondary: '#475569',
     onSecondary: '#ffffff',
+    secondaryContainer: '#f1f5f9',
+    onSecondaryContainer: '#1e293b',
+
+    tertiary: '#d97706',
     onTertiary: '#ffffff',
-    lightGray: '#e5e7eb',
+    tertiaryContainer: '#fffbeb',
+    onTertiaryContainer: '#92400e',
+
+    /* --------------------------------------------------
+     * BRAND SURFACE (NEW – IMPORTANT)
+     * -------------------------------------------------- */
+    brandSurface: '#eef4ff',
+    onBrandSurface: '#1e293b',
   },
 };
 
@@ -39,43 +99,61 @@ export const AppDarkTheme = {
   dark: true,
   colors: {
     ...DarkTheme.colors,
-    background: '#101922',
-    card: '#18232c',
-    text: '#f6f7f8',
+
+    /* --------------------------------------------------
+     * CORE SURFACES
+     * -------------------------------------------------- */
+    background: '#111827',
+    card: '#1f2937',
+    border: '#374151',
+    text: '#f9fafb',
+
+    /* --------------------------------------------------
+     * UTILITIES
+     * -------------------------------------------------- */
     subtle: '#9ca3af',
-    border: '#273440',
     success: '#4ade80',
-    error: '#FF453A',
-    info: '#3b82f6',
-    disabled: '#2C2C2C', 
-    disabledText: '#666666',
-    
-    // Primary, Secondary, and Tertiary colors adjusted for dark mode
-    primary: '#137fec',
-    primaryLight: '#1e40af',
-    primaryDark: '#60a5fa',
-    secondary: '#64748b',
-    secondaryLight: '#475569',
-    secondaryDark: '#94a3b8',
-    tertiary: '#eab308',
-    tertiaryLight: '#ca8a04',
-    tertiaryDark: '#fde047',
-    onPrimary: '#ffffff', 
-    onSecondary: '#ffffff',
-    onTertiary: '#ffffff',
-    lightGray: '#273440',
+    error: '#f87171',
+    info: '#60a5fa',
+    disabled: '#374151',
+    disabledText: '#6b7280',
+    notification: '#ff453a',
+
+    /* --------------------------------------------------
+     * BRAND ROLES (DEFAULT FALLBACKS)
+     * -------------------------------------------------- */
+    primary: '#60a5fa',
+    onPrimary: '#0f172a',
+    primaryContainer: '#1e3a8a',
+    onPrimaryContainer: '#bfdbfe',
+
+    secondary: '#94a3b8',
+    onSecondary: '#0f172a',
+    secondaryContainer: '#334155',
+    onSecondaryContainer: '#e2e8f0',
+
+    tertiary: '#fbbf24',
+    onTertiary: '#451a03',
+    tertiaryContainer: '#78350f',
+    onTertiaryContainer: '#fef3c7',
+
+    /* --------------------------------------------------
+     * BRAND SURFACE (NEW – IMPORTANT)
+     * -------------------------------------------------- */
+    brandSurface: '#182235',
+    onBrandSurface: '#e5edff',
   },
 };
 
+
+// ------------------------------------------------------------
+// 3. FONTS (Optional - Keeping your existing config)
+// ------------------------------------------------------------
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
   },
   default: {
@@ -91,37 +169,3 @@ export const Fonts = Platform.select({
     mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
   },
 });
-
-declare module '@react-navigation/native' {
-  export type ExtendedTheme = {
-    dark: boolean;
-    colors: {
-      primary: string;
-      background: string;
-      card: string;
-      text: string;
-      border: string;
-      notification: string;
-      // Your Custom Colors
-      subtle: string;
-      error: string;
-      info: string;
-      disabled: string;
-      disabledText: string;
-      primaryLight: string;
-      primaryDark: string;
-      secondary: string;
-      secondaryLight: string;
-      secondaryDark: string;
-      tertiary: string;
-      tertiaryLight: string;
-      tertiaryDark: string;
-      onPrimary: string;
-      onSecondary: string;
-      onTertiary: string;
-      lightGray: string;
-    };
-  };
-
-  export function useTheme(): ExtendedTheme;
-}

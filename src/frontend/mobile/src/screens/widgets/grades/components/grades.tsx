@@ -1,16 +1,13 @@
 import React from 'react';
-import { View, FlatList, TouchableOpacity } from 'react-native';
+import { View, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated from 'react-native-reanimated';
-import { useRouter } from 'expo-router';
-
-// UI Kit
+import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
 import { useThemeColors } from '@/src/hooks';
 import { GlassView, AppText, Icon } from '@/src/components/ui';
 import { AnimatedItem } from '@/src/components/animations/AnimatedItem';
 import { createStyles } from '../styles/grades.styles';
+import { ScreenTransition } from '@/src/components/animations';
 
-const AnimatedView = Animated.View as any;
 
 const GRADES = [
   { id: '1', subject: 'Mathematics', grade: 'A', score: '95%' },
@@ -23,38 +20,31 @@ const GRADES = [
 export default function GradesScreen() {
   const colors = useThemeColors();
   const styles = createStyles(colors);
-  const router = useRouter();
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
+      {/* Floating Back Button (Top Level) */}
+      <ClayBackButton />
       
       {/* HERO HEADER (Animated Container) */}
-      <AnimatedView 
-        sharedTransitionTag="widget-grades" 
+      {/* This matches the 'widget-grades' tag from dashboard */}
+      <ScreenTransition 
         style={styles.heroContainer}
       >
         <GlassView 
           intensity={90} 
           style={[styles.heroGlass, { backgroundColor: colors.secondary }]}
         >
-           {/* Use SafeAreaView to ensure content doesn't hit the notch */}
            <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1 }}>
               
-              {/* 1. NEW NAV BAR (Back Button + Title) */}
-              <View style={styles.navBar}>
-                <TouchableOpacity 
-                    onPress={() => router.back()} 
-                    activeOpacity={0.7}
-                    style={styles.backButton}
-                >
-                    <Icon name="arrow-back" size={24} color={colors.onSecondary} />
-                </TouchableOpacity>
-                <AppText variant="h3" weight="bold" style={{ color: colors.onSecondary, marginLeft: 16 }}>
+              {/* Header Title (Moved down slightly to clear back button) */}
+              <View style={[styles.navBar, { paddingLeft: 60, marginTop: 10 }]}>
+                <AppText variant="h3" weight="bold" style={{ color: colors.onSecondary }}>
                     Academic Record
                 </AppText>
               </View>
 
-              {/* 2. METRICS DISPLAY */}
+              {/* METRICS */}
               <View style={styles.heroContent}>
                  <View>
                     <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
@@ -69,8 +59,6 @@ export default function GradesScreen() {
                         Cumulative • Fall 2024
                     </AppText>
                  </View>
-                 
-                 {/* Decorative Icon */}
                  <View style={styles.heroIcon}>
                     <Icon name="school" size={60} color={colors.onSecondary} style={{ opacity: 0.3 }} />
                  </View>
@@ -78,7 +66,7 @@ export default function GradesScreen() {
 
            </SafeAreaView>
         </GlassView>
-      </AnimatedView>
+      </ScreenTransition>
 
       {/* LIST CONTENT */}
       <View style={styles.listContainer}>
@@ -87,10 +75,9 @@ export default function GradesScreen() {
           keyExtractor={item => item.id}
           contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
           renderItem={({ item, index }) => (
-            <AnimatedItem index={index} delay={100}>
+            <AnimatedItem index={index} >
               <View style={[styles.item, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    {/* Subject Icon Placeholder */}
                     <View style={[styles.subjectIcon, { backgroundColor: colors.background }]}>
                         <AppText weight="bold" style={{ color: colors.subtle }}>{item.subject.charAt(0)}</AppText>
                     </View>
@@ -99,7 +86,6 @@ export default function GradesScreen() {
                         <AppText variant="caption" style={{ color: colors.subtle }}>Score: {item.score}</AppText>
                     </View>
                 </View>
-
                 <View style={[styles.gradeBadge, { backgroundColor: colors.primary + '15' }]}>
                   <AppText variant="h3" weight="bold" style={{ color: colors.primary }}>
                     {item.grade}

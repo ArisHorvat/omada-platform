@@ -2,142 +2,115 @@ import { StyleSheet, Dimensions } from 'react-native';
 
 const { width } = Dimensions.get('window');
 
-export const CARD_WIDTH = width * 0.75; 
-export const CARD_MARGIN = 16;
+// 1. CONFIGURATION
+export const CARD_MARGIN = 12; 
+export const CARD_WIDTH = width * 0.85; 
+// Snap interval for horizontal scrolling (Card + Margin)
 export const SNAP_INTERVAL = CARD_WIDTH + CARD_MARGIN;
+export const CARD_HEIGHT = 220; 
 
 export const createStyles = (colors: any) => StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
+  // ROOT CONTAINER
+  container: { 
+    flex: 1, 
+    backgroundColor: colors.background 
   },
-  stickyHeaderContainer: {
+
+  // STICKY HEADER (The dynamic top bar)
+  stickyHeaderWrapper: {
     position: 'absolute',
-    top: 0,
     left: 0,
     right: 0,
-    height: 90, // Covers status bar + a bit of header
+    zIndex: 100,
+    // top/height are handled dynamically in the component via style prop
   },
-  stickyGlass: {
+  stickyHeaderContent: {
     flex: 1,
+    width: '100%',
     flexDirection: 'row',
-    alignItems: 'flex-end', // Align text to bottom (like iOS nav bar)
-    paddingBottom: 15,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border + '40',
-    backgroundColor: colors.card + 'CC', // High opacity for readability
-  },
-  greetingContainer: { flex: 1 },
-  dateText: { 
-    fontSize: 13, 
-    fontWeight: '600', 
-    color: colors.primary, 
-    textTransform: 'uppercase', 
-    marginBottom: 4, 
-    letterSpacing: 0.5 
-  },
-  greeting: { fontSize: 32, fontWeight: '800', color: colors.text, letterSpacing: -0.5 },
-  orgName: { fontSize: 15, color: colors.subtle, marginTop: 4, fontWeight: '500' },
-  scrollContent: { paddingBottom: 120, paddingTop: 10 },
-  
-  // Section Headers
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 16 },
-  sectionTitle: { fontSize: 20, fontWeight: '800', color: colors.text },
-  sectionAction: { fontSize: 14, color: colors.primary, fontWeight: '600' },
-
-  // Layout Helpers
-  sectionContainer: { marginBottom: 8 },
-  divider: { height: 1, backgroundColor: colors.border, marginHorizontal: 20, marginVertical: 24, opacity: 0.2 },
-
-  // Horizontal Deck (Highlights)
-  deckContainer: {
-    paddingLeft: 20, 
-    paddingRight: width - CARD_WIDTH - 20, 
-    paddingBottom: 10,
-  },
-
-  // Widget Card
-  widgetCard: {
-    width: CARD_WIDTH,
-    height: 180,
-    borderRadius: 24,
-    padding: 24,
-    marginRight: 16,
     justifyContent: 'space-between',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 5,
+    alignItems: 'center', // Aligns Title & Search vertically
+    paddingHorizontal: 24,
+    paddingBottom: 20, // Space from bottom of header
+    
+    // Only round the bottom corners for that "hanging" look
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
   },
-  widgetWrapper: {
-    marginRight: CARD_MARGIN,
+  stickyHeaderTitleContainer: { 
+    flexShrink: 1, 
+    maxWidth: '65%', 
+    justifyContent: 'flex-end', 
+    paddingRight: 12, 
+    marginBottom: 6 
   },
-
-  // Card Content
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  cardIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  cardTitle: { fontSize: 22, fontWeight: 'bold', marginTop: 12 },
-  cardSubtitle: { fontSize: 15, marginTop: 4, fontWeight: '500', opacity: 0.9 },
-  cardFooter: { flexDirection: 'row', alignItems: 'center', marginTop: 'auto' },
-  cardTag: { 
-    paddingHorizontal: 10, 
-    paddingVertical: 4, 
-    borderRadius: 8, 
-    marginRight: 8,
-    backgroundColor: colors.primary 
+  stickyHeaderTitleText: { 
+    fontSize: 20, 
+    color: colors.text, // Uses the semantic text color
   },
-  cardTagText: { 
-    color: colors.onPrimary, 
-    fontSize: 12, 
-    fontWeight: 'bold' 
+  stickyHeaderSearchContainer: { 
+    flex: 1, 
+    minWidth: '30%', 
+    marginBottom: 0 
   },
 
-  // Apps Rail
-  appsContainer: { paddingLeft: 20, paddingRight: 4 },
-  appItemCard: { 
-    width: 100, 
-    height: 100, 
-    borderRadius: 16, 
-    padding: 12, 
-    marginRight: 12, 
-    justifyContent: 'center', 
-    alignItems: 'center',
-    borderWidth: 1, 
-    borderColor: colors.border,
-    borderLeftWidth: 4,
+  // MAIN HEADER (The large greeting)
+  greetingContainer: {
+    marginBottom: 4,
   },
-  appNameCard: { fontSize: 12, fontWeight: 'bold', textAlign: 'center', marginTop: 8 },
-
-  // Favorites List
-  favCard: {
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+  dateText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.primary, // Semantic Primary
+    textTransform: 'uppercase',
+    marginBottom: 4,
+    letterSpacing: 0.5,
   },
-  favIconContainer: { width: 48, height: 48, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 16 },
-  favContent: { flex: 1, marginRight: 16 },
-  favTitle: { fontSize: 16, fontWeight: 'bold', color: colors.text },
-  favSubtitle: { fontSize: 13, color: colors.subtle, marginTop: 2 },
-  favRight: { minWidth: 60, alignItems: 'flex-end' },
+  greeting: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: colors.text,
+    letterSpacing: -0.5,
+    marginBottom: 2,
+  },
+  orgName: {
+    fontSize: 15,
+    color: colors.subtle, // Semantic Subtle
+    fontWeight: '500',
+  },
 
-  // Empty State
-  emptyState: { alignItems: 'center', padding: 24, backgroundColor: colors.card, borderRadius: 16, borderWidth: 1, borderColor: colors.border, borderStyle: 'dashed' },
-  emptyStateText: { marginTop: 8, color: colors.subtle, textAlign: 'center' },
+  // SECTIONS
+  sectionContainer: { 
+    marginBottom: 24 
+  },
+  sectionHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingHorizontal: 20, 
+    marginBottom: 12 
+  },
+  sectionTitle: { 
+    fontSize: 18, 
+    fontWeight: '700', 
+    color: colors.text 
+  },
+  sectionAction: { 
+    fontSize: 14, 
+    color: colors.primary, 
+    fontWeight: '600' 
+  },
+
+  // SPACER UTILITY
+  spacer: {
+    height: 20,
+  },
+
+  // HORIZONTAL SCROLL CONTAINERS
+  appsContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 10,
+  }
 });

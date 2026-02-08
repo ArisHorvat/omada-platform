@@ -1,24 +1,24 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Image, Dimensions } from 'react-native';
+import { View, StyleSheet, Image, Dimensions, Platform } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-// UI Kit
-import { GlassView, Icon, IconName } from '@/src/components/ui';
-import { PressScale } from '@/src/components/animations';
+import { ClayView, Icon, IconName } from '@/src/components/ui'; 
+import { PressClay } from '@/src/components/animations/PressClay'; 
 import { useOrganizationTheme } from '@/src/context/OrganizationThemeContext';
 import { CurrentOrganizationService } from '@/src/services/CurrentOrganizationService';
 import { useThemeColors } from '@/src/hooks';
+import { AnimatedItem } from '@/src/components/animations';
+import { ClayAnimations } from '@/src/constants/animations';
 
 const { width } = Dimensions.get('window');
 
-// FIXED ICONS MAPPING
 const ROUTE_ICONS: Record<string, IconName> = {
-  news: 'campaign',          // Left Edge
-  chat: 'chat',              // Inner Left
-  dashboard: 'dashboard',    // (Hidden, accessed via FAB)
-  schedule: 'calendar-today',// Inner Right
-  profile: 'person',         // Right Edge
+  news: 'campaign',
+  chat: 'chat',
+  dashboard: 'dashboard',
+  schedule: 'calendar-today',
+  profile: 'person',
 };
 
 export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
@@ -35,137 +35,217 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     return () => unsubscribe();
   }, []);
 
-  // 1. RENDER TAB BUTTON
-  const renderTab = (name: string, index: number) => {
+  // --- CONFIGURATION ---
+  const BAR_HEIGHT = 70;
+  const FAB_SIZE = 90; 
+  const FLOAT_MARGIN = 20; 
+  
+  // Center Alignment
+  const BAR_CENTER_Y = FLOAT_MARGIN + insets.bottom + (BAR_HEIGHT / 2);
+  const FAB_BOTTOM = BAR_CENTER_Y - (FAB_SIZE / 2);
+
+  const isDashboardFocused = state.routes[state.index].name === 'dashboard';
+
+  const renderTab = (name: string) => {
     const route = state.routes.find(r => r.name === name);
-    if (!route) return <View key={`empty-${index}`} style={styles.tabItem} />;
+    if (!route) return <View style={styles.slot} />;
 
     const isFocused = state.index === state.routes.indexOf(route);
     const iconName = ROUTE_ICONS[name] as IconName;
 
-    const onPress = () => {
-      const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-      if (!isFocused && !event.defaultPrevented) navigation.navigate(route.name);
-    };
-
     return (
-      <View key={route.key} style={styles.tabItem}>
-        <PressScale onPress={onPress}>
-          <View style={[
-             styles.iconContainer,
-             isFocused && { backgroundColor: primary + '15' }
-          ]}>
-             <Icon 
-                name={iconName} 
-                size={24} 
-                color={isFocused ? primary : colors.subtle} 
-             />
-             {isFocused && <View style={[styles.activeDot, { backgroundColor: primary }]} />}
-          </View>
-        </PressScale>
+      <View key={route.key} style={styles.slot}>
+        <PressClay onPress={() => navigation.navigate(route.name)}>
+            <View style={styles.iconContainer}>
+                <Icon 
+                    name={iconName} 
+                    size={28} 
+                    color={isFocused ? primary : colors.subtle} 
+                />
+                {isFocused && (
+                    <View style={[styles.activeDot, { backgroundColor: primary }]} />
+                )}
+            </View>
+        </PressClay>
       </View>
     );
   };
 
-  const isDashboardFocused = state.routes[state.index].name === 'dashboard';
-  const BOTTOM_PADDING = Math.max(insets.bottom, 10);
-  const BUTTON_SIZE = 80; 
-
   return (
-    <View style={styles.container}>
-      
-      {/* 2. THE GLASS BAR */}
-      <GlassView 
-        intensity={80} 
-        style={[
-            styles.glassBar, 
-            { 
-                paddingBottom: BOTTOM_PADDING + 1,
-                paddingTop: 10,
-                borderTopColor: colors.border,
-                backgroundColor: colors.card + 'E6',
-                marginBottom: -1 
-            }
-        ]}
-      >
-        {/* LEFT GROUP: News & Chat */}
-        <View style={styles.sideGroup}>
-           {renderTab('news', 0)}
-           {renderTab('chat', 1)}
-        </View>
-
-        {/* CENTER SPACER (For FAB) */}
-        <View style={{ width: BUTTON_SIZE + 10 }} />
-
-        {/* RIGHT GROUP: Schedule & Profile */}
-        <View style={styles.sideGroup}>
-           {renderTab('schedule', 2)}
-           {renderTab('profile', 3)}
-        </View>
-      </GlassView>
-
-      {/* 3. FLOATING ACTION BUTTON (DASHBOARD) */}
-      <View 
-        style={[
-            styles.floatingContainer, 
-            { top: -10, height: BUTTON_SIZE, width: BUTTON_SIZE }
-        ]} 
-        pointerEvents="box-none"
-      >
-         <PressScale 
-            onPress={() => navigation.navigate('dashboard')}
+    <AnimatedItem
+      style={styles.container}
+      pointerEvents="box-none" // Essential for click-through
+      animation={ClayAnimations.TabBarSlideUp} // Slide Up on mount
+      exiting={ClayAnimations.TabBarSlideDown} // Slide Down on unmount
+    >
+        
+        {/* 1. THE BAR (Background Strap) */}
+        <View 
             style={[
-                styles.floatingButton,
+                styles.beltPosition, 
                 { 
-                    width: BUTTON_SIZE,
-                    height: BUTTON_SIZE,
-                    borderRadius: BUTTON_SIZE / 2,
-                    backgroundColor: colors.card,
-                    borderColor: isDashboardFocused ? primary : colors.border,
-                    shadowColor: isDashboardFocused ? primary : '#000',
+                    bottom: FLOAT_MARGIN + insets.bottom, 
+                    height: BAR_HEIGHT,
                 }
             ]}
-         >
-             {logoUrl ? (
-                <Image 
-                    source={{ uri: logoUrl }} 
-                    style={[
-                        styles.logo,
-                        { width: BUTTON_SIZE - 6, height: BUTTON_SIZE - 6, borderRadius: (BUTTON_SIZE - 6) / 2 },
-                        isDashboardFocused && { borderWidth: 2, borderColor: primary }
-                    ]} 
-                />
-             ) : (
-                <View style={[
-                    styles.logoPlaceholder, 
-                    { 
-                        width: BUTTON_SIZE - 6, height: BUTTON_SIZE - 6, borderRadius: (BUTTON_SIZE - 6) / 2,
-                        backgroundColor: primary 
-                    }
-                ]}>
-                    <Icon name="business" size={32} color="#fff" />
+        >
+            <ClayView 
+                depth={15} 
+                puffy={10} 
+                color={colors.card}
+                style={styles.beltStrap}
+            >
+                <View style={styles.gridContainer}>
+                    {renderTab('news')}
+                    {renderTab('chat')}
+                    <View style={[ { width: FAB_SIZE }]} /> 
+                    {renderTab('schedule')}
+                    {renderTab('profile')}
                 </View>
-             )}
-         </PressScale>
-      </View>
+            </ClayView>
+        </View>
 
-    </View>
+        {/* 2. THE FAB (Centered Button) */}
+        <View 
+            style={[
+                styles.bucklePosition, 
+                { 
+                    left: (width / 2) - (FAB_SIZE / 2),
+                    bottom: FAB_BOTTOM,
+                    width: FAB_SIZE, 
+                    height: FAB_SIZE,
+                }
+            ]} 
+            pointerEvents="box-none"
+        >
+            <PressClay 
+                onPress={() => navigation.navigate('dashboard')} 
+                style={{ width: '100%', height: '100%' }}
+            >
+                <ClayView
+                    // 1. The ClayView acts as the BORDER/FRAME
+                    depth={isDashboardFocused ? 10 : 20} 
+                    puffy={20} 
+                    // This color becomes the "Border" color
+                    color={isDashboardFocused ? primary : colors.card}
+                    style={[
+                        styles.buckle, 
+                        { 
+                            borderRadius: FAB_SIZE / 2,
+                            // 2. We add PADDING to create the border thickness
+                            // This pushes the image inside, leaving the clay rim exposed
+                            padding: 5, 
+                        }
+                    ]}
+                >
+                    {/* 3. Inner Container clips the image to a perfect circle */}
+                    <View style={styles.buckleInner}>
+                        {logoUrl ? (
+                            <Image 
+                                source={{ uri: logoUrl }} 
+                                style={styles.logo} 
+                                // 4. CRITICAL FIX: 'cover' zooms the photo to fill the circle
+                                resizeMode="cover" 
+                            />
+                        ) : (
+                            <Icon name="grid-view" size={38} color={isDashboardFocused ? '#FFF' : primary} />
+                        )}
+                    </View>
+                </ClayView>
+            </PressClay>
+        </View>
+    </AnimatedItem>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { width: '100%', backgroundColor: 'transparent', zIndex: 100, elevation: 20 },
-  glassBar: {
-    width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 10, borderTopWidth: 1,
-    shadowColor: '#000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 5,
+  container: { 
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      height: 180, 
+      justifyContent: 'flex-end',
+      backgroundColor: 'transparent',
+      elevation: 0, 
+      zIndex: 9999,
   },
-  sideGroup: { flex: 1, flexDirection: 'row', justifyContent: 'space-around' },
-  tabItem: { alignItems: 'center', justifyContent: 'center', height: 50, width: 60 },
-  iconContainer: { width: 44, height: 44, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  activeDot: { position: 'absolute', bottom: 4, width: 4, height: 4, borderRadius: 2 },
-  floatingContainer: { position: 'absolute', left: (width / 2) - 40, zIndex: 20, alignItems: 'center', justifyContent: 'center' },
-  floatingButton: { alignItems: 'center', justifyContent: 'center', borderWidth: 4, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 8 },
-  logo: { resizeMode: 'cover' },
-  logoPlaceholder: { alignItems: 'center', justifyContent: 'center' }
+  
+  // STRAP
+  beltPosition: {
+      position: 'absolute',
+      left: 15, 
+      right: 15,
+      zIndex: 1, 
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 8,
+  },
+  beltStrap: {
+      flex: 1,
+      borderRadius: 40, 
+      justifyContent: 'center',
+  },
+  
+  gridContainer: {
+      flexDirection: 'row',
+      width: '100%',
+      height: '100%',
+  },
+  slot: {
+      flex: 1, 
+      alignItems: 'center',
+      justifyContent: 'center',
+  },
+
+  iconContainer: {
+      width: 50, 
+      height: 50,
+      justifyContent: 'center',
+      alignItems: 'center',
+  },
+  activeDot: {
+      position: 'absolute', 
+      bottom: 6, 
+      width: 4, 
+      height: 4, 
+      borderRadius: 2, 
+  },
+
+  // FAB STYLES
+  bucklePosition: {
+      position: 'absolute', 
+      zIndex: 10, 
+      alignItems: 'center', 
+      justifyContent: 'center',
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 12,
+  },
+  buckle: {
+      width: '100%',
+      height: '100%',
+      justifyContent: 'center',
+      alignItems: 'center',
+      // No overflow hidden here, we want the clay shadow to exist
+  },
+  buckleInner: { 
+     width: '100%', 
+     height: '100%', 
+     // This ensures the image stays circular inside the border
+     borderRadius: 100,
+     overflow: 'hidden', 
+     justifyContent: 'center', 
+     alignItems: 'center',
+     // Optional: Add a subtle background color if image has transparency
+     backgroundColor: '#f0f0f0', 
+  },
+  logo: {
+      width: '100%',
+      height: '100%',
+      // Ensures the image fills the circle completely
+  }
 });

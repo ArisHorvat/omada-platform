@@ -1,40 +1,44 @@
-import React, { useEffect } from 'react';
-import Animated, { 
-  useAnimatedStyle, 
-  useSharedValue, 
-  withDelay, 
-  withTiming,
-  FadeInDown // We can also use presets!
-} from 'react-native-reanimated';
+import React from 'react';
+import { StyleProp, ViewStyle } from 'react-native';
+import Animated, { AnimatedProps } from 'react-native-reanimated';
+import { ClayAnimations } from '@/src/constants/animations';
 
-interface Props {
+interface AnimatedItemProps extends AnimatedProps<ViewStyle> {
   children: React.ReactNode;
-  index: number;
-  delay?: number;
+  index?: number;
+  
+  // Animation Props
+  animation?: any;  // The Entering animation
+  exiting?: any;    // The Exiting animation
+  layout?: any;     // <--- NEW: Allow overriding the layout animation
+  
+  style?: StyleProp<ViewStyle>;
 }
 
-export const AnimatedItem = ({ children, index, delay = 100 }: Props) => {
-  // Option A: Manual Control (if you need complex logic)
-  /*
-  const opacity = useSharedValue(0);
-  const translateY = useSharedValue(20);
+export const AnimatedItem = ({ 
+  children, 
+  index = 0, 
+  animation, 
+  exiting,
+  layout, // Destructure layout
+  style,
+  ...props 
+}: AnimatedItemProps) => {
 
-  useEffect(() => {
-    opacity.value = withDelay(index * delay, withTiming(1, { duration: 500 }));
-    translateY.value = withDelay(index * delay, withTiming(0, { duration: 500 }));
-  }, []);
+  const enteringAnimation = animation || ClayAnimations.List(index);
 
-  const style = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ translateY: translateY.value }],
-  }));
-  
-  return <Animated.View style={style}>{children}</Animated.View>;
-  */
+  // Default to the bouncy layout if nothing is passed
+  // BUT allow passing 'null' explicitly to disable it (for headers)
+  const layoutAnimation = layout === undefined ? ClayAnimations.Layout : layout;
 
-  // Option B: Reanimated Layout Animations (Much simpler)
   return (
-    <Animated.View entering={FadeInDown.delay(index * delay).springify().damping(12)}>
+    <Animated.View 
+      entering={enteringAnimation}
+      exiting={exiting}
+      layout={layoutAnimation} // Use the flexible variable
+      style={style}
+      {...props} 
+    >
       {children}
     </Animated.View>
   );

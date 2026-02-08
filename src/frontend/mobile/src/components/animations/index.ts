@@ -1,4 +1,5 @@
 export * from './PressScale';
+export * from './PressClay';
 export * from './FadeInView';
 export * from './ShakeView';
 export * from './SlideInView';
@@ -10,3 +11,4 @@ export * from './NumberTicker';
 export * from './FlipCard';
 export * from './AnimatedItem';
 export * from './AnimatedGradient';
+export * from './ScreenTransition';

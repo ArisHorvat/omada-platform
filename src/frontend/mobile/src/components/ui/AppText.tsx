@@ -4,7 +4,7 @@ import { useThemeColors } from '@/src/hooks';
 
 interface AppTextProps extends TextProps {
   variant?: 'h1' | 'h2' | 'h3' | 'body' | 'caption' | 'display';
-  weight?: 'regular' | 'bold' | 'extra';
+  weight?: 'regular' | 'medium' | 'bold' | 'extra';
   adjustsToFit?: boolean;
   children: React.ReactNode;
 }

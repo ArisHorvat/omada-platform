@@ -7,10 +7,9 @@ export default function WidgetsLayout() {
   return (
     <Stack 
       screenOptions={{ 
-        headerShown: false,
+        headerShown: false, // We use custom headers with ClayBackButton
         contentStyle: { backgroundColor: colors.background },
-        animation: 'fade', 
-        presentation: 'card',
+        animation: 'default'
       }} 
     >
     </Stack>

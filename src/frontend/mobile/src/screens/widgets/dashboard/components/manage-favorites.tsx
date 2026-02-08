@@ -1,108 +1,198 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React from 'react';
+import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { MaterialIcons } from '@expo/vector-icons';
-import { useThemeColors } from '@/src/hooks';
-import { useUserPreferences } from '@/src/context/UserPreferencesContext';
-import { CurrentOrganizationService } from '@/src/services/CurrentOrganizationService';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const WIDGET_INFO: Record<string, { name: string; icon: keyof typeof MaterialIcons.glyphMap }> = {
-  // Core
-  schedule: { name: 'Schedule', icon: 'calendar-today' },
-  chat: { name: 'Chat', icon: 'chat' },
-  news: { name: 'News', icon: 'campaign' },
-  
-  // Academic
-  grades: { name: 'Grades', icon: 'analytics' },
-  assignments: { name: 'Assignments', icon: 'assignment' },
-  attendance: { name: 'Attendance', icon: 'how-to-reg' },
-  
-  // Corporate
-  finance: { name: 'Finance', icon: 'attach-money' },
-  documents: { name: 'Documents', icon: 'folder-shared' },
-  tasks: { name: 'Tasks', icon: 'check-circle' },
-  
-  // Shared
-  map: { name: 'Map', icon: 'map' },
-  transport: { name: 'Transport', icon: 'directions-bus' },
-  rooms: { name: 'Room Booking', icon: 'meeting-room' },
-  events: { name: 'Events', icon: 'event' },
-  users: { name: 'Directory', icon: 'group' },
-  
-  // Other
-  profile: { name: 'Profile', icon: 'person' }, 
-};
+import { AppText, ClayView, Icon, IconName } from '@/src/components/ui';
+import { useThemeColors } from '@/src/hooks';
+import { AnimatedItem, PressScale } from '@/src/components/animations';
+import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
+import { Divider } from '@/src/components/ui/Divider';
+import { useDashboardLogic } from '@/src/screens/widgets/dashboard/hooks/useDashboardLogic';
+import { ClayAnimations } from '@/src/constants/animations';
 
 export default function ManageFavoritesScreen() {
-  const colors = useThemeColors();
   const router = useRouter();
-  const { isWidgetPinned, togglePinWidget } = useUserPreferences();
-  const [availableWidgets, setAvailableWidgets] = useState<string[]>([]);
+  const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
+  
+  // 1. Get the data from your hook
+  const { data, config, user } = useDashboardLogic();
 
-  useEffect(() => {
-    const unsubscribe = CurrentOrganizationService.subscribe((data) => {
-      if (data) {
-        const widgets: string[] = data.widgets || [];
-        setAvailableWidgets(widgets.filter(w => WIDGET_INFO[w]));
-      }
-    });
-    return () => unsubscribe();
-  }, []);
-
-  const handleToggle = async (widgetId: string) => {
-    const success = await togglePinWidget(widgetId);
-    if (!success) {
-      Alert.alert("Limit Reached", "You can only pin 4 widgets to your favorites.");
-    }
+  // ----------------------------------------------------------------
+  // HANDLERS
+  // ----------------------------------------------------------------
+  const handleAdd = (id: string) => {
+    if (user.favorites.includes(id)) return;
+    user.updateFavorites([...user.favorites, id]);
   };
 
-  const styles = useMemo(() => StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.background },
-    header: { flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderColor: colors.border },
-    headerTitle: { fontSize: 20, fontWeight: 'bold', color: colors.text, marginLeft: 16 },
-    content: { padding: 20 },
-    description: { color: colors.subtle, marginBottom: 24, fontSize: 14, lineHeight: 20 },
-    row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.card, padding: 16, borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: colors.border },
-    rowLeft: { flexDirection: 'row', alignItems: 'center' },
-    iconContainer: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-    widgetName: { fontSize: 16, fontWeight: '600', color: colors.text },
-  }), [colors]);
+  const handleRemove = (id: string) => user.updateFavorites(user.favorites.filter(w => w !== id));
+
+  const moveUp = (index: number) => {
+    if (index === 0) return;
+    const newOrder = [...user.favorites];
+    [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
+    user.updateFavorites(newOrder);
+  };
+
+  const moveDown = (index: number) => {
+    if (index === user.favorites.length - 1) return;
+    const newOrder = [...user.favorites];
+    [newOrder[index + 1], newOrder[index]] = [newOrder[index], newOrder[index + 1]];
+    user.updateFavorites(newOrder);
+  };
+
+  // Filter available widgets
+  const availableWidgets = (data.allWidgets || []).filter(id => !user.favorites.includes(id));
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <MaterialIcons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Manage Favorites</Text>
-      </View>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.description}>
-          Pin widgets to your "My Favorites" section on the dashboard for quick access.
-        </Text>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      
+      {/* HEADER */}
+      <AnimatedItem animation={ClayAnimations.Header} layout={null}>
+        <View style={[styles.header, { paddingTop: insets.top }]}>
+            <ClayBackButton />
+            <AppText variant="h3" weight="bold">Customize Dashboard</AppText>
+            <View style={{ width: 44 }} /> 
+        </View>
+      </AnimatedItem>
+
+      <ScrollView contentContainerStyle={{ paddingBottom: 100, paddingHorizontal: 20 }}>
         
-        {availableWidgets.map(widgetId => {
-          const info = WIDGET_INFO[widgetId];
-          const isPinned = isWidgetPinned(widgetId);
-          return (
-            <View key={widgetId} style={styles.row}>
-              <View style={styles.rowLeft}>
-                <View style={styles.iconContainer}>
-                  <MaterialIcons name={info.icon} size={24} color={colors.primary} />
-                </View>
-                <Text style={styles.widgetName}>{info.name}</Text>
-              </View>
-              <Switch
-                value={isPinned}
-                onValueChange={() => handleToggle(widgetId)}
-                trackColor={{ false: colors.border, true: colors.primary }}
-                thumbColor={colors.card}
-              />
-            </View>
-          );
-        })}
+        {/* ACTIVE TITLE */}
+        <AnimatedItem index={0} animation={ClayAnimations.List(0)} layout={null}>
+            <AppText style={[styles.sectionTitle, { color: colors.text }]}>Active Favorites</AppText>
+            <AppText style={styles.subtitle}>These items appear in your Bento Grid.</AppText>
+        </AnimatedItem>
+
+        {/* ACTIVE FAVORITES LIST */}
+        <View style={{ gap: 12, marginTop: 15 }}>
+            {user.favorites.map((id, index) => {
+                // FIX: Access via config.definitions[id]
+                const widgetDef = config.definitions[id] || { name: id, icon: 'widgets', category: 'General' };
+                
+                return (
+                  <AnimatedItem 
+                    key={id} 
+                    animation={ClayAnimations.List(index)} 
+                    exiting={ClayAnimations.ExitZoom}
+                    layout={ClayAnimations.LayoutStable} 
+                  >
+                    <ClayView depth={10} puffy={10} color={colors.card} style={styles.row}>
+                        <View style={[styles.iconBox, { backgroundColor: colors.background }]}>
+                            <Icon name={widgetDef.icon as IconName} size={24} color={colors.primary} />
+                        </View>
+                        <View style={{ flex: 1, paddingHorizontal: 12 }}>
+                            <AppText weight="bold">{widgetDef.name}</AppText>
+                            <AppText variant="caption" style={{ color: colors.subtle }}>{widgetDef.category}</AppText>
+                        </View>
+                        <View style={styles.actions}>
+                            <TouchableOpacity onPress={() => moveUp(index)} disabled={index === 0} style={{ opacity: index === 0 ? 0.3 : 1 }}>
+                                <Icon name="arrow-upward" size={20} color={colors.text} />
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => moveDown(index)} disabled={index === user.favorites.length - 1} style={{ opacity: index === user.favorites.length - 1 ? 0.3 : 1 }}>
+                                <Icon name="arrow-downward" size={20} color={colors.text} />
+                            </TouchableOpacity>
+                            <View style={{ width: 8 }} />
+                            <PressScale onPress={() => handleRemove(id)}>
+                                <View style={[styles.actionBtn, { backgroundColor: '#FFEBEE' }]}>
+                                    <Icon name="remove" size={18} color="#D32F2F" />
+                                </View>
+                            </PressScale>
+                        </View>
+                    </ClayView>
+                  </AnimatedItem>
+                );
+            })}
+        </View>
+
+        <Divider margin={30} />
+
+        {/* AVAILABLE TITLE */}
+        <AnimatedItem index={1} animation={ClayAnimations.List(1)} layout={null}>
+            <AppText style={[styles.sectionTitle, { color: colors.text }]}>Available Widgets</AppText>
+        </AnimatedItem>
+
+        {/* AVAILABLE WIDGETS LIST */}
+        <View style={{ gap: 12, marginTop: 15 }}>
+            {availableWidgets.map((id, index) => {
+                // FIX: Access via config.definitions[id]
+                const widgetDef = config.definitions[id] || { name: id, icon: 'widgets', category: 'General' };
+
+                return (
+                  <AnimatedItem 
+                    key={id} 
+                    animation={ClayAnimations.List(index + 2)} 
+                    exiting={ClayAnimations.ExitZoom} 
+                    layout={ClayAnimations.LayoutStable}
+                  >
+                    <ClayView depth={5} puffy={5} color={colors.card} style={[styles.row, { opacity: 0.8 }]}>
+                         <View style={[styles.iconBox, { backgroundColor: colors.background }]}>
+                            <Icon name={widgetDef.icon as IconName} size={24} color={colors.subtle} />
+                        </View>
+                        <View style={{ flex: 1, paddingHorizontal: 12 }}>
+                            <AppText weight="medium">{widgetDef.name}</AppText>
+                            <AppText variant="caption" style={{ color: colors.subtle }}>{widgetDef.category}</AppText>
+                        </View>
+                        <PressScale onPress={() => handleAdd(id)}>
+                             <View style={[styles.actionBtn, { backgroundColor: '#E8F5E9' }]}>
+                                <Icon name="add" size={20} color="#2E7D32" />
+                            </View>
+                        </PressScale>
+                    </ClayView>
+                  </AnimatedItem>
+                );
+            })}
+        </View>
+
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 10,
+  },
+  subtitle: {
+    fontSize: 13,
+    color: '#888',
+    marginBottom: 5,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 16,
+    minHeight: 70, 
+  },
+  iconBox: {
+    width: 40, 
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  actionBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  }
+});

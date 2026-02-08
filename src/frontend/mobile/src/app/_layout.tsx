@@ -1,7 +1,7 @@
 import '@/src/i18n';
 import { Slot, SplashScreen, useSegments, Redirect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useColorScheme, View, ActivityIndicator, Text } from 'react-native';
+import { View, ActivityIndicator, Text } from 'react-native';
 import 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -10,13 +10,24 @@ import { useFonts, Outfit_400Regular, Outfit_600SemiBold, Outfit_800ExtraBold } 
 
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { OrganizationThemeProvider } from '../context/OrganizationThemeContext';
-import { UserPreferencesProvider } from '../context/UserPreferencesContext';
+import { UserPreferencesProvider, useUserPreferences } from '../context/UserPreferencesContext';
 import { PermissionProvider } from '../context/PermissionContext';
 import { useEffect } from 'react';
 import { useThemeColors } from '@/src/hooks';
 
 SplashScreen.preventAutoHideAsync();
 
+// ----------------------------------------------------------------------
+// HELPER: Handles Status Bar Logic Separately
+// ----------------------------------------------------------------------
+const ThemedStatusBar = () => {
+  const { themeMode } = useUserPreferences();
+  return <StatusBar style={themeMode === 'dark' ? 'light' : 'dark'} />;
+};
+
+// ----------------------------------------------------------------------
+// LAYOUT: Handles Routing & Loading (The "Brain")
+// ----------------------------------------------------------------------
 function AuthLayout() {
   const { token, role, isLoading, isSwitching } = useAuth();
   const colors = useThemeColors();
@@ -28,6 +39,7 @@ function AuthLayout() {
     }
   }, [isLoading]);
 
+  // 1. LOADING STATE
   if (isLoading || isSwitching) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
@@ -41,40 +53,39 @@ function AuthLayout() {
 
   const inAuthGroup = segments[0] === '(auth)';
 
+  // 2. REDIRECTS (Protected Routes)
   if (!token && !inAuthGroup) {
     return <Redirect href="/(auth)" />;
   }
 
   if (token && inAuthGroup) {
     const isRegistrationFlow = segments[1] === 'register-flow';
+    
+    // SuperAdmin special flow
     if (role === 'SuperAdmin' && isRegistrationFlow) {
       return <Slot />;
     }
-    if (role === 'Admin') {
-      return <Redirect href="/org-dashboard" />;
-    }
+    
+    // Normal Dashboard Redirects
+    if (role === 'Admin') return <Redirect href="/org-dashboard" />;
     return <Redirect href={role === 'SuperAdmin' ? "/admin-dashboard" : "/dashboard"} />;
   }
 
+  // 3. RENDER CONTENT
   return <Slot />;
 }
 
+// ----------------------------------------------------------------------
+// ROOT: Connects Providers (The "Skeleton")
+// ----------------------------------------------------------------------
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-
-  // 2. LOAD FONTS
   const [fontsLoaded] = useFonts({
     'Body': Outfit_400Regular,
     'Heading': Outfit_600SemiBold,
     'Display': Outfit_800ExtraBold,
   });
 
-  // 3. WAIT FOR FONTS
-  // If fonts aren't loaded, return null. 
-  // This keeps the Splash Screen visible because AuthLayout (which hides it) hasn't rendered yet.
-  if (!fontsLoaded) {
-    return null;
-  }
+  if (!fontsLoaded) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -82,8 +93,13 @@ export default function RootLayout() {
         <UserPreferencesProvider>
           <OrganizationThemeProvider>
             <PermissionProvider>
+              
+              {/* ✅ 1. Status Bar is always rendered here, regardless of loading state */}
+              <ThemedStatusBar />
+
+              {/* ✅ 2. Auth Logic handles the actual screens */}
               <AuthLayout />
-              <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+
             </PermissionProvider>
           </OrganizationThemeProvider>
         </UserPreferencesProvider>

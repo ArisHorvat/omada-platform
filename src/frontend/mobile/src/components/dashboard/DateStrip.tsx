@@ -1,13 +1,15 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
-import { AppText } from '../ui/AppText';
+import React, { useState, useMemo } from 'react';
+import { View, ScrollView, StyleSheet } from 'react-native';
+import { AppText, ClayView } from '@/src/components/ui';
+import { PressClay } from '@/src/components/animations/PressClay';
 import { useThemeColors } from '@/src/hooks';
-import * as Haptics from 'expo-haptics';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export const DateStrip = () => {
   const colors = useThemeColors();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  
   const [selectedDate, setSelectedDate] = useState(new Date().getDate());
   
   // Generate next 14 days
@@ -22,7 +24,6 @@ export const DateStrip = () => {
   });
 
   const handleSelect = (dayNum: number) => {
-    Haptics.selectionAsync();
     setSelectedDate(dayNum);
   };
 
@@ -36,41 +37,47 @@ export const DateStrip = () => {
         {dates.map((item, index) => {
           const isSelected = selectedDate === item.dayNumber;
           
+          // DYNAMIC COLORS BASED ON STATE
+          // If selected: Use Brand Color + Text On Brand
+          // If inactive: Use Card Color + Standard Text
+          const bgColor = isSelected ? colors.primary : colors.card;
+          const nameColor = isSelected ? colors.onPrimary : colors.subtle;
+          const numColor = isSelected ? colors.onPrimary : colors.text;
+
           return (
-            <TouchableOpacity 
-              key={index} 
-              onPress={() => handleSelect(item.dayNumber)}
-              activeOpacity={0.7}
-              style={[
-                styles.dateItem,
-                { 
-                  backgroundColor: isSelected ? colors.primary : colors.card,
-                  borderColor: isSelected ? colors.primary : colors.border,
-                }
-              ]}
-            >
-              <AppText 
-                variant="caption" 
-                style={{ 
-                  color: isSelected ? '#fff' : colors.subtle, 
-                  marginBottom: 4 
-                }}
-              >
-                {item.dayName}
-              </AppText>
-              <AppText 
-                variant="h3" 
-                weight="bold" 
-                style={{ color: isSelected ? '#fff' : colors.text }}
-              >
-                {item.dayNumber}
-              </AppText>
-              
-              {/* Little dot for "Today" */}
-              {index === 0 && !isSelected && (
-                <View style={[styles.dot, { backgroundColor: colors.primary }]} />
-              )}
-            </TouchableOpacity>
+            <View key={index} style={styles.itemWrapper}>
+              <PressClay onPress={() => handleSelect(item.dayNumber)}>
+                <ClayView 
+                   // Active: Pressed in (Low Depth), Soft (High Puffy)
+                   // Inactive: Popped out (High Depth), Standard (Standard Puffy)
+                   depth={isSelected ? 6 : 10} 
+                   puffy={isSelected ? 10 : 15}
+                   color={bgColor}
+                   style={styles.dateItem}
+                >
+                  <AppText 
+                    variant="caption" 
+                    style={[styles.dayNameText, { color: nameColor }]}
+                  >
+                    {item.dayName}
+                  </AppText>
+                  
+                  <AppText 
+                    variant="h3" 
+                    weight="bold" 
+                    style={[styles.dayNumText, { color: numColor }]}
+                  >
+                    {item.dayNumber}
+                  </AppText>
+                  
+                  {/* "Today" Indicator Dot */}
+                  {index === 0 && !isSelected && (
+                    <View style={styles.dot} />
+                  )}
+                  
+                </ClayView>
+              </PressClay>
+            </View>
           );
         })}
       </ScrollView>
@@ -78,22 +85,38 @@ export const DateStrip = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: { marginBottom: 16 },
-  scrollContent: { paddingHorizontal: 20 },
+const createStyles = (colors: any) => StyleSheet.create({
+  container: { 
+     // Layout handled by parent
+  },
+  scrollContent: { 
+     paddingHorizontal: 20,
+     paddingBottom: 15, // Room for shadow
+     paddingTop: 5
+  },
+  itemWrapper: {
+     marginRight: 12, 
+  },
   dateItem: {
     width: 60,
     height: 75,
-    borderRadius: 18,
+    borderRadius: 20, 
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
-    borderWidth: 1,
+  },
+  dayNameText: {
+    marginBottom: 4,
+    fontWeight: '600',
+    // color handled inline
+  },
+  dayNumText: {
+    // color handled inline
   },
   dot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: colors.primary, // Using primary color for the dot
     position: 'absolute',
     bottom: 8,
   }

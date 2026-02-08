@@ -2,6 +2,7 @@
 export * from './AppText';
 export * from './AppButton';
 export * from './GlassView';
+export * from './ClayView';
 export * from './Divider';
 export * from './Icon';
 
