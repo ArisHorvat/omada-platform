@@ -1,9 +1,8 @@
 using Omada.Api.Entities;
 
-namespace Omada.Api.Services.Interfaces
+namespace Omada.Api.Services.Interfaces;
+
+public interface IEmailService
 {
-    public interface IEmailService
-    {
-        Task SendInvitationEmailAsync(string email, string firstName, string orgName, string token);
-    }
+    Task<Result<bool>> SendInvitationEmailAsync(string email, string firstName, string orgName, string token);
 }

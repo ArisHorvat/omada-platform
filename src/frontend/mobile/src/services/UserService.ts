@@ -1,34 +1,20 @@
-import { apiClient } from './apiClient';
-
-export interface UserProfile {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    role: string;
-    phoneNumber?: string;
-    address?: string;
-    profilePictureUrl?: string;
-    isTwoFactorEnabled: boolean;
-    WidgetAccess?: Record<string, string>;
-}
+import apiClient from './apiClient';
+import { 
+  User, 
+  UpdateProfileRequest, 
+  UpdateSecurityRequest 
+} from '@/src/types/api';
 
 export const UserService = {
-  getMe: () => apiClient.get<UserProfile>('/api/users/me'),
-  
-  changePassword: (data: { oldPassword: string; newPassword: string }) => 
-    apiClient.post('/api/users/change-password', data),
-  
-  updateSecurity: (data: { isTwoFactorEnabled: boolean }) => 
-    apiClient.put('/api/users/security', data),
-  
-  updateProfile: (data: { phoneNumber?: string; address?: string; profilePictureUrl?: string }) => 
-    apiClient.put('/api/users/profile', data),
-  
-  uploadFile: async (file: { uri: string; name: string; type: string }) => {
-    const formData = new FormData();
-    formData.append('file', file as any);
-    const res = await apiClient.post<{ url: string }>('/api/files/upload', formData, true);
-    return res.url;
+  getMe: async (): Promise<User> => {
+    return await apiClient.get('/users/me');
+  },
+
+  updateProfile: async (data: UpdateProfileRequest): Promise<string> => {
+    return await apiClient.put('/users/profile', data);
+  },
+
+  updateSecurity: async (data: UpdateSecurityRequest): Promise<string> => {
+    return await apiClient.put('/users/security', data);
   }
 };

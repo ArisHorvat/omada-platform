@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { useRegistration } from '@/src/screens/auth/register/context/RegistrationContext';
+import { useRegistrationContext } from '@/src/screens/auth/register/context/RegistrationContext';
 
 export const useRolesLogic = () => {
-  const { roles, setRoles, orgData } = useRegistration();
+  const { roles, setRoles, orgData } = useRegistrationContext();
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editName, setEditName] = useState('');
 

@@ -1,7 +1,10 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Omada.Api.Abstractions;
+using Omada.Api.Entities;
 using Omada.Api.Services.Interfaces;
+using Omada.Api.DTOs.Groups; 
 
 namespace Omada.Api.Controllers;
 
@@ -18,36 +21,63 @@ public class GroupsController : ControllerBase
     }
 
     [HttpPost]
+    [ProducesResponseType(typeof(ServiceResponse<Group>), StatusCodes.Status200OK)]
     public async Task<IActionResult> CreateGroup([FromBody] CreateGroupDto dto)
     {
-        var orgIdClaim = User.FindFirst("organizationId")?.Value;
-        if (string.IsNullOrEmpty(orgIdClaim)) return Unauthorized();
-        var orgId = Guid.Parse(orgIdClaim);
+        try 
+        {
+            var orgIdClaim = User.FindFirst("OrganizationId")?.Value;
+            if (string.IsNullOrEmpty(orgIdClaim)) 
+                return Unauthorized(new ServiceResponse(false, new AppError(ErrorCodes.Unauthorized, "Missing Organization Context")));
+            
+            var orgId = Guid.Parse(orgIdClaim);
 
-        var request = new CreateGroupRequest(orgId, dto.Name, dto.Type, dto.ManagerId, dto.ParentGroupId, dto.ScheduleConfig);
-        var result = await _groupService.CreateGroupAsync(request);
+            var request = new CreateGroupRequest
+            {
+                OrganizationId = orgId,
+                Name = dto.Name,
+                Type = dto.Type,
+                ManagerId = dto.ManagerId,
+                ParentGroupId = dto.ParentGroupId,
+                ScheduleConfig = dto.ScheduleConfig
+            };
+            
+            var result = await _groupService.CreateGroupAsync(request);
 
-        if (result.IsFailure) return BadRequest(result.Error);
+            if (result.IsFailure)
+            {
+                return BadRequest(new ServiceResponse(false, new AppError(ErrorCodes.InvalidInput, result.Error)));
+            }
 
-        return Ok(result.Value);
+            return Ok(new ServiceResponse<Group>(true, result.Value));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new ServiceResponse(false, new AppError(ErrorCodes.InternalError, ex.Message)));
+        }
     }
 
     [HttpGet("attendance-config")]
+    [ProducesResponseType(typeof(ServiceResponse<AttendanceConfigDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAttendanceConfig()
     {
-        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
-        var orgId = Guid.Parse(User.FindFirst("organizationId")?.Value!);
+        try 
+        {
+            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+            var orgId = Guid.Parse(User.FindFirst("OrganizationId")?.Value!);
 
-        var config = await _groupService.GetAttendanceConfigAsync(userId, orgId);
-        return Ok(config);
+            var result = await _groupService.GetAttendanceConfigAsync(userId, orgId);
+
+            if (result.IsFailure)
+            {
+                return BadRequest(new ServiceResponse(false, new AppError(ErrorCodes.OperationFailed, result.Error)));
+            }
+
+            return Ok(new ServiceResponse<AttendanceConfigDto>(true, result.Value));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new ServiceResponse(false, new AppError(ErrorCodes.InternalError, ex.Message)));
+        }
     }
-}
-
-public class CreateGroupDto
-{
-    public string Name { get; set; } = string.Empty;
-    public string Type { get; set; } = "class";
-    public Guid? ManagerId { get; set; }
-    public Guid? ParentGroupId { get; set; }
-    public string? ScheduleConfig { get; set; }
 }

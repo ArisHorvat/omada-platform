@@ -2,8 +2,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Omada.Api.Services.Interfaces;
 using Omada.Api.WebSocketHandlers;
-using Omada.Api.Services; 
 using Omada.Api.DTOs.Organizations;
+using Omada.Api.Abstractions;
+using Omada.Api.Entities;
 
 namespace Omada.Api.Controllers;
 
@@ -23,77 +24,45 @@ public class OrganizationsController : ControllerBase
     }
 
     [HttpPost]
-    [ProducesResponseType(StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ServiceResponse<Organization>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ServiceResponse), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create(RegisterOrganizationRequest request)
     {
-        _logger.LogInformation("Received request to create organization: {Name}", request.Name);
         var result = await _organizationService.CreateOrganizationAsync(request);
 
         if (result.IsFailure)
         {
-            _logger.LogWarning("Failed to create organization: {Error}", result.Error);
-            return BadRequest(new { Error = result.Error });
+            return BadRequest(new ServiceResponse(false, new AppError(ErrorCodes.OperationFailed, result.Error)));
         }
 
-        return CreatedAtAction(nameof(GetById), new { id = result.Value!.Id }, result.Value);
-    }
-
-    [HttpPut("{id:guid}")]
-    // [Authorize(Roles = "SuperAdmin")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Update(Guid id, UpdateOrganizationRequest request)
-    {
-        _logger.LogInformation("Received request to update organization: {Id}", id);
-        var result = await _organizationService.UpdateOrganizationAsync(id, request);
-        if (result.IsFailure)
-        {
-            _logger.LogWarning("Failed to update organization {Id}: {Error}", id, result.Error);
-            return result.Error!.Contains("not found") ? NotFound() : BadRequest(new { Error = result.Error });
-        }
-        return Ok(result.Value);
-    }
-
-    [HttpDelete("{id:guid}")]
-    // [Authorize(Roles = "SuperAdmin")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Delete(Guid id)
-    {
-        _logger.LogInformation("Received request to delete organization: {Id}", id);
-        var result = await _organizationService.DeleteOrganizationAsync(id);
-        if (result.IsFailure)
-        {
-            _logger.LogWarning("Failed to delete organization {Id}: {Error}", id, result.Error);
-            return NotFound();
-        }
-
-        return NoContent();
+        return Ok(new ServiceResponse<Organization>(true, result.Value));
     }
 
     [HttpGet("{id:guid}")]
+    [ProducesResponseType(typeof(ServiceResponse<OrganizationDetailsDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ServiceResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(Guid id)
     {
-        _logger.LogInformation("Fetching organization details for: {Id}", id);
-        var organization = await _organizationService.GetByIdAsync(id);
-        if (organization == null)
+        var result = await _organizationService.GetByIdAsync(id);
+
+        if (result.IsFailure)
         {
-            _logger.LogWarning("Organization not found: {Id}", id);
-            return NotFound();
+            return NotFound(new ServiceResponse(false, new AppError(ErrorCodes.NotFound, result.Error)));
         }
 
-        return Ok(organization);
+        return Ok(new ServiceResponse<OrganizationDetailsDto>(true, result.Value));
     }
 
     [HttpGet]
-    // [Authorize(Roles = "SuperAdmin")] // We will enable this after setting up auth middleware
+    [ProducesResponseType(typeof(ServiceResponse<IEnumerable<OrganizationDetailsDto>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll()
     {
-        _logger.LogInformation("Fetching all organizations");
-        var organizations = await _organizationService.GetAllAsync();
-        return Ok(organizations);
+        var result = await _organizationService.GetAllAsync();
+        
+        if (result.IsFailure)
+            return BadRequest(new ServiceResponse(false, new AppError(ErrorCodes.OperationFailed, result.Error)));
+
+        return Ok(new ServiceResponse<IEnumerable<OrganizationDetailsDto>>(true, result.Value));
     }
 
     [HttpGet("/ws/organizations")]
@@ -101,13 +70,11 @@ public class OrganizationsController : ControllerBase
     {
         if (HttpContext.WebSockets.IsWebSocketRequest)
         {
-            _logger.LogInformation("Accepting WebSocket connection for Org: {OrgId}", orgId);
             using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
             await _webSocketHandler.HandleAsync(webSocket, orgId);
         }
         else
         {
-            _logger.LogWarning("Invalid WebSocket request");
             HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
         }
     }

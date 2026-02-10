@@ -2,11 +2,11 @@ namespace Omada.Api.Abstractions;
 
 public record ServiceResponse<T>(
     bool IsSuccess,
-    string Message,
-    T? Data
+    T? Data = default,
+    AppError? Error = null
 );
 
 public record ServiceResponse(
     bool IsSuccess,
-    string Message
+    AppError? Error = null
 );

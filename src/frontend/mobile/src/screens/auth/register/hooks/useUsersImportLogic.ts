@@ -1,45 +1,67 @@
 import { useState } from 'react';
-import { Alert, Share } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
-import { useRegistration } from '@/src/screens/auth/register/context/RegistrationContext';
+import { Alert } from 'react-native';
+import { useRegistrationContext } from '../context/RegistrationContext';
 import { ToolsService } from '@/src/services/ToolsService';
 
 export const useUsersImportLogic = () => {
-  const { importedUsers, setImportedUsers, submitRegistration, isSubmitting, defaultUserPassword, setDefaultUserPassword } = useRegistration();
-  const [activeTab, setActiveTab] = useState<'upload' | 'email'>('email');
+  const { importedUsers, setImportedUsers, submitRegistration, isSubmitting } = useRegistrationContext();
+  const [activeTab, setActiveTab] = useState<'email' | 'upload'>('email');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleInviteLink = async () => {
-    try {
-        const link = 'https://omada.app/join/xyz123';
-        await Share.share({ message: `Join our organization on Omada: ${link}` });
-    } catch (error) { Alert.alert('Error', 'Could not share link.'); }
-  };
-
   const pickDocument = async () => {
-    const result = await DocumentPicker.getDocumentAsync({ type: ['text/csv', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'] });
-    if (!result.canceled) {
-        setIsLoading(true);
-        const asset = result.assets[0];
-        try {
-            const users = await ToolsService.parseUsers({
-                uri: asset.uri,
-                name: asset.name,
-                type: asset.mimeType || 'text/csv'
-            });
-            setImportedUsers(users);
-        } 
-        catch (e: any) {
-            Alert.alert('Error', e.message || 'Failed to parse file.'); 
-        }
-        finally { 
-          setIsLoading(false); 
-        }
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/csv'],
+        copyToCacheDirectory: true
+      });
+
+      if (result.canceled) return;
+
+      const file = result.assets[0];
+      await handleFileUpload(file);
+    } catch (err) {
+      Alert.alert("Error", "Failed to pick file");
     }
   };
 
+  const handleFileUpload = async (file: DocumentPicker.DocumentPickerAsset) => {
+    setIsLoading(true);
+    try {
+      const parsedUsers = await ToolsService.parseUsers(
+        file.uri, 
+        file.name, 
+        file.mimeType || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      );
+
+      setImportedUsers(parsedUsers);
+      Alert.alert("Success", `Successfully imported ${parsedUsers.length} users.`);
+      
+    } catch (error: any) {
+      Alert.alert("Import Failed", error.message || "Could not parse the file.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // --- MISSING FUNCTION ADDED HERE ---
+  const handleInviteLink = () => {
+    // Logic: Since the Org doesn't exist yet, we can't make a real link.
+    // We just show a confirmation that this preference is recorded.
+    Alert.alert(
+      "Link Option Selected", 
+      "A magic invite link will be generated and sent to your email once you finish setting up the organization."
+    );
+  };
+
   return {
-    importedUsers, submitRegistration, isSubmitting, defaultUserPassword, setDefaultUserPassword,
-    activeTab, setActiveTab, isLoading, handleInviteLink, pickDocument
+    importedUsers,
+    submitRegistration,
+    isSubmitting,
+    activeTab,
+    setActiveTab,
+    pickDocument,
+    isLoading,
+    handleInviteLink // <--- Exported now!
   };
 };

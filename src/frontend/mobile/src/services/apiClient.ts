@@ -1,58 +1,67 @@
+import axios, { AxiosError, AxiosResponse } from 'axios';
 import * as SecureStore from 'expo-secure-store';
-import { API_BASE_URL } from '../config/config';
+import { Alert } from 'react-native';
+import { router } from 'expo-router'; // Use expo-router to redirect
+import { API_BASE_URL } from '@/src/config/config'; // Make sure this exists
+import { ServiceResponse, AppError } from '@/src/types/api';
 
-class ApiClient {
-  private async getHeaders(isMultipart = false) {
-    const token = await SecureStore.getItemAsync('authToken');
-    const headers: HeadersInit = {};
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    if (!isMultipart) headers['Content-Type'] = 'application/json';
-    return headers;
+// Create the Axios instance
+const apiClient = axios.create({
+  baseURL: `${API_BASE_URL}/api`,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  timeout: 15000, // 15 seconds timeout
+});
+
+// 1. REQUEST INTERCEPTOR: Attach Token
+apiClient.interceptors.request.use(async (config) => {
+  const token = await SecureStore.getItemAsync('jwt_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
+  return config;
+});
 
-  async get<T>(endpoint: string): Promise<T> {
-    const headers = await this.getHeaders();
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, { headers });
-    if (!response.ok) throw new Error(`GET ${endpoint} failed: ${response.statusText}`);
-    return response.json();
-  }
+// 2. RESPONSE INTERCEPTOR: Handle Success & Error Globally
+apiClient.interceptors.response.use(
+  (response: AxiosResponse<ServiceResponse<any>>) => {
+    // The backend returns: { isSuccess: boolean, data: T, error: AppError }
+    const { isSuccess, data, error } = response.data;
 
-  async post<T>(endpoint: string, body: any, isMultipart = false): Promise<T> {
-    const headers = await this.getHeaders(isMultipart);
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      method: 'POST',
-      headers,
-      body: isMultipart ? body : JSON.stringify(body),
-    });
-    if (!response.ok) {
-        const error = await response.text();
-        throw new Error(error || `POST ${endpoint} failed`);
+    if (isSuccess) {
+      // SUCCESS: Unwrap and return the actual data (T)
+      return data; 
+    } else {
+      // LOGICAL FAILURE (e.g. "Email already exists")
+      // We throw the specific backend error so the UI can catch it
+      return Promise.reject(error || { message: 'Unknown error occurred' });
     }
-    return response.json();
-  }
+  },
+  async (error: AxiosError<ServiceResponse<any>>) => {
+    // HTTP FAILURE (e.g. 401, 500, Network Error)
 
-  async put<T>(endpoint: string, body: any): Promise<T> {
-    const headers = await this.getHeaders();
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      method: 'PUT',
-      headers,
-      body: JSON.stringify(body),
-    });
-    if (!response.ok) throw new Error(`PUT ${endpoint} failed`);
-    return response.json();
-  }
+    // Handle 401 Unauthorized (Token Expired)
+    if (error.response?.status === 401) {
+      await SecureStore.deleteItemAsync('jwt_token');
+      // Optional: Navigate to login
+      router.replace('/(auth)/login-flow'); 
+      return Promise.reject({ message: 'Session expired. Please login again.' });
+    }
 
-  async delete(endpoint: string): Promise<void> {
-    const headers = await this.getHeaders();
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, { method: 'DELETE', headers });
-    if (!response.ok) throw new Error(`DELETE ${endpoint} failed`);
-  }
+    // Handle 403 Forbidden
+    if (error.response?.status === 403) {
+      return Promise.reject({ message: 'You do not have permission to perform this action.' });
+    }
 
-  async upload<T>(endpoint: string, file: { uri: string; name: string; type: string }): Promise<T> {
-    const formData = new FormData();
-    formData.append('file', file as any);
-    return this.post<T>(endpoint, formData, true);
-  }
-}
+    // Handle Backend Error Response (if available)
+    if (error.response?.data?.error) {
+       return Promise.reject(error.response.data.error);
+    }
 
-export const apiClient = new ApiClient();
+    // Handle Network Errors
+    return Promise.reject({ message: error.message || 'Network Error. Check your connection.' });
+  }
+);
+
+export default apiClient;

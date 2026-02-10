@@ -10,6 +10,8 @@ import { ThemeProvider } from '@react-navigation/native';
 import { AppLightTheme, AppDarkTheme } from '@/src/styles/theme';
 import { CurrentOrganizationService } from '@/src/services/CurrentOrganizationService';
 import { useUserPreferences } from './UserPreferencesContext';
+import { OrganizationService } from '../services/OrganizationService';
+import { useAuth } from './AuthContext';
 
 /* ======================================================
  * COLOR UTILITIES
@@ -105,36 +107,58 @@ const generatePalette = (hex: string, dark: boolean) => {
  * CONTEXT
  * ====================================================== */
 
-const OrganizationThemeContext = createContext<any>(null);
+interface OrgThemeContextType {
+  primary: string;
+  secondary: string;
+  tertiary: string;
+  logoUrl: string | null; // <--- Added this!
+  isLoading: boolean;
+}
 
-export const OrganizationThemeProvider = ({
-  children,
-}: {
-  children: React.ReactNode;
-}) => {
+const OrganizationThemeContext = createContext<OrgThemeContextType>({} as OrgThemeContextType);
+
+export const OrganizationThemeProvider = ({ children }: { children: React.ReactNode }) => {
   const { isDarkMode } = useUserPreferences();
+  const { activeSession } = useAuth(); // <--- Get Active Org ID from here
 
+  // Default Branding
   const [branding, setBranding] = useState({
-    primary: '#141E32',
-    secondary: '#475569',
-    tertiary: '#d97706',
+    primary: '#3b82f6',
+    secondary: '#64748b',
+    tertiary: '#eab308',
   });
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
+  // FETCH THEME WHEN ORG CHANGES
   useEffect(() => {
-    return CurrentOrganizationService.subscribe((org) => {
-      if (org?.theme) {
-        setBranding({
-          primary: org.theme.primary ?? branding.primary,
-          secondary: org.theme.secondary ?? branding.secondary,
-          tertiary: org.theme.tertiary ?? branding.tertiary,
-        });
-      }
-    });
-  }, []);
+    const fetchTheme = async () => {
+      if (!activeSession?.orgId) return;
 
+      setIsLoading(true);
+      try {
+        // Stateless call to API
+        const orgDetails = await OrganizationService.getById(activeSession.orgId);
+        
+        setBranding({
+          primary: orgDetails.primaryColor || '#3b82f6',
+          secondary: orgDetails.secondaryColor || '#64748b',
+          tertiary: orgDetails.tertiaryColor || '#eab308',
+        });
+        setLogoUrl(orgDetails.logoUrl || null);
+      } catch (e) {
+        console.error("Failed to load org theme", e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTheme();
+  }, [activeSession?.orgId]);
+
+  // GENERATE REACT NAVIGATION THEME
   const theme = useMemo(() => {
     const base = isDarkMode ? AppDarkTheme : AppLightTheme;
-
     const p = generatePalette(branding.primary, isDarkMode);
     const s = generatePalette(branding.secondary, isDarkMode);
     const t = generatePalette(branding.tertiary, isDarkMode);
@@ -170,7 +194,7 @@ export const OrganizationThemeProvider = ({
   }, [branding, isDarkMode]);
 
   return (
-    <OrganizationThemeContext.Provider value={theme.colors}>
+    <OrganizationThemeContext.Provider value={{ ...branding, logoUrl, isLoading }}>
       <ThemeProvider value={theme}>{children}</ThemeProvider>
     </OrganizationThemeContext.Provider>
   );

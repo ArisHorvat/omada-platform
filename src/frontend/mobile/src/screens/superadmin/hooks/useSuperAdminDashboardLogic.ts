@@ -2,22 +2,30 @@ import { useState, useEffect, useMemo } from 'react';
 import { Alert } from 'react-native';
 import { useAuth } from '@/src/context/AuthContext';
 import { OrganizationService } from '@/src/services/OrganizationService';
+import { OrganizationDetailsDto } from '@/src/types/api';
 
 export const useSuperAdminDashboardLogic = () => {
-  const { setToken } = useAuth();
-  const [organizations, setOrganizations] = useState<any[]>([]);
-  const [isOffline, setIsOffline] = useState(false);
+  const { logout } = useAuth(); // Use proper logout action
+  const [organizations, setOrganizations] = useState<OrganizationDetailsDto[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // 1. Fetch Data on Mount
   useEffect(() => {
-    const unsubscribe = OrganizationService.subscribe(
-      (data, offline) => {
-        setOrganizations(data);
-        setIsOffline(offline);
-      }
-    );
-    return () => unsubscribe();
+    loadOrganizations();
   }, []);
+
+  const loadOrganizations = async () => {
+    setIsLoading(true);
+    try {
+      const data = await OrganizationService.getAll();
+      setOrganizations(data);
+    } catch (error) {
+      console.error("Failed to load orgs", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -25,13 +33,28 @@ export const useSuperAdminDashboardLogic = () => {
       "Are you sure you want to logout?",
       [
         { text: "Cancel", style: "cancel" },
-        { text: "Logout", style: "destructive", onPress: () => setToken(null) }
+        { text: "Logout", style: "destructive", onPress: logout }
       ]
     );
   };
 
   const deleteOrganization = async (id: string) => {
-    await OrganizationService.delete(id);
+    Alert.alert("Delete Organization", "This action cannot be undone.", [
+        { text: "Cancel", style: "cancel" },
+        { 
+            text: "Delete", 
+            style: "destructive", 
+            onPress: async () => {
+                try {
+                    await OrganizationService.delete(id);
+                    // Refresh local list
+                    setOrganizations(prev => prev.filter(o => o.id !== id));
+                } catch (e) {
+                    Alert.alert("Error", "Failed to delete organization");
+                }
+            } 
+        }
+    ]);
   };
 
   const filteredOrganizations = useMemo(() => {
@@ -43,5 +66,13 @@ export const useSuperAdminDashboardLogic = () => {
     );
   }, [organizations, searchQuery]);
 
-  return { filteredOrganizations, isOffline, searchQuery, setSearchQuery, handleLogout, deleteOrganization };
+  return {
+    organizations: filteredOrganizations,
+    searchQuery,
+    setSearchQuery,
+    handleLogout,
+    deleteOrganization,
+    isLoading,
+    refresh: loadOrganizations
+  };
 };

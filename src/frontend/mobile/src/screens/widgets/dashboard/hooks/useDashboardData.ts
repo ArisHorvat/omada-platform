@@ -1,40 +1,55 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/src/context/AuthContext';
-import { CurrentOrganizationService } from '@/src/services/CurrentOrganizationService';
-import { Organization } from '@/src/types';
+import { OrganizationService } from '@/src/services/OrganizationService';
+import { OrganizationDetailsDto } from '@/src/types/api';
 import { usePullToRefresh } from '@/src/hooks/usePullToRefresh';
 
 export const useDashboardData = () => {
-  const { role } = useAuth();
-  const [organization, setOrganization] = useState<Organization | null>(null);
+  const { activeSession } = useAuth();
+  const [organization, setOrganization] = useState<OrganizationDetailsDto | null>(null);
   const [widgets, setWidgets] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // 1. Refresh Logic
   const fetchDashboardData = useCallback(async () => {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-  }, []);
+    if (!activeSession?.orgId) return;
+
+    try {
+      // 1. Fetch Org Details
+      const data = await OrganizationService.getById(activeSession.orgId);
+      setOrganization(data);
+
+      // 2. Calculate Visible Widgets
+      const allWidgets = data.widgets || [];
+      const role = activeSession.role;
+
+      if (['SuperAdmin', 'Admin'].includes(role || '')) {
+        setWidgets(allWidgets);
+      } else if (role && data.roleWidgetMappings?.[role]) {
+        // Since backend sends Dictionary<string, string[]>, access it directly
+        setWidgets(data.roleWidgetMappings[role] || []);
+      } else {
+        // Fallback: Show all or empty depending on your business rule
+        setWidgets(allWidgets);
+      }
+    } catch (e) {
+      console.error("Failed to load dashboard", e);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeSession?.orgId, activeSession?.role]);
+
+  // Initial Load
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   const { refreshing, onRefresh } = usePullToRefresh(fetchDashboardData);
 
-  // 2. Subscription Logic
-  useEffect(() => {
-    const unsubscribe = CurrentOrganizationService.subscribe((data) => {
-      if (data) {
-        setOrganization(data);
-
-        const allWidgets = data.widgets || [];
-        // Role Check
-        if (['SuperAdmin', 'Admin'].includes(role || '')) {
-          setWidgets(allWidgets);
-        } else if (role && data.roleWidgetMappings?.[role]) {
-          setWidgets(data.roleWidgetMappings[role]);
-        } else {
-          setWidgets(allWidgets);
-        }
-      }
-    });
-    return () => unsubscribe();
-  }, [role]);
-
-  return { organization, widgets, refreshing, onRefresh };
+  return {
+    organization,
+    widgets,
+    refreshing,
+    onRefresh,
+    isLoading
+  };
 };

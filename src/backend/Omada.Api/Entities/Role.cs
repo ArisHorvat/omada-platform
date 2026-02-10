@@ -2,11 +2,11 @@ namespace Omada.Api.Entities;
 
 public class Role
 {
-    public Guid Id { get; private set; }
-    public Guid OrganizationId { get; private set; }
-    public string Name { get; private set; } = string.Empty;
+    public Guid Id;
+    public Guid OrganizationId;
+    public string Name = string.Empty;
 
-    private Role() { }
+    public Role() { }
 
     public static Role Create(Guid organizationId, string name)
     {

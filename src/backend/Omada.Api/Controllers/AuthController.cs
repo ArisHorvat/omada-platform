@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using Omada.Api.Entities;
 using Omada.Api.DTOs.Auth;
 using Omada.Api.Repositories.Interfaces;
+using Omada.Api.Abstractions;
 
 namespace Omada.Api.Controllers;
 
@@ -27,127 +28,182 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
+    [ProducesResponseType(typeof(ServiceResponse<LoginResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ServiceResponse), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
         _logger.LogInformation("Login attempt for email: {Email}", request.Email);
-        var user = await _userRepository.GetByEmailAsync(request.Email);
-
-        if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+        
+        try 
         {
-            _logger.LogWarning("Invalid login attempt for email: {Email}", request.Email);
-            return Unauthorized(new { message = "Invalid email or password." });
-        }
+            var user = await _userRepository.GetByEmailAsync(request.Email);
 
-        // Get memberships to determine default org
-        var memberships = await _userRepository.GetMembershipsAsync(user.Id);
-        var defaultMembership = memberships.FirstOrDefault();
-
-        if (defaultMembership == null)
-        {
-            // User exists but has no organizations. Handle as error or specific case.
-            return Unauthorized(new { message = "Account is not associated with any organization." });
-        }
-
-        var orgs = new List<UserOrganizationDto>();
-        foreach (var m in memberships)
-        {
-            var o = await _organizationRepository.GetByIdAsync(m.OrganizationId);
-            if (o != null)
+            if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
             {
-                orgs.Add(new UserOrganizationDto(o.Id, o.Name, m.Role, o.LogoUrl));
+                _logger.LogWarning("Invalid login attempt for email: {Email}", request.Email);
+                return Unauthorized(new ServiceResponse(false, new AppError(ErrorCodes.Unauthorized, "Invalid email or password.")));
             }
-        }
 
-        var token = GenerateJwtToken(user, defaultMembership.OrganizationId, defaultMembership.Role);
-        return Ok(new LoginResponse(token, orgs));
+            // Get memberships to determine default org
+            var memberships = await _userRepository.GetMembershipsAsync(user.Id);
+            
+            // Default to the first org found
+            var primaryMembership = memberships.FirstOrDefault();
+            if (primaryMembership == null)
+            {
+                 return StatusCode(403, new ServiceResponse(false, new AppError(ErrorCodes.Forbidden, "User does not belong to any organization.")));
+            }
+
+            var orgId = primaryMembership.OrganizationId;
+            var role = primaryMembership.Role ?? "User";
+
+            var token = GenerateJwtToken(user, orgId, role);
+
+            var response = new LoginResponse
+            {
+                Token = token,
+                User = new UserDto { Id = user.Id, Email = user.Email, FirstName = user.FirstName, LastName = user.LastName },
+                OrganizationId = orgId,
+                Role = role
+            };
+
+            return Ok(new ServiceResponse<LoginResponse>(true, response));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Login error");
+            return StatusCode(500, new ServiceResponse(false, new AppError(ErrorCodes.InternalError, "An unexpected error occurred during login.")));
+        }
     }
 
     [HttpGet("organizations")]
     [Microsoft.AspNetCore.Authorization.Authorize]
+    [ProducesResponseType(typeof(ServiceResponse<List<UserOrganizationDto>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetMyOrganizations()
     {
-        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value!);
-
-        var memberships = await _userRepository.GetMembershipsAsync(userId);
-        var result = new List<object>();
-        var currentOrgId = User.FindFirst("organizationId")?.Value;
-
-        foreach (var m in memberships)
+        try
         {
-            var org = await _organizationRepository.GetByIdAsync(m.OrganizationId);
-            if (org != null)
-            {
-                result.Add(new 
-                { 
-                    OrganizationId = org.Id, 
-                    OrganizationName = org.Name, 
-                    Role = m.Role,
-                    IsCurrent = org.Id.ToString() == currentOrgId
-                });
-            }
-        }
+            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value!);
+            var currentOrgId = User.FindFirst("OrganizationId")?.Value;
 
-        return Ok(result);
+            var memberships = await _userRepository.GetMembershipsAsync(userId);
+            var result = new List<UserOrganizationDto>();
+
+            foreach (var m in memberships)
+            {
+                var org = await _organizationRepository.GetByIdAsync(m.OrganizationId);
+                if (org != null)
+                {
+                    result.Add(new UserOrganizationDto
+                    {
+                        OrganizationId = org.Id,
+                        OrganizationName = org.Name,
+                        Role = m.Role,
+                        IsCurrent = org.Id.ToString().Equals(currentOrgId, StringComparison.OrdinalIgnoreCase)
+                    });
+                }
+            }
+
+            return Ok(new ServiceResponse<List<UserOrganizationDto>>(true, result));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new ServiceResponse(false, new AppError(ErrorCodes.InternalError, ex.Message)));
+        }
     }
 
     [HttpPost("switch-org")]
     [Microsoft.AspNetCore.Authorization.Authorize]
+    [ProducesResponseType(typeof(ServiceResponse<LoginResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> SwitchOrganization([FromBody] SwitchOrgRequest request)
     {
-        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value!);
-        var user = await _userRepository.GetByIdAsync(userId);
-        if (user == null) return Unauthorized();
-
-        var memberships = await _userRepository.GetMembershipsAsync(userId);
-        var targetMembership = memberships.FirstOrDefault(m => m.OrganizationId == request.OrganizationId);
-
-        if (targetMembership == null)
+        try
         {
-            return BadRequest(new { message = "You are not a member of this organization." });
-        }
+            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value!);
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null) return Unauthorized(new ServiceResponse(false, new AppError(ErrorCodes.Unauthorized, "User not found")));
 
-        var token = GenerateJwtToken(user, targetMembership.OrganizationId, targetMembership.Role);
-        return Ok(new LoginResponse(token, new List<UserOrganizationDto>()));
+            var memberships = await _userRepository.GetMembershipsAsync(userId);
+            var targetMembership = memberships.FirstOrDefault(m => m.OrganizationId == request.OrganizationId);
+
+            if (targetMembership == null)
+            {
+                return BadRequest(new ServiceResponse(false, new AppError(ErrorCodes.Forbidden, "You are not a member of this organization.")));
+            }
+
+            // Generate new token for the target organization
+            var token = GenerateJwtToken(user, targetMembership.OrganizationId, targetMembership.Role);
+            
+            // Re-use LoginResponse structure but with just the new token and org details
+            var response = new LoginResponse
+            {
+                Token = token,
+                User = new UserDto { Id = user.Id, Email = user.Email },
+                OrganizationId = targetMembership.OrganizationId,
+                Role = targetMembership.Role
+            };
+            
+            return Ok(new ServiceResponse<LoginResponse>(true, response));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new ServiceResponse(false, new AppError(ErrorCodes.InternalError, ex.Message)));
+        }
     }
 
     [HttpPost("forgot-password")]
+    [ProducesResponseType(typeof(ServiceResponse<string>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
     {
-        var user = await _userRepository.GetByEmailAsync(request.Email);
-
-        if (user == null)
+        try
         {
-            // Don't reveal that the user doesn't exist
-            return Ok(new { message = "If the email exists, a reset link has been sent." });
+            var user = await _userRepository.GetByEmailAsync(request.Email);
+
+            // Always return success to prevent email enumeration
+            if (user == null)
+            {
+                return Ok(new ServiceResponse<string>(true, "If the email exists, a reset link has been sent."));
+            }
+
+            var token = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+            user.SetPasswordResetToken(token, DateTime.UtcNow.AddHours(1));
+            await _userRepository.UpdateAsync(user);
+
+            _logger.LogInformation("Password reset token for {Email}: {Token}", request.Email, token);
+            
+            return Ok(new ServiceResponse<string>(true, "If the email exists, a reset link has been sent."));
         }
-
-        var token = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
-        user.SetPasswordResetToken(token, DateTime.UtcNow.AddHours(1));
-        await _userRepository.UpdateAsync(user);
-
-        _logger.LogInformation("Password reset token for {Email}: {Token}", request.Email, token);
-        // In a real app, send this token via email here (e.g. using SendGrid or SMTP)
-
-        return Ok(new { message = "If the email exists, a reset link has been sent." });
+        catch (Exception ex)
+        {
+            return StatusCode(500, new ServiceResponse(false, new AppError(ErrorCodes.InternalError, ex.Message)));
+        }
     }
 
     [HttpPost("reset-password")]
+    [ProducesResponseType(typeof(ServiceResponse<string>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
     {
-        var user = await _userRepository.GetByEmailAsync(request.Email);
-        
-        if (user == null || user.PasswordResetToken != request.Token || user.PasswordResetTokenExpires < DateTime.UtcNow)
+        try
         {
-            return BadRequest("Invalid or expired token.");
+            var user = await _userRepository.GetByEmailAsync(request.Email);
+            
+            if (user == null || user.PasswordResetToken != request.Token || user.PasswordResetTokenExpires < DateTime.UtcNow)
+            {
+                return BadRequest(new ServiceResponse(false, new AppError(ErrorCodes.InvalidInput, "Invalid or expired token.")));
+            }
+
+            var newHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+            user.ChangePassword(newHash);
+            user.ClearPasswordResetToken();
+            
+            await _userRepository.UpdateAsync(user);
+
+            return Ok(new ServiceResponse<string>(true, "Password has been reset successfully."));
         }
-
-        var newHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
-        user.ChangePassword(newHash);
-        user.ClearPasswordResetToken();
-        
-        await _userRepository.UpdateAsync(user);
-
-        return Ok(new { message = "Password has been reset successfully." });
+        catch (Exception ex)
+        {
+            return StatusCode(500, new ServiceResponse(false, new AppError(ErrorCodes.InternalError, ex.Message)));
+        }
     }
 
     private string GenerateJwtToken(User user, Guid organizationId, string role)
@@ -159,8 +215,7 @@ public class AuthController : ControllerBase
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Email, user.Email),
-            new Claim("organizationId", organizationId.ToString()),
-            // Assign SuperAdmin role if the email matches, otherwise use the role from the database.
+            new Claim("OrganizationId", organizationId.ToString()),
             new Claim(ClaimTypes.Role, 
                 user.Email.Equals("me@admin.com", StringComparison.OrdinalIgnoreCase) ? "SuperAdmin" : role
             )

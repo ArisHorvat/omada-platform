@@ -1,3 +1,4 @@
+using Omada.Api.Entities; // Needed for Result
 using Omada.Api.Repositories.Interfaces;
 using Omada.Api.Services.Interfaces;
 
@@ -14,27 +15,41 @@ public class PermissionService : IPermissionService
         _userRepository = userRepository;
     }
 
-    public async Task<bool> CanManageGroup(Guid userId, Guid groupId)
+    public async Task<Result<bool>> CanManageGroup(Guid userId, Guid groupId)
     {
-        var group = await _groupRepository.GetByIdAsync(groupId);
-        if (group == null) return false;
+        try
+        {
+            var group = await _groupRepository.GetByIdAsync(groupId);
+            if (group == null) return Result<bool>.Failure("Group not found");
 
-        // Check if user is the direct manager
-        if (group.ManagerId == userId) return true;
+            // 1. Direct Manager
+            if (group.ManagerId == userId) return Result<bool>.Success(true);
 
-        // Check if user has a role with universal management rights
-        return await CanManageAllGroupsInOrg(userId, group.OrganizationId);
+            // 2. Organization Admin / Director
+            return await CanManageAllGroupsInOrg(userId, group.OrganizationId);
+        }
+        catch (Exception ex)
+        {
+            return Result<bool>.Failure(ex.Message);
+        }
     }
 
-    public async Task<bool> CanManageAllGroupsInOrg(Guid userId, Guid organizationId)
+    public async Task<Result<bool>> CanManageAllGroupsInOrg(Guid userId, Guid organizationId)
     {
-        var memberships = await _userRepository.GetMembershipsAsync(userId);
-        var currentMembership = memberships.FirstOrDefault(m => m.OrganizationId == organizationId);
-        if (currentMembership == null) return false;
+        try
+        {
+            var permissions = await _userRepository.GetUserWidgetAccessAsync(userId, organizationId);
+            
+            var hasAccess = permissions.Any(p => 
+                (p.WidgetKey == "users" && (p.AccessLevel == "admin" || p.AccessLevel == "edit")) ||
+                (p.WidgetKey == "settings" && p.AccessLevel == "admin")
+            );
 
-        // Define roles with universal management scope
-        var universalManagerRoles = new List<string> { "Admin", "SuperAdmin", "Registrar", "Dean", "Director", "HR Manager" };
-
-        return universalManagerRoles.Contains(currentMembership.Role, StringComparer.OrdinalIgnoreCase);
+            return Result<bool>.Success(hasAccess);
+        }
+        catch (Exception ex)
+        {
+            return Result<bool>.Failure(ex.Message);
+        }
     }
 }

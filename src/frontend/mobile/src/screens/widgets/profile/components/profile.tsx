@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Modal, FlatList, Image } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Modal, FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,7 +12,19 @@ export default function ProfileScreen() {
   const colors = useThemeColors();
   const router = useRouter();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { user, organization, isLoading, showAccountSwitcher, setShowAccountSwitcher, myOrganizations, fetchMyOrganizations, handleSwitchOrg, handleLogout, email, role } = useProfileLogic();
+  const { 
+    user, 
+    organization, 
+    isLoading, 
+    showAccountSwitcher, 
+    setShowAccountSwitcher, 
+    myOrganizations, 
+    openOrgSwitcher, 
+    handleSwitchOrg, 
+    handleLogout, 
+    email, 
+    role 
+    } = useProfileLogic();
 
   if (isLoading) {
     return <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}><ActivityIndicator size="large" color={colors.primary} /></View>;
@@ -23,6 +35,7 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
+      {/* ... Header and Content (Keep as is) ... */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Profile</Text>
         <TouchableOpacity onPress={() => router.push('/settings')}>
@@ -49,10 +62,10 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Digital ID Access */}
+        {/* Digital ID */}
         <TouchableOpacity style={styles.idCard} onPress={() => router.push('/digital-id' as any)}>
             <View style={styles.idIcon}>
-                <MaterialIcons name="badge" size={24} color={colors.tertiaryDark} />
+                <MaterialIcons name="badge" size={24} color={colors.info} />
             </View>
             <View style={styles.idContent}>
                 <Text style={styles.idTitle}>Digital ID Card</Text>
@@ -63,10 +76,14 @@ export default function ProfileScreen() {
 
         {/* Menu */}
         <View style={styles.menuSection}>
-            <TouchableOpacity style={styles.menuItem} onPress={fetchMyOrganizations}>
+            <TouchableOpacity style={styles.menuItem} onPress={openOrgSwitcher}>
                 <MaterialIcons name="business" size={24} color={colors.primary} style={styles.menuIcon} />
-                <Text style={styles.menuText}>Organization</Text>
-                <Text style={styles.menuValue}>{organization?.name}</Text>
+                <View style={{ flex: 1 }}>
+                    <Text style={styles.menuText}>Organization</Text>
+                    {organization?.name && (
+                        <Text style={styles.menuValue} numberOfLines={1}>{organization.name}</Text>
+                    )}
+                </View>
                 <MaterialIcons name="swap-horiz" size={24} color={colors.subtle} />
             </TouchableOpacity>
 
@@ -83,10 +100,22 @@ export default function ProfileScreen() {
         </View>
       </ScrollView>
 
-      {/* Organization Switcher Modal */}
-      <Modal visible={showAccountSwitcher} transparent animationType="fade" onRequestClose={() => setShowAccountSwitcher(false)}>
-        <TouchableOpacity style={styles.modalContainer} activeOpacity={1} onPress={() => setShowAccountSwitcher(false)}>
-            <View style={styles.modalContent}>
+      {/* --- FIXED MODAL --- */}
+      <Modal 
+        visible={showAccountSwitcher} 
+        transparent 
+        animationType="fade" 
+        onRequestClose={() => setShowAccountSwitcher(false)}
+      >
+        <TouchableOpacity 
+            style={styles.modalContainer} 
+            activeOpacity={1} 
+            onPress={() => setShowAccountSwitcher(false)}
+        >
+            <View 
+                style={styles.modalContent} 
+                onStartShouldSetResponder={() => true} // <-- STOPS CLICK PROPAGATION
+            >
                 <Text style={styles.modalTitle}>Switch Organization</Text>
                 <FlatList
                     data={myOrganizations}

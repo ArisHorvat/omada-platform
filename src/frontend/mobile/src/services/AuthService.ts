@@ -1,9 +1,34 @@
-import { apiClient } from './apiClient';
+import apiClient from './apiClient';
+import { 
+  LoginRequest, 
+  LoginResponse, 
+  SwitchOrgRequest, 
+  ForgotPasswordRequest, 
+  ResetPasswordRequest, 
+  UserOrganizationDto 
+} from '@/src/types/api'; // Ensure these are exported in your types file
 
 export const AuthService = {
-  login: (credentials: any) => apiClient.post<any>('/api/auth/login', credentials),
-  forgotPassword: (email: string) => apiClient.post('/api/auth/forgot-password', { email }),
-  resetPassword: (data: any) => apiClient.post('/api/auth/reset-password', data),
-  switchOrg: (organizationId: string) => apiClient.post<any>('/api/auth/switch-org', { organizationId }),
-  getMyOrganizations: () => apiClient.get<any[]>('/api/auth/organizations'),
+  login: async (credentials: LoginRequest): Promise<LoginResponse> => {
+    return await apiClient.post('/auth/login', credentials);
+  },
+
+  getMyOrganizations: async (): Promise<UserOrganizationDto[]> => {
+    return await apiClient.get('/auth/organizations');
+  },
+
+  switchOrganization: async (orgId: string): Promise<LoginResponse> => {
+    const payload: SwitchOrgRequest = { organizationId: orgId };
+    return await apiClient.post('/auth/switch-org', payload);
+  },
+
+  forgotPassword: async (email: string): Promise<string> => {
+    const payload: ForgotPasswordRequest = { email };
+    // Backend returns a simple string message wrapped in ServiceResponse
+    return await apiClient.post('/auth/forgot-password', payload);
+  },
+
+  resetPassword: async (data: ResetPasswordRequest): Promise<string> => {
+    return await apiClient.post('/auth/reset-password', data);
+  }
 };

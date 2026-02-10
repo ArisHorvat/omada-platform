@@ -10,7 +10,7 @@ public interface IUserRepository
     Task<User?> GetByIdAsync(Guid id);
     Task UpdateAsync(User user);
     Task DeleteByOrganizationIdAsync(Guid organizationId, IDbTransaction transaction);
-    Task AddMemberAsync(Guid organizationId, Guid userId, string role, IDbTransaction transaction);
+    Task AddMemberAsync(Guid organizationId, Guid userId, Guid roleId, IDbTransaction transaction);
     Task<IEnumerable<OrganizationMember>> GetMembershipsAsync(Guid userId);
     Task<IEnumerable<(string WidgetKey, string AccessLevel)>> GetUserWidgetAccessAsync(Guid userId, Guid organizationId);
 }

@@ -1,38 +1,43 @@
 import { useState, useEffect } from 'react';
 import { Alert } from 'react-native';
-import { jwtDecode } from 'jwt-decode';
 import { useAuth } from '@/src/context/AuthContext';
 import { OrganizationService } from '@/src/services/OrganizationService';
+import { OrganizationDetailsDto } from '@/src/types/api';
 
 export const useOrgAdminDashboardLogic = () => {
-  const { email, setToken, token } = useAuth();
-  const [org, setOrg] = useState<any>(null);
+  const { activeSession, logout } = useAuth();
+  const [org, setOrg] = useState<OrganizationDetailsDto | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = OrganizationService.subscribe((data) => {
-      if (token) {
+    const loadOrg = async () => {
+        if (!activeSession?.orgId) return;
         try {
-            const decoded: any = jwtDecode(token);
-            const myOrg = data.find(o => o.id === decoded.organizationId);
-            setOrg(myOrg);
+            const data = await OrganizationService.getById(activeSession.orgId);
+            setOrg(data);
         } catch (e) {
-            console.error("Failed to decode token", e);
+            console.error("Failed to load admin dashboard", e);
+        } finally {
+            setLoading(false);
         }
-        setLoading(false); 
-      }
-    });
-    return () => unsubscribe();
-  }, [token]);
+    };
+    loadOrg();
+  }, [activeSession?.orgId]);
 
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure?", [
       { text: "Cancel", style: "cancel" },
-      { text: "Logout", style: "destructive", onPress: () => setToken(null) }
+      { text: "Logout", style: "destructive", onPress: logout }
     ]);
   };
 
-  const handleFeatureComingSoon = (feature: string) => Alert.alert('Coming Soon', `${feature} will be available soon.`);
+  const handleFeatureComingSoon = (feature: string) => 
+      Alert.alert('Coming Soon', `${feature} will be available soon.`);
 
-  return { org, loading, email, handleLogout, handleFeatureComingSoon };
+  return {
+    org,
+    loading,
+    handleLogout,
+    handleFeatureComingSoon
+  };
 };

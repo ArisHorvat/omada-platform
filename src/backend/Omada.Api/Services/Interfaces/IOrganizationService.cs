@@ -1,14 +1,15 @@
 using Omada.Api.Entities;
 using Omada.Api.DTOs.Organizations;
 
-namespace Omada.Api.Services.Interfaces
+namespace Omada.Api.Services.Interfaces;
+
+public interface IOrganizationService
 {
-    public interface IOrganizationService
-    {
-        Task<Result<Organization>> CreateOrganizationAsync(RegisterOrganizationRequest request);
-        Task<IEnumerable<OrganizationDetailsDto>> GetAllAsync();
-        Task<OrganizationDetailsDto?> GetByIdAsync(Guid id);
-        Task<Result<Organization>> UpdateOrganizationAsync(Guid id, UpdateOrganizationRequest request);
-        Task<Result<bool>> DeleteOrganizationAsync(Guid id);
-    }
+    Task<Result<Organization>> CreateOrganizationAsync(RegisterOrganizationRequest request);
+    Task<Result<Organization>> UpdateOrganizationAsync(Guid id, UpdateOrganizationRequest request);
+    Task<Result<bool>> DeleteOrganizationAsync(Guid id);
+    
+    // Wrapped in Result
+    Task<Result<IEnumerable<OrganizationDetailsDto>>> GetAllAsync();
+    Task<Result<OrganizationDetailsDto>> GetByIdAsync(Guid id);
 }

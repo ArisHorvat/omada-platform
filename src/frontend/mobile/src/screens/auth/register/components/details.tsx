@@ -2,18 +2,24 @@ import React from 'react';
 import { View, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useThemeColors } from '@/src/hooks';
-import { useRegistrationLogic } from '@/src/screens/auth/register/hooks/useRegistrationLogic';
+// CHANGE: Use the context directly for granular state access
+import { useRegistrationContext } from '@/src/screens/auth/register/context/RegistrationContext';
 import { AppText, IconInput, GlassView, Icon } from '@/src/components/ui';
 import { WizardLayout } from '@/src/components/layout';
 
 export default function OrgDetailsScreen() {
   const router = useRouter();
   const colors = useThemeColors();
-  const { orgData, setOrgData, setRoles } = useRegistrationLogic();
+  
+  // DIRECT CONTEXT ACCESS: Matches our new Context provider structure
+  const { orgData, setOrgData, setRoles } = useRegistrationContext();
 
   const handleTypeSelect = (type: string) => {
+    // 1. Update the Org Type
     setOrgData({ ...orgData, type });
-    // Pre-fill default roles
+    
+    // 2. Reset Roles based on Type (Smart Defaults)
+    // This logic is fine here, as it acts as a "preset selector"
     if (type === 'university') {
         setRoles(['Student', 'Professor', 'Teaching Assistant', 'Dean', 'Registrar', 'Operations', 'Admin']);
     } else {
@@ -22,10 +28,12 @@ export default function OrgDetailsScreen() {
   };
 
   const handleNext = () => {
+    // 1. Validation
     if (!orgData.name.trim() || !orgData.shortName.trim()) {
       Alert.alert('Missing Info', 'Please fill in all details.');
       return;
     }
+    // 2. Navigation
     router.push('/register-flow/admin');
   };
 
@@ -44,7 +52,12 @@ export default function OrgDetailsScreen() {
             {['university', 'corporate'].map((type) => {
                 const isActive = orgData.type === type;
                 return (
-                    <TouchableOpacity key={type} style={{ flex: 1 }} onPress={() => handleTypeSelect(type)}>
+                    <TouchableOpacity 
+                        key={type} 
+                        style={{ flex: 1 }} 
+                        onPress={() => handleTypeSelect(type)}
+                        activeOpacity={0.7}
+                    >
                         <GlassView 
                             intensity={isActive ? 40 : 10}
                             style={{ 

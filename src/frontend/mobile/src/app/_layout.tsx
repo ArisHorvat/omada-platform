@@ -1,11 +1,9 @@
 import '@/src/i18n';
-import { Slot, SplashScreen, useSegments, Redirect } from 'expo-router';
+import { Slot, useSegments, Redirect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator, Text } from 'react-native';
+import { View, ActivityIndicator } from 'react-native';
 import 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-
-// 1. IMPORT FONTS
 import { useFonts, Outfit_400Regular, Outfit_600SemiBold, Outfit_800ExtraBold } from '@expo-google-fonts/outfit';
 
 import { AuthProvider, useAuth } from '../context/AuthContext';
@@ -13,93 +11,63 @@ import { OrganizationThemeProvider } from '../context/OrganizationThemeContext';
 import { UserPreferencesProvider, useUserPreferences } from '../context/UserPreferencesContext';
 import { PermissionProvider } from '../context/PermissionContext';
 import { useEffect } from 'react';
-import { useThemeColors } from '@/src/hooks';
 
-SplashScreen.preventAutoHideAsync();
-
-// ----------------------------------------------------------------------
-// HELPER: Handles Status Bar Logic Separately
-// ----------------------------------------------------------------------
 const ThemedStatusBar = () => {
   const { themeMode } = useUserPreferences();
   return <StatusBar style={themeMode === 'dark' ? 'light' : 'dark'} />;
 };
 
-// ----------------------------------------------------------------------
-// LAYOUT: Handles Routing & Loading (The "Brain")
-// ----------------------------------------------------------------------
 function AuthLayout() {
-  const { token, role, isLoading, isSwitching } = useAuth();
-  const colors = useThemeColors();
+  const { activeSession, isLoading } = useAuth(); // <--- UPDATED
   const segments = useSegments();
-
-  useEffect(() => {
-    if (!isLoading) {
-      SplashScreen.hideAsync();
-    }
-  }, [isLoading]);
-
-  // 1. LOADING STATE
-  if (isLoading || isSwitching) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={{ marginTop: 20, fontSize: 16, color: colors.subtle, fontWeight: '500' }}>
-          {isSwitching ? 'Switching Organization...' : 'Loading...'}
-        </Text>
-      </View>
-    );
-  }
-
-  const inAuthGroup = segments[0] === '(auth)';
-
-  // 2. REDIRECTS (Protected Routes)
-  if (!token && !inAuthGroup) {
-    return <Redirect href="/(auth)" />;
-  }
-
-  if (token && inAuthGroup) {
-    const isRegistrationFlow = segments[1] === 'register-flow';
-    
-    // SuperAdmin special flow
-    if (role === 'SuperAdmin' && isRegistrationFlow) {
-      return <Slot />;
-    }
-    
-    // Normal Dashboard Redirects
-    if (role === 'Admin') return <Redirect href="/org-dashboard" />;
-    return <Redirect href={role === 'SuperAdmin' ? "/admin-dashboard" : "/dashboard"} />;
-  }
-
-  // 3. RENDER CONTENT
-  return <Slot />;
-}
-
-// ----------------------------------------------------------------------
-// ROOT: Connects Providers (The "Skeleton")
-// ----------------------------------------------------------------------
-export default function RootLayout() {
   const [fontsLoaded] = useFonts({
     'Body': Outfit_400Regular,
     'Heading': Outfit_600SemiBold,
     'Display': Outfit_800ExtraBold,
   });
 
-  if (!fontsLoaded) return null;
+  if (!fontsLoaded || isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
 
+  // --- ROUTING LOGIC ---
+  const inAuthGroup = segments[0] === '(auth)';
+  
+  // 1. Not Logged In -> Redirect to Login (unless already there)
+  if (!activeSession && !inAuthGroup) {
+    return <Redirect href="/(auth)/login-flow" />;
+  }
+
+  // 2. Logged In -> Redirect to App (if currently in Login screens)
+  if (activeSession && inAuthGroup) {
+    const isRegistrationFlow = segments[1] === 'register-flow';
+    
+    // Allow SuperAdmin to stay in register flow if needed, otherwise kick to dashboard
+    if (activeSession.role === 'SuperAdmin' && isRegistrationFlow) {
+      return <Slot />;
+    }
+    
+    // Normal Redirects based on Role
+    if (activeSession.role === 'Admin') return <Redirect href="/org-dashboard" />;
+    return <Redirect href={activeSession.role === 'SuperAdmin' ? "/admin-dashboard" : "/(app)/(tabs)/dashboard"} />;
+  }
+
+  return <Slot />;
+}
+
+export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
         <UserPreferencesProvider>
           <OrganizationThemeProvider>
             <PermissionProvider>
-              
-              {/* ✅ 1. Status Bar is always rendered here, regardless of loading state */}
               <ThemedStatusBar />
-
-              {/* ✅ 2. Auth Logic handles the actual screens */}
               <AuthLayout />
-
             </PermissionProvider>
           </OrganizationThemeProvider>
         </UserPreferencesProvider>

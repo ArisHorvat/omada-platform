@@ -24,17 +24,8 @@ const ROUTE_ICONS: Record<string, IconName> = {
 export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
-  const { primary } = useOrganizationTheme();
+  const { primary, logoUrl } = useOrganizationTheme();
   
-  const [logoUrl, setLogoUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    const unsubscribe = CurrentOrganizationService.subscribe((data) => {
-      if (data) setLogoUrl(data.logoUrl);
-    });
-    return () => unsubscribe();
-  }, []);
-
   // --- CONFIGURATION ---
   const BAR_HEIGHT = 70;
   const FAB_SIZE = 90; 

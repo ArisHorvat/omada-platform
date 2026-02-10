@@ -10,10 +10,10 @@ import { AppText, AppButton, GlassView, Icon } from '@/src/components/ui';
 export default function RegistrationSuccessScreen() {
   const colors = useThemeColors();
   const router = useRouter();
-  const { role } = useAuth();
+  const { activeSession } = useAuth();
 
   const handleFinish = () => {
-    if (role === 'SuperAdmin') {
+    if (activeSession?.role === 'SuperAdmin') {
         router.replace('/admin-dashboard');
     } else {
         router.replace('/login-flow');
@@ -64,7 +64,7 @@ export default function RegistrationSuccessScreen() {
 
                 {/* 6. CHANGED: Button is now the solid green element */}
                 <AppButton 
-                    title={role === 'SuperAdmin' ? "Go to Dashboard" : "Go to Login"} 
+                    title={activeSession?.role === 'SuperAdmin' ? "Go to Dashboard" : "Go to Login"} 
                     onPress={handleFinish}
                     style={{ 
                         width: '100%', 

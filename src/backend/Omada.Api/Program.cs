@@ -9,6 +9,7 @@ using Omada.Api.WebSocketHandlers;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Omada.Api.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddCors(options =>
@@ -20,21 +21,28 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddSingleton<IWebSocketHandler, WebSocketHandler>();
+builder.Services.AddHttpContextAccessor();
+
+builder.Services.AddScoped<IUserContext, UserContext>();
 
 builder.Services.AddScoped<IOrganizationService, OrganizationService>();
+builder.Services.AddScoped<IGroupService, GroupService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IPermissionService, PermissionService>();
+builder.Services.AddScoped<IImportService, ImportService>();
+builder.Services.AddScoped<IColorExtractionService, ColorExtractionService>();
+builder.Services.AddScoped<IScheduleService, ScheduleService>();
+
+
 builder.Services.AddScoped<IOrganizationRepository, OrganizationRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRoleRepository, RoleRepository>();
 builder.Services.AddScoped<IWidgetRepository, WidgetRepository>();
 builder.Services.AddScoped<ICustomDataRepository, CustomDataRepository>();
-builder.Services.AddScoped<IEmailService, EmailService>();
-builder.Services.AddScoped<IColorExtractionService, ColorExtractionService>();
 builder.Services.AddScoped<IMessageRepository, MessageRepository>();
 builder.Services.AddScoped<IGroupRepository, GroupRepository>();
-builder.Services.AddScoped<IGroupService, GroupService>();
-builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
-builder.Services.AddScoped<IImportService, ImportService>();
+builder.Services.AddScoped<IScheduleRepository, ScheduleRepository>();
 
 
 // Register your database connection

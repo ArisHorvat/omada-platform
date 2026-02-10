@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Omada.Api.Repositories.Interfaces;
 using Omada.Api.DTOs.Users;
+using Omada.Api.Abstractions;
+using Omada.Api.Entities; 
 
 namespace Omada.Api.Controllers;
 
@@ -21,101 +23,84 @@ public class UsersController : ControllerBase
 
     private Guid GetUserId()
     {
-        // Extracts the User ID from the JWT token claims
         var id = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(id)) throw new UnauthorizedAccessException();
         return Guid.Parse(id);
     }
 
     [HttpGet("me")]
+    [ProducesResponseType(typeof(ServiceResponse<User>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetMe()
     {
         try 
         {
             var userId = GetUserId();
             var user = await _userRepository.GetByIdAsync(userId);
-            if (user == null) return NotFound();
             
-            var role = User.FindFirst(ClaimTypes.Role)?.Value ?? "User";
-            var orgIdClaim = User.FindFirst("organizationId")?.Value;
+            if (user == null) 
+                return NotFound(new ServiceResponse(false, new AppError(ErrorCodes.NotFound, "User not found")));
             
-            // Fetch granular widget access
-            var accessMap = orgIdClaim != null ? await _userRepository.GetUserWidgetAccessAsync(userId, Guid.Parse(orgIdClaim)) : new List<(string, string)>();
-
-            return Ok(new { 
-                user.Id, user.FirstName, user.LastName, user.Email, Role = role, 
-                user.IsTwoFactorEnabled, user.PhoneNumber, user.Address, user.ProfilePictureUrl,
-                WidgetAccess = accessMap.ToDictionary(x => x.WidgetKey, x => x.AccessLevel)
-            });
+            return Ok(new ServiceResponse<User>(true, user));
         }
         catch (UnauthorizedAccessException)
         {
-            return Unauthorized();
+            return Unauthorized(new ServiceResponse(false, new AppError(ErrorCodes.Unauthorized, "Session expired")));
         }
-    }
-
-    [HttpPost("change-password")]
-    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
-    {
-        try
+        catch (Exception ex)
         {
-            var userId = GetUserId();
-            var user = await _userRepository.GetByIdAsync(userId);
-            if (user == null) return NotFound();
-
-            if (!BCrypt.Net.BCrypt.Verify(request.OldPassword, user.PasswordHash))
-            {
-                return BadRequest("Incorrect current password.");
-            }
-
-            user.ChangePassword(BCrypt.Net.BCrypt.HashPassword(request.NewPassword));
-            await _userRepository.UpdateAsync(user);
-
-            return Ok(new { message = "Password updated successfully." });
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Unauthorized();
-        }
-    }
-
-    [HttpPut("security")]
-    public async Task<IActionResult> UpdateSecurity([FromBody] UpdateSecurityRequest request)
-    {
-        try
-        {
-            var userId = GetUserId();
-            var user = await _userRepository.GetByIdAsync(userId);
-            if (user == null) return NotFound();
-
-            user.ToggleTwoFactor(request.IsTwoFactorEnabled);
-            await _userRepository.UpdateAsync(user);
-
-            return Ok(new { message = "Security settings updated." });
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Unauthorized();
+             return StatusCode(500, new ServiceResponse(false, new AppError(ErrorCodes.InternalError, ex.Message)));
         }
     }
 
     [HttpPut("profile")]
+    [ProducesResponseType(typeof(ServiceResponse<string>), StatusCodes.Status200OK)]
     public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request)
     {
         try
         {
             var userId = GetUserId();
             var user = await _userRepository.GetByIdAsync(userId);
-            if (user == null) return NotFound();
+            if (user == null) 
+                return NotFound(new ServiceResponse(false, new AppError(ErrorCodes.NotFound, "User not found")));
 
             user.UpdateProfile(request.PhoneNumber, request.Address, request.ProfilePictureUrl);
             await _userRepository.UpdateAsync(user);
 
-            return Ok(new { message = "Profile updated successfully." });
+            return Ok(new ServiceResponse<string>(true, "Profile updated successfully"));
         }
         catch (UnauthorizedAccessException)
         {
-            return Unauthorized();
+            return Unauthorized(new ServiceResponse(false, new AppError(ErrorCodes.Unauthorized, "Session expired")));
+        }
+        catch (Exception ex)
+        {
+             return StatusCode(500, new ServiceResponse(false, new AppError(ErrorCodes.InternalError, ex.Message)));
+        }
+    }
+
+    [HttpPut("security")]
+    [ProducesResponseType(typeof(ServiceResponse<string>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> UpdateSecurity([FromBody] UpdateSecurityRequest request)
+    {
+        try
+        {
+            var userId = GetUserId();
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null) 
+                return NotFound(new ServiceResponse(false, new AppError(ErrorCodes.NotFound, "User not found")));
+
+            user.ToggleTwoFactor(request.IsTwoFactorEnabled);
+            await _userRepository.UpdateAsync(user);
+
+            return Ok(new ServiceResponse<string>(true, "Security settings updated"));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Unauthorized(new ServiceResponse(false, new AppError(ErrorCodes.Unauthorized, "Session expired")));
+        }
+        catch (Exception ex)
+        {
+             return StatusCode(500, new ServiceResponse(false, new AppError(ErrorCodes.InternalError, ex.Message)));
         }
     }
 }

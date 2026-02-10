@@ -1,18 +1,27 @@
 import { useState, useEffect } from 'react';
 import { Alert } from 'react-native';
 import { useUserPreferences, ThemeMode } from '@/src/context/UserPreferencesContext';
-import { CurrentOrganizationService } from '@/src/services/CurrentOrganizationService';
+import { useAuth } from '@/src/context/AuthContext';
+import { OrganizationService } from '@/src/services/OrganizationService';
+import { OrganizationDetailsDto } from '@/src/types/api';
 
 export const useSettingsLogic = () => {
   const { themeMode, setThemeMode } = useUserPreferences();
-  const [organization, setOrganization] = useState<any>(null);
+  const { activeSession } = useAuth();
+  const [organization, setOrganization] = useState<OrganizationDetailsDto | null>(null);
 
   useEffect(() => {
-    const unsubscribe = CurrentOrganizationService.subscribe((data) => {
-      if (data) setOrganization(data);
-    });
-    return () => unsubscribe();
-  }, []);
+    const fetchOrgDetails = async () => {
+      if (!activeSession?.orgId) return;
+      try {
+        const data = await OrganizationService.getById(activeSession.orgId);
+        setOrganization(data);
+      } catch (e) {
+        console.error("Failed to load settings org data", e);
+      }
+    };
+    fetchOrgDetails();
+  }, [activeSession?.orgId]);
 
   const handleThemeChange = () => {
     const getLabel = (mode: string) => themeMode === mode ? '(Current)' : '';

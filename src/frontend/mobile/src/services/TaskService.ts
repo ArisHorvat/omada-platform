@@ -1,15 +1,24 @@
-import { apiClient } from './apiClient';
-
-export interface TaskItem {
-  id: string;
-  title: string;
-  isCompleted: boolean;
-  dueDate?: string;
-}
+import apiClient from './apiClient';
+import { TaskItem } from '@/src/types/api';
 
 export const TaskService = {
-  getTasks: () => apiClient.get<TaskItem[]>('/api/tasks'),
-  createTask: (title: string, dueDate?: string) => apiClient.post<TaskItem>('/api/tasks', { title, dueDate }),
-  updateTask: (task: TaskItem) => apiClient.put(`/api/tasks/${task.id}`, task),
-  deleteTask: (id: string) => apiClient.delete(`/api/tasks/${id}`),
+  getAll: async (): Promise<TaskItem[]> => {
+    return await apiClient.get('/tasks');
+  },
+
+  create: async (title: string, dueDate?: Date): Promise<TaskItem> => {
+    return await apiClient.post('/tasks', { 
+      title, 
+      dueDate: dueDate?.toISOString() 
+    });
+  },
+
+  update: async (id: string, updates: Partial<TaskItem>): Promise<TaskItem> => {
+    return await apiClient.put(`/tasks/${id}`, updates);
+  },
+
+  delete: async (id: string): Promise<boolean> => {
+    // API returns 'true' on success inside the wrapper
+    return await apiClient.delete(`/tasks/${id}`);
+  }
 };

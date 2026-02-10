@@ -1,16 +1,15 @@
-import { apiClient } from './apiClient';
-
-export interface ChatMessage {
-  id: string;
-  content: string;
-  userName: string;
-  userId: string;
-  createdAt: string;
-  isOwn?: boolean;
-}
+import apiClient from './apiClient';
+import { Message } from '@/src/types/api';
 
 export const ChatService = {
-  getRecentMessages: (orgId: string) => apiClient.get<ChatMessage[]>(`/api/organizations/${orgId}/chat`),
-  sendMessage: (orgId: string, content: string, userName?: string) => 
-    apiClient.post<ChatMessage>(`/api/organizations/${orgId}/chat`, { content, userName }),
+  getRecentMessages: async (organizationId: string): Promise<Message[]> => {
+    return await apiClient.get(`/chat/recent?orgId=${organizationId}`);
+  },
+
+  sendMessage: async (content: string, organizationId: string): Promise<void> => {
+    await apiClient.post('/chat/send', { 
+      content, 
+      organizationId 
+    });
+  }
 };

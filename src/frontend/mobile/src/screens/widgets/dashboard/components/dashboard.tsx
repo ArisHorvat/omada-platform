@@ -110,7 +110,9 @@ export default function DashboardScreen() {
 
         {/* --- SEARCH & DATE --- */}
         <AnimatedItem index={0}>
-          <SearchBar onPress={() => router.push('..')} />
+          <View style={{ paddingHorizontal: 20 }}>
+            <SearchBar onPress={() => router.push('..')} />
+          </View>
         </AnimatedItem>
         
         <View style={styles.spacer} />

@@ -1,20 +1,20 @@
-import { apiClient } from './apiClient';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { WS_BASE_URL } from '../config/config';
-import { jwtDecode } from 'jwt-decode';
+import apiClient from '@/src/services/apiClient';
 import * as SecureStore from 'expo-secure-store';
+import { router } from 'expo-router';
+import { AuthService } from './AuthService';
+import { Alert } from 'react-native';
 
-type Listener = (data: any) => void;
+const STORAGE_KEY_TOKEN = 'jwt_token';
+const STORAGE_KEY_ORG_ID = 'active_org_id';
+const STORAGE_KEY_ROLE = 'active_org_role';
 
 class CurrentOrganizationServiceClass {
   private static instance: CurrentOrganizationServiceClass;
-  private organization: any = null;
-  private listeners: Listener[] = [];
-  private ws: WebSocket | null = null;
+  
+  // We keep a simple reference to the ID for non-React files (like API interceptors)
+  private _activeOrgId: string | null = null;
 
-  private constructor() {
-    this.loadFromStorage();
-  }
+  private constructor() {}
 
   public static getInstance(): CurrentOrganizationServiceClass {
     if (!CurrentOrganizationServiceClass.instance) {
@@ -23,93 +23,77 @@ class CurrentOrganizationServiceClass {
     return CurrentOrganizationServiceClass.instance;
   }
 
-  public subscribe(listener: Listener) {
-    this.listeners.push(listener);
-    listener(this.organization);
-    if (!this.organization) this.fetch();
-    return () => { this.listeners = this.listeners.filter(l => l !== listener); };
+  // Getter for the ID (synchronous)
+  public get activeOrgId(): string | null {
+    return this._activeOrgId;
   }
 
-  private notifyListeners() {
-    this.listeners.forEach(l => l(this.organization));
-  }
-
-  private async loadFromStorage() {
-    const stored = await AsyncStorage.getItem('myOrganization');
-    if (stored) {
-      this.organization = JSON.parse(stored);
-      this.notifyListeners();
-      this.connectWebSocket();
-    }
-  }
-
-  public async fetch() {
+  /**
+   * INIT: Called when App launches. 
+   * Reads storage to see if we are logged in.
+   */
+  public async init(): Promise<{ orgId: string | null, role: string | null }> {
     try {
-      const token = await SecureStore.getItemAsync('authToken');
-      if (!token) return;
-      const decoded: any = jwtDecode(token);
-      const orgId = decoded.organizationId;
+      const token = await SecureStore.getItemAsync(STORAGE_KEY_TOKEN);
+      const orgId = await SecureStore.getItemAsync(STORAGE_KEY_ORG_ID);
+      const role = await SecureStore.getItemAsync(STORAGE_KEY_ROLE);
 
-      if (orgId) {
-        const data = await apiClient.get<any>(`/api/organizations/${orgId}`);
-        this.organization = data;
-        await AsyncStorage.setItem('myOrganization', JSON.stringify(data));
-        this.notifyListeners();
-        this.connectWebSocket();
+      if (token && orgId) {
+        this._activeOrgId = orgId;
+        return { orgId, role };
       }
     } catch (e) {
-      console.error('Fetch my organization failed', e);
+      console.error('Failed to init session', e);
+    }
+    return { orgId: null, role: null };
+  }
+
+  /**
+   * SWITCH ORG: The Logic
+   * 1. Get new Token.
+   * 2. Save everything.
+   * 3. Navigation is handled by the UI Context to prevent loops.
+   */
+  public async switchOrganization(targetOrgId: string): Promise<boolean> {
+    try {
+      // 1. API Call to exchange token
+      const response = await AuthService.switchOrganization(targetOrgId);
+      
+      // 2. Save new Session
+      await this.saveSession(response.token, targetOrgId, response.role);
+      
+      return true;
+    } catch (error: any) {
+      Alert.alert("Switch Failed", error.message || "Could not switch organization");
+      return false;
     }
   }
 
-  public clear() {
-    this.organization = null;
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
+  /**
+   * LOGOUT: The Logic
+   * 1. Clear Storage.
+   * 2. Clear Memory.
+   */
+  public async logout() {
+    try {
+      await SecureStore.deleteItemAsync(STORAGE_KEY_TOKEN);
+      await SecureStore.deleteItemAsync(STORAGE_KEY_ORG_ID);
+      await SecureStore.deleteItemAsync(STORAGE_KEY_ROLE);
+      this._activeOrgId = null;
+      
+      // Force navigation to Login (clears stack)
+      router.replace('/(auth)/login-flow');
+    } catch (e) {
+      console.error("Logout failed", e);
     }
-    this.notifyListeners();
   }
 
-  private connectWebSocket() {
-    if (this.ws || !this.organization) return;
-    this.ws = new WebSocket(`${WS_BASE_URL}/ws/organizations?orgId=${this.organization.id}`);
-    this.ws.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data);
-        if (msg.type === 'update' && msg.data.id === this.organization.id) {
-          this.organization = msg.data;
-          AsyncStorage.setItem('myOrganization', JSON.stringify(this.organization));
-          this.notifyListeners();
-        }
-      } catch {}
-    };
-  }
-
-  // Widget Data Methods
-  public async getWidgetData(widgetKey: string) {
-    if (!this.organization) return [];
-    return apiClient.get<any[]>(`/api/organizations/${this.organization.id}/widgets/${widgetKey}/data`);
-  }
-
-  public async createWidgetData(widgetKey: string, data: any) {
-    if (!this.organization) throw new Error('No org');
-    return apiClient.post(`/api/organizations/${this.organization.id}/widgets/${widgetKey}/data`, data);
-  }
-
-  public async updateWidgetData(widgetKey: string, id: string, data: any) {
-    if (!this.organization) throw new Error('No org');
-    return apiClient.put(`/api/organizations/${this.organization.id}/widgets/${widgetKey}/data/${id}`, data);
-  }
-
-  public async deleteWidgetData(widgetKey: string, id: string) {
-    if (!this.organization) throw new Error('No org');
-    return apiClient.delete(`/api/organizations/${this.organization.id}/widgets/${widgetKey}/data/${id}`);
-  }
-
-  public async uploadFile(file: any) {
-    const res = await apiClient.upload<{ url: string }>('/api/files/upload', file);
-    return res.url;
+  // Internal Helper
+  private async saveSession(token: string, orgId: string, role: string) {
+    this._activeOrgId = orgId;
+    await SecureStore.setItemAsync(STORAGE_KEY_TOKEN, token);
+    await SecureStore.setItemAsync(STORAGE_KEY_ORG_ID, orgId);
+    await SecureStore.setItemAsync(STORAGE_KEY_ROLE, role);
   }
 }
 

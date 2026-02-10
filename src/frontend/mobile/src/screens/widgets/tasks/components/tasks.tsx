@@ -1,211 +1,189 @@
 import React, { useMemo } from 'react';
-import { View, Text, TouchableOpacity, TextInput, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Modal, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Modal, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { MaterialIcons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+
 import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
 import { useThemeColors } from '@/src/hooks';
-import { MaterialIcons } from '@expo/vector-icons';
-import { TaskItem } from '@/src/services/TaskService';
-import { createStyles } from '@/src/screens/widgets/tasks/styles/tasks.styles';
-import { useTasksLogic } from '@/src/screens/widgets/tasks/hooks/useTasksLogic';
+import { TaskItem } from '@/src/types/api';
+import { AppText, Icon } from '@/src/components/ui';
+import { useTasksLogic } from '@/src/screens/widgets/tasks/hooks/useTasksLogic'; // Ensure this path is correct
 import { ScreenTransition } from '@/src/components/animations';
 
-
 export default function TasksScreen() {
+  const router = useRouter();
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  
   const { 
-    loading, newTaskTitle, setNewTaskTitle, showCompleted, setShowCompleted, 
-    activeList, setActiveList, showDatePicker, setShowDatePicker, 
-    selectedDate, setSelectedDate, handleAddTask, toggleTask, deleteTask, filteredTasks 
+    loading, 
+    newTaskTitle, setNewTaskTitle, 
+    showCompleted, setShowCompleted, 
+    activeList, setActiveList, 
+    showDatePicker, setShowDatePicker, 
+    selectedDate, setSelectedDate, 
+    handleAddTask, toggleTask, deleteTask, 
+    tasks // <--- UPDATED: Destructure 'tasks' instead of 'filteredTasks'
   } = useTasksLogic();
 
   const lists = ['All', 'Today', 'Upcoming'];
-  const activeTasks = filteredTasks.filter(t => !t.isCompleted);
-  const completedTasks = filteredTasks.filter(t => t.isCompleted);
 
-  // ... (Keep formatDate, getDueDateColor, setQuickDate, renderTask helper functions exactly as they were) ...
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return null;
-    const date = new Date(dateString);
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    if (date.toDateString() === today.toDateString()) return 'Today';
-    if (date.toDateString() === tomorrow.toDateString()) return 'Tomorrow';
-    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  };
-
-  const getDueDateColor = (dateString?: string) => {
-    if (!dateString) return colors.subtle;
-    const date = new Date(dateString);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+  // The hook already filters the 'tasks' array based on 'activeList' and 'showCompleted'.
+  // However, if we want to separate Active vs Completed visually in the UI, 
+  // we can filter the *result* again, OR assume the hook returns what we should show.
+  // Standard pattern: Hook returns the View Model (what to show).
+  // So 'tasks' is the list we render.
+  
+  const renderTask = (task: TaskItem) => {
+    const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && !task.isCompleted;
     
-    if (date < today) return colors.notification;
-    if (date.toDateString() === today.toDateString()) return colors.primary;
-    return colors.subtle;
-  };
+    return (
+        <View key={task.id} style={styles.taskItem}>
+            <TouchableOpacity onPress={() => toggleTask(task)} style={styles.checkContainer}>
+                <View style={[styles.checkbox, task.isCompleted && styles.checkedBox, { borderColor: isOverdue ? colors.error : colors.primary }]}>
+                    {task.isCompleted && <MaterialIcons name="check" size={16} color="#FFF" />}
+                </View>
+            </TouchableOpacity>
 
-  const setQuickDate = (daysToAdd: number) => {
-    const d = new Date();
-    d.setDate(d.getDate() + daysToAdd);
-    setSelectedDate(d);
-    setShowDatePicker(false);
-  };
+            <View style={{ flex: 1 }}>
+                <Text style={[
+                    styles.taskTitle, 
+                    { color: colors.text },
+                    task.isCompleted && { textDecorationLine: 'line-through', opacity: 0.5 }
+                ]}>
+                    {task.title}
+                </Text>
+                {task.dueDate && (
+                    <Text style={[styles.taskDate, { color: isOverdue ? colors.error : colors.subtle }]}>
+                        {new Date(task.dueDate).toLocaleDateString()}
+                    </Text>
+                )}
+            </View>
 
-  const renderTask = (item: TaskItem) => (
-    <TouchableOpacity 
-      key={item.id}
-      onPress={() => toggleTask(item)} 
-      onLongPress={() => Alert.alert("Delete Task", "Are you sure?", [
-        { text: "Cancel", style: "cancel" },
-        { text: "Delete", style: "destructive", onPress: () => deleteTask(item.id) }
-      ])} 
-      style={[styles.taskItem, item.isCompleted && { opacity: 0.7, backgroundColor: colors.background }]}
-    >
-      <MaterialIcons
-        name={item.isCompleted ? "check-circle" : "radio-button-unchecked"}
-        size={24}
-        color={item.isCompleted ? colors.subtle : colors.primary}
-      />
-      <View style={styles.taskContent}>
-        <Text style={[styles.taskTitle, item.isCompleted && styles.taskTitleCompleted]}>{item.title}</Text>
-        {item.dueDate && (
-          <View style={styles.taskMeta}>
-            <MaterialIcons name="event" size={12} color={getDueDateColor(item.dueDate)} />
-            <Text style={[styles.taskDate, { color: getDueDateColor(item.dueDate) }]}>
-              {formatDate(item.dueDate)}
-            </Text>
-          </View>
-        )}
-      </View>
-    </TouchableOpacity>
-  );
+            <TouchableOpacity onPress={() => deleteTask(task.id)} style={{ padding: 8 }}>
+                <MaterialIcons name="delete-outline" size={20} color={colors.subtle} />
+            </TouchableOpacity>
+        </View>
+    );
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <ClayBackButton />
-      
-      <ScreenTransition style={{ flex: 1 }}>
-        <SafeAreaView style={styles.container} edges={['top']}>
-          <KeyboardAvoidingView 
-            style={{ flex: 1 }} 
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
-          >
-            <View style={[styles.header, { marginTop: 40 }]}>
-              <Text style={styles.headerTitle}>My Tasks</Text>
-              <Text style={styles.headerSubtitle}>{activeTasks.length} pending • {completedTasks.length} completed</Text>
-            </View>
+      <ScreenTransition>
+        <SafeAreaView style={{ flex: 1 }}>
+          {/* Header */}
+          <View style={styles.header}>
+            <ClayBackButton />
+            <Text style={[styles.title, { color: colors.text }]}>My Tasks</Text>
+            <TouchableOpacity onPress={() => setShowCompleted(!showCompleted)}>
+                <MaterialIcons name={showCompleted ? "visibility" : "visibility-off"} size={24} color={colors.primary} />
+            </TouchableOpacity>
+          </View>
 
-            <View style={{ height: 50 }}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.listSelector}>
-                {lists.map(list => (
-                  <TouchableOpacity 
+          {/* List Filters */}
+          <View style={styles.filterContainer}>
+            {lists.map(list => (
+                <TouchableOpacity 
                     key={list} 
-                    style={[styles.listChip, activeList === list && styles.listChipActive]}
+                    style={[styles.filterChip, activeList === list && { backgroundColor: colors.primary }]}
                     onPress={() => setActiveList(list)}
-                  >
-                    <Text style={[styles.listChipText, activeList === list && styles.listChipTextActive]}>{list}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
+                >
+                    <Text style={[styles.filterText, activeList === list && { color: '#FFF' }, { color: activeList !== list ? colors.text : '#FFF' }]}>
+                        {list}
+                    </Text>
+                </TouchableOpacity>
+            ))}
+          </View>
 
-            {loading ? (
-              <View style={{ flex: 1, justifyContent: 'center' }}><ActivityIndicator color={colors.primary} /></View>
-            ) : (
-              <ScrollView 
-                style={{ flex: 1 }}
-                contentContainerStyle={styles.listContent}
-              >
-                {activeTasks.length === 0 && completedTasks.length === 0 && (
-                   <View style={{ alignItems: 'center', marginTop: 60, opacity: 0.5 }}>
-                      <MaterialIcons name="check-circle-outline" size={64} color={colors.subtle} />
-                      <Text style={{ color: colors.subtle, marginTop: 16, fontSize: 16 }}>All caught up!</Text>
-                   </View>
-                )}
-
-                {activeTasks.map(renderTask)}
-
-                {completedTasks.length > 0 && (
-                  <View>
-                    <TouchableOpacity onPress={() => setShowCompleted(!showCompleted)} style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 16 }}>
-                      <Text style={styles.sectionHeader}>Completed ({completedTasks.length})</Text>
-                      <MaterialIcons name={showCompleted ? "expand-less" : "expand-more"} size={20} color={colors.subtle} style={{ marginLeft: 4, marginTop: 10 }} />
-                    </TouchableOpacity>
-                    
-                    {showCompleted && completedTasks.map(renderTask)}
-                  </View>
-                )}
-              </ScrollView>
-            )}
-
-            <View style={styles.inputWrapper}>
-              {selectedDate && (
-                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, marginLeft: 4 }}>
-                    <Text style={{ color: colors.primary, fontSize: 12, fontWeight: 'bold' }}>Due: {formatDate(selectedDate.toISOString())}</Text>
-                    <TouchableOpacity onPress={() => setSelectedDate(null)} style={{ marginLeft: 8 }}>
-                        <MaterialIcons name="close" size={14} color={colors.subtle} />
-                    </TouchableOpacity>
-                 </View>
-              )}
-              <View style={styles.inputContainer}>
-                <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.dateButton}>
+          {/* Add Task Input */}
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={10}>
+            <View style={[styles.inputContainer, { backgroundColor: colors.card }]}>
+                <TouchableOpacity onPress={() => setShowDatePicker(true)}>
                     <MaterialIcons name="event" size={24} color={selectedDate ? colors.primary : colors.subtle} />
                 </TouchableOpacity>
                 <TextInput 
-                    style={styles.input}
-                    placeholder="Add a task..."
+                    style={[styles.input, { color: colors.text }]}
+                    placeholder="Add a new task..."
                     placeholderTextColor={colors.subtle}
                     value={newTaskTitle}
                     onChangeText={setNewTaskTitle}
                     onSubmitEditing={handleAddTask}
                 />
-                {newTaskTitle.length > 0 && (
-                    <TouchableOpacity onPress={handleAddTask} style={styles.sendButton}>
-                        <MaterialIcons name="arrow-upward" size={20} color="#fff" />
-                    </TouchableOpacity>
-                )}
-              </View>
+                <TouchableOpacity onPress={handleAddTask} disabled={!newTaskTitle.trim()}>
+                    <View style={[styles.addButton, { backgroundColor: newTaskTitle.trim() ? colors.primary : colors.border }]}>
+                        <MaterialIcons name="add" size={24} color="#FFF" />
+                    </View>
+                </TouchableOpacity>
             </View>
           </KeyboardAvoidingView>
-          
-          {/* Modal code remains exactly the same... */}
-          <Modal visible={showDatePicker} transparent animationType="slide" onRequestClose={() => setShowDatePicker(false)}>
-            <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowDatePicker(false)}>
-                <View style={styles.modalContent}>
-                    <Text style={styles.modalTitle}>Set Due Date</Text>
+
+          {/* Task List */}
+          <ScrollView contentContainerStyle={styles.listContent}>
+            {loading ? (
+                <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 20 }} />
+            ) : tasks.length > 0 ? (
+                tasks.map(renderTask)
+            ) : (
+                <View style={styles.emptyState}>
+                    <Icon name="check-circle" size={48} color={colors.border} />
+                    <AppText style={{ color: colors.subtle, marginTop: 12 }}>No tasks found</AppText>
+                </View>
+            )}
+          </ScrollView>
+
+          {/* Date Picker Modal (Simplified) */}
+          <Modal visible={showDatePicker} transparent animationType="slide">
+             <View style={styles.modalOverlay}>
+                <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+                    <Text style={[styles.modalTitle, { color: colors.text }]}>Select Due Date</Text>
                     
-                    <TouchableOpacity style={styles.dateOption} onPress={() => setQuickDate(0)}>
-                        <MaterialIcons name="today" size={24} color={colors.primary} />
-                        <Text style={styles.dateOptionText}>Today</Text>
+                    <TouchableOpacity style={styles.dateOption} onPress={() => { setSelectedDate(new Date()); setShowDatePicker(false); }}>
+                        <Text style={[styles.dateOptionText, { color: colors.text }]}>Today</Text>
                     </TouchableOpacity>
                     
-                    <TouchableOpacity style={styles.dateOption} onPress={() => setQuickDate(1)}>
-                        <MaterialIcons name="event" size={24} color={colors.tertiary} />
-                        <Text style={styles.dateOptionText}>Tomorrow</Text>
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity style={styles.dateOption} onPress={() => setQuickDate(7)}>
-                        <MaterialIcons name="next-week" size={24} color={colors.secondary} />
-                        <Text style={styles.dateOptionText}>Next Week</Text>
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity style={styles.dateOption} onPress={() => setQuickDate(30)}>
-                        <MaterialIcons name="calendar-today" size={24} color={colors.text} />
-                        <Text style={styles.dateOptionText}>Next Month</Text>
+                    <TouchableOpacity style={styles.dateOption} onPress={() => { 
+                        const d = new Date(); d.setDate(d.getDate() + 1); 
+                        setSelectedDate(d); setShowDatePicker(false); 
+                    }}>
+                        <Text style={[styles.dateOptionText, { color: colors.text }]}>Tomorrow</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.cancelButton} onPress={() => setShowDatePicker(false)}>
-                        <Text style={styles.cancelText}>Cancel</Text>
+                    <TouchableOpacity style={[styles.cancelButton, { borderColor: colors.border }]} onPress={() => setShowDatePicker(false)}>
+                        <Text style={{ color: colors.text }}>Cancel</Text>
                     </TouchableOpacity>
                 </View>
-            </TouchableOpacity>
+             </View>
           </Modal>
+
         </SafeAreaView>
       </ScreenTransition>
     </View>
   );
 }
+
+const createStyles = (colors: any) => StyleSheet.create({
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 20 },
+  title: { fontSize: 24, fontWeight: 'bold' },
+  filterContainer: { flexDirection: 'row', paddingHorizontal: 20, marginBottom: 20, gap: 10 },
+  filterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.05)' },
+  filterText: { fontWeight: '600' },
+  inputContainer: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, padding: 10, borderRadius: 16, marginBottom: 20 },
+  input: { flex: 1, marginHorizontal: 10, fontSize: 16 },
+  addButton: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  listContent: { paddingHorizontal: 20, paddingBottom: 100 },
+  taskItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, padding: 12, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.02)' },
+  checkContainer: { marginRight: 12 },
+  checkbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  checkedBox: { backgroundColor: colors.primary, borderColor: colors.primary },
+  taskTitle: { fontSize: 16, fontWeight: '500' },
+  taskDate: { fontSize: 12, marginTop: 4 },
+  emptyState: { alignItems: 'center', marginTop: 40 },
+  
+  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
+  modalContent: { padding: 24, borderTopLeftRadius: 24, borderTopRightRadius: 24 },
+  modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
+  dateOption: { padding: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.1)' },
+  dateOptionText: { fontSize: 16 },
+  cancelButton: { marginTop: 20, padding: 16, alignItems: 'center', borderWidth: 1, borderRadius: 12 }
+});

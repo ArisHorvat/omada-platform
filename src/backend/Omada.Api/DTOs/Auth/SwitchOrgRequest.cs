@@ -1,3 +1,6 @@
 namespace Omada.Api.DTOs.Auth;
 
-public record SwitchOrgRequest(Guid OrganizationId);
+public class SwitchOrgRequest
+{
+    public Guid OrganizationId { get; set; }
+}

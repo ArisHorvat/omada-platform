@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Alert } from 'react-native';
+import { useAuth } from '@/src/context/AuthContext';
+import apiClient from '@/src/services/apiClient';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import { CurrentOrganizationService } from '@/src/services/CurrentOrganizationService';
 import { NewsItem, Attachment, NewsType } from '../types';
 
 export const useNewsForm = (onSuccess: () => void) => {
+  const { activeSession } = useAuth();
   const [visible, setVisible] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -17,7 +19,6 @@ export const useNewsForm = (onSuccess: () => void) => {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [coverPhoto, setCoverPhoto] = useState<Attachment | null>(null);
 
-  // 1. Reset / Open Logic
   const resetForm = () => {
     setEditingId(null);
     setTitle('');
@@ -37,9 +38,9 @@ export const useNewsForm = (onSuccess: () => void) => {
     setTitle(item.title);
     setContent(item.content);
     setType(item.type);
-    setAttachments(item.attachments || []);
-    // Map existing cover image to attachment format if exists
-    setCoverPhoto(item.coverImageUrl ? { url: item.coverImageUrl, name: 'Cover', type: 'image/jpeg' } : null);
+    // Assuming item has attachments/cover props mapped correctly
+    setAttachments(item.attachments || []); 
+    setCoverPhoto(item.coverImageUrl ? { url: item.coverImageUrl, type: 'image' } as Attachment : null);
     setVisible(true);
   };
 
@@ -82,13 +83,10 @@ export const useNewsForm = (onSuccess: () => void) => {
   // 3. Submission Logic
   const handleSubmit = async () => {
     if (!title.trim() || !content.trim()) return Alert.alert('Error', 'Title and Content are required');
-    
+    if (!activeSession?.orgId) return Alert.alert('Error', 'No active organization session');
+
     setIsPosting(true);
     try {
-      // Note: In a real app, you would upload files here to S3/Cloudinary 
-      // and get the URLs before sending to your API.
-      // We pass the raw object assuming your Service handles FormData conversion.
-      
       const payload = {
         title,
         content,
@@ -97,17 +95,19 @@ export const useNewsForm = (onSuccess: () => void) => {
         coverImageUrl: coverPhoto?.url || coverPhoto?.uri
       };
 
+      const baseUrl = `/organizations/${activeSession.orgId}/widgets/news/data`;
+
       if (editingId) {
-        await CurrentOrganizationService.updateWidgetData('news', editingId, payload);
+        await apiClient.put(`${baseUrl}/${editingId}`, payload);
       } else {
-        await CurrentOrganizationService.createWidgetData('news', payload);
+        await apiClient.post(baseUrl, payload);
       }
 
       setVisible(false);
       resetForm();
-      onSuccess(); // Trigger list refresh
-    } catch (error) {
-      Alert.alert("Error", "Failed to save post. Please try again.");
+      onSuccess(); 
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "Failed to save post.");
     } finally {
       setIsPosting(false);
     }

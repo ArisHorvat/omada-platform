@@ -1,24 +1,37 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Alert } from 'react-native';
-import { CurrentOrganizationService } from '@/src/services/CurrentOrganizationService';
+import { useAuth } from '@/src/context/AuthContext';
+import apiClient from '@/src/services/apiClient';
 import { NewsItem } from '../types';
 
 export const useNewsData = () => {
+  const { activeSession } = useAuth();
   const [items, setItems] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchNews = useCallback(async () => {
+    if (!activeSession?.orgId) return;
+
     try {
-      const data = await CurrentOrganizationService.getWidgetData('news');
-      setItems(data || []); 
+      // NEW: Direct API Call
+      // GET /api/organizations/{orgId}/widgets/news/data
+      const result = await apiClient.get<NewsItem[]>(
+        `/organizations/${activeSession.orgId}/widgets/news/data`
+      );
+      setItems(result.data || []); 
     } catch (e) {
       console.error("Failed to fetch news", e);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [activeSession?.orgId]);
+
+  // Initial Fetch
+  useEffect(() => {
+    fetchNews();
+  }, [fetchNews]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -32,20 +45,19 @@ export const useNewsData = () => {
         text: "Delete", 
         style: "destructive", 
         onPress: async () => {
+          if (!activeSession?.orgId) return;
           try { 
-            await CurrentOrganizationService.deleteWidgetData('news', id); 
-            fetchNews(); // Refresh list after delete
+            await apiClient.delete(
+                `/organizations/${activeSession.orgId}/widgets/news/data/${id}`
+            );
+            fetchNews(); 
           } catch (e) { 
-            Alert.alert("Error", "Failed to delete post."); 
+            Alert.alert("Error", "Failed to delete post"); 
           }
-        }
+        } 
       }
     ]);
   };
 
-  useEffect(() => {
-    fetchNews();
-  }, [fetchNews]);
-
-  return { items, loading, refreshing, onRefresh, fetchNews, handleDelete };
+  return { items, loading, refreshing, onRefresh, handleDelete };
 };
