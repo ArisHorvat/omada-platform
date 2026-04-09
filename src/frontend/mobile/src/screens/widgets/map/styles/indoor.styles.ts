@@ -1,9 +1,10 @@
-import { StyleSheet, Dimensions } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 export const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+    paddingBottom: 100,
   },
   header: {
     padding: 16,
@@ -92,5 +93,38 @@ export const createStyles = (colors: any) => StyleSheet.create({
   },
   activeFloorText: {
     color: '#ffffff',
+  },
+  floorScroll: {
+    maxHeight: 52,
+    marginBottom: 12,
+    paddingHorizontal: 16,
+  },
+  floorScrollContent: {
+    gap: 8,
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  roomPin: {
+    position: 'absolute',
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginLeft: -6,
+    marginTop: -6,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.9)',
+  },
+  roomPinFocused: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    marginLeft: -9,
+    marginTop: -9,
+    zIndex: 10,
+    elevation: 6,
+  },
+  floorplanBlock: {
+    flex: 1,
+    minHeight: 200,
   },
 });

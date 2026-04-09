@@ -1,13 +1,8 @@
 import React from 'react';
 import { ViewStyle } from 'react-native';
-import Animated, { 
-  FadeInDown, 
-  SlideInRight, 
-  ZoomIn 
-} from 'react-native-reanimated';
+import Animated, { FadeInDown, Easing } from 'react-native-reanimated';
 
-// --- CHANGE THIS VARIABLE TO SWAP ANIMATIONS ---
-const CURRENT_ANIMATION = FadeInDown.springify().mass(1).damping(16).stiffness(100);
+const CURRENT_ANIMATION = FadeInDown.duration(300).easing(Easing.out(Easing.ease));
 
 interface ScreenTransitionProps {
   children: React.ReactNode;

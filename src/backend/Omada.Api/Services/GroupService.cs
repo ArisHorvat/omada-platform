@@ -2,84 +2,141 @@ using Omada.Api.Entities;
 using Omada.Api.Repositories.Interfaces;
 using Omada.Api.Services.Interfaces;
 using Omada.Api.DTOs.Groups;
+using Omada.Api.Abstractions;
+using Microsoft.EntityFrameworkCore;
+using Omada.Api.Data;
 
 namespace Omada.Api.Services;
 
 public class GroupService : IGroupService
 {
-    private readonly IGroupRepository _groupRepository;
-    private readonly IUserRepository _userRepository;
+    private readonly IUnitOfWork _uow;
+    private readonly IUserContext _userContext;
     private readonly IPermissionService _permissionService;
+    private readonly ApplicationDbContext _context; // For advanced LINQ queries
 
-    public GroupService(IGroupRepository groupRepository, IUserRepository userRepository, IPermissionService permissionService)
+    public GroupService(IUnitOfWork uow, IUserContext userContext, IPermissionService permissionService, ApplicationDbContext context)
     {
-        _groupRepository = groupRepository;
-        _userRepository = userRepository;
+        _uow = uow;
+        _userContext = userContext;
         _permissionService = permissionService;
+        _context = context;
     }
 
-    public async Task<Result<Group>> CreateGroupAsync(CreateGroupRequest request)
+    public async Task<ServiceResponse<GroupDto>> CreateGroupAsync(CreateGroupRequest request)
     {
-        var groupResult = Group.Create(request.OrganizationId, request.Name, request.Type, request.ManagerId, request.ParentGroupId, request.ScheduleConfig);
-        if (groupResult.IsFailure) return Result<Group>.Failure(groupResult.Error!);
+        var organizationId = _userContext.OrganizationId;
 
-        try 
+        var group = new Group
         {
-            await _groupRepository.CreateAsync(groupResult.Value!);
-            
-            if (request.ManagerId.HasValue)
-            {
-                await _groupRepository.AddMemberAsync(groupResult.Value!.Id, request.ManagerId.Value, "Leader");
-            }
+            OrganizationId = organizationId,
+            Name = request.Name,
+            Type = request.Type,
+            ManagerId = request.ManagerId,
+            ParentGroupId = request.ParentGroupId,
+            ScheduleConfig = request.ScheduleConfig
+        };
 
-            return Result<Group>.Success(groupResult.Value!);
-        }
-        catch (Exception ex)
+        await _uow.Repository<Group>().AddAsync(group);
+        
+        if (request.ManagerId.HasValue)
         {
-            return Result<Group>.Failure($"Failed to create group: {ex.Message}");
+            var groupMember = new GroupMember 
+            { 
+                GroupId = group.Id, 
+                UserId = request.ManagerId.Value, 
+                RoleInGroup = "Leader" 
+            };
+            await _uow.Repository<GroupMember>().AddAsync(groupMember);
         }
+
+        await _uow.CompleteAsync(); // Saves everything atomically
+
+        var groupDto = new GroupDto
+        {
+            Id = group.Id,
+            Name = group.Name,
+            Type = group.Type,
+            ParentGroupId = group.ParentGroupId
+        };
+
+        return new ServiceResponse<GroupDto>(true, groupDto);
     }
 
-    public async Task<Result<AttendanceConfigDto>> GetAttendanceConfigAsync(Guid userId, Guid organizationId)
+    public async Task<ServiceResponse<AttendanceConfigDto>> GetAttendanceConfigAsync()
     {
-        try
+        var userId = _userContext.UserId;
+        var organizationId = _userContext.OrganizationId;
+
+        var canManageOrgResponse = await _permissionService.CanManageAllGroupsInOrg(userId, organizationId);
+        if (canManageOrgResponse.IsSuccess && canManageOrgResponse.Data)
         {
-            // 1. Check Universal Admin Rights
-            var canManageOrg = await _permissionService.CanManageAllGroupsInOrg(userId, organizationId);
-            if (canManageOrg.IsSuccess && canManageOrg.Value)
+            return new ServiceResponse<AttendanceConfigDto>(true, new AttendanceConfigDto
             {
-                return Result<AttendanceConfigDto>.Success(new AttendanceConfigDto { Mode = "UniversalSessionManager" });
-            }
-            
-            var groups = await _groupRepository.GetGroupsForUserAsync(userId);
-
-            // 2. Check Direct Class Management
-            var classesManaged = groups.Where(g => g.Type == "class" && g.ManagerId == userId).ToList();
-            if (classesManaged.Any())
-            {
-                return Result<AttendanceConfigDto>.Success(new AttendanceConfigDto 
-                { 
-                    Mode = "SessionManager", 
-                    Groups = classesManaged 
-                });
-            }
-
-            // 3. Check Department Management
-            var deptManaged = groups.FirstOrDefault(g => g.Type == "department" && g.ManagerId == userId);
-            if (deptManaged != null)
-            {
-                return Result<AttendanceConfigDto>.Success(new AttendanceConfigDto 
-                { 
-                    Mode = "Approval", 
-                    Department = deptManaged 
-                });
-            }
-
-            return Result<AttendanceConfigDto>.Success(new AttendanceConfigDto { Mode = "Student" });
+                Mode = "UniversalSessionManager",
+                Groups = new List<GroupDto>() // REQUIRED: Initialize empty list
+            });
         }
-        catch (Exception ex)
+
+        // Get all groups where user is a member
+        var groups = await _context.GroupMembers
+            .Where(gm => gm.UserId == userId && gm.Group.OrganizationId == organizationId)
+            .Select(gm => gm.Group)
+            .ToListAsync();
+
+        var classesManaged = groups.Where(g => g.Type == "class" && g.ManagerId == userId).ToList();
+        if (classesManaged.Any())
         {
-            return Result<AttendanceConfigDto>.Failure($"Failed to fetch config: {ex.Message}");
+            return new ServiceResponse<AttendanceConfigDto>(true, new AttendanceConfigDto
+            {
+                Mode = "SessionManager",
+                // FIX: Map Entities to DTOs
+                Groups = classesManaged.Select(g => new GroupDto
+                {
+                    Id = g.Id,
+                    Name = g.Name,
+                    Type = g.Type,
+                    ParentGroupId = g.ParentGroupId
+                }).ToList()
+            });
         }
+
+        var deptManaged = groups.FirstOrDefault(g => g.Type == "department" && g.ManagerId == userId);
+        if (deptManaged != null)
+        {
+            return new ServiceResponse<AttendanceConfigDto>(true, new AttendanceConfigDto
+            {
+                Mode = "Approval",
+                Groups = new List<GroupDto>(), // REQUIRED: Initialize empty list
+                                               // FIX: Map the single Entity to a DTO
+                Department = new GroupDto
+                {
+                    Id = deptManaged.Id,
+                    Name = deptManaged.Name,
+                    Type = deptManaged.Type,
+                    ParentGroupId = deptManaged.ParentGroupId
+                }
+            });
+        }
+
+        return new ServiceResponse<AttendanceConfigDto>(true, new AttendanceConfigDto
+        {
+            Mode = "Student",
+            Groups = new List<GroupDto>() // REQUIRED: Initialize empty list
+        });
+    }
+
+    public async Task<ServiceResponse<IEnumerable<DepartmentSummaryDto>>> GetDepartmentsAsync()
+    {
+        var organizationId = _userContext.OrganizationId;
+
+        var departments = await _context.Groups
+            .AsNoTracking()
+            .Where(g => g.OrganizationId == organizationId && !g.IsDeleted && g.Type.ToLower() == "department")
+            .OrderBy(g => g.Name)
+            .Select(g => new DepartmentSummaryDto { Id = g.Id, Name = g.Name })
+            .ToListAsync();
+
+        return new ServiceResponse<IEnumerable<DepartmentSummaryDto>>(true, departments);
     }
 }

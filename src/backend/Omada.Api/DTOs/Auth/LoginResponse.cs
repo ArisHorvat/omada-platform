@@ -1,9 +1,21 @@
+using System.ComponentModel.DataAnnotations;
+using Omada.Api.DTOs.Users;
+
 namespace Omada.Api.DTOs.Auth;
 
 public class LoginResponse
 {
-    public string Token { get; set; } = string.Empty;
-    public UserDto User { get; set; } = new();
-    public Guid OrganizationId { get; set; }
-    public string Role { get; set; } = string.Empty;
+    [Required]
+    public required string AccessToken { get; set; }
+    
+    public string? RefreshToken { get; set; } // Optional if not always issued
+        
+    [Required]
+    public required UserDto User { get; set; }
+        
+    [Required]
+    public required Guid OrganizationId { get; set; }
+    
+    [Required]
+    public required string Role { get; set; }
 }

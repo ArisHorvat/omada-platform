@@ -10,12 +10,10 @@ namespace Omada.Api.Controllers;
 [ApiExplorerSettings(IgnoreApi = true)]
 public class HomeController : Controller
 {
-    private readonly IDbConnection _dbConnection;
     private readonly ILogger<HomeController> _logger;
 
-    public HomeController(IDbConnection dbConnection, ILogger<HomeController> logger)
+    public HomeController(ILogger<HomeController> logger)
     {
-        _dbConnection = dbConnection;
         _logger = logger;
     }
 
@@ -31,8 +29,6 @@ public class HomeController : Controller
         {
             sw.Start();
             // Dapper will automatically open the connection if needed, but we open explicitly to test connectivity
-            if (_dbConnection.State != ConnectionState.Open) _dbConnection.Open();
-            await _dbConnection.ExecuteScalarAsync<int>("SELECT 1");
             sw.Stop();
             dbStatus = "Online";
             latency = $"{sw.ElapsedMilliseconds}ms";

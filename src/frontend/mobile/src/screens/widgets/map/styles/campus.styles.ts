@@ -49,4 +49,9 @@ export const createStyles = (colors: any) => StyleSheet.create({
     fontWeight: '600',
     marginRight: 4,
   },
+  markerBubble: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingBottom: 4,
+  },
 });

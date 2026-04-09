@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, Modal } from 'react-native';
-import { 
-  AppText, AppButton, GlassView, Divider, Icon, 
+import {
+  AppText, AppButton, ClayView, Divider, Icon,
   IconInput, OtpInput, SegmentedControl, ToggleSwitch, RadioButton, StarRating, ChipGroup,
   StatusBadge, AvatarStack, CircularProgress, LinearProgressBar, StepIndicator, CodeBlock, Accordion,
   Skeleton, EmptyState, PulseIndicator, Toast, Tooltip,
@@ -95,7 +95,7 @@ export const UiToolkit = () => {
         />
         
         {/* BUTTONS */}
-        <GlassView intensity={10} style={styles.card}>
+        <ClayView depth={6} puffy={12} color={colors.card} style={styles.card}>
           <ComponentLabel label="Button Variants" />
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 24 }}>
             <AppButton title="Primary" onPress={() => {}} size="sm" />
@@ -109,10 +109,10 @@ export const UiToolkit = () => {
             <AppButton title="Disabled" disabled onPress={() => {}} size="sm" />
             <AppButton title="Destructive" style={{ backgroundColor: colors.error }} onPress={() => {}} size="sm" />
           </View>
-        </GlassView>
+        </ClayView>
 
         {/* CONTROLS */}
-        <GlassView intensity={10} style={[styles.card, { marginTop: 16 }]}>
+        <ClayView depth={6} puffy={12} color={colors.card} style={[styles.card, { marginTop: 16 }]}>
           <ComponentLabel label="Toggles & Switches" />
           <View style={styles.rowBetween}>
              <View>
@@ -129,7 +129,7 @@ export const UiToolkit = () => {
              <RadioButton selected={radioVal === 'opt1'} onPress={() => setRadioVal('opt1')} label="Standard" />
              <RadioButton selected={radioVal === 'opt2'} onPress={() => setRadioVal('opt2')} label="Pro" />
           </View>
-        </GlassView>
+        </ClayView>
       </DemoCard>
 
 
@@ -142,7 +142,7 @@ export const UiToolkit = () => {
           description="Inputs, filters, and selection controls."
         />
         
-        <GlassView intensity={10} style={styles.card}>
+        <ClayView depth={6} puffy={12} color={colors.card} style={styles.card}>
             {/* TEXT INPUTS */}
             <ComponentLabel label="Text Fields" />
             <IconInput 
@@ -199,7 +199,7 @@ export const UiToolkit = () => {
                   <OtpInput length={4} onCodeFilled={(c) => console.log(c)} />
                </View>
             </View>
-        </GlassView>
+        </ClayView>
       </DemoCard>
 
 
@@ -214,7 +214,7 @@ export const UiToolkit = () => {
 
         <View style={{ gap: 16 }}>
           {/* TOASTS */}
-          <GlassView intensity={15} style={{ minHeight: 250, ...styles.card }}>
+          <ClayView depth={8} puffy={12} color={colors.card} style={{ minHeight: 250, ...styles.card }}>
              <ComponentLabel label="Toast Notifications" />
              
              {/* Buttons Row */}
@@ -247,10 +247,10 @@ export const UiToolkit = () => {
                  />
                )}
              </View>
-          </GlassView>
+          </ClayView>
 
           {/* LOADING STATES */}
-          <GlassView intensity={10} style={styles.card}>
+          <ClayView depth={6} puffy={12} color={colors.card} style={styles.card}>
              <ComponentLabel label="Loading Skeletons" />
              <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center' }}>
                 <Skeleton width={48} height={48} style={{ borderRadius: 24 }} />
@@ -259,17 +259,17 @@ export const UiToolkit = () => {
                    <Skeleton width="60%" height={16} />
                 </View>
              </View>
-          </GlassView>
+          </ClayView>
 
           {/* EMPTY STATE */}
-          <GlassView intensity={5} style={[styles.card, { borderWidth: 1, borderColor: colors.border }]}>
+          <ClayView depth={4} puffy={10} color={colors.card} style={[styles.card, { borderWidth: 1, borderColor: colors.border }]}>
              <ComponentLabel label="Empty State" />
              <EmptyState 
                icon="cloud-off" 
                title="No Connections" 
                description="You are currently offline. Check your internet." 
              />
-          </GlassView>
+          </ClayView>
         </View>
       </DemoCard>
 
@@ -283,7 +283,7 @@ export const UiToolkit = () => {
           description="Badges, charts, and progress indicators."
         />
         
-        <GlassView intensity={10} style={styles.card}>
+        <ClayView depth={6} puffy={12} color={colors.card} style={styles.card}>
            {/* BADGES */}
            <ComponentLabel label="Status Badges" />
            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
@@ -313,7 +313,7 @@ export const UiToolkit = () => {
            <View style={{ backgroundColor: colors.background, padding: 16, borderRadius: 12 }}>
               <StepIndicator currentStep={1} steps={['Register', 'Verify', 'Complete']} />
            </View>
-        </GlassView>
+        </ClayView>
       </DemoCard>
 
 
@@ -329,7 +329,7 @@ export const UiToolkit = () => {
         {/* SWIPEABLE */}
         <ComponentLabel label="Swipeable Row" />
         <SwipeableRow style={{ marginBottom: 24 }} actions={[{ icon: 'delete', onPress: () => alert('Deleted'), color: colors.error }]}>
-           <GlassView intensity={15} style={[styles.card, { borderWidth: 1, borderColor: colors.border }]}>
+           <ClayView depth={8} puffy={12} color={colors.card} style={[styles.card, { borderWidth: 1, borderColor: colors.border }]}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
                  <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}>
                     <Icon name="person" size={20} color="#fff" />
@@ -339,7 +339,7 @@ export const UiToolkit = () => {
                     <AppText variant="caption" style={{ color: colors.subtle }}>Swipe left for actions</AppText>
                  </View>
               </View>
-           </GlassView>
+           </ClayView>
         </SwipeableRow>
 
         {/* BENTO */}
@@ -347,25 +347,25 @@ export const UiToolkit = () => {
         <View style={{ height: 220 }}>
            <BentoGrid>
               {/* Large */}
-              <GlassView style={{ flex: 1, backgroundColor: colors.primary + '15', padding: 16, justifyContent: 'space-between' }}>
+              <ClayView depth={4} puffy={12} color={colors.card} style={{ flex: 1, padding: 16, justifyContent: 'space-between' }}>
                  <Icon name="school" size={28} color={colors.primary} />
                  <View>
                     <AppText variant="h2">1,240</AppText>
                     <AppText variant="caption">Total Students</AppText>
                  </View>
-              </GlassView>
+              </ClayView>
 
               {/* Small 1 */}
-              <GlassView style={{ flex: 1, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center' }}>
+              <ClayView depth={4} puffy={12} color={colors.card} style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
                  <Icon name="event" size={24} color={colors.text} />
                  <AppText variant="caption" style={{ marginTop: 6 }}>Events</AppText>
-              </GlassView>
+              </ClayView>
 
               {/* Small 2 */}
-              <GlassView style={{ flex: 1, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center' }}>
+              <ClayView depth={4} puffy={12} color={colors.card} style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
                  <Icon name="chat" size={24} color={colors.text} />
                  <AppText variant="caption" style={{ marginTop: 6 }}>Chat</AppText>
-              </GlassView>
+              </ClayView>
            </BentoGrid>
         </View>
       </DemoCard>

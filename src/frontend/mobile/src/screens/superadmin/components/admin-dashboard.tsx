@@ -12,7 +12,7 @@ export default function SuperAdminDashboard() {
   const router = useRouter();
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { filteredOrganizations, isOffline, searchQuery, setSearchQuery, handleLogout, deleteOrganization } = useSuperAdminDashboardLogic();
+  const { searchQuery, setSearchQuery, handleLogout, deleteOrganization } = useSuperAdminDashboardLogic();
 
   const renderItem = ({ item }: { item: any }) => (
     <TouchableOpacity style={styles.orgItem} onPress={() => router.push("..")}>
@@ -44,14 +44,15 @@ export default function SuperAdminDashboard() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        {isOffline && (
           <View style={styles.offlineBanner}><Text style={styles.offlineText}>Offline Mode - Changes will sync when online</Text></View>
-        )}
         <View style={styles.header}>
           <TouchableOpacity onPress={handleLogout}>
             <MaterialIcons name="logout" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>All Organizations</Text>
+          <TouchableOpacity onPress={() => router.push('/org-dashboard')} accessibilityLabel="Organization admin">
+            <MaterialIcons name="apartment" size={26} color={colors.primary} />
+          </TouchableOpacity>
           <TouchableOpacity onPress={() => router.push('/register-flow')}>
             <MaterialIcons name="add-business" size={28} color={colors.primary} />
           </TouchableOpacity>
@@ -69,7 +70,7 @@ export default function SuperAdminDashboard() {
         </View>
 
         <FlatList
-          data={filteredOrganizations}
+          data={[]}
           renderItem={renderItem}
           keyExtractor={(item) => item.id ? item.id.toString() : `temp-${Math.random()}`}
         />

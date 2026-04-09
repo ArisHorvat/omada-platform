@@ -1,4 +1,4 @@
-import SettingsScreen from '@/src/screens/widgets/settings/components/settings'; 
+import SettingsScreen from '@/src/screens/widgets/settings/components/SettingsScreen'; 
 
 export default function SettingsRoute() {
   return <SettingsScreen />;

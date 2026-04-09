@@ -1,14 +1,23 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 
-const USERS = [
-  { id: '1', name: 'Alice Johnson', role: 'Student', email: 'alice@example.com' },
-  { id: '2', name: 'Bob Smith', role: 'Teacher', email: 'bob@example.com' },
-  { id: '3', name: 'Charlie Brown', role: 'Student', email: 'charlie@example.com' },
-  { id: '4', name: 'Dr. Emily Davis', role: 'Admin', email: 'emily@example.com' },
-];
+import { unwrap, usersApi } from '@/src/api';
 
 export const useUsersListLogic = () => {
   const [search, setSearch] = useState('');
-  const filteredUsers = USERS.filter(u => u.name.toLowerCase().includes(search.toLowerCase()));
+
+  const directoryQuery = useQuery({
+    queryKey: ['users', 'directory', 'search', search],
+    queryFn: async () =>
+      await unwrap(usersApi.getDirectory(1, 50, search.trim() || null, null, null, null)),
+  });
+
+  const filteredUsers = (directoryQuery.data?.items ?? []).map((u) => ({
+    id: u.id,
+    name: `${u.firstName} ${u.lastName}`,
+    role: u.roleName,
+    email: u.email,
+  }));
+
   return { search, setSearch, filteredUsers };
 };

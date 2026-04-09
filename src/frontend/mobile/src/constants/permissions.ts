@@ -1,96 +1,127 @@
-export type PermissionLevel = 'view' | 'view_own' | 'edit' | 'edit_own' | 'admin';
+/**
+ * Re-exports permission types and maps from `config/permissions.config.ts` (keep one source of truth).
+ * Preset roles for onboarding demos — keys must match `PERMISSION_MAP` / backend `WidgetKeys`.
+ */
+import type { PermissionLevel } from '@/src/config/permissions.config';
 
-export interface WidgetPermission {
-  key: string;
-  label: string;
-  description: string;
-  possibleLevels: PermissionLevel[];
+export type { PermissionLevel, WidgetPermissionDef, Capability, AccessLevel } from '@/src/config/permissions.config';
+export {
+  WIDGET_KEYS,
+  PERMISSION_MAP,
+  WIDGET_PERMISSIONS,
+  ALL_CAPABILITIES,
+} from '@/src/config/permissions.config';
+
+export interface RolePreset {
+  name: string;
+  widgets: Record<string, PermissionLevel>;
 }
 
-export const WIDGET_PERMISSIONS: Record<string, WidgetPermission> = {
-  // --- CORE ---
-  schedule: {
-    key: 'schedule',
-    label: 'Schedule',
-    description: 'View and manage calendar events',
-    possibleLevels: ['view', 'edit', 'admin'], 
-  },
-  news: {
-    key: 'news',
-    label: 'News Feed',
-    description: 'Post and read organization announcements',
-    possibleLevels: ['view', 'edit', 'admin'],
-  },
-  chat: {
-    key: 'chat',
-    label: 'Chat',
-    description: 'Instant messaging and group channels',
-    possibleLevels: ['view', 'edit', 'admin'],
-  },
+export interface OrgPreset {
+  roles: RolePreset[];
+}
 
-  // --- UNIVERSITY ---
-  grades: {
-    key: 'grades',
-    label: 'Grades',
-    description: 'Academic performance and transcripts',
-    possibleLevels: ['view_own', 'edit', 'admin'],
+export const ORG_PRESETS: Record<string, OrgPreset> = {
+  university: {
+    roles: [
+      {
+        name: 'Student',
+        widgets: {
+          grades: 'view',
+          assignments: 'view',
+          attendance: 'view',
+          map: 'view',
+          transport: 'view',
+          events: 'view',
+          documents: 'view',
+          rooms: 'view',
+          schedule: 'view',
+        },
+      },
+      {
+        name: 'Professor',
+        widgets: {
+          grades: 'edit',
+          assignments: 'edit',
+          attendance: 'edit',
+          users: 'view',
+          transport: 'view',
+          schedule: 'edit',
+          chat: 'edit',
+        },
+      },
+      {
+        name: 'Teaching Assistant',
+        widgets: { grades: 'edit', assignments: 'edit', attendance: 'edit' },
+      },
+      {
+        name: 'Dean',
+        widgets: { news: 'edit', users: 'edit', map: 'view', schedule: 'view' },
+      },
+      {
+        name: 'Registrar',
+        widgets: {
+          grades: 'admin',
+          attendance: 'admin',
+          documents: 'edit',
+          users: 'edit',
+        },
+      },
+      {
+        name: 'Operations',
+        widgets: {
+          map: 'edit',
+          transport: 'edit',
+          rooms: 'edit',
+          events: 'edit',
+        },
+      },
+    ],
   },
-  assignments: {
-    key: 'assignments',
-    label: 'Assignments',
-    description: 'Submit and grade coursework',
-    possibleLevels: ['view_own', 'edit', 'admin'],
+  corporate: {
+    roles: [
+      {
+        name: 'Employee',
+        widgets: {
+          tasks: 'view',
+          documents: 'view',
+          finance: 'view',
+          map: 'view',
+          rooms: 'view',
+          schedule: 'view',
+          chat: 'view',
+        },
+      },
+      {
+        name: 'Team Lead',
+        widgets: { tasks: 'edit', users: 'view', rooms: 'view', chat: 'edit' },
+      },
+      {
+        name: 'Project Manager',
+        widgets: {
+          tasks: 'admin',
+          documents: 'edit',
+          finance: 'view',
+          users: 'view',
+        },
+      },
+      {
+        name: 'Director',
+        widgets: { finance: 'view', news: 'edit', users: 'view' },
+      },
+      {
+        name: 'HR Manager',
+        widgets: {
+          documents: 'admin',
+          users: 'admin',
+          finance: 'view',
+          news: 'edit',
+        },
+      },
+      {
+        name: 'Operations',
+        widgets: { map: 'edit', transport: 'edit', rooms: 'edit' },
+      },
+    ],
   },
-  attendance: {
-    key: 'attendance',
-    label: 'Attendance',
-    description: 'Track and verify presence',
-    possibleLevels: ['view_own', 'edit', 'admin'],
-  },
-
-  // --- CORPORATE ---
-  finance: {
-    key: 'finance',
-    label: 'Finance',
-    description: 'Payroll, expenses, and budgeting',
-    possibleLevels: ['view_own', 'edit', 'admin'],
-  },
-  documents: {
-    key: 'documents',
-    label: 'Documents',
-    description: 'Shared folders and personal files',
-    possibleLevels: ['view', 'edit', 'admin'],
-  },
-
-  // --- SHARED ---
-  tasks: {
-    key: 'tasks',
-    label: 'Tasks',
-    description: 'Personal and team to-do lists',
-    possibleLevels: ['view_own', 'edit_own', 'edit', 'admin'],
-  },
-  rooms: {
-    key: 'rooms',
-    label: 'Room Booking',
-    description: 'Manage physical space reservations',
-    possibleLevels: ['view', 'edit', 'admin'],
-  },
-  users: {
-    key: 'users',
-    label: 'Directory',
-    description: 'Manage member profiles and roles',
-    possibleLevels: ['view', 'edit', 'admin'],
-  },
-};
-
-/**
- * Helper to get default permission level for a widget 
- * if none is explicitly provided during registration.
- */
-export const getDefaultLevel = (widgetKey: string): PermissionLevel => {
-  const meta = WIDGET_PERMISSIONS[widgetKey];
-  if (!meta) return 'view';
-  
-  // Prefer view_own for sensitive data, otherwise view
-  return meta.possibleLevels.includes('view_own') ? 'view_own' : 'view';
 };

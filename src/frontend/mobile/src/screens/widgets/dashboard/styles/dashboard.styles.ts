@@ -3,8 +3,10 @@ import { StyleSheet, Dimensions } from 'react-native';
 const { width } = Dimensions.get('window');
 
 // 1. CONFIGURATION
-export const CARD_MARGIN = 12; 
-export const CARD_WIDTH = width * 0.85; 
+export const CARD_MARGIN = 12;
+/** Fits in padded highlights row; caps width so emphasized (ring) cards don’t clip the viewport */
+export const HIGHLIGHT_SCROLL_PADDING = 40;
+export const CARD_WIDTH = Math.min(width * 0.85, width - HIGHLIGHT_SCROLL_PADDING - 16);
 // Snap interval for horizontal scrolling (Card + Margin)
 export const SNAP_INTERVAL = CARD_WIDTH + CARD_MARGIN;
 export const CARD_HEIGHT = 220; 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import * as LocalAuthentication from 'expo-local-authentication';
+import { promptLocalAuthentication } from '@/src/utils/promptLocalAuthentication';
 
 export const useBiometrics = () => {
   const [isCompatible, setIsCompatible] = useState(false);
@@ -23,15 +24,11 @@ export const useBiometrics = () => {
   }, []);
 
   const authenticate = async (): Promise<boolean> => {
-    try {
-      const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'Unlock your Student ID',
-        fallbackLabel: 'Use Passcode',
-      });
-      return result.success;
-    } catch (e) {
-      return false;
-    }
+    return promptLocalAuthentication({
+      promptMessage: 'Unlock Omada',
+      fallbackLabel: 'Use device passcode',
+      cancelLabel: 'Cancel',
+    });
   };
 
   return { isCompatible, biometryType, authenticate };

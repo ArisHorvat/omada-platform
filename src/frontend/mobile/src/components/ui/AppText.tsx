@@ -1,42 +1,59 @@
-import React from 'react';
-import { Text, TextProps, StyleSheet } from 'react-native';
+import React, { useMemo } from 'react';
+import { Text, TextProps, TextStyle } from 'react-native';
 import { useThemeColors } from '@/src/hooks';
 
+export type AppTextVariant = 'h1' | 'h2' | 'h3' | 'body' | 'caption' | 'display' | 'label';
+
 interface AppTextProps extends TextProps {
-  variant?: 'h1' | 'h2' | 'h3' | 'body' | 'caption' | 'display' | 'label';
+  variant?: AppTextVariant;
   weight?: 'regular' | 'medium' | 'bold' | 'extra';
   adjustsToFit?: boolean;
   children: React.ReactNode;
 }
 
-export const AppText = ({ 
-  variant = 'body', 
-  weight = 'regular', 
+const VARIANT_STYLES: Record<
+  AppTextVariant,
+  Pick<TextStyle, 'fontSize' | 'lineHeight' | 'letterSpacing' | 'textTransform'>
+> = {
+  display: { fontSize: 34, lineHeight: 40, letterSpacing: -0.5 },
+  h1: { fontSize: 24, lineHeight: 30, letterSpacing: -0.25 },
+  h2: { fontSize: 20, lineHeight: 26, letterSpacing: -0.15 },
+  h3: { fontSize: 16, lineHeight: 22, letterSpacing: 0 },
+  body: { fontSize: 14, lineHeight: 20, letterSpacing: 0 },
+  caption: { fontSize: 12, lineHeight: 16, letterSpacing: 0.1 },
+  label: { fontSize: 11, lineHeight: 14, letterSpacing: 0.6, textTransform: 'uppercase' },
+};
+
+export const AppText = ({
+  variant = 'body',
+  weight = 'regular',
   adjustsToFit = false,
-  style, 
-  ...props 
+  style,
+  ...props
 }: AppTextProps) => {
   const colors = useThemeColors();
 
-  const getFontFamily = () => {
+  const fontFamily = useMemo(() => {
     switch (weight) {
-      case 'extra': return 'Display';
-      case 'bold': return 'Heading';
-      default: return 'Body';
+      case 'extra':
+        return 'Display';
+      case 'bold':
+        return 'Heading';
+      case 'medium':
+        return 'Body';
+      default:
+        return 'Body';
     }
-  };
+  }, [weight]);
 
-  const getFontSize = () => {
-    switch (variant) {
-      case 'display': return 34;
-      case 'h1': return 24;
-      case 'h2': return 20;
-      case 'h3': return 16;
-      case 'body': return 14;
-      case 'caption': return 12;
-      default: return 14;
+  const variantTypography = VARIANT_STYLES[variant];
+
+  const defaultColor = useMemo(() => {
+    if (variant === 'caption' || variant === 'label') {
+      return colors.subtle;
     }
-  };
+    return colors.text;
+  }, [colors.subtle, colors.text, variant]);
 
   return (
     <Text
@@ -44,14 +61,14 @@ export const AppText = ({
       adjustsFontSizeToFit={adjustsToFit}
       minimumFontScale={0.7}
       style={[
-        { 
-          color: colors.text, 
-          fontFamily: getFontFamily(),
-          fontSize: getFontSize(),
-        }, 
-        style
-      ]} 
-      {...props} 
+        {
+          color: defaultColor,
+          fontFamily,
+          ...variantTypography,
+        },
+        style,
+      ]}
+      {...props}
     />
   );
 };

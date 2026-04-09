@@ -19,38 +19,26 @@ public class ToolsController : ControllerBase
     }
 
     [HttpPost("extract-colors")]
-    [ProducesResponseType(typeof(ServiceResponse<List<string>>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> ExtractColors(IFormFile file)
+    public async Task<ActionResult<ServiceResponse<List<string>>>> ExtractColors(IFormFile file)
     {
         if (file == null || file.Length == 0)
             return BadRequest(new ServiceResponse(false, new AppError(ErrorCodes.InvalidInput, "No file uploaded")));
 
         using var stream = file.OpenReadStream();
-        var result = await _colorService.ExtractColorsAsync(stream);
+        var response = await _colorService.ExtractColorsAsync(stream);
 
-        if (result.IsFailure)
-        {
-            return BadRequest(new ServiceResponse(false, new AppError(ErrorCodes.OperationFailed, result.Error)));
-        }
-        
-        return Ok(new ServiceResponse<List<string>>(true, result.Value));
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
     }
 
     [HttpPost("parse-users")]
-    [ProducesResponseType(typeof(ServiceResponse<List<UserImportDto>>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> ParseUsers(IFormFile file)
+    public async Task<ActionResult<ServiceResponse<List<UserImportDto>>>> ParseUsers(IFormFile file)
     {
         if (file == null || file.Length == 0)
             return BadRequest(new ServiceResponse(false, new AppError(ErrorCodes.InvalidInput, "No file uploaded")));
 
         using var stream = file.OpenReadStream();
-        var result = await _importService.ParseUsersAsync(stream, file.FileName);
+        var response = await _importService.ParseUsersAsync(stream, file.FileName);
 
-        if (result.IsFailure)
-        {
-            return BadRequest(new ServiceResponse(false, new AppError(ErrorCodes.OperationFailed, result.Error)));
-        }
-
-        return Ok(new ServiceResponse<List<UserImportDto>>(true, result.Value));
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
     }
 }

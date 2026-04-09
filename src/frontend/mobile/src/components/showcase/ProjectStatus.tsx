@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { AppText, GlassView, Icon, StatusBadge } from '@/src/components/ui';
+import { AppText, ClayView, Icon, StatusBadge } from '@/src/components/ui';
 import { useThemeColors } from '@/src/hooks';
 
 // UPDATED MASTER LIST
@@ -41,7 +41,7 @@ export const ProjectStatus = () => {
       <AppText variant="h2" style={{ marginBottom: 16 }}>Widget Ecosystem</AppText>
       <View style={styles.grid}>
         {WIDGETS.map((widget, index) => (
-          <GlassView key={index} intensity={20} style={styles.card}>
+          <ClayView key={index} depth={6} puffy={12} color={colors.card} style={styles.card}>
             <View style={[styles.iconBox, { backgroundColor: colors.primary + '15' }]}>
               <Icon name={widget.icon as any} size={24} color={colors.primary} />
             </View>
@@ -54,7 +54,7 @@ export const ProjectStatus = () => {
                 />
               </View>
             </View>
-          </GlassView>
+          </ClayView>
         ))}
       </View>
     </View>

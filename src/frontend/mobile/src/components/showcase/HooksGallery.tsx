@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { AppText, GlassView, CodeBlock, Icon, IconName, Divider } from '@/src/components/ui';
+import { AppText, ClayView, CodeBlock, Icon, IconName, Divider } from '@/src/components/ui';
 import { useThemeColors, useTranslation } from '@/src/hooks';
 
 // 1. Data Structure: Grouping hooks by what they DO
@@ -62,7 +62,7 @@ export const HooksGallery = () => {
       {/* 1. Live i18n Demo (Preserved & Styled) */}
       <View style={styles.section}>
         <AppText variant="h3" style={{ marginBottom: 12 }}>Active Locale</AppText>
-        <GlassView intensity={20} style={styles.demoCard}>
+        <ClayView depth={8} puffy={12} color={colors.card} style={styles.demoCard}>
           <View style={[styles.iconBox, { backgroundColor: colors.primary + '20' }]}>
             <Icon name="translate" size={24} color={colors.primary} />
           </View>
@@ -73,7 +73,7 @@ export const HooksGallery = () => {
               Output: "<AppText weight="bold" style={{ color: colors.primary }}>{t('welcome') || 'Welcome'}</AppText>"
             </AppText>
           </View>
-        </GlassView>
+        </ClayView>
       </View>
 
       <Divider style={{ marginBottom: 24 }} />
@@ -94,9 +94,11 @@ export const HooksGallery = () => {
           {/* Hooks List */}
           <View style={styles.cardContainer}>
             {category.hooks.map((hook, hIndex) => (
-              <GlassView 
-                key={hIndex} 
-                intensity={10} 
+              <ClayView
+                key={hIndex}
+                depth={5}
+                puffy={10}
+                color={colors.card}
                 style={[styles.hookCard, { borderColor: colors.border }]}
               >
                 <AppText variant="caption" weight="bold" style={{ fontFamily: 'monospace', color: colors.primary }}>
@@ -105,7 +107,7 @@ export const HooksGallery = () => {
                 <AppText variant="caption" style={{ color: colors.text, marginTop: 4 }}>
                   {hook.desc}
                 </AppText>
-              </GlassView>
+              </ClayView>
             ))}
           </View>
         </View>

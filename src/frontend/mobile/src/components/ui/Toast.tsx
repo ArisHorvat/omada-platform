@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
+import Animated, { FadeInUp, FadeOutUp, Easing } from 'react-native-reanimated';
 import { AppText } from './AppText';
 import { Icon, IconName } from './Icon';
 import { useThemeColors } from '@/src/hooks';
@@ -38,7 +38,7 @@ export const Toast = ({ visible, message, type = 'info', onHide }: ToastProps) =
 
   return (
     <Animated.View 
-      entering={FadeInUp.springify()} 
+      entering={FadeInUp.duration(300).easing(Easing.out(Easing.ease))} 
       exiting={FadeOutUp}
       style={[
         styles.container, 

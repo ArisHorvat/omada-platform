@@ -1,5 +1,5 @@
-import UsersScreen from '@/src/screens/widgets/users/components/users'; 
+import DirectoryScreen from '@/src/screens/widgets/users/components/DirectoryScreen';
 
 export default function UsersRoute() {
-  return <UsersScreen />;
+  return <DirectoryScreen />;
 }

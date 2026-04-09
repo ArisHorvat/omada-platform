@@ -19,7 +19,7 @@ export default function TabLayout() {
       }}
     >
       <Tabs.Screen name="dashboard" />
-      <Tabs.Screen name="news" />
+      <Tabs.Screen name="tasks" />
       <Tabs.Screen name="chat" />
       <Tabs.Screen name="schedule" />
       <Tabs.Screen name="profile" />

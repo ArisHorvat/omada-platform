@@ -3,8 +3,9 @@ import { View, Pressable, StyleSheet } from 'react-native';
 import Animated, { 
   useSharedValue, 
   useAnimatedStyle, 
-  withSpring, 
-  interpolate 
+  withTiming, 
+  interpolate,
+  Easing,
 } from 'react-native-reanimated';
 
 interface FlipCardProps {
@@ -16,7 +17,10 @@ export const FlipCard = ({ front, back }: FlipCardProps) => {
   const rotate = useSharedValue(0); // 0 = Front, 1 = Back
 
   const handlePress = () => {
-    rotate.value = withSpring(rotate.value ? 0 : 1, { damping: 12 });
+    rotate.value = withTiming(rotate.value >= 0.5 ? 0 : 1, {
+      duration: 300,
+      easing: Easing.out(Easing.ease),
+    });
   };
 
   const frontStyle = useAnimatedStyle(() => {

@@ -11,11 +11,7 @@ export default function AppIndex() {
 
   const role = activeSession.role;
 
-  if (role === 'SuperAdmin') {
-    return <Redirect href="/admin-dashboard" />;
-  }
-
-  if (role === 'Admin') {
+  if (role === 'Admin' || role === 'SuperAdmin' || role === 'Super Admin') {
     return <Redirect href="/org-dashboard" />;
   }
 

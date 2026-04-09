@@ -1,122 +1,85 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Alert } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/src/context/AuthContext';
-import { UserService } from '@/src/services/UserService';
-import { AuthService } from '@/src/services/AuthService';
-import { OrganizationService } from '@/src/services/OrganizationService';
-import { User, OrganizationDetailsDto, UserOrganizationDto } from '@/src/types/api';
+import { authApi, orgApi, unwrap, usersApi } from '@/src/api';
+import { QUERY_KEYS } from '@/src/api/queryKeys';
 
 export const useProfileLogic = () => {
-  const { 
-    activeSession, 
-    switchSession, 
-    addSession, 
-    availableSessions, 
-    logout 
-  } = useAuth();
-  
-  const [user, setUser] = useState<User | null>(null);
-  const [organization, setOrganization] = useState<OrganizationDetailsDto | null>(null);
-  const [myOrganizations, setMyOrganizations] = useState<UserOrganizationDto[]>([]);
-  
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSwitching, setIsSwitching] = useState(false);
+  const router = useRouter();
+  const { activeSession, logout } = useAuth();
+  const queryClient = useQueryClient();
   const [showAccountSwitcher, setShowAccountSwitcher] = useState(false);
 
-  // 1. Load Profile Data
-  useEffect(() => {
-    const loadData = async () => {
-      if (!activeSession?.orgId) return;
-      setIsLoading(true);
-      try {
-        const [userData, orgData] = await Promise.all([
-            UserService.getMe(),
-            OrganizationService.getById(activeSession.orgId)
-        ]);
-        setUser(userData);
-        setOrganization(orgData);
-      } catch (e) { 
-        console.error("Profile load error", e); 
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    loadData();
-  }, [activeSession?.orgId]);
+  const { data: user, isLoading: userLoading } = useQuery({
+    queryKey: QUERY_KEYS.userProfile,
+    queryFn: async () => await unwrap(usersApi.getMe()),
+    enabled: !!activeSession?.orgId,
+  });
 
-  // 2. Open Switcher & Normalize Data
-  const openOrgSwitcher = async () => {
-    try {
-      const data: any[] = await AuthService.getMyOrganizations();
-      
-      const normalizedData: UserOrganizationDto[] = data.map(item => ({
-        organizationId: item.organizationId || item.OrganizationId || item.id,
-        organizationName: item.organizationName || item.OrganizationName || item.name,
-        role: item.role || item.Role,
-        isCurrent: item.isCurrent || item.IsCurrent
-      }));
+  const { data: organization, isLoading: orgLoading } = useQuery({
+    queryKey: QUERY_KEYS.organization(activeSession?.orgId || ''),
+    queryFn: async () => await unwrap(orgApi.getById(activeSession!.orgId)),
+    enabled: !!activeSession?.orgId,
+  });
 
-      setMyOrganizations(normalizedData);
-      setShowAccountSwitcher(true);
-    } catch (e) {
-      console.error(e);
-      Alert.alert("Error", "Could not load your organizations.");
-    }
-  };
+  const { data: myOrganizations = [] } = useQuery({
+    queryKey: QUERY_KEYS.myOrganizations,
+    queryFn: async () => await unwrap(authApi.getMyOrganizations()),
+    enabled: showAccountSwitcher,
+  });
 
-  // 3. THE FIX: Handle Switch Logic safely
-  const handleSwitchOrg = async (targetOrgId: string) => {
+  const openOrgSwitcher = () => setShowAccountSwitcher(true);
+
+  const handleSwitchOrg = (
+    targetOrgId: string,
+    targetOrgName: string,
+    targetLogoUrl?: string,
+    targetOrgType?: string,
+    targetRole?: string
+  ) => {
     if (!targetOrgId) return;
-    
-    setIsSwitching(true);
-    setShowAccountSwitcher(false); 
-
-    try {
-      // SAFE CHECK: Ensure s.orgId exists before calling toLowerCase()
-      // This prevents the crash if old/corrupt data is in storage
-      const existingSession = availableSessions.find(
-        s => s.orgId && s.orgId.toLowerCase() === targetOrgId.toLowerCase()
-      );
-
-      if (existingSession) {
-        // SCENARIO A: We have a token. Just switch context.
-        console.log(`[Profile] Switching to existing session: ${existingSession.orgId}`);
-        await switchSession(existingSession.orgId);
-      } else {
-        // SCENARIO B: We don't have a token yet. Fetch one from API.
-        console.log(`[Profile] Fetching new token for org: ${targetOrgId}`);
-        
-        const response = await AuthService.switchOrganization(targetOrgId);
-        await addSession(response.token);
-      }
-      
-    } catch (e: any) { 
-        console.error("Switch failed", e);
-        Alert.alert("Error", e.message || "Failed to switch organization."); 
-    } finally {
-        setIsSwitching(false);
-    }
+    router.push({
+      pathname: '/change-organization',
+      params: {
+        targetOrgId,
+        targetOrgName: targetOrgName || 'Organization',
+        targetLogoUrl: targetLogoUrl || '',
+        targetOrgType: targetOrgType ?? '',
+        targetRole: targetRole ?? '',
+        currentOrgColor: organization?.primaryColor || '#000000',
+        currentOrgLogo: organization?.logoUrl || '',
+      },
+    });
+    setTimeout(() => setShowAccountSwitcher(false), 400);
   };
 
   const handleLogout = () => {
-      Alert.alert("Logout", "Are you sure?", [
-          { text: "Cancel", style: "cancel" }, 
-          { text: "Logout", style: "destructive", onPress: logout }
-      ]);
+    Alert.alert('Logout', 'Are you sure?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: () => {
+          queryClient.clear();
+          void logout();
+        },
+      },
+    ]);
   };
 
-  return { 
-    user, 
-    organization, 
-    isLoading, 
-    isSwitching,
-    showAccountSwitcher, 
+  return {
+    user,
+    organization,
+    isLoading: userLoading || orgLoading,
+    showAccountSwitcher,
     setShowAccountSwitcher,
     myOrganizations,
-    openOrgSwitcher, 
+    openOrgSwitcher,
     handleSwitchOrg,
     handleLogout,
     role: activeSession?.role,
-    email: activeSession?.email
+    email: activeSession?.email,
   };
 };

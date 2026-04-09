@@ -1,6 +1,7 @@
 namespace Omada.Api.Abstractions;
 
-public record AppError(string Code, string Message);
+/// <param name="Detail">Optional diagnostics (e.g. stack / inner exceptions). Intended for development clients only; omit in production.</param>
+public record AppError(string Code, string Message, string? Detail = null);
 
 public static class ErrorCodes
 {

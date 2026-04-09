@@ -1,36 +1,33 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Omada — `web` (Next.js)
 
-## Getting Started
+This directory is an **optional Next.js 16** app. It is **not** the primary Omada web client.
 
-First, run the development server:
+## What to use for the product
+
+The **Expo** app under `src/frontend/mobile` targets iOS, Android, and **web** (`npm run web`). Shared screens and **platform-specific** files (e.g. `Component.web.tsx` / `Component.tsx`) must live **inside that project** so Metro resolves them when bundling for web.
+
+## When this folder is useful
+
+- **Marketing site**, **docs**, or **landing pages** that are not part of the Expo bundle.
+- A **future** dedicated web-only admin or dashboard that uses Next.js routing and SSR, with shared code extracted to a workspace package (if you introduce one).
+
+## Scripts
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Opens the placeholder page at [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Relationship to Expo web
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Concern | Location |
+|--------|----------|
+| Omada app in the browser | `src/frontend/mobile` → `npm run web` |
+| Web/native split components | `*.web.tsx` next to the shared code in `mobile/src` |
+| Separate Next.js site | this folder |
 
-## Learn More
+## Shared code
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+If you later move API clients, types, or hooks into a shared package, both `mobile` and `web` can depend on it via the workspace root `package.json` (you would add that setup).

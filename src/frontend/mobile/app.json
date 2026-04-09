@@ -11,6 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
+        "NSFaceIDUsageDescription": "Omada uses Face ID to confirm it’s you before unlocking the app or sensitive screens.",
         "NSAppTransportSecurity": {
           "NSExceptionDomains": {
             "192.168.72.240": {
@@ -33,6 +34,7 @@
       "package": "com.anonymous.omada"
     },
     "web": {
+      "bundler": "metro",
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
@@ -62,7 +64,8 @@
         }
       ],
       "expo-audio",
-      "expo-font"
+      "expo-font",
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,

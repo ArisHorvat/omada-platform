@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Alert } from 'react-native';
 import { useAuth } from '@/src/context/AuthContext';
-import { OrganizationService } from '@/src/services/OrganizationService';
-import { OrganizationDetailsDto } from '@/src/types/api';
+import { OrganizationDetailsDto } from '@/src/api/generatedClient';
+import { orgApi, unwrap } from '@/src/api';
 
 export const useSuperAdminDashboardLogic = () => {
   const { logout } = useAuth(); // Use proper logout action
@@ -10,22 +10,32 @@ export const useSuperAdminDashboardLogic = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // 1. Fetch Data on Mount
-  useEffect(() => {
-    loadOrganizations();
-  }, []);
+  // Pagination State
+  const [page, setPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [totalItems, setTotalItems] = useState<number>(0);
 
   const loadOrganizations = async () => {
     setIsLoading(true);
     try {
-      const data = await OrganizationService.getAll();
-      setOrganizations(data);
+      // Look here! Pass the primitive values directly to the generated client
+      const response = await unwrap(orgApi.getAll(page, pageSize));
+      
+      // Update state with the nested PagedResponse data
+      setOrganizations(response.items || []);
+      setTotalItems(response.totalCount || 0);
     } catch (error) {
       console.error("Failed to load orgs", error);
+      // TODO: Show an error toast to the user
     } finally {
       setIsLoading(false);
     }
   };
+
+  // 3. Trigger Fetch on Mount AND when pagination changes
+  useEffect(() => {
+    loadOrganizations();
+  }, [page, pageSize]);
 
   const handleLogout = () => {
     Alert.alert(
@@ -46,7 +56,7 @@ export const useSuperAdminDashboardLogic = () => {
             style: "destructive", 
             onPress: async () => {
                 try {
-                    await OrganizationService.delete(id);
+                    // await OrganizationService.delete(id);
                     // Refresh local list
                     setOrganizations(prev => prev.filter(o => o.id !== id));
                 } catch (e) {
@@ -73,6 +83,6 @@ export const useSuperAdminDashboardLogic = () => {
     handleLogout,
     deleteOrganization,
     isLoading,
-    refresh: loadOrganizations
+    // refresh: loadOrganizations
   };
 };

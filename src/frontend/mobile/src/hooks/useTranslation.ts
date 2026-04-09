@@ -1,19 +1,23 @@
 import { useTranslation as useI18Next } from 'react-i18next';
 
-// Define the keys explicitly for TypeScript autocomplete (Optional but recommended)
-type TranslationKeys = 'welcome' | 'grades' | 'bus' | 'settings';
+import { usePreferencesStore } from '@/src/stores/usePreferencesStore';
+import type { LanguagePreferenceCode } from '@/src/stores/usePreferencesStore';
 
 export const useTranslation = () => {
   const { t, i18n } = useI18Next();
+  const languagePreference = usePreferencesStore((s) => s.languagePreference);
+  const setLanguagePreference = usePreferencesStore((s) => s.setLanguagePreference);
 
-  const switchLanguage = async (lang: 'en' | 'ro') => {
+  const switchLanguage = async (lang: LanguagePreferenceCode) => {
+    setLanguagePreference(lang);
     await i18n.changeLanguage(lang);
   };
 
   return {
-    t: (key: TranslationKeys) => t(key),
+    t,
     locale: i18n.language,
+    languagePreference,
     switchLanguage,
-    isRTL: i18n.dir() === 'rtl' // Useful if you ever add Arabic/Hebrew
+    isRTL: i18n.dir() === 'rtl',
   };
 };

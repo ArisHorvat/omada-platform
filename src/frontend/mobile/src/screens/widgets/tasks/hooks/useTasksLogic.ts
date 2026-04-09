@@ -1,90 +1,125 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Alert } from 'react-native';
+import { useState, type Dispatch, type SetStateAction } from 'react';
+import { useTasksApi } from './useTasksApi';
+import { useTasksFilter } from './useTasksFilter';
+import { CreateTaskRequest, UpdateTaskRequest, TaskItemDto } from '@/src/api/generatedClient';
 import { useAuth } from '@/src/context/AuthContext';
-import { TaskService } from '@/src/services/TaskService';
-import { TaskItem } from '@/src/types/api';
 
-export const useTasksLogic = () => {
-  const { activeSession } = useAuth(); // <--- UPDATED
-  const [tasks, setTasks] = useState<TaskItem[]>([]);
+export type TasksViewMode = 'creator' | 'viewer';
+
+export interface UseTasksLogicResult {
+  tasks: TaskItemDto[];
+  loading: boolean;
+  isError: boolean;
+  refetchTasks: () => void;
+  viewMode: TasksViewMode;
+  canCreateTasks: boolean;
+  newTaskTitle: string;
+  setNewTaskTitle: Dispatch<SetStateAction<string>>;
+  showCompleted: boolean;
+  setShowCompleted: Dispatch<SetStateAction<boolean>>;
+  activeList: string;
+  setActiveList: Dispatch<SetStateAction<string>>;
+  showDatePicker: boolean;
+  setShowDatePicker: Dispatch<SetStateAction<boolean>>;
+  selectedDate: Date | null;
+  setSelectedDate: Dispatch<SetStateAction<Date | null>>;
+  editingTask: TaskItemDto | null;
+  startEditing: (task: TaskItemDto) => void;
+  cancelEditing: () => void;
+  handleAddTask: () => void;
+  toggleTask: (task: TaskItemDto) => void;
+  deleteTask: (id: string) => void;
+}
+
+export const useTasksScreenLogic = (): UseTasksLogicResult => {
+  const tasksRemote = useTasksApi({ page: 1, pageSize: 100 });
+  const { activeSession } = useAuth();
+
   const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [loading, setLoading] = useState(true);
   const [showCompleted, setShowCompleted] = useState(false);
   const [activeList, setActiveList] = useState('All');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [editingTask, setEditingTask] = useState<TaskItemDto | null>(null);
 
-  useEffect(() => {
-    if (activeSession) loadTasks();
-  }, [activeSession]);
+  const filteredTasks = useTasksFilter(tasksRemote.tasks, activeList, showCompleted);
+  const role = (activeSession?.role || '').toLowerCase();
+  const viewMode: TasksViewMode =
+    role === 'teacher' || role === 'admin' || role === 'superadmin' ? 'creator' : 'viewer';
 
-  const loadTasks = async () => {
-    try {
-      const data = await TaskService.getAll(); // <--- UPDATED
-      setTasks(data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAddTask = async () => {
+  const handleAddTask = () => {
     if (!newTaskTitle.trim()) return;
-    
-    const title = newTaskTitle;
-    const due = selectedDate || undefined; // Service expects Date object or undefined
-    
+
+    const titleToSave = newTaskTitle;
+    const dateToSave = selectedDate || undefined;
+
     setNewTaskTitle('');
     setSelectedDate(null);
     setShowDatePicker(false);
-    
-    try {
-      const newTask = await TaskService.create(title, due); // <--- UPDATED
-      setTasks([newTask, ...tasks]);
-    } catch (e) {
-      Alert.alert('Error', 'Failed to create task');
-      setNewTaskTitle(title);
+
+    if (editingTask) {
+      tasksRemote.updateTask.mutate({
+        id: editingTask.id,
+        request: new UpdateTaskRequest({
+          title: titleToSave,
+          dueDate: dateToSave,
+          isCompleted: editingTask.isCompleted,
+        }),
+      });
+      setEditingTask(null);
+    } else {
+      tasksRemote.createTask.mutate(
+        new CreateTaskRequest({
+          title: titleToSave,
+          dueDate: dateToSave,
+        })
+      );
     }
   };
 
-  const toggleTask = async (task: TaskItem) => {
-    // Optimistic Update
-    const updated = { ...task, isCompleted: !task.isCompleted };
-    setTasks(tasks.map(t => t.id === task.id ? updated : t));
-    
-    try { 
-        await TaskService.update(task.id, { isCompleted: updated.isCompleted }); // <--- UPDATED
-    } catch (e) { 
-        // Revert on failure
-        setTasks(tasks.map(t => t.id === task.id ? task : t)); 
-    }
+  const startEditing = (task: TaskItemDto) => {
+    setEditingTask(task);
+    setNewTaskTitle(task.title);
+    setSelectedDate(task.dueDate ? new Date(task.dueDate) : null);
   };
 
-  const deleteTask = async (id: string) => {
-    setTasks(tasks.filter(t => t.id !== id));
-    await TaskService.delete(id); // <--- UPDATED
+  const cancelEditing = () => {
+    setEditingTask(null);
+    setNewTaskTitle('');
+    setSelectedDate(null);
   };
 
-  const filteredTasks = useMemo(() => {
-    return tasks.filter(t => {
-      if (activeList === 'All') return true;
-      if (activeList === 'Today') return t.dueDate && new Date(t.dueDate).toDateString() === new Date().toDateString();
-      if (activeList === 'Upcoming') return t.dueDate && new Date(t.dueDate) >= new Date();
-      return true;
-    }).filter(t => showCompleted ? true : !t.isCompleted);
-  }, [tasks, activeList, showCompleted]);
+  const toggleTask = (task: TaskItemDto) => {
+    tasksRemote.toggleTaskCompletion.mutate(task);
+  };
+
+  const deleteTask = (id: string) => tasksRemote.deleteTask.mutate(id);
 
   return {
     tasks: filteredTasks,
-    newTaskTitle, setNewTaskTitle,
-    loading,
-    showCompleted, setShowCompleted,
-    activeList, setActiveList,
-    showDatePicker, setShowDatePicker,
-    selectedDate, setSelectedDate,
+    loading: tasksRemote.isLoading || tasksRemote.isMutating,
+    isError: tasksRemote.isError,
+    refetchTasks: () => void tasksRemote.tasksQuery.refetch(),
+    viewMode,
+    canCreateTasks: viewMode === 'creator',
+    newTaskTitle,
+    setNewTaskTitle,
+    showCompleted,
+    setShowCompleted,
+    activeList,
+    setActiveList,
+    showDatePicker,
+    setShowDatePicker,
+    selectedDate,
+    setSelectedDate,
+    editingTask,
+    startEditing,
+    cancelEditing,
     handleAddTask,
     toggleTask,
-    deleteTask
+    deleteTask,
   };
 };
+
+/** Tasks widget/screen: filters + local UI state; server state from `./useTasksApi`. */
+export const useTasksLogic = useTasksScreenLogic;

@@ -6,7 +6,6 @@ export default function RegisterFlowLayout() {
         headerShown: false, 
       }}>
         <Stack.Screen name="index" options={{ title: 'Organization Details' }} />
-        <Stack.Screen name="select-organization" options={{ title: 'Assign Widgets' }} />
       </Stack>
   );
 }

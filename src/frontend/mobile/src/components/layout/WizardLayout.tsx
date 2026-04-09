@@ -3,7 +3,7 @@ import { View, ScrollView, TouchableOpacity, StyleSheet, KeyboardAvoidingView, P
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeInRight, FadeOutLeft } from 'react-native-reanimated';
 import { useThemeColors } from '@/src/hooks';
-import { AppText, AppButton, StepIndicator, GlassView, Icon } from '@/src/components/ui';
+import { AppText, AppButton, StepIndicator, ClayView, Icon } from '@/src/components/ui';
 
 interface WizardLayoutProps {
   step: number;
@@ -69,15 +69,28 @@ export const WizardLayout = ({
               entering={FadeInRight.duration(400)} 
               exiting={FadeOutLeft.duration(400)}
           >
-              <GlassView intensity={15} style={{ flex: 1, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden', borderWidth: 1, borderColor: colors.border + '30', borderBottomWidth: 0 }}>
-                  <ScrollView 
-                      contentContainerStyle={{ padding: 24, paddingBottom: 100 }}
-                      showsVerticalScrollIndicator={false}
-                      keyboardShouldPersistTaps="handled"
-                  >
-                      {children}
-                  </ScrollView>
-              </GlassView>
+              <ClayView
+                depth={8}
+                puffy={0}
+                color={colors.card}
+                style={{
+                  flex: 1,
+                  borderTopLeftRadius: 24,
+                  borderTopRightRadius: 24,
+                  overflow: 'hidden',
+                  borderWidth: 1,
+                  borderColor: colors.border + '30',
+                  borderBottomWidth: 0,
+                }}
+              >
+                <ScrollView
+                  contentContainerStyle={{ padding: 24, paddingBottom: 100 }}
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                >
+                  {children}
+                </ScrollView>
+              </ClayView>
           </Animated.View>
         </KeyboardAvoidingView>
 

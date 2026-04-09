@@ -1,12 +1,13 @@
 import React, { useEffect, useCallback } from 'react';
 import { View, StyleSheet, Dimensions, Pressable, BackHandler } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, { 
   useSharedValue, 
   useAnimatedStyle, 
-  withSpring, 
   runOnJS, 
-  withTiming 
+  withTiming,
+  Easing,
 } from 'react-native-reanimated';
 import { useThemeColors } from '@/src/hooks';
 
@@ -17,10 +18,22 @@ interface BottomSheetProps {
   onClose: () => void;
   children: React.ReactNode;
   height?: number; // Optional specific height
+  /** Raise when stacking sheets (e.g. picker over filter). Default 100. */
+  zIndexBase?: number;
+  /** Extra bottom padding (e.g. floating tab bar) in addition to safe area. */
+  contentInsetBottom?: number;
 }
 
-export const BottomSheet = ({ isVisible, onClose, children, height }: BottomSheetProps) => {
+export const BottomSheet = ({
+  isVisible,
+  onClose,
+  children,
+  height,
+  zIndexBase = 100,
+  contentInsetBottom = 0,
+}: BottomSheetProps) => {
   const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
   
   // Calculate height: Default to 50% of screen if not specified
   const activeHeight = height || SCREEN_HEIGHT * 0.5;
@@ -28,7 +41,10 @@ export const BottomSheet = ({ isVisible, onClose, children, height }: BottomShee
 
   const scrollTo = useCallback((destination: number) => {
     'worklet';
-    translateY.value = withSpring(destination, { damping: 15 });
+    translateY.value = withTiming(destination, {
+      duration: 300,
+      easing: Easing.out(Easing.ease),
+    });
   }, []);
 
   useEffect(() => {
@@ -37,7 +53,7 @@ export const BottomSheet = ({ isVisible, onClose, children, height }: BottomShee
     } else {
       scrollTo(SCREEN_HEIGHT);
     }
-  }, [isVisible]);
+  }, [isVisible, activeHeight, scrollTo]);
 
   // Handle hardware back button on Android
   useEffect(() => {
@@ -80,12 +96,10 @@ export const BottomSheet = ({ isVisible, onClose, children, height }: BottomShee
     pointerEvents: isVisible ? 'auto' : 'none',
   }));
 
-  if (!isVisible && translateY.value === SCREEN_HEIGHT) return null;
-
   return (
     <>
       {/* Dark Backdrop */}
-      <Animated.View style={[styles.backdrop, rBackdropStyle]}>
+      <Animated.View style={[styles.backdrop, rBackdropStyle, { zIndex: zIndexBase }]}>
         <Pressable style={{ flex: 1 }} onPress={onClose} />
       </Animated.View>
 
@@ -94,15 +108,21 @@ export const BottomSheet = ({ isVisible, onClose, children, height }: BottomShee
         <Animated.View 
           style={[
             styles.sheet, 
-            { backgroundColor: colors.card, height: activeHeight }, 
+            { backgroundColor: colors.card, height: activeHeight, zIndex: zIndexBase + 1 }, 
             rBottomSheetStyle
           ]}
         >
           <View style={styles.handleContainer}>
             <View style={[styles.handle, { backgroundColor: colors.subtle || '#ccc' }]} />
           </View>
-          <View style={{ flex: 1, padding: 20 }}>
-             {children}
+          <View
+            style={{
+              flex: 1,
+              padding: 20,
+              paddingBottom: 20 + insets.bottom + contentInsetBottom,
+            }}
+          >
+            {children}
           </View>
         </Animated.View>
       </GestureDetector>
@@ -114,7 +134,6 @@ const styles = StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'black',
-    zIndex: 100,
   },
   sheet: {
     position: 'absolute',
@@ -123,7 +142,6 @@ const styles = StyleSheet.create({
     right: 0,
     borderTopLeftRadius: 25,
     borderTopRightRadius: 25,
-    zIndex: 101,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,

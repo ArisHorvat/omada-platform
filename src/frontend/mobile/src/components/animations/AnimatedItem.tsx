@@ -1,6 +1,6 @@
-import React from 'react';
-import { StyleProp, ViewStyle } from 'react-native';
-import Animated, { AnimatedProps } from 'react-native-reanimated';
+import React, { useMemo } from 'react';
+import { Platform, StyleProp, ViewStyle } from 'react-native';
+import Animated, { AnimatedProps, Easing, FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { ClayAnimations } from '@/src/constants/animations';
 
 interface AnimatedItemProps extends AnimatedProps<ViewStyle> {
@@ -10,7 +10,7 @@ interface AnimatedItemProps extends AnimatedProps<ViewStyle> {
   // Animation Props
   animation?: any;  // The Entering animation
   exiting?: any;    // The Exiting animation
-  layout?: any;     // <--- NEW: Allow overriding the layout animation
+  layout?: any;     // Allow overriding the layout animation
   
   style?: StyleProp<ViewStyle>;
 }
@@ -20,22 +20,35 @@ export const AnimatedItem = ({
   index = 0, 
   animation, 
   exiting,
-  layout, // Destructure layout
+  layout, 
   style,
   ...props 
 }: AnimatedItemProps) => {
 
-  const enteringAnimation = animation || ClayAnimations.List(index);
+  /** Reanimated on web does not support several cubic/bezier easings used in ClayAnimations — use linear. */
+  const enteringAnimation = useMemo(() => {
+    if (animation === null) return undefined;
+    if (animation !== undefined) return animation;
+    if (Platform.OS === 'web') {
+      return FadeInDown.duration(580).easing(Easing.linear).delay(200 + index * 78);
+    }
+    return ClayAnimations.List(index);
+  }, [animation, index]);
 
-  // Default to the bouncy layout if nothing is passed
-  // BUT allow passing 'null' explicitly to disable it (for headers)
-  const layoutAnimation = layout === undefined ? ClayAnimations.Layout : layout;
+  const layoutAnimation = useMemo(() => {
+    if (layout === null) return undefined;
+    if (layout !== undefined) return layout;
+    if (Platform.OS === 'web') {
+      return LinearTransition.duration(420).easing(Easing.linear);
+    }
+    return ClayAnimations.Layout;
+  }, [layout]);
 
   return (
     <Animated.View 
       entering={enteringAnimation}
       exiting={exiting}
-      layout={layoutAnimation} // Use the flexible variable
+      layout={layoutAnimation}
       style={style}
       {...props} 
     >

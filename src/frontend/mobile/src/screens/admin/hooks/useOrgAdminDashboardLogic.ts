@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Alert } from 'react-native';
 import { useAuth } from '@/src/context/AuthContext';
-import { OrganizationService } from '@/src/services/OrganizationService';
-import { OrganizationDetailsDto } from '@/src/types/api';
+import { OrganizationDetailsDto } from '@/src/api/generatedClient';
+import { orgApi, unwrap } from '@/src/api';
 
 export const useOrgAdminDashboardLogic = () => {
   const { activeSession, logout } = useAuth();
@@ -13,7 +13,7 @@ export const useOrgAdminDashboardLogic = () => {
     const loadOrg = async () => {
         if (!activeSession?.orgId) return;
         try {
-            const data = await OrganizationService.getById(activeSession.orgId);
+            const data = await unwrap(orgApi.getById(activeSession.orgId));
             setOrg(data);
         } catch (e) {
             console.error("Failed to load admin dashboard", e);

@@ -16,6 +16,8 @@ export default function AppLayout() {
       <Stack.Screen name="(admin)" />
       <Stack.Screen name="(superadmin)" />
 
+      <Stack.Screen name="change-organization"/>
+
       {/* 3. NEW GROUPS */}
       {/* Settings: Standard navigation behavior */}
       <Stack.Screen name="(settings)" />

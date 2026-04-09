@@ -1,12 +1,14 @@
-using Omada.Api.Entities;
-using Omada.Api.DTOs.Groups; // Add this using
+using Omada.Api.DTOs.Groups;
+using Omada.Api.Abstractions;
 
 namespace Omada.Api.Services.Interfaces;
 
 public interface IGroupService
 {
-    Task<Result<Group>> CreateGroupAsync(CreateGroupRequest request);
+    Task<ServiceResponse<GroupDto>> CreateGroupAsync(CreateGroupRequest request);
     
     // Changed from Task<object> to Result<AttendanceConfigDto>
-    Task<Result<AttendanceConfigDto>> GetAttendanceConfigAsync(Guid userId, Guid organizationId);
+    Task<ServiceResponse<AttendanceConfigDto>> GetAttendanceConfigAsync();
+
+    Task<ServiceResponse<IEnumerable<DepartmentSummaryDto>>> GetDepartmentsAsync();
 }

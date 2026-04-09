@@ -1,8 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import { 
-  AppText, GlassView, AppButton, 
-} from '@/src/components/ui';
+import { AppText, ClayView, AppButton } from '@/src/components/ui';
 import { 
   PressScale, FadeInView, ShakeView, SlideInView, BreathingView, 
   ConfettiExplosion, NumberTicker, FlipCard, 
@@ -26,9 +24,9 @@ export const AnimationGallery = () => {
       <View style={styles.section}>
         <AppText variant="h3">Press Scale</AppText>
         <PressScale>
-          <GlassView intensity={20} style={styles.box}>
+          <ClayView depth={6} puffy={12} color={colors.card} style={styles.box}>
             <AppText>Tap Me</AppText>
-          </GlassView>
+          </ClayView>
         </PressScale>
       </View>
 
@@ -84,14 +82,14 @@ export const AnimationGallery = () => {
         <View style={{ height: 150 }}>
             <FlipCard 
                 front={
-                    <GlassView style={[styles.card, { backgroundColor: colors.card }]}>
+                    <ClayView depth={6} puffy={12} color={colors.card} style={styles.card}>
                         <AppText>Front (Tap to Flip)</AppText>
-                    </GlassView>
+                    </ClayView>
                 }
                 back={
-                    <GlassView style={[styles.card, { backgroundColor: colors.primary }]}>
+                    <ClayView depth={6} puffy={12} color={colors.primary} style={styles.card}>
                         <AppText style={{ color: '#fff' }}>Back Side!</AppText>
-                    </GlassView>
+                    </ClayView>
                 }
             />
         </View>

@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
 // Imports from your system
-import { AppText, Icon, GlassHeader } from '@/src/components/ui';
+import { AppText, Icon } from '@/src/components/ui';
 import { PressScale } from '@/src/components/animations';
 import { useThemeColors } from '@/src/hooks';
 

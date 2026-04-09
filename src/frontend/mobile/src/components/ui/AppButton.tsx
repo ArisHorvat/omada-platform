@@ -1,16 +1,26 @@
 import React from 'react';
-import { 
-  TouchableOpacity, 
-  Text, 
-  StyleSheet, 
-  ActivityIndicator, 
-  ViewStyle, 
-  StyleProp, 
+import {
+  Pressable,
+  StyleSheet,
+  ActivityIndicator,
+  ViewStyle,
+  StyleProp,
   TextStyle,
-  View
+  View,
 } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+  interpolate,
+  Easing,
+} from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 import { useThemeColors } from '@/src/hooks';
+import { ClayPressContext } from '@/src/context/ClayPressContext';
 import { Icon, IconName } from './Icon';
+import { ClayView } from './ClayView';
+import { AppText } from './AppText';
 
 interface AppButtonProps {
   title: string;
@@ -18,105 +28,161 @@ interface AppButtonProps {
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
   size?: 'sm' | 'md' | 'lg';
   disabled?: boolean;
-  loading?: boolean;      
-  icon?: IconName;        
-  rightIcon?: IconName;   
+  loading?: boolean;
+  icon?: IconName;
+  rightIcon?: IconName;
   style?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
 }
 
-export const AppButton = ({ 
-  title, 
-  onPress, 
-  variant = 'primary', 
-  size = 'md', 
-  disabled = false, 
-  loading = false, 
+const pressEase = { duration: 300, easing: Easing.out(Easing.ease) };
+
+export const AppButton = ({
+  title,
+  onPress,
+  variant = 'primary',
+  size = 'md',
+  disabled = false,
+  loading = false,
   icon,
   rightIcon,
   style,
-  textStyle 
+  textStyle,
 }: AppButtonProps) => {
   const colors = useThemeColors();
+  const pressProgress = useSharedValue(0);
 
-  // 1. Base Styles
-  const baseStyle: ViewStyle = {
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: interpolate(pressProgress.value, [0, 1], [1, 0.97]) },
+      { translateY: interpolate(pressProgress.value, [0, 1], [0, 4]) },
+    ],
+  }));
+
+  const baseRow: ViewStyle = {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 12,
-    opacity: disabled || loading ? 0.6 : 1,
   };
 
-  // 2. Size Variants
-  const sizeStyles = {
+  const sizeStyles: Record<'sm' | 'md' | 'lg', ViewStyle> = {
     sm: { paddingVertical: 8, paddingHorizontal: 12 },
     md: { paddingVertical: 14, paddingHorizontal: 20 },
     lg: { paddingVertical: 18, paddingHorizontal: 24 },
   };
 
-  // 3. Color Variants
-  const getVariantStyle = () => {
+  const getSurfaceColor = (): string => {
     switch (variant) {
       case 'outline':
-        return { 
-          backgroundColor: 'transparent', 
-          borderWidth: 1, 
-          borderColor: colors.border 
-        };
       case 'ghost':
-        return { backgroundColor: 'transparent' };
+        return colors.background;
       case 'secondary':
-        return { backgroundColor: colors.card };
+        return colors.card;
       case 'danger':
-        return { backgroundColor: colors.error };
+        return colors.error;
       case 'primary':
       default:
-        return { backgroundColor: colors.primary };
+        return colors.primary;
     }
   };
 
-  // 4. Text Color Logic
-  const getTextColor = () => {
+  const getVariantClayStyle = (): ViewStyle => {
+    switch (variant) {
+      case 'outline':
+        return { borderWidth: 1, borderColor: colors.border };
+      case 'ghost':
+        return { borderWidth: 0 };
+      default:
+        return {};
+    }
+  };
+
+  const getTextColor = (): string => {
     if (variant === 'outline' || variant === 'ghost' || variant === 'secondary') {
       return colors.text;
     }
-    return '#FFFFFF'; // Primary/Danger usually have white text
+    if (variant === 'primary') {
+      return colors.onPrimary;
+    }
+    if (variant === 'danger') {
+      return '#FFFFFF';
+    }
+    return colors.onPrimary;
   };
 
   const textColor = getTextColor();
-  const fontSize = size === 'sm' ? 14 : size === 'lg' ? 18 : 16;
+  const labelSize: 'sm' | 'md' | 'lg' =
+    size === 'sm' ? 'sm' : size === 'lg' ? 'lg' : 'md';
+  const labelFontSize = labelSize === 'sm' ? 14 : labelSize === 'lg' ? 18 : 16;
 
-  return (
-    <TouchableOpacity 
-      onPress={onPress} 
-      disabled={disabled || loading} 
-      style={[baseStyle, sizeStyles[size], getVariantStyle(), style]}
-      activeOpacity={0.8}
+  const inactive = disabled || loading;
+  const depth = variant === 'ghost' ? 6 : variant === 'outline' ? 10 : 12;
+  const puffy = variant === 'ghost' ? 14 : 18;
+
+  const handlePressIn = () => {
+    if (inactive) return;
+    pressProgress.value = withTiming(1, pressEase);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const handlePressOut = () => {
+    pressProgress.value = withTiming(0, pressEase);
+  };
+
+  const clayBody = (
+    <ClayView
+      color={getSurfaceColor()}
+      depth={depth}
+      puffy={puffy}
+      style={[
+        baseRow,
+        sizeStyles[size],
+        { borderRadius: 14, opacity: inactive ? 0.6 : 1 },
+        getVariantClayStyle(),
+        style,
+      ]}
     >
       {loading ? (
         <ActivityIndicator color={textColor} />
       ) : (
         <>
-          {/* Left Icon */}
           {icon && (
-            <View style={{ marginRight: 8 }}>
+            <View style={styles.iconLeft}>
               <Icon name={icon} size={20} color={textColor} />
             </View>
           )}
-
-          <Text style={[{ color: textColor, fontWeight: '600', fontSize }, textStyle]}>
+          <AppText
+            variant="body"
+            weight="bold"
+            style={[{ color: textColor, fontSize: labelFontSize, lineHeight: labelFontSize + 4 }, textStyle]}
+          >
             {title}
-          </Text>
-
-          {/* Right Icon (Added for Wizard Layout) */}
+          </AppText>
           {rightIcon && (
-            <View style={{ marginLeft: 8 }}>
+            <View style={styles.iconRight}>
               <Icon name={rightIcon} size={20} color={textColor} />
             </View>
           )}
         </>
       )}
-    </TouchableOpacity>
+    </ClayView>
+  );
+
+  return (
+    <ClayPressContext.Provider value={pressProgress}>
+      <Pressable
+        onPress={onPress}
+        disabled={inactive}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+      >
+        <Animated.View style={animatedStyle}>{clayBody}</Animated.View>
+      </Pressable>
+    </ClayPressContext.Provider>
   );
 };
+
+const styles = StyleSheet.create({
+  iconLeft: { marginRight: 8 },
+  iconRight: { marginLeft: 8 },
+});

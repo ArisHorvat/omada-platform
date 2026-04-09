@@ -1,10 +1,11 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Omada.Api.Abstractions;
+using Omada.Api.DTOs.Common;
 using Omada.Api.DTOs.Tasks;
 using Omada.Api.Entities;
-using Omada.Api.Repositories.Interfaces;
+using Omada.Api.Infrastructure;
+using Omada.Api.Services.Interfaces;
 
 namespace Omada.Api.Controllers;
 
@@ -13,58 +14,56 @@ namespace Omada.Api.Controllers;
 [Authorize]
 public class TasksController : ControllerBase
 {
-    private readonly ITaskRepository _repository;
+    private readonly ITaskService _taskService;
 
-    public TasksController(ITaskRepository repository)
+    public TasksController(ITaskService taskService)
     {
-        _repository = repository;
+        _taskService = taskService;
     }
 
-    private Guid GetUserId() => Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-
     [HttpGet]
-    public async Task<IActionResult> GetAll()
+    [HasPermission(WidgetKeys.Tasks, nameof(AccessLevel.View))]
+    public async Task<ActionResult<ServiceResponse<PagedResponse<TaskItemDto>>>> GetAll([FromQuery] PagedRequest request)
     {
-        try
-        {
-            var tasks = await _repository.GetByUserIdAsync(GetUserId());
-            return Ok(new ServiceResponse<IEnumerable<TaskItem>>(true, tasks));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new ServiceResponse<object>(false, null, new AppError(ErrorCodes.InternalError, ex.Message)));
-        }
+        var response = await _taskService.GetUserTasksAsync(request);
+        return response.IsSuccess ? Ok(response) : StatusCode(500, response);
+    }
+
+    [HttpGet("{id:guid}")]
+    [HasPermission(WidgetKeys.Tasks, nameof(AccessLevel.View))]
+    public async Task<ActionResult<ServiceResponse<TaskItemDto>>> GetById(Guid id)
+    {
+        var response = await _taskService.GetTaskByIdAsync(id);
+        if (!response.IsSuccess && response.Error?.Code == ErrorCodes.NotFound)
+            return NotFound(response);
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateTaskRequest request)
+    [HasPermission(WidgetKeys.Tasks, nameof(AccessLevel.Edit))]
+    public async Task<ActionResult<ServiceResponse<TaskItemDto>>> Create([FromBody] CreateTaskRequest request)
     {
-        var task = new TaskItem
-        {
-            Id = Guid.NewGuid(),
-            UserId = GetUserId(),
-            Title = request.Title,
-            IsCompleted = false,
-            DueDate = request.DueDate,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        await _repository.CreateAsync(task);
-        return Ok(new ServiceResponse<TaskItem>(true, task));
+        var response = await _taskService.CreateTaskAsync(request);
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
     }
 
     [HttpPut("{id:guid}")]
-    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateTaskRequest request)
+    [HasPermission(WidgetKeys.Tasks, nameof(AccessLevel.Edit))]
+    public async Task<ActionResult<ServiceResponse<TaskItemDto>>> Update(Guid id, [FromBody] UpdateTaskRequest request)
     {
-        var task = new TaskItem { Id = id, UserId = GetUserId(), Title = request.Title, IsCompleted = request.IsCompleted, DueDate = request.DueDate };
-        await _repository.UpdateAsync(task);
-        return Ok(new ServiceResponse<TaskItem>(true, task));
+        var response = await _taskService.UpdateTaskAsync(id, request);
+        if (!response.IsSuccess && response.Error?.Code == ErrorCodes.NotFound)
+            return NotFound(response);
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
     }
 
     [HttpDelete("{id:guid}")]
-    public async Task<IActionResult> Delete(Guid id)
+    [HasPermission(WidgetKeys.Tasks, nameof(AccessLevel.Edit))]
+    public async Task<ActionResult<ServiceResponse<bool>>> Delete(Guid id)
     {
-        await _repository.DeleteAsync(id, GetUserId());
-        return Ok(new ServiceResponse<object>(true, new { message = "Deleted" }));
+        var response = await _taskService.DeleteTaskAsync(id);
+        if (!response.IsSuccess && response.Error?.Code == ErrorCodes.NotFound)
+            return NotFound(response);
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
     }
 }

@@ -10,7 +10,7 @@ export const createStyles = (colors: any) => StyleSheet.create({
     overflow: 'hidden',
     zIndex: 10,
   },
-  heroGlass: {
+  heroPanel: {
     flex: 1,
     paddingHorizontal: 24,
     paddingBottom: 24,
@@ -27,7 +27,7 @@ export const createStyles = (colors: any) => StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.15)', // Subtle glass circle
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -75,5 +75,9 @@ export const createStyles = (colors: any) => StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 8,
+  },
+  flashContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 48,
   },
 });

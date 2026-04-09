@@ -1,33 +1,20 @@
 namespace Omada.Api.Entities;
 
-public class Group
+public class Group : BaseEntity, IOrganizationScoped
 {
-    public Guid Id { get; private set; }
-    public Guid OrganizationId { get; private set; }
-    public string Name { get; private set; } = string.Empty;
-    public string Type { get; private set; } = string.Empty;
-    public Guid? ManagerId { get; private set; }
-    public Guid? ParentGroupId { get; private set; }
-    public string? ScheduleConfig { get; private set; }
-    public DateTime CreatedAt { get; private set; }
+    public Guid OrganizationId { get; set; }
+    public Guid? ParentGroupId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty;
+    public Guid? ManagerId { get; set; }
+    
+    // Can be mapped to a JSON column or owned entity later
+    public string? ScheduleConfig { get; set; } 
 
-    private Group() { }
-
-    public static Result<Group> Create(Guid organizationId, string name, string type, Guid? managerId, Guid? parentGroupId, string? scheduleConfig)
-    {
-        if (string.IsNullOrWhiteSpace(name)) return Result<Group>.Failure("Group name is required.");
-        if (string.IsNullOrWhiteSpace(type)) return Result<Group>.Failure("Group type is required.");
-
-        return Result<Group>.Success(new Group
-        {
-            Id = Guid.NewGuid(),
-            OrganizationId = organizationId,
-            Name = name,
-            Type = type,
-            ManagerId = managerId,
-            ParentGroupId = parentGroupId,
-            ScheduleConfig = scheduleConfig,
-            CreatedAt = DateTime.UtcNow
-        });
-    }
+    // Navigation Properties
+    public virtual Organization Organization { get; set; } = null!;
+    public virtual Group? ParentGroup { get; set; }
+    public virtual ICollection<Group> SubGroups { get; set; } = new List<Group>();
+    public virtual User? Manager { get; set; }
+    public virtual ICollection<GroupMember> Members { get; set; } = new List<GroupMember>();
 }

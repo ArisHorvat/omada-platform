@@ -1,41 +1,58 @@
-using System.Data;
-using Dapper;
+using Microsoft.EntityFrameworkCore;
+using Omada.Api.Data;
+using Omada.Api.DTOs.Common;
 using Omada.Api.Entities;
 using Omada.Api.Repositories.Interfaces;
 
 namespace Omada.Api.Repositories;
 
-public class TaskRepository : ITaskRepository
+public class TaskRepository : GenericRepository<TaskItem>, ITaskRepository
 {
-    private readonly IDbConnection _dbConnection;
-
-    public TaskRepository(IDbConnection dbConnection)
+    public TaskRepository(ApplicationDbContext context)
+        : base(context)
     {
-        _dbConnection = dbConnection;
     }
 
-    public async Task<IEnumerable<TaskItem>> GetByUserIdAsync(Guid userId)
+    public async Task<PagedResponse<TaskItem>> GetPagedForUserAsync(Guid organizationId, Guid userId, int page, int pageSize)
     {
-        const string sql = "SELECT * FROM Tasks WHERE UserId = @UserId ORDER BY CreatedAt DESC";
-        return await _dbConnection.QueryAsync<TaskItem>(sql, new { UserId = userId });
+        var query = _context.Tasks
+            .AsNoTracking()
+            .Where(t =>
+                t.OrganizationId == organizationId &&
+                (t.AssigneeId == userId || t.CreatedByUserId == userId))
+            .OrderByDescending(t => t.CreatedAt);
+
+        var totalCount = await query.CountAsync();
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return new PagedResponse<TaskItem>
+        {
+            Items = items,
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize
+        };
     }
 
-    public async Task CreateAsync(TaskItem task)
+    public async Task<TaskItem?> GetByIdForUserReadAsync(Guid id, Guid organizationId, Guid userId)
     {
-        const string sql = "INSERT INTO Tasks (Id, UserId, Title, IsCompleted, DueDate, CreatedAt) VALUES (@Id, @UserId, @Title, @IsCompleted, @DueDate, @CreatedAt)";
-        await _dbConnection.ExecuteAsync(sql, task);
+        return await _context.Tasks
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t =>
+                t.Id == id &&
+                t.OrganizationId == organizationId &&
+                (t.AssigneeId == userId || t.CreatedByUserId == userId));
     }
 
-    public async Task UpdateAsync(TaskItem task)
+    public async Task<TaskItem?> GetByIdForUserMutationAsync(Guid id, Guid organizationId, Guid userId)
     {
-        const string sql = "UPDATE Tasks SET Title = @Title, IsCompleted = @IsCompleted, DueDate = @DueDate WHERE Id = @Id AND UserId = @UserId";
-        await _dbConnection.ExecuteAsync(sql, task);
-    }
-
-    public async Task DeleteAsync(Guid id, Guid userId)
-    {
-        // We include UserId in the WHERE clause for security (so you can't delete someone else's task)
-        const string sql = "DELETE FROM Tasks WHERE Id = @Id AND UserId = @UserId";
-        await _dbConnection.ExecuteAsync(sql, new { Id = id, UserId = userId });
+        return await dbSet
+            .FirstOrDefaultAsync(t =>
+                t.Id == id &&
+                t.OrganizationId == organizationId &&
+                (t.AssigneeId == userId || t.CreatedByUserId == userId));
     }
 }

@@ -1,85 +1,54 @@
 namespace Omada.Api.Entities;
 
-public class User
+public class User : BaseEntity
 {
-    public Guid Id { get; private set; }
-    public string Email { get; private set; } = string.Empty;
-    public string PasswordHash { get; private set; } = string.Empty;
-    public string FirstName { get; private set; } = string.Empty;
-    public string LastName { get; private set; } = string.Empty;
-    
-    // Nullable fields for profile info
-    public string? PhoneNumber { get; private set; }
-    public string? ProfilePictureUrl { get; private set; }
-    public string? CNP { get; private set; }
-    public string? Address { get; private set; }
-    public string? PasswordResetToken { get; private set; }
-    public DateTime? PasswordResetTokenExpires { get; private set; }
-    
-    public bool IsTwoFactorEnabled { get; private set; }
-    public DateTime CreatedAt { get; private set; }
-    public DateTime? LastLoginAt { get; private set; }
+    /// <summary>Optional job title / role label shown in the directory.</summary>
+    public string? Title { get; set; }
 
-    // Private constructor for EF Core / Dapper
-    private User() { }
+    /// <summary>
+    /// Optional department/group reference (typically a "Department" group).
+    /// This is separate from organization membership and used only for directory filters.
+    /// </summary>
+    public Guid? DepartmentId { get; set; }
 
-    public static Result<User> Create(
-        string firstName, 
-        string lastName, 
-        string email, 
-        string password, 
-        string? cnp = null,
-        string? phoneNumber = null,
-        string? address = null)
-    {
-        if (string.IsNullOrWhiteSpace(firstName)) return Result<User>.Failure("First name is required.");
-        if (string.IsNullOrWhiteSpace(lastName)) return Result<User>.Failure("Last name is required.");
-        if (string.IsNullOrWhiteSpace(email)) return Result<User>.Failure("Email is required.");
-        // Domain validation removed to allow BYOE (Bring Your Own Email)
+    /// <summary>
+    /// Org chart relationship: direct manager/advisor within the same tenant universe.
+    /// This is a nullable self-referencing FK for the org chart.
+    /// </summary>
+    public Guid? ManagerId { get; set; }
 
-        string hashedPassword = BCrypt.Net.BCrypt.HashPassword(password);
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string PasswordHash { get; set; } = string.Empty;
+    public string? PasswordResetToken { get; set; }
+    public DateTime? PasswordResetTokenExpires { get; set; }
+    public string? PhoneNumber { get; set; }
+    /// <summary>Relative path to avatar image (e.g. /images/avatars/{id}.jpg). Never store absolute URLs.</summary>
+    public string? AvatarUrl { get; set; }
+    public string? CNP { get; set; }
+    public string? Address { get; set; }
+    public bool IsTwoFactorEnabled { get; set; } = false;
 
-        return Result<User>.Success(new User
-        {
-            Id = Guid.NewGuid(),
-            FirstName = firstName,
-            LastName = lastName,
-            Email = email,
-            PasswordHash = hashedPassword,
-            CNP = cnp,
-            PhoneNumber = phoneNumber,
-            Address = address,
-            CreatedAt = DateTime.UtcNow,
-            IsTwoFactorEnabled = false
-        });
-    }
+    /// <summary>UI theme: "light", "dark", or "system".</summary>
+    public string ThemePreference { get; set; } = "system";
 
-    public void UpdateProfile(string? phoneNumber, string? address, string? profilePictureUrl)
-    {
-        PhoneNumber = phoneNumber;
-        Address = address;
-        ProfilePictureUrl = profilePictureUrl;
-    }
+    /// <summary>BCP 47 language tag, e.g. "en", "ro".</summary>
+    public string LanguagePreference { get; set; } = "en";
 
-    public void ChangePassword(string newPasswordHash)
-    {
-        PasswordHash = newPasswordHash;
-    }
+    /// <summary>When true, phone/email may appear in organization directory listings.</summary>
+    public bool IsPublicInDirectory { get; set; } = true;
 
-    public void ToggleTwoFactor(bool enabled)
-    {
-        IsTwoFactorEnabled = enabled;
-    }
+    public string? Bio { get; set; }
 
-    public void SetPasswordResetToken(string token, DateTime expires)
-    {
-        PasswordResetToken = token;
-        PasswordResetTokenExpires = expires;
-    }
+    /// <summary>JSON object for notification/UI toggles (e.g. newsAlerts, chatMessages).</summary>
+    public string? PreferencesJson { get; set; }
 
-    public void ClearPasswordResetToken()
-    {
-        PasswordResetToken = null;
-        PasswordResetTokenExpires = null;
-    }
+    // EF Core Navigation Properties (Org Chart)
+    public virtual User? Manager { get; set; }
+    public virtual ICollection<User> DirectReports { get; set; } = new List<User>();
+
+    // EF Core Navigation Properties
+    public virtual ICollection<OrganizationMember> OrganizationMemberships { get; set; } = new List<OrganizationMember>();
+    public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 }

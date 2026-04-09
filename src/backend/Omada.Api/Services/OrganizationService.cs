@@ -1,366 +1,352 @@
-using System.Data;
 using Omada.Api.Services.Interfaces;
 using Omada.Api.Repositories.Interfaces;
 using Omada.Api.Entities;
-using Omada.Api.WebSocketHandlers;
+using Omada.Api.Infrastructure;
 using Omada.Api.DTOs.Organizations;
+using Omada.Api.Abstractions;
+using Microsoft.AspNetCore.SignalR;
+using Omada.Api.Hubs;
+using Omada.Api.DTOs.Common;
+using Omada.Api.DTOs.Import;
 
 namespace Omada.Api.Services;
 
 public class OrganizationService : IOrganizationService
 {
-    private readonly IOrganizationRepository _organizationRepository;
-    private readonly IUserRepository _userRepository;
-    private readonly IRoleRepository _roleRepository;
-    private readonly IWidgetRepository _widgetRepository;
-    private readonly IDbConnection _dbConnection;
-    private readonly IWebSocketHandler _webSocketHandler;
+    private readonly IUnitOfWork _uow;
+    private readonly IHubContext<AppHub> _hubContext;
     private readonly IEmailService _emailService;
     private readonly ILogger<OrganizationService> _logger;
+    private readonly IPublicMediaUrlResolver _mediaUrls;
 
     public OrganizationService(
-        IOrganizationRepository organizationRepository, 
-        IUserRepository userRepository, 
-        IRoleRepository roleRepository, 
-        IWidgetRepository widgetRepository,
-        IDbConnection dbConnection,
-        IWebSocketHandler webSocketHandler,
+        IUnitOfWork uow,
+        IHubContext<AppHub> hubContext,
         IEmailService emailService,
-        ILogger<OrganizationService> logger)
+        ILogger<OrganizationService> logger,
+        IPublicMediaUrlResolver mediaUrls)
     {
-        _organizationRepository = organizationRepository;
-        _userRepository = userRepository;
-        _roleRepository = roleRepository;
-        _widgetRepository = widgetRepository;
-        _dbConnection = dbConnection;
-        _webSocketHandler = webSocketHandler;
+        _uow = uow;
+        _hubContext = hubContext;
         _emailService = emailService;
         _logger = logger;
+        _mediaUrls = mediaUrls;
     }
 
-    public async Task<Result<Organization>> CreateOrganizationAsync(RegisterOrganizationRequest request)
+    public async Task<ServiceResponse<OrganizationDetailsDto>> CreateOrganizationAsync(RegisterOrganizationRequest request)
     {
-        _logger.LogInformation("Starting transaction for creating organization: {Name}", request.Name);
+        _logger.LogInformation("Starting transaction to create organization: {Name}", request.Name);
+
+        // 1. Build Base Entity & Roles
+        var org = BuildBaseOrganization(request);
         
-        if (_dbConnection.State != ConnectionState.Open) _dbConnection.Open();
-        using var transaction = _dbConnection.BeginTransaction();
+        var validationError = ValidateImportedRoles(org, request.Users);
+        if (validationError != null) return validationError;
+
+        // 2. Performance Fix: Fetch all relevant users in ONE database query
+        var existingUsersDict = await FetchExistingUsersBulkAsync(request);
+
+        // 3. Process Admin & Users (In-Memory)
+        ProcessAdminUser(org, request, existingUsersDict);
+        ApplyRolePermissions(org, request.RoleWidgetMappings);
+        var usersToEmail = ProcessUserImports(org, request, existingUsersDict);
+
+        // 4. Save Everything Atomically
+        await _uow.Repository<Organization>().AddAsync(org);
+        await _uow.CompleteAsync(); // If this fails, no emails are sent.
+
+        // 5. Post-Save: Safe to send emails now
+        foreach (var (user, token) in usersToEmail)
+        {
+            _ = _emailService.SendInvitationEmailAsync(user.Email, user.FirstName, org.Name, token);
+        }
+
+        // 6. Map Response & Broadcast
+        var detailsDto = MapToOrganizationDetailsDto(org);
         
-        try
-        {
-            // 1. Create Organization Entity
-            var organizationResult = Organization.Create(
-                request.Name, request.ShortName, request.EmailDomain, request.LogoUrl,
-                request.PrimaryColor, request.SecondaryColor, request.TertiaryColor
-            );
-            if (organizationResult.IsFailure) return Result<Organization>.Failure(organizationResult.Error!);
-            var organization = organizationResult.Value!;
+        await _hubContext.Clients.All.SendAsync("OrganizationCreated", new { id = org.Id, name = org.Name });
 
-            await _organizationRepository.CreateAsync(organization, transaction);
-
-            // 2. Initialize and Create Roles (MUST happen before adding members)
-            // This generates the GUIDs we need for linking.
-            var roleNames = InitializeOrganizationRoles(request.OrganizationType, request.Roles);
-            var createdRoles = new List<Role>();
-            
-            foreach (var name in roleNames)
-            {
-                var role = Role.Create(organization.Id, name);
-                createdRoles.Add(role);
-            }
-            await _roleRepository.AddRangeAsync(createdRoles, transaction);
-
-            // 3. Setup Admin User
-            var existingAdmin = await _userRepository.GetByEmailAsync(request.AdminEmail, transaction);
-            Guid adminId;
-
-            if (existingAdmin != null)
-            {
-                adminId = existingAdmin.Id;
-            }
-            else
-            {
-                var userResult = User.Create(request.AdminFirstName, request.AdminLastName, request.AdminEmail, request.Password);
-                if (userResult.IsFailure) return Result<Organization>.Failure(userResult.Error!);
-                adminId = userResult.Value!.Id;
-                await _userRepository.CreateAsync(userResult.Value!, transaction);
-            }
-
-            // 4. Link Admin to the "Admin" Role GUID
-            // We use StringComparison to ensure we find "Admin" even if case differs slightly
-            var adminRole = createdRoles.First(r => r.Name.Equals("Admin", StringComparison.OrdinalIgnoreCase));
-            await _userRepository.AddMemberAsync(organization.Id, adminId, adminRole.Id, transaction);
-
-            // 5. Global Toggles (Which widgets are active for the whole Org)
-            await _widgetRepository.SetEnabledWidgetsAsync(organization.Id, request.Widgets, transaction);
-
-            // 6. Attribute Permissions (The Logic Engine)
-            // This handles custom roles, renamed roles, stripped permissions, and defaults.
-            await ApplyDefaultAccessLevels(organization.Id, request.OrganizationType, createdRoles, request, transaction);
-
-            // 7. Import Users
-            if (request.Users != null && request.Users.Any())
-            {
-                foreach (var userDto in request.Users)
-                {
-                    // Find the Role GUID corresponding to the imported string (e.g., "Student")
-                    // If the user typed a role that doesn't exist, fallback to the first non-admin role.
-                    var targetRole = createdRoles.FirstOrDefault(r => r.Name.Equals(userDto.Role, StringComparison.OrdinalIgnoreCase)) 
-                                     ?? createdRoles.First(r => !r.Name.Equals("Admin", StringComparison.OrdinalIgnoreCase));
-
-                    var tempPassword = request.DefaultUserPassword ?? "Welcome123!";
-                    var existingUser = await _userRepository.GetByEmailAsync(userDto.Email, transaction);
-                    
-                    Guid memberUserId;
-                    if (existingUser != null)
-                    {
-                        memberUserId = existingUser.Id;
-                        // Determine if we should send an email here? For now, we just link them.
-                    }
-                    else
-                    {
-                        var importedUser = User.Create(userDto.FirstName, userDto.LastName, userDto.Email, tempPassword, userDto.CNP, userDto.PhoneNumber, userDto.Address);
-                        if (importedUser.IsFailure) continue;
-
-                        var user = importedUser.Value!;
-                        var token = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
-                        user.SetPasswordResetToken(token, DateTime.UtcNow.AddDays(7));
-                        
-                        await _userRepository.CreateAsync(user, transaction);
-                        await _emailService.SendInvitationEmailAsync(user.Email, user.FirstName, organization.Name, token);
-                        memberUserId = user.Id;
-                    }
-
-                    // Link member using the Role's GUID ID
-                    await _userRepository.AddMemberAsync(organization.Id, memberUserId, targetRole.Id, transaction);
-                }
-            }
-
-            transaction.Commit();
-            
-            // Broadcast success
-            await _webSocketHandler.BroadcastAsync(new { type = "create", data = new { organization.Id, organization.Name } }, organization.Id);
-
-            return Result<Organization>.Success(organization);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to create organization {Name}", request.Name);
-            transaction.Rollback();
-            return Result<Organization>.Failure($"Registration failed: {ex.Message}");
-        }
-        finally
-        {
-            if (_dbConnection.State == ConnectionState.Open) _dbConnection.Close();
-        }
+        return new ServiceResponse<OrganizationDetailsDto>(true, detailsDto);
     }
 
-    public async Task<Result<Organization>> UpdateOrganizationAsync(Guid id, UpdateOrganizationRequest request)
+    public async Task<ServiceResponse<Organization>> UpdateOrganizationAsync(Guid id, UpdateOrganizationRequest request)
     {
-        _logger.LogInformation("Starting transaction for updating organization: {Id}", id);
+        var org = await _uow.Repository<Organization>().GetByIdAsync(id);
+        if (org == null)
+            return new ServiceResponse<Organization>(false, null, new AppError(ErrorCodes.NotFound, "Organization not found."));
+
+        org.Name = request.Name;
+        org.EmailDomain = request.EmailDomain;
+        org.PrimaryColor = request.PrimaryColor;
+        org.SecondaryColor = request.SecondaryColor;
+        org.TertiaryColor = request.TertiaryColor;
+
+        _uow.Repository<Organization>().Update(org);
+        await _uow.CompleteAsync();
         
-        if (_dbConnection.State != ConnectionState.Open) _dbConnection.Open();
-        using var transaction = _dbConnection.BeginTransaction();
-        try
-        {
-            var organization = await _organizationRepository.GetByIdAsync(id, transaction);
-            if (organization == null)
-            {
-                return Result<Organization>.Failure("Organization not found.");
-            }
-
-            organization.Update(request.Name, request.EmailDomain, request.PrimaryColor, request.SecondaryColor, request.TertiaryColor);
-            await _organizationRepository.UpdateAsync(organization, transaction);
-
-            // NOTE: Updating roles is complex with Foreign Keys.
-            // For a robust implementation, you should DIFF the roles (Add new, Rename existing, Delete unused).
-            // For now, we will just update the Widgets to keep it safe.
-            
-            await _widgetRepository.SetEnabledWidgetsAsync(id, request.Widgets, transaction);
-
-            transaction.Commit();
-            
-            await _webSocketHandler.BroadcastAsync(new { type = "update", id = id }, id);
-            return Result<Organization>.Success(organization);
-        }
-        catch (Exception ex)
-        {
-            transaction.Rollback();
-            _logger.LogError(ex, "Error updating organization");
-            return Result<Organization>.Failure("Update failed.");
-        }
-        finally
-        {
-            _dbConnection.Close();
-        }
-    }
-
-    public async Task<Result<bool>> DeleteOrganizationAsync(Guid id)
-    {
-        _logger.LogInformation("Starting transaction for deleting organization: {Id}", id);
+        await _hubContext.Clients.Group(id.ToString()).SendAsync("UpdateOrganization", new { id });
         
-        if (_dbConnection.State != ConnectionState.Open) _dbConnection.Open();
-        using var transaction = _dbConnection.BeginTransaction();
-        try
-        {
-            var organization = await _organizationRepository.GetByIdAsync(id, transaction);
-            if (organization == null) return Result<bool>.Failure("Organization not found.");
-
-            // Cascading delete handles members and roles usually, but we can be explicit
-            await _roleRepository.DeleteByOrganizationIdAsync(id, transaction);
-            await _userRepository.DeleteByOrganizationIdAsync(id, transaction);
-            await _organizationRepository.DeleteAsync(id, transaction);
-
-            transaction.Commit();
-            return Result<bool>.Success(true);
-        }
-        catch (Exception ex)
-        {
-            transaction.Rollback();
-            _logger.LogError(ex, "Error deleting organization");
-            return Result<bool>.Failure("Delete failed.");
-        }
-        finally
-        {
-            _dbConnection.Close();
-        }
+        return new ServiceResponse<Organization>(true, org);
     }
 
-    public async Task<Result<IEnumerable<OrganizationDetailsDto>>> GetAllAsync()
+    public async Task<ServiceResponse<bool>> DeleteOrganizationAsync(Guid id)
     {
-        try
-        {
-            var organizations = await _organizationRepository.GetAllAsync();
-            var result = new List<OrganizationDetailsDto>();
+        var org = await _uow.Repository<Organization>().GetByIdAsync(id);
+        if (org == null) 
+            return new ServiceResponse<bool>(false, false, new AppError(ErrorCodes.NotFound, "Organization not found."));
 
-            foreach (var org in organizations)
-            {
-                var roles = await _roleRepository.GetByOrganizationIdAsync(org.Id);
-                var widgets = await _widgetRepository.GetEnabledWidgetsAsync(org.Id);
+        _uow.Repository<Organization>().Remove(org);
+        await _uow.CompleteAsync();
 
-                result.Add(new OrganizationDetailsDto
-                {
-                    Id = org.Id,
-                    Name = org.Name,
-                    ShortName = org.ShortName,
-                    EmailDomain = org.EmailDomain,
-                    LogoUrl = org.LogoUrl,
-                    PrimaryColor = org.PrimaryColor,
-                    SecondaryColor = org.SecondaryColor,
-                    TertiaryColor = org.TertiaryColor,
-                    Roles = roles.Select(r => r.Name),
-                    Widgets = widgets
-                });
-            }
-            return Result<IEnumerable<OrganizationDetailsDto>>.Success(result);
-        }
-        catch (Exception ex)
-        {
-            return Result<IEnumerable<OrganizationDetailsDto>>.Failure(ex.Message);
-        }
+        return new ServiceResponse<bool>(true, true);
     }
 
-    public async Task<Result<OrganizationDetailsDto>> GetByIdAsync(Guid id)
+    public async Task<ServiceResponse<PagedResponse<OrganizationDetailsDto>>> GetAllAsync(PagedRequest request)
     {
-        try
+        var pagedOrganizations = await _uow.Repository<Organization>().GetPagedAsync(request.Page, request.PageSize);
+        
+        var orgIdsOnPage = pagedOrganizations.Items.Select(o => o.Id).ToList();
+        var roles = await _uow.Repository<Role>().FindAsync(r => orgIdsOnPage.Contains(r.OrganizationId));
+        
+        var mappedItems = pagedOrganizations.Items.Select(org => new OrganizationDetailsDto
         {
-            var organization = await _organizationRepository.GetByIdAsync(id, null);
-            if (organization == null) 
-            {
-                return Result<OrganizationDetailsDto>.Failure("Organization not found");
-            }
+            Id = org.Id,
+            OrganizationType = org.OrganizationType,
+            Name = org.Name,
+            ShortName = org.ShortName ?? "",
+            EmailDomain = org.EmailDomain,
+            LogoUrl = _mediaUrls.ToPublicUrl(string.IsNullOrEmpty(org.LogoUrl) ? null : org.LogoUrl),
+            PrimaryColor = org.PrimaryColor,
+            SecondaryColor = org.SecondaryColor,
+            TertiaryColor = org.TertiaryColor,
+            Roles = roles.Where(r => r.OrganizationId == org.Id).Select(r => r.Name),
+            Widgets = new List<string>(), 
+            RoleWidgetMappings = new Dictionary<string, List<string>>()
+        }).ToList();
 
-            var roles = await _roleRepository.GetByOrganizationIdAsync(id);
-            var widgets = await _widgetRepository.GetEnabledWidgetsAsync(id);
-            var mappings = await _roleRepository.GetRoleWidgetAccessAsync(id);
-
-            var mappingDict = mappings
-                .GroupBy(m => m.RoleName)
-                .ToDictionary(
-                    g => g.Key, 
-                    g => g.Select(m => m.WidgetKey).ToList()
-                );
-
-            var dto = new OrganizationDetailsDto
-            {
-                Id = organization.Id,
-                Name = organization.Name,
-                ShortName = organization.ShortName,
-                EmailDomain = organization.EmailDomain,
-                LogoUrl = organization.LogoUrl,
-                PrimaryColor = organization.PrimaryColor,
-                SecondaryColor = organization.SecondaryColor,
-                TertiaryColor = organization.TertiaryColor,
-                Roles = roles.Select(r => r.Name),
-                Widgets = widgets,
-                RoleWidgetMappings = mappingDict
-            };
-
-            return Result<OrganizationDetailsDto>.Success(dto);
-        }
-        catch (Exception ex)
+        return new ServiceResponse<PagedResponse<OrganizationDetailsDto>>(true, new PagedResponse<OrganizationDetailsDto>
         {
-            return Result<OrganizationDetailsDto>.Failure(ex.Message);
-        }
+            Items = mappedItems,
+            TotalCount = pagedOrganizations.TotalCount,
+            Page = pagedOrganizations.Page,
+            PageSize = pagedOrganizations.PageSize
+        });
     }
 
-    // --- Helper Methods ---
-
-    private List<string> InitializeOrganizationRoles(string orgType, List<string> customRoles)
+    public async Task<ServiceResponse<OrganizationDetailsDto>> GetByIdAsync(Guid id)
     {
-        // If user provided custom roles, use them but ensure "Admin" exists.
-        if (customRoles != null && customRoles.Any())
-        {
-            if (!customRoles.Any(r => r.Equals("Admin", StringComparison.OrdinalIgnoreCase)))
-            {
-                customRoles.Add("Admin");
-            }
-            return customRoles;
-        }
+        var org = await _uow.Repository<Organization>().GetByIdAsync(id);
+        if (org == null) 
+            return new ServiceResponse<OrganizationDetailsDto>(false, null, new AppError(ErrorCodes.NotFound, "Organization not found"));
 
-        // Standard templates if no custom roles provided
-        return orgType.ToLower() switch
+        var roles = (await _uow.Repository<Role>().FindAsync(r => r.OrganizationId == id)).ToList();
+        var roleIds = roles.Select(r => r.Id).ToList();
+        var permissions = await _uow.Repository<RolePermission>().FindAsync(rp => roleIds.Contains(rp.RoleId));
+
+        var mappingDict = roles.ToDictionary(
+            r => r.Name, 
+            r => permissions.Where(p => p.RoleId == r.Id).Select(p => p.WidgetKey).ToList()
+        );
+
+        var dto = new OrganizationDetailsDto
         {
-            "university" => new List<string> { "Student", "Professor", "Teaching Assistant", "Dean", "Registrar", "Operations", "Admin" },
-            "corporate" => new List<string> { "Employee", "Team Lead", "Project Manager", "Director", "HR Manager", "Operations", "Admin" },
-            _ => new List<string> { "Admin", "User" }
+            Id = org.Id,
+            OrganizationType = org.OrganizationType,
+            Name = org.Name,
+            ShortName = org.ShortName ?? "",
+            EmailDomain = org.EmailDomain,
+            LogoUrl = _mediaUrls.ToPublicUrl(string.IsNullOrEmpty(org.LogoUrl) ? null : org.LogoUrl),
+            PrimaryColor = org.PrimaryColor,
+            SecondaryColor = org.SecondaryColor,
+            TertiaryColor = org.TertiaryColor,
+            Roles = roles.Select(r => r.Name),
+            Widgets = permissions.Select(p => p.WidgetKey).Distinct(),
+            RoleWidgetMappings = mappingDict
         };
+
+        return new ServiceResponse<OrganizationDetailsDto>(true, dto);
     }
 
-    private async Task ApplyDefaultAccessLevels(
-        Guid orgId, 
-        string orgType, 
-        List<Role> createdRoles, 
-        RegisterOrganizationRequest request, 
-        IDbTransaction transaction)
-    {
-        // 1. Process User's Custom Selections from the Frontend
-        // If they unchecked a widget in the UI, it won't be in mapping.Widgets, effectively stripping it.
-        if (request.RoleWidgetMappings != null && request.RoleWidgetMappings.Any())
-        {
-            foreach (var mapping in request.RoleWidgetMappings)
-            {
-                var role = createdRoles.FirstOrDefault(r => r.Name.Equals(mapping.RoleName, StringComparison.OrdinalIgnoreCase));
-                if (role == null) continue;
+    // --- Private Helper Methods ---
 
-                foreach (var widgetKey in mapping.Widgets)
-                {
-                    // For now, default to 'view'. 
-                    // Future improvement: Frontend can send "edit" or "admin" if you add that UI.
-                    await _roleRepository.SaveRoleWidgetAccessAsync(role.Id, widgetKey, "view", transaction);
-                }
+    private static OrganizationType ParseOrganizationType(string? value) =>
+        string.Equals(value, "university", StringComparison.OrdinalIgnoreCase)
+            ? OrganizationType.University
+            : OrganizationType.Corporate;
+
+    private Organization BuildBaseOrganization(RegisterOrganizationRequest request)
+    {
+        var org = new Organization
+        {
+            Name = request.Name,
+            OrganizationType = ParseOrganizationType(request.OrganizationType),
+            ShortName = request.ShortName,
+            EmailDomain = request.EmailDomain,
+            LogoUrl = request.LogoUrl,
+            PrimaryColor = request.PrimaryColor,
+            SecondaryColor = request.SecondaryColor,
+            TertiaryColor = request.TertiaryColor
+        };
+
+        var roleNames = request.Roles ?? new List<string>();
+
+        // THE SAFEGUARD: Never trust the frontend completely. 
+        // Always ensure 'Admin' exists so the DB relationships don't break.
+        if (!roleNames.Any(r => r.Equals("Admin", StringComparison.OrdinalIgnoreCase)))
+        {
+            roleNames.Add("Admin");
+        }
+
+        foreach (var name in roleNames)
+        {
+            org.Roles.Add(new Role { Name = name, Organization = org });
+        }
+
+        return org;
+    }
+
+    private ServiceResponse<OrganizationDetailsDto>? ValidateImportedRoles(Organization org, IEnumerable<UserImportDto>? importedUsers)
+    {
+        if (importedUsers == null || !importedUsers.Any()) return null;
+
+        var validRoleNames = org.Roles.Select(r => r.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var invalidRoles = importedUsers.Select(u => u.Role)
+                                        .Where(r => !validRoleNames.Contains(r))
+                                        .Distinct()
+                                        .ToList();
+
+        if (invalidRoles.Any())
+        {
+            var errorMessage = $"Import failed. The following roles in the CSV do not exist: {string.Join(", ", invalidRoles)}";
+            return new ServiceResponse<OrganizationDetailsDto>(false, null, new AppError(ErrorCodes.InvalidInput, errorMessage));
+        }
+
+        return null;
+    }
+
+    private async Task<Dictionary<string, User>> FetchExistingUsersBulkAsync(RegisterOrganizationRequest request)
+    {
+        var allEmailsToFetch = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { request.AdminEmail };
+        
+        if (request.Users != null)
+        {
+            allEmailsToFetch.UnionWith(request.Users.Select(u => u.Email));
+        }
+
+        var existingUsers = await _uow.Repository<User>().FindAsync(u => allEmailsToFetch.Contains(u.Email));
+        return existingUsers.ToDictionary(u => u.Email, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private void ProcessAdminUser(Organization org, RegisterOrganizationRequest request, Dictionary<string, User> existingUsers)
+    {
+        if (!existingUsers.TryGetValue(request.AdminEmail, out var adminUser))
+        {
+            adminUser = new User
+            {
+                FirstName = request.AdminFirstName,
+                LastName = request.AdminLastName,
+                Email = request.AdminEmail,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+                IsTwoFactorEnabled = false
+            };
+        }
+
+        var adminRole = org.Roles.First(r => r.Name.Equals("Admin", StringComparison.OrdinalIgnoreCase));
+        org.Members.Add(new OrganizationMember { User = adminUser, Role = adminRole, Organization = org });
+    }
+
+    private void ApplyRolePermissions(Organization org, IEnumerable<RoleWidgetMappingDto>? mappings)
+    {
+        if (mappings != null && mappings.Any())
+        {
+            foreach (var mapping in mappings)
+            {
+                var role = org.Roles.FirstOrDefault(r => r.Name.Equals(mapping.RoleName, StringComparison.OrdinalIgnoreCase));
+                if (role == null || !Enum.TryParse<AccessLevel>(mapping.AccessLevel, true, out var level)) continue;
+
+                var existingPermission = role.Permissions.FirstOrDefault(p => p.WidgetKey.Equals(mapping.WidgetKey, StringComparison.OrdinalIgnoreCase));
+                
+                if (existingPermission != null) existingPermission.AccessLevel = level;
+                else role.Permissions.Add(new RolePermission { WidgetKey = mapping.WidgetKey, AccessLevel = level });
             }
         }
 
-        // 2. Safety Net: Ensure 'Admin' role has critical management permissions
-        // We do this regardless of UI selection to prevent lockouts.
-        var adminRole = createdRoles.FirstOrDefault(r => r.Name.Equals("Admin", StringComparison.OrdinalIgnoreCase));
+        // Safety Net: Ensure 'Admin' ALWAYS has critical access
+        var adminRole = org.Roles.FirstOrDefault(r => r.Name.Equals("Admin", StringComparison.OrdinalIgnoreCase));
         if (adminRole != null)
         {
-            await _roleRepository.SaveRoleWidgetAccessAsync(adminRole.Id, "users", "admin", transaction);
-            await _roleRepository.SaveRoleWidgetAccessAsync(adminRole.Id, "settings", "admin", transaction);
-            await _roleRepository.SaveRoleWidgetAccessAsync(adminRole.Id, "news", "admin", transaction);
-            // Admins usually need to see the schedule too
-            await _roleRepository.SaveRoleWidgetAccessAsync(adminRole.Id, "schedule", "view", transaction);
+            var criticalPermissions = new Dictionary<string, AccessLevel>
+            {
+                { "users", AccessLevel.Admin }, { "settings", AccessLevel.Admin },
+                { "news", AccessLevel.Admin }, { "schedule", AccessLevel.View }
+            };
+
+            foreach (var cp in criticalPermissions)
+            {
+                var existing = adminRole.Permissions.FirstOrDefault(p => p.WidgetKey.Equals(cp.Key, StringComparison.OrdinalIgnoreCase));
+                if (existing == null) adminRole.Permissions.Add(new RolePermission { WidgetKey = cp.Key, AccessLevel = cp.Value });
+                else if (existing.AccessLevel < cp.Value) existing.AccessLevel = cp.Value;
+            }
         }
+    }
+
+    private List<(User User, string Token)> ProcessUserImports(Organization org, RegisterOrganizationRequest request, Dictionary<string, User> existingUsersDict)
+    {
+        var usersNeedingEmails = new List<(User, string)>();
+        if (request.Users == null || !request.Users.Any()) return usersNeedingEmails;
+
+        foreach (var userDto in request.Users)
+        {
+            var targetRole = org.Roles.First(r => r.Name.Equals(userDto.Role, StringComparison.OrdinalIgnoreCase));
+
+            if (!existingUsersDict.TryGetValue(userDto.Email, out var importedUser))
+            {
+                var tempPassword = request.DefaultUserPassword ?? "Welcome123!";
+                var token = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+
+                importedUser = new User
+                {
+                    FirstName = userDto.FirstName,
+                    LastName = userDto.LastName,
+                    Email = userDto.Email,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(tempPassword),
+                    PhoneNumber = userDto.PhoneNumber,
+                    CNP = userDto.CNP,
+                    Address = userDto.Address,
+                    PasswordResetToken = token,
+                    PasswordResetTokenExpires = DateTime.UtcNow.AddDays(7)
+                };
+                
+                // Track this new user so we can email them after DB save
+                usersNeedingEmails.Add((importedUser, token));
+            }
+
+            org.Members.Add(new OrganizationMember { User = importedUser, Role = targetRole, Organization = org });
+        }
+
+        return usersNeedingEmails;
+    }
+
+    private OrganizationDetailsDto MapToOrganizationDetailsDto(Organization org)
+    {
+        var rolesWithPermissions = org.Roles.ToDictionary(
+            r => r.Name, 
+            r => r.Permissions.Select(p => p.WidgetKey).ToList()
+        );
+
+        return new OrganizationDetailsDto
+        {
+            Id = org.Id,
+            Name = org.Name,
+            ShortName = org.ShortName ?? "",
+            EmailDomain = org.EmailDomain,
+            PrimaryColor = org.PrimaryColor,
+            SecondaryColor = org.SecondaryColor,
+            TertiaryColor = org.TertiaryColor,
+            LogoUrl = _mediaUrls.ToPublicUrl(string.IsNullOrEmpty(org.LogoUrl) ? null : org.LogoUrl),
+            Roles = org.Roles.Select(r => r.Name).ToList(),
+            Widgets = org.Roles.SelectMany(r => r.Permissions).Select(p => p.WidgetKey).Distinct().ToList(),
+            RoleWidgetMappings = rolesWithPermissions
+        };
     }
 }

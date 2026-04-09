@@ -1,19 +1,20 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/src/context/AuthContext';
-import { OrganizationService } from '@/src/services/OrganizationService';
+import { orgApi, unwrap } from '@/src/api';
+import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
 
 export const useMoreLogic = (widgetInfo: Record<string, any>) => {
-  const { activeSession } = useAuth();
+  const { organization } = useCurrentOrganization();
+  const orgId = organization?.id;
   const [allWidgets, setAllWidgets] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchWidgets = async () => {
-        if (!activeSession?.orgId) return;
+        if (!orgId) return;
         
         try {
             // Get Org Details (which includes the 'widgets' array)
-            const details = await OrganizationService.getById(activeSession.orgId);
+            const details = await unwrap(orgApi.getById(orgId));
             
             // Filter: Only show widgets that exist in the UI map AND are enabled for this Org
             const enabledWidgets = (details.widgets || []).filter(w => widgetInfo[w]);
@@ -26,7 +27,7 @@ export const useMoreLogic = (widgetInfo: Record<string, any>) => {
     };
 
     fetchWidgets();
-  }, [activeSession?.orgId]);
+  }, [orgId]);
 
   return { allWidgets, loading };
 };

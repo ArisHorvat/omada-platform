@@ -1,67 +1,46 @@
-using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Omada.Api.Abstractions;
 using Omada.Api.DTOs.Chat;
+using Omada.Api.DTOs.Common;
 using Omada.Api.Entities;
-using Omada.Api.Repositories;
-using Omada.Api.WebSocketHandlers;
+using Omada.Api.Infrastructure;
+using Omada.Api.Services.Interfaces;
 
 namespace Omada.Api.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/organizations/{organizationId}/chat")]
 public class ChatController : ControllerBase
 {
-    private readonly IMessageRepository _repository;
-    private readonly IWebSocketHandler _webSocketHandler;
+    private readonly IChatService _chatService;
 
-    public ChatController(IMessageRepository repository, IWebSocketHandler webSocketHandler)
+    public ChatController(IChatService chatService)
     {
-        _repository = repository;
-        _webSocketHandler = webSocketHandler;
+        _chatService = chatService;
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetRecent(Guid organizationId)
+    [HasPermission(WidgetKeys.Chat, nameof(AccessLevel.View))]
+    public async Task<ActionResult<ServiceResponse<PagedResponse<MessageDto>>>> GetRecent([FromQuery] PagedRequest request)
     {
-        var messages = await _repository.GetRecentAsync(organizationId);
-        return Ok(messages.OrderBy(m => m.CreatedAt)); // Return oldest first for UI
+        var response = await _chatService.GetRecentMessagesAsync(request);
+        return response.IsSuccess ? Ok(response) : StatusCode(500, response);
     }
 
     [HttpPost]
-    public async Task<IActionResult> Send(Guid organizationId, [FromBody] CreateMessageRequest request)
+    [HasPermission(WidgetKeys.Chat, nameof(AccessLevel.Edit))]
+    public async Task<ActionResult<ServiceResponse<MessageDto>>> Send([FromBody] CreateMessageRequest request)
     {
-        try 
-        {
-            var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-            // In a real app, fetch user name from DB or claims. Assuming passed or simplified here.
-            var userName = request.UserName ?? "Anonymous"; 
+        var response = await _chatService.SendMessageAsync(request);
 
-            var message = new Message
-            {
-                Id = Guid.NewGuid(),
-                OrganizationId = organizationId,
-                UserId = userId,
-                UserName = userName,
-                Content = request.Content,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            await _repository.CreateAsync(message);
-            await _webSocketHandler.BroadcastAsync(new { type = "chat_message", data = message }, organizationId);
-
-            return Ok(new ServiceResponse<Message>(true, message));
-        }
-        catch (UnauthorizedAccessException)
+        if (response.IsSuccess)
         {
-            var error = new AppError(ErrorCodes.Unauthorized, "Your session has expired.");
-            return Unauthorized(new ServiceResponse(false, error));
+            // Broadcast the newly created message to connected clients
+            return Ok(response);
         }
-        catch (Exception ex)
-        {
-            var error = new AppError(ErrorCodes.InternalError, ex.Message);
-            return StatusCode(500, new ServiceResponse(false, error));
-        }
+
+        return BadRequest(response);
     }
 }
-

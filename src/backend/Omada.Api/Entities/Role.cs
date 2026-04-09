@@ -1,19 +1,12 @@
 namespace Omada.Api.Entities;
 
-public class Role
+public class Role : BaseEntity, IOrganizationScoped
 {
-    public Guid Id;
-    public Guid OrganizationId;
-    public string Name = string.Empty;
+    public Guid OrganizationId { get; set; }
+    public string Name { get; set; } = string.Empty;
 
-    public Role() { }
-
-    public static Role Create(Guid organizationId, string name)
-    {
-        return new Role { 
-            Id = Guid.NewGuid(),
-            OrganizationId = organizationId,
-            Name = name
-        };
-    }
+    // EF Core Navigation Properties
+    public virtual Organization Organization { get; set; } = null!;
+    public virtual ICollection<RolePermission> Permissions { get; set; } = new List<RolePermission>();
+    public virtual ICollection<OrganizationMember> Members { get; set; } = new List<OrganizationMember>();
 }

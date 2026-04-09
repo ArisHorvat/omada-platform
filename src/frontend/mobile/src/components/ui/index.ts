@@ -1,8 +1,9 @@
 // Foundation
 export * from './AppText';
 export * from './AppButton';
-export * from './GlassView';
 export * from './ClayView';
+export * from './ImageScrimGradient';
+export * from './ClayGroupedSection';
 export * from './Divider';
 export * from './Icon';
 
@@ -15,8 +16,7 @@ export * from './RadioButton';
 export * from './StarRating';
 export * from './ChipGroup';
 export * from './AppFormField';
-export * from './MorphingFAB';
-export * from './HapticSlider';
+export * from './ClayDatePicker';
 
 // Data Display
 export * from './StatusBadge';
@@ -26,10 +26,13 @@ export * from './LinearProgressBar';
 export * from './StepIndicator';
 export * from './CodeBlock';
 export * from './Accordion';
+export * from './DateStrip';
 
 // Feedback & Loading
 export * from './Skeleton';
 export * from './EmptyState';
+export * from './WidgetEmptyState';
+export * from './WidgetErrorState';
 export * from './PulseIndicator';
 export * from './Toast';
 export * from './Tooltip';
@@ -38,7 +41,6 @@ export * from './Tooltip';
 export * from './BottomSheet';
 export * from './BentoGrid'; // Exports both BentoGrid and BentoBox
 export * from './SwipeableRow';
-export * from './GlassHeader';
-
 // Images
+export * from './FullScreenImageModal';
 export * from './ProgressiveImage';

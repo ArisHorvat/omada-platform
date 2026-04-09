@@ -1,12 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { View, StyleSheet, Image, Dimensions, Platform } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ClayView, Icon, IconName } from '@/src/components/ui'; 
+import { ClayView, Icon, IconName, ProgressiveImage } from '@/src/components/ui'; 
 import { PressClay } from '@/src/components/animations/PressClay'; 
 import { useOrganizationTheme } from '@/src/context/OrganizationThemeContext';
-import { CurrentOrganizationService } from '@/src/services/CurrentOrganizationService';
 import { useThemeColors } from '@/src/hooks';
 import { AnimatedItem } from '@/src/components/animations';
 import { ClayAnimations } from '@/src/constants/animations';
@@ -14,7 +13,7 @@ import { ClayAnimations } from '@/src/constants/animations';
 const { width } = Dimensions.get('window');
 
 const ROUTE_ICONS: Record<string, IconName> = {
-  news: 'campaign',
+  tasks: 'check-circle',
   chat: 'chat',
   dashboard: 'dashboard',
   schedule: 'calendar-today',
@@ -87,7 +86,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
                 style={styles.beltStrap}
             >
                 <View style={styles.gridContainer}>
-                    {renderTab('news')}
+                    {renderTab('tasks')}
                     {renderTab('chat')}
                     <View style={[ { width: FAB_SIZE }]} /> 
                     {renderTab('schedule')}
@@ -132,7 +131,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
                     {/* 3. Inner Container clips the image to a perfect circle */}
                     <View style={styles.buckleInner}>
                         {logoUrl ? (
-                            <Image 
+                            <ProgressiveImage 
                                 source={{ uri: logoUrl }} 
                                 style={styles.logo} 
                                 // 4. CRITICAL FIX: 'cover' zooms the photo to fill the circle

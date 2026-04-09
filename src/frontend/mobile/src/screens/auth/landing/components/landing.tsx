@@ -5,12 +5,7 @@ import { useRouter } from 'expo-router';
 
 import { useThemeColors } from '@/src/hooks'; 
 import { PressScale } from '@/src/components/animations';
-import { 
-  AppText, 
-  AppButton, 
-  GlassView, 
-  Icon 
-} from '@/src/components/ui';
+import { AppText, AppButton, ClayView, Icon } from '@/src/components/ui';
 
 const { width } = Dimensions.get('window');
 
@@ -24,11 +19,14 @@ export default function LandingScreen() {
 
       <View style={styles.contentContainer}>
         
-        {/* Icon with Glass Effect */}
-        {/* Even without an image, GlassView adds a nice border/subtle depth */}
-        <GlassView intensity={20} style={[styles.iconContainer, { backgroundColor: colors.primary + '10', borderColor: colors.border + '40', borderWidth: 2 }]}>
-            <Icon name="school" size={60} color={colors.primary} />
-        </GlassView>
+        <ClayView
+          depth={8}
+          puffy={20}
+          color={colors.card}
+          style={[styles.iconContainer, { borderColor: colors.border + '40', borderWidth: 2 }]}
+        >
+          <Icon name="school" size={60} color={colors.primary} />
+        </ClayView>
         
         {/* Title with LineHeight fix */}
         <AppText variant="h1" style={[styles.title, { color: colors.text }]}>

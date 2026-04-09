@@ -5,7 +5,8 @@ import { useRegistrationContext } from '../context/RegistrationContext';
 import { ToolsService } from '@/src/services/ToolsService';
 
 export const useUsersImportLogic = () => {
-  const { importedUsers, setImportedUsers, submitRegistration, isSubmitting } = useRegistrationContext();
+  // 1. Pull roles and defaultUserPassword from context
+  const { importedUsers, setImportedUsers, submitRegistration, isSubmitting, roles, defaultUserPassword } = useRegistrationContext();
   const [activeTab, setActiveTab] = useState<'email' | 'upload'>('email');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -34,9 +35,13 @@ export const useUsersImportLogic = () => {
         file.mimeType || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       );
 
-      setImportedUsers(parsedUsers);
-      Alert.alert("Success", `Successfully imported ${parsedUsers.length} users.`);
-      
+      // Safety check to ensure we got an array back
+      if (Array.isArray(parsedUsers)) {
+          setImportedUsers(parsedUsers);
+          Alert.alert("Success", `Successfully imported ${parsedUsers.length} users.`);
+      } else {
+          throw new Error("Invalid response format from server.");
+      }
     } catch (error: any) {
       Alert.alert("Import Failed", error.message || "Could not parse the file.");
     } finally {
@@ -44,10 +49,7 @@ export const useUsersImportLogic = () => {
     }
   };
 
-  // --- MISSING FUNCTION ADDED HERE ---
   const handleInviteLink = () => {
-    // Logic: Since the Org doesn't exist yet, we can't make a real link.
-    // We just show a confirmation that this preference is recorded.
     Alert.alert(
       "Link Option Selected", 
       "A magic invite link will be generated and sent to your email once you finish setting up the organization."
@@ -62,6 +64,8 @@ export const useUsersImportLogic = () => {
     setActiveTab,
     pickDocument,
     isLoading,
-    handleInviteLink // <--- Exported now!
+    handleInviteLink,
+    roles,               // Export for UI
+    defaultUserPassword  // Export for UI
   };
 };

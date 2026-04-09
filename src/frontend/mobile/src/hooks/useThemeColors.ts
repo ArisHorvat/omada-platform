@@ -1,17 +1,25 @@
+import { useColorScheme } from 'react-native';
 import { useTheme } from '@react-navigation/native';
+
 import { AppLightTheme } from '@/src/styles/theme';
+import { usePreferencesStore } from '@/src/stores/usePreferencesStore';
+import { resolveEffectiveDark } from '@/src/utils/resolveEffectiveDark';
+
+export type AppThemeColors = typeof AppLightTheme.colors & { isDark: boolean };
 
 /**
- * A custom hook to access the application's theme colors directly.
- * * UPDATED: This now relies entirely on the OrganizationThemeContext's 
- * calculated theme (which includes 'ensureReadable' logic). 
- * We do not merge with raw organization data anymore to prevent 
- * unsafe colors from overwriting readable ones.
+ * Theme colors from Navigation (org-tinted) plus `isDark` driven by the preferences store
+ * so ClayView and other consumers re-render immediately when ThemePreference changes.
  */
-export const useThemeColors = () => {
-  const { colors } = useTheme();
+export const useThemeColors = (): AppThemeColors => {
+  const theme = useTheme();
+  const themePreference = usePreferencesStore((s) => s.themePreference);
+  const systemScheme = useColorScheme();
 
-  // We cast this to your custom theme type so TypeScript knows about
-  // keys like 'primaryLight', 'onPrimary', 'subtle', etc.
-  return colors as typeof AppLightTheme.colors;
+  const isDark = resolveEffectiveDark(themePreference, systemScheme);
+
+  return {
+    ...(theme.colors as typeof AppLightTheme.colors),
+    isDark,
+  };
 };

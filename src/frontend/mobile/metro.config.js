@@ -4,4 +4,9 @@ const { getDefaultConfig } = require('expo/metro-config');
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
 
+// React Native Skia (CanvasKit WASM) — see https://shopify.github.io/react-native-skia/docs/getting-started/web/
+if (!config.resolver.assetExts.includes('wasm')) {
+  config.resolver.assetExts.push('wasm');
+}
+
 module.exports = config;

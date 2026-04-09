@@ -3,7 +3,8 @@ import { Pressable, ViewStyle, StyleProp } from 'react-native';
 import Animated, { 
   useAnimatedStyle, 
   useSharedValue, 
-  withSpring 
+  withTiming,
+  Easing,
 } from 'react-native-reanimated';
 
 interface PressScaleProps {
@@ -27,12 +28,12 @@ export const PressScale = ({
 
   const handlePressIn = () => {
     if (disabled) return;
-    scale.value = withSpring(scaleTo, { damping: 10, stiffness: 300 });
+    scale.value = withTiming(scaleTo, { duration: 300, easing: Easing.out(Easing.ease) });
   };
 
   const handlePressOut = () => {
     if (disabled) return;
-    scale.value = withSpring(1, { damping: 10, stiffness: 300 });
+    scale.value = withTiming(1, { duration: 300, easing: Easing.out(Easing.ease) });
   };
 
   const animatedStyle = useAnimatedStyle(() => ({

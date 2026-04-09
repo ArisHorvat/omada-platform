@@ -1,6 +1,6 @@
 import React from 'react';
 import { ViewStyle, StyleProp } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, Easing } from 'react-native-reanimated';
 
 interface FadeInViewProps {
   children: React.ReactNode;
@@ -15,7 +15,9 @@ export const FadeInView = ({ children, index = 0, delay, style }: FadeInViewProp
 
   return (
     <Animated.View
-      entering={FadeInDown.delay(initialDelay).springify().damping(12)}
+      entering={FadeInDown.delay(initialDelay)
+        .duration(300)
+        .easing(Easing.out(Easing.ease))}
       style={style}
     >
       {children}

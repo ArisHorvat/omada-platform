@@ -1,18 +1,24 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Alert } from 'react-native';
-import { OrganizationService } from '@/src/services/OrganizationService';
-import { RegisterOrganizationRequest, UserImportDto } from '@/src/types/api';
+import { ORG_PRESETS } from '@/src/constants/widgets'; 
+import { PermissionLevel } from '@/src/constants/permissions';
+import * as Haptics from 'expo-haptics';
+import { RegisterOrganizationRequest, RoleWidgetMappingDto, UserImportDto } from '@/src/api/generatedClient';
+import { ToolsService } from '@/src/services/ToolsService';
+import { orgApi, unwrap } from '@/src/api';
+
+type RoleWidgetMap = Record<string, Record<string, PermissionLevel>>;
 
 interface RegistrationContextType {
-  // --- State ---
   orgData: { name: string; shortName: string; type: string };
   setOrgData: (data: { name: string; shortName: string; type: string }) => void;
+  setOrganizationType: (type: 'university' | 'corporate') => void;
 
   branding: { primary: string; secondary: string; tertiary: string };
   setBranding: (data: { primary: string; secondary: string; tertiary: string }) => void;
 
-  logo: any; // Contains { uri, name, type }
+  logo: any; 
   setLogo: (file: any) => void;
 
   adminData: { firstName: string; lastName: string; email: string; password: string; repeatPassword: string; };
@@ -21,9 +27,8 @@ interface RegistrationContextType {
   roles: string[];
   setRoles: (roles: string[]) => void;
 
-  allWidgets: Set<string>;
-  roleWidgets: Record<string, Set<string>>;
-  setRoleWidgets: (data: Record<string, Set<string>>) => void;
+  roleWidgetAccess: RoleWidgetMap;
+  setRoleWidgetAccess: (data: RoleWidgetMap) => void;
   toggleWidgetForRole: (role: string, widget: string) => void;
   
   importedUsers: UserImportDto[];
@@ -32,7 +37,6 @@ interface RegistrationContextType {
   defaultUserPassword: string;
   setDefaultUserPassword: (pass: string) => void;
 
-  // --- Actions ---
   submitRegistration: () => Promise<void>;
   isSubmitting: boolean;
 }
@@ -43,97 +47,107 @@ export const RegistrationProvider = ({ children }: { children: React.ReactNode }
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 1. Organization Details
   const [orgData, setOrgData] = useState({ name: '', shortName: '', type: 'corporate' });
-
-  // 2. Branding
   const [branding, setBranding] = useState({ primary: '#3b82f6', secondary: '#64748b', tertiary: '#eab308' });
   const [logo, setLogo] = useState<any>(null);
-
-  // 3. Admin Details
   const [adminData, setAdminData] = useState({ firstName: '', lastName: '', email: '', password: '', repeatPassword: '' });
-
-  // 4. Roles & Widgets
-  const [roles, setRoles] = useState<string[]>(['Admin', 'User']);
-  const [roleWidgets, setRoleWidgets] = useState<Record<string, Set<string>>>({ 
-    'Admin': new Set(['users', 'settings', 'schedule']),
-    'User': new Set(['schedule'])
-  });
   
-  // Computed property for all selected widgets across all roles
-  const allWidgets = new Set(Object.values(roleWidgets).flatMap(set => Array.from(set)));
-
-  const toggleWidgetForRole = (role: string, widget: string) => {
-    setRoleWidgets(prev => {
-      const newSet = new Set(prev[role] || []);
-      if (newSet.has(widget)) newSet.delete(widget);
-      else newSet.add(widget);
-      return { ...prev, [role]: newSet };
-    });
-  };
-
-  // 5. Users
+  const [roles, setRoles] = useState<string[]>(['Admin']);
+  const [roleWidgetAccess, setRoleWidgetAccess] = useState<RoleWidgetMap>({});
+  
   const [importedUsers, setImportedUsers] = useState<UserImportDto[]>([]);
   const [defaultUserPassword, setDefaultUserPassword] = useState('Welcome123!');
 
-  // --- SUBMISSION LOGIC ---
+  const setOrganizationType = (type: 'university' | 'corporate') => {
+    setOrgData(prev => ({ ...prev, type }));
+    const preset = ORG_PRESETS[type];
+    if (!preset) return;
+
+    const newRoles = ['Admin', ...preset.roles.map(r => r.name)];
+    setRoles(newRoles);
+
+    const newAccess: RoleWidgetMap = {};
+    newAccess['Admin'] = {
+        'schedule': 'admin', 'news': 'admin', 'users': 'admin', 'settings': 'admin', 'chat': 'admin'
+    };
+    preset.roles.forEach(roleDef => {
+        newAccess[roleDef.name] = roleDef.widgets;
+    });
+
+    setRoleWidgetAccess(newAccess);
+  };
+
+  useEffect(() => {
+    setOrganizationType('corporate');
+  }, []);
+
+  const toggleWidgetForRole = (role: string, widget: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setRoleWidgetAccess(prev => {
+      const roleAccess = { ...(prev[role] || {}) };
+      const currentLevel = roleAccess[widget];
+
+      if (!currentLevel) roleAccess[widget] = 'view';
+      else if (currentLevel === 'view') roleAccess[widget] = 'edit';
+      else if (currentLevel === 'edit') roleAccess[widget] = 'admin';
+      else delete roleAccess[widget];
+
+      return { ...prev, [role]: roleAccess };
+    });
+  };
+
   const submitRegistration = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
-
     try {
-      // Step A: Upload Logo (if exists)
       let uploadedLogoUrl = null;
       if (logo && logo.uri) {
         try {
-          uploadedLogoUrl = await OrganizationService.uploadLogo(logo.uri);
-        } catch (uploadError) {
-          console.warn("Logo upload failed, continuing without logo", uploadError);
-        }
+          uploadedLogoUrl = await ToolsService.uploadLogo(logo.uri);
+        } catch (e) { console.warn("Logo upload failed"); }
       }
 
-      // Step B: Construct Payload
-      const request: RegisterOrganizationRequest = {
+      const extractedDomain = adminData.email.includes('@') 
+        ? `@${adminData.email.split('@')[1]}` 
+        : '@general.com';
+
+      const request = new RegisterOrganizationRequest({
         name: orgData.name,
         shortName: orgData.shortName,
         organizationType: orgData.type,
-        emailDomain: 'general', // You might want to calculate this from Admin Email or Input
-        
-        // Admin
+        emailDomain: extractedDomain,
         adminFirstName: adminData.firstName,
         adminLastName: adminData.lastName,
         adminEmail: adminData.email,
         password: adminData.password,
-        
-        // Config
         defaultUserPassword: defaultUserPassword,
         logoUrl: uploadedLogoUrl || undefined,
         primaryColor: branding.primary,
         secondaryColor: branding.secondary,
         tertiaryColor: branding.tertiary,
-        
-        // Data Structures
         roles: roles,
-        widgets: Array.from(allWidgets),
-        
-        // Map Record<string, Set> to DTO List
-        roleWidgetMappings: Object.entries(roleWidgets).map(([roleName, widgetSet]) => ({
-          roleName: roleName,
-          widgets: Array.from(widgetSet)
-        })),
-        
-        users: importedUsers
-      };
+        widgets: Array.from(new Set(Object.values(roleWidgetAccess).flatMap(w => Object.keys(w)))),
+        roleWidgetMappings: Object.entries(roleWidgetAccess).flatMap(([roleName, widgets]) => 
+            Object.entries(widgets).map(([widgetId, level]) => new RoleWidgetMappingDto({ 
+                roleName: roleName, 
+                widgetKey: widgetId, 
+                accessLevel: level 
+            }))
+        ),
+        users: importedUsers.map(user => new UserImportDto({
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            role: user.role
+        }))
+      });
 
-      // Step C: Send to API
-      await OrganizationService.create(request);
-
-      // Step D: Success
+      await unwrap(orgApi.create(request));
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace('/register-flow/registration-success');
-
     } catch (error: any) {
-      // The apiClient automatically extracts the message from AppError
-      Alert.alert("Registration Failed", error.message || "An unexpected error occurred.");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert("Registration Failed", error.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -141,12 +155,12 @@ export const RegistrationProvider = ({ children }: { children: React.ReactNode }
 
   return (
     <RegistrationContext.Provider value={{
-      orgData, setOrgData,
+      orgData, setOrgData, setOrganizationType,
       branding, setBranding,
       logo, setLogo,
       adminData, setAdminData,
       roles, setRoles,
-      roleWidgets, setRoleWidgets, toggleWidgetForRole, allWidgets,
+      roleWidgetAccess, setRoleWidgetAccess, toggleWidgetForRole,
       importedUsers, setImportedUsers,
       defaultUserPassword, setDefaultUserPassword,
       submitRegistration, isSubmitting

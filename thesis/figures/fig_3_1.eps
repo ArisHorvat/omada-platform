@@ -1,0 +1,118 @@
+%!PS-Adobe-3.0 EPSF-3.0
+%%BoundingBox: 27 494 591 728
+%%HiResBoundingBox: 27 494 591 728
+%%Creator: Omada Thesis Figure (generated)
+%%CreationDate: Mar 27 2026
+%%LanguageLevel: 2
+%%EndComments
+
+% Simple, English BFS illustration for the Web Spider concept.
+% The LaTeX template includes this EPS via \includegraphics.
+
+/Helvetica findfont 10 scalefont setfont
+/Helvetica-Bold findfont 12 scalefont setfont
+
+gsave
+27 494 translate
+
+% Helper: draw a rectangle (x y w h)
+/rect {
+  /h exch def /w exch def /y exch def /x exch def
+  newpath
+  x y moveto
+  w 0 rlineto
+  0 h rlineto
+  w neg 0 rlineto
+  closepath
+} def
+
+% Helper: draw centered text at (cx, y)
+/ctext {
+  /s exch def /y exch def /cx exch def
+  s stringwidth pop
+  /tw exch def
+  cx tw 2 div sub y moveto
+  s show
+} def
+
+% Helper: draw arrow from (x1,y1) to (x2,y2)
+/arrow {
+  /y2 exch def /x2 exch def
+  /y1 exch def /x1 exch def
+  newpath x1 y1 moveto x2 y2 lineto stroke
+  % arrowhead
+  /dx x2 x1 sub def /dy y2 y1 sub def
+  /ang dy dx atan def
+  gsave
+    x2 y2 translate
+    ang rotate
+    newpath
+      0 0 moveto
+      -8 3 lineto
+      -8 -3 lineto
+    closepath fill
+  grestore
+} def
+
+% Canvas: width W=564, height H=234
+/W 564 def
+/H 234 def
+
+% Top row headings
+Helvetica-Bold findfont 12 scalefont setfont
+80 190 (Seed URLs) ctext
+300 190 (Distance 0) ctext
+420 190 (Distance 1) ctext
+
+Helvetica findfont 10 scalefont setfont
+
+% Boxes for seed and level nodes
+0.90 setgray
+0 setgray
+
+% Seed URLs box
+40 155 120 45 rect stroke
+100 178 (Seed pages) ctext
+
+% Distance 0 box (queue holds seed pages initially)
+280 155 120 45 rect stroke
+340 178 (Queue/Frontier) ctext
+
+% Distance 1 box
+430 115 120 45 rect stroke
+490 138 (Pages in 1 hop) ctext
+
+% Distance 2 box
+430 55 120 45 rect stroke
+490 78 (Pages in 2 hops) ctext
+
+% Label: Visited set (deduplication)
+250 25 200 35 rect stroke
+% Center text
+350 40 (Visited set) ctext
+350 20 (prevents duplicates) ctext
+
+% Arrows showing BFS expansion
+0.0 setgray
+40 178 280 178 arrow
+280 178 430 138 arrow
+280 128 430 78 arrow
+
+% Level-by-level helper annotations
+Helvetica-Bold findfont 11 scalefont setfont
+240 205 (BFS expands level by level) ctext
+Helvetica findfont 10 scalefont setfont
+
+% Small circles for pages (generic)
+% Level 1 pages (two examples)
+newpath 470 145 6 0 360 arc stroke
+newpath 490 145 6 0 360 arc stroke
+
+% Level 2 pages (two examples)
+newpath 470 85 6 0 360 arc stroke
+newpath 490 85 6 0 360 arc stroke
+
+grestore
+showpage
+%%EOF
+

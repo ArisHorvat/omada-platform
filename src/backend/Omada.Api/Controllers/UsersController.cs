@@ -1,106 +1,104 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Omada.Api.Repositories.Interfaces;
-using Omada.Api.DTOs.Users;
 using Omada.Api.Abstractions;
-using Omada.Api.Entities; 
+using Omada.Api.DTOs.Common;
+using Omada.Api.DTOs.Users;
+using Omada.Api.Entities;
+using Omada.Api.Infrastructure;
+using Omada.Api.Services.Interfaces;
 
 namespace Omada.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class UsersController : ControllerBase
 {
-    private readonly IUserRepository _userRepository;
-    private readonly ILogger<UsersController> _logger;
+    private readonly IUserService _userService;
+    private readonly IDigitalIdService _digitalIdService;
 
-    public UsersController(IUserRepository userRepository, ILogger<UsersController> logger)
+    public UsersController(IUserService userService, IDigitalIdService digitalIdService)
     {
-        _userRepository = userRepository;
-        _logger = logger;
+        _userService = userService;
+        _digitalIdService = digitalIdService;
     }
 
-    private Guid GetUserId()
+    /// <summary>Digital ID card payload + short-lived signed QR token for the current org.</summary>
+    [HttpGet("me/digital-id")]
+    [HasPermission(WidgetKeys.DigitalId, nameof(AccessLevel.View))]
+    public async Task<ActionResult<ServiceResponse<DigitalIdDto>>> GetMyDigitalId()
     {
-        var id = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(id)) throw new UnauthorizedAccessException();
-        return Guid.Parse(id);
+        var response = await _digitalIdService.GetMyDigitalIdAsync();
+        if (!response.IsSuccess && response.Error?.Code == ErrorCodes.Forbidden)
+            return StatusCode(403, response);
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
     }
 
     [HttpGet("me")]
-    [ProducesResponseType(typeof(ServiceResponse<User>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetMe()
+    public async Task<ActionResult<ServiceResponse<UserProfileDto>>> GetMe()
     {
-        try 
-        {
-            var userId = GetUserId();
-            var user = await _userRepository.GetByIdAsync(userId);
-            
-            if (user == null) 
-                return NotFound(new ServiceResponse(false, new AppError(ErrorCodes.NotFound, "User not found")));
-            
-            return Ok(new ServiceResponse<User>(true, user));
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Unauthorized(new ServiceResponse(false, new AppError(ErrorCodes.Unauthorized, "Session expired")));
-        }
-        catch (Exception ex)
-        {
-             return StatusCode(500, new ServiceResponse(false, new AppError(ErrorCodes.InternalError, ex.Message)));
-        }
+        var response = await _userService.GetUserProfileAsync();
+
+        return response.IsSuccess ? Ok(response) : NotFound(response);
+    }
+
+    [HttpPut("me")]
+    public async Task<ActionResult<ServiceResponse<string>>> UpdateMe([FromBody] UpdateMyProfileRequest request)
+    {
+        var response = await _userService.UpdateMyProfileAsync(request);
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
+    }
+
+    [HttpDelete("me")]
+    public async Task<ActionResult<ServiceResponse<string>>> DeleteMe()
+    {
+        var response = await _userService.SoftDeleteMyAccountAsync();
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
+    }
+
+    [HttpPost("me/export")]
+    public async Task<IActionResult> ExportMyData()
+    {
+        var response = await _userService.ExportMyDataJsonAsync();
+        if (!response.IsSuccess || response.Data == null)
+            return NotFound(response);
+
+        var fileName = $"omada-user-export-{DateTime.UtcNow:yyyyMMddHHmmss}.json";
+        return File(response.Data, "application/json; charset=utf-8", fileName);
     }
 
     [HttpPut("profile")]
-    [ProducesResponseType(typeof(ServiceResponse<string>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request)
+    public async Task<ActionResult<ServiceResponse<string>>> UpdateProfile([FromBody] UpdateProfileRequest request)
     {
-        try
-        {
-            var userId = GetUserId();
-            var user = await _userRepository.GetByIdAsync(userId);
-            if (user == null) 
-                return NotFound(new ServiceResponse(false, new AppError(ErrorCodes.NotFound, "User not found")));
-
-            user.UpdateProfile(request.PhoneNumber, request.Address, request.ProfilePictureUrl);
-            await _userRepository.UpdateAsync(user);
-
-            return Ok(new ServiceResponse<string>(true, "Profile updated successfully"));
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Unauthorized(new ServiceResponse(false, new AppError(ErrorCodes.Unauthorized, "Session expired")));
-        }
-        catch (Exception ex)
-        {
-             return StatusCode(500, new ServiceResponse(false, new AppError(ErrorCodes.InternalError, ex.Message)));
-        }
+        var response = await _userService.UpdateProfileAsync(request);
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
     }
 
     [HttpPut("security")]
-    [ProducesResponseType(typeof(ServiceResponse<string>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> UpdateSecurity([FromBody] UpdateSecurityRequest request)
+    public async Task<ActionResult<ServiceResponse<string>>> UpdateSecurity([FromBody] UpdateSecurityRequest request)
     {
-        try
-        {
-            var userId = GetUserId();
-            var user = await _userRepository.GetByIdAsync(userId);
-            if (user == null) 
-                return NotFound(new ServiceResponse(false, new AppError(ErrorCodes.NotFound, "User not found")));
+        var response = await _userService.UpdateSecurityAsync(request);
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
+    }
 
-            user.ToggleTwoFactor(request.IsTwoFactorEnabled);
-            await _userRepository.UpdateAsync(user);
+    [HttpGet("directory")]
+    [HasPermission(WidgetKeys.Users, nameof(AccessLevel.View))]
+    public async Task<ActionResult<ServiceResponse<PagedResponse<UserDirectoryItemDto>>>> GetDirectory(
+        [FromQuery] PagedRequest request,
+        [FromQuery] string? q,
+        [FromQuery] string? role,
+        [FromQuery] Guid? managerId,
+        [FromQuery] Guid? departmentId)
+    {
+        var response = await _userService.GetUserDirectoryAsync(request, q, role, managerId, departmentId);
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
+    }
 
-            return Ok(new ServiceResponse<string>(true, "Security settings updated"));
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return Unauthorized(new ServiceResponse(false, new AppError(ErrorCodes.Unauthorized, "Session expired")));
-        }
-        catch (Exception ex)
-        {
-             return StatusCode(500, new ServiceResponse(false, new AppError(ErrorCodes.InternalError, ex.Message)));
-        }
+    [HttpGet("{id:guid}")]
+    [HasPermission(WidgetKeys.Users, nameof(AccessLevel.View))]
+    public async Task<ActionResult<ServiceResponse<UserDeepProfileDto>>> GetById([FromRoute] Guid id)
+    {
+        var response = await _userService.GetUserDeepProfileAsync(id);
+        return response.IsSuccess ? Ok(response) : NotFound(response);
     }
 }

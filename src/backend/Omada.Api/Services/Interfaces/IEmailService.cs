@@ -1,8 +1,9 @@
+using Omada.Api.Abstractions;
 using Omada.Api.Entities;
 
 namespace Omada.Api.Services.Interfaces;
 
 public interface IEmailService
 {
-    Task<Result<bool>> SendInvitationEmailAsync(string email, string firstName, string orgName, string token);
+    Task<ServiceResponse<bool>> SendInvitationEmailAsync(string email, string firstName, string orgName, string token);
 }

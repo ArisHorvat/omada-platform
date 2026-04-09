@@ -1,0 +1,38 @@
+\chapter{Introduction}
+
+\label{intro}
+
+\section{Context}
+Digital transformation has become a strategic priority for both universities and corporations. Teaching, administration, communication, and operational coordination are increasingly mediated by software platforms, while expectations regarding speed, accessibility, and personalization continue to rise. Students and employees now interact with multiple digital systems every day: learning management systems, enterprise communication tools, room-booking platforms, news portals, e-mail notifications, and scheduling applications. Although each system addresses a specific business need, their coexistence often produces a fragmented user experience and reduced organizational efficiency.
+
+In higher education environments, this fragmentation is especially visible because academic life combines formal structures (courses, exams, laboratories, and department events) with dynamic activities (student organizations, project meetings, ad-hoc workshops, and collaborative spaces). Corporate organizations face a comparable situation through distributed teams, hybrid work policies, and parallel project calendars. In both cases, stakeholders must aggregate information from multiple sources and then convert it into a coherent personal plan. The burden of integration is frequently shifted from institutional systems to end users.
+
+As a result, organizations increasingly require platforms that are not only functionally rich, but also context-aware and adaptable across organizational boundaries. Multi-tenant architecture responds directly to this requirement by enabling a single technological core to serve multiple organizations while preserving strict data separation, role-specific permissions, and customizable branding. In a university setting, this model can support faculties, departments, and student entities under one ecosystem. In a corporate setting, it can support business units, subsidiaries, or partner organizations with similar operational semantics.
+
+At the same time, real-world institutional information remains partially distributed across legacy websites and public pages that are not integrated via modern APIs. Timetables, announcements, or event updates are often published in semi-structured web formats, requiring manual copy-paste processes to make data operational inside internal applications. This challenge motivates the inclusion of autonomous web scraping capabilities in modern platforms: controlled, resilient extraction pipelines can bridge interoperability gaps and transform publicly available data into actionable, structured information.
+
+The present thesis is positioned at the intersection of these practical demands. It proposes Omada as an integrated platform that combines a multi-tenant backend, mobile-first user interaction, and autonomous data acquisition to reduce information fragmentation in university and corporate contexts.
+
+\section{Motivation}
+The primary motivation of this work is grounded in recurring coordination problems experienced by students and employees in digital-first institutions. Although users have access to a large number of tools, they still spend significant time reconciling inconsistent schedules, searching for the latest versions of announcements, and manually re-entering data across applications. Instead of enabling focus and productivity, the digital ecosystem often introduces cognitive overhead.
+
+For students, the consequences are immediate: missed timetable updates, overlapping commitments between academic and extracurricular activities, uncertainty about room allocation, and delayed access to relevant departmental news. Information may be technically available, but practically inaccessible when it is spread across disconnected channels with different update rhythms. For employees, similar issues emerge in project coordination, meeting planning, and internal communication, particularly when teams operate across departments or organizations.
+
+Manual data entry represents a second major pain point. Administrative users are frequently required to duplicate information between websites, internal spreadsheets, and operational platforms. This repetition creates latency, increases error probability, and weakens trust in system accuracy. When users perceive platform data as incomplete or outdated, they revert to informal communication channels, further fragmenting the information landscape.
+
+A third motivation concerns governance and scalability. Institutions require centralized oversight of permissions, identity, and data ownership, while also preserving autonomy at the organizational level. A platform that cannot enforce tenant boundaries or role-based capabilities risks both security incidents and operational inconsistency. Therefore, the architecture must embed multi-tenancy and access control as first-class concerns rather than optional add-ons.
+
+Finally, the growing availability of AI-assisted and autonomous workflows motivates a shift from passive information repositories to active data systems. An autonomous web spider that discovers and extracts relevant updates can reduce manual maintenance effort and improve timeliness, provided it operates under transparent rules and robust validation mechanisms. In this thesis, autonomous scraping is not treated as an isolated utility, but as a core capability that expands the platform's practical value.
+
+\section{Objectives}
+The general objective of the thesis is to design and implement Omada as a coherent, scalable, and user-centered platform that unifies fragmented workflows across educational and corporate organizations. The specific objectives are:
+
+\begin{itemize}
+    \item Design and implement a C\# multi-tenant backend architecture that enforces organizational isolation, role-based permissions, and extensible domain services for scheduling, communication, and operational modules.
+    \item Build an autonomous Breadth-First Search (BFS) web spider capable of discovering relevant pages, extracting structured data from heterogeneous web sources, and supporting resilient synchronization workflows.
+    \item Develop a unified React Native mobile application that provides a consistent interaction layer for schedule management, news consumption, communication, and organization-scoped personalization.
+    \item Integrate backend services, scraping pipelines, and mobile client functionality into a single platform experience that reduces manual data entry and improves information coherence for end users.
+    \item Evaluate the proposed approach through implementation-oriented analysis focused on usability, data freshness, and maintainability in multi-organization scenarios.
+\end{itemize}
+
+Through these objectives, the thesis contributes an end-to-end perspective that combines software architecture, data acquisition automation, and mobile product design. The intended outcome is not only a technical prototype, but a practical framework for how institutions can modernize fragmented digital ecosystems into a unified, tenant-aware platform with autonomous data support.
