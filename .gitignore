@@ -496,3 +496,21 @@ Thumbs.db
 # Stitch AI generated files
 #==================================================================
 /stitch/
+
+#==================================================================
+# Large exports / documents (keep repo lightweight)
+#==================================================================
+*.pdf
+*.PDF
+
+# Thesis sources / bundles (not part of application code)
+/thesis/
+/thesis.zip
+
+# Local zip exports (e.g. backups, packaged folders)
+*.zip
+*.ZIP
+
+# Stitch/collection exports mentioned in project notes
+/code.js
+/stitch/**/code.js
