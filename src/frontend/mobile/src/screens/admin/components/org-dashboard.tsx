@@ -6,11 +6,10 @@ import { useAuth } from '@/src/context/AuthContext';
 import { useThemeColors } from '@/src/hooks';
 import { AppButton, AppText, ClayView } from '@/src/components/ui';
 import { useOrgAdminDashboardLogic } from '../hooks/useOrgAdminDashboardLogic';
-import AdminMappingToolScreen from './AdminMappingToolScreen';
 
 /**
  * Organization admin home: map/floorplan tooling for **Admin** and **SuperAdmin**.
- * SuperAdmin can open the global platform screen from here.
+ * Floor creation, AI extraction, room polygons, and POI pins live in **Floorplan extraction**.
  */
 export default function OrgAdminDashboard() {
   const colors = useThemeColors();
@@ -45,6 +44,11 @@ export default function OrgAdminDashboard() {
           </AppText>
         )}
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 14 }}>
+          <AppButton
+            title="Floorplan extraction"
+            onPress={() => router.push('/floorplan-workspace' as never)}
+            style={{ minWidth: 168 }}
+          />
           {isSuperAdmin ? (
             <AppButton
               title="Platform admin"
@@ -57,9 +61,24 @@ export default function OrgAdminDashboard() {
         </View>
       </ClayView>
 
-      <View style={{ flex: 1, paddingBottom: insets.bottom }}>
-        <AdminMappingToolScreen />
-      </View>
+      <ClayView
+        depth={2}
+        color={colors.card}
+        style={{
+          marginHorizontal: 16,
+          padding: 16,
+          borderRadius: 14,
+          marginBottom: insets.bottom + 16,
+        }}
+      >
+        <AppText variant="label" style={{ color: colors.subtle, marginBottom: 8 }}>
+          Map setup
+        </AppText>
+        <AppText variant="body" style={{ color: colors.text, marginBottom: 10 }}>
+          Create floors, run AI room extraction, refine polygons, and place entrance / elevator / stairs pins in one
+          place—open <AppText weight="bold">Floorplan extraction</AppText> above.
+        </AppText>
+      </ClayView>
     </View>
   );
 }

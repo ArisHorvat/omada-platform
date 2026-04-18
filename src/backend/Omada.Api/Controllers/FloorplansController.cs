@@ -42,4 +42,20 @@ public class FloorplansController : ControllerBase
             return NotFound(response);
         return BadRequest(response);
     }
+
+    /// <summary>Replace GeoJSON for a floorplan (manual corrections; does not call AI).</summary>
+    [HttpPut("{id:guid}/geojson")]
+    [HasPermission(WidgetKeys.Map, nameof(AccessLevel.Edit))]
+    public async Task<ActionResult<ServiceResponse<FloorplanDto>>> UpdateGeoJson(
+        Guid id,
+        [FromBody] UpdateFloorplanGeoJsonRequest request,
+        CancellationToken cancellationToken)
+    {
+        var response = await _floorplanProcessingService.UpdateGeoJsonAsync(id, request.GeoJsonData, cancellationToken);
+        if (response.IsSuccess)
+            return Ok(response);
+        if (response.Error?.Code == ErrorCodes.NotFound)
+            return NotFound(response);
+        return BadRequest(response);
+    }
 }

@@ -140,6 +140,68 @@ public sealed class FloorplanProcessingService : IFloorplanProcessingService
         return new ServiceResponse<FloorplanDto>(true, MapToDto(entity));
     }
 
+    public async Task<ServiceResponse<FloorplanDto>> UpdateGeoJsonAsync(
+        Guid floorplanId,
+        string geoJsonData,
+        CancellationToken cancellationToken = default)
+    {
+        var orgId = _userContext.OrganizationId;
+
+        if (string.IsNullOrWhiteSpace(geoJsonData))
+            return new ServiceResponse<FloorplanDto>(false, null,
+                new AppError(ErrorCodes.InvalidInput, "GeoJSON payload is required."));
+
+        string normalized;
+        try
+        {
+            using var doc = JsonDocument.Parse(geoJsonData.Trim());
+            var root = doc.RootElement;
+            if (root.ValueKind != JsonValueKind.Object
+                || !root.TryGetProperty("type", out var t)
+                || !string.Equals(t.GetString(), "FeatureCollection", StringComparison.OrdinalIgnoreCase))
+            {
+                return new ServiceResponse<FloorplanDto>(false, null,
+                    new AppError(ErrorCodes.InvalidInput, "GeoJSON must be a FeatureCollection object."));
+            }
+
+            if (!root.TryGetProperty("features", out var feats) || feats.ValueKind != JsonValueKind.Array)
+            {
+                return new ServiceResponse<FloorplanDto>(false, null,
+                    new AppError(ErrorCodes.InvalidInput, "FeatureCollection must include a \"features\" array."));
+            }
+
+            normalized = root.GetRawText();
+        }
+        catch (JsonException ex)
+        {
+            return new ServiceResponse<FloorplanDto>(false, null,
+                new AppError(ErrorCodes.InvalidInput, "Invalid JSON.", ex.Message));
+        }
+
+        var entity = await _db.Floorplans
+            .FirstOrDefaultAsync(p => p.Id == floorplanId && !p.IsDeleted, cancellationToken);
+
+        if (entity == null)
+            return new ServiceResponse<FloorplanDto>(false, null,
+                new AppError(ErrorCodes.NotFound, "Floorplan not found."));
+
+        await _db.Entry(entity).Reference(p => p.Floor).LoadAsync(cancellationToken);
+        if (entity.Floor == null || entity.Floor.IsDeleted)
+            return new ServiceResponse<FloorplanDto>(false, null,
+                new AppError(ErrorCodes.NotFound, "Floorplan not found."));
+
+        await _db.Entry(entity.Floor).Reference(f => f.Building).LoadAsync(cancellationToken);
+        if (entity.Floor.Building.OrganizationId != orgId)
+            return new ServiceResponse<FloorplanDto>(false, null,
+                new AppError(ErrorCodes.NotFound, "Floorplan not found."));
+
+        entity.GeoJsonData = normalized;
+        entity.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return new ServiceResponse<FloorplanDto>(true, MapToDto(entity));
+    }
+
     private FloorplanDto MapToDto(Floorplan entity)
     {
         var publicImage = _mediaUrls.ToPublicUrl(entity.ImageUrl) ?? entity.ImageUrl;

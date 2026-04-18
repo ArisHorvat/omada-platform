@@ -12,4 +12,7 @@ public interface IFloorplanProcessingService
     Task<ServiceResponse<FloorplanDto>> UploadAndProcessAsync(Guid floorId, IFormFile file, CancellationToken cancellationToken = default);
 
     Task<ServiceResponse<FloorplanDto>> GetByIdAsync(Guid floorplanId, CancellationToken cancellationToken = default);
+
+    /// <summary>Replace stored GeoJSON (e.g. admin manual corrections). Does not re-run AI.</summary>
+    Task<ServiceResponse<FloorplanDto>> UpdateGeoJsonAsync(Guid floorplanId, string geoJsonData, CancellationToken cancellationToken = default);
 }

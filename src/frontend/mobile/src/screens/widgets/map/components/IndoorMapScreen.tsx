@@ -18,6 +18,9 @@ import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext
 import { buildBusyRoomIdSet } from '../utils/roomOccupancy';
 import { useMapScheduleForToday } from '../hooks/useMapSchedule';
 import { useFloorplan } from '../hooks/useFloorplan';
+import { parseFloorplanPoiPoints } from '../utils/parseFloorplanGeoJson';
+import { FloorplanPoiKindIcon } from './floorplanPoiIcons';
+import { FLOORPLAN_POI_KINDS, type FloorplanPoiKind } from '@/src/screens/admin/utils/floorplanGeoJsonEdit';
 import { FloorplanViewer } from './FloorplanViewer';
 import { FloorplanGeoJsonOverlay } from './FloorplanGeoJsonOverlay';
 
@@ -89,6 +92,30 @@ export default function IndoorMapScreen() {
   }, [floorplanQuery.data?.imageUrl, activeFloor?.floorplanImageUrl]);
 
   const floorplanGeoJson = floorplanQuery.data?.geoJsonData;
+
+  const geoJsonPois = useMemo(() => parseFloorplanPoiPoints(floorplanGeoJson), [floorplanGeoJson]);
+
+  const poiKindUi = (raw: string): FloorplanPoiKind => {
+    const x = raw.toLowerCase();
+    return (FLOORPLAN_POI_KINDS as readonly string[]).includes(x) ? (x as FloorplanPoiKind) : 'other';
+  };
+
+  const poiBg = (kind: FloorplanPoiKind) => {
+    switch (kind) {
+      case 'entrance':
+        return '#2563eb';
+      case 'exit':
+        return '#16a34a';
+      case 'elevator':
+        return '#7c3aed';
+      case 'stairs':
+        return '#ea580c';
+      case 'restroom':
+        return '#0d9488';
+      default:
+        return '#64748b';
+    }
+  };
 
   const buildingName = useMemo(() => {
     if (!buildingId) return 'Building';
@@ -191,6 +218,37 @@ export default function IndoorMapScreen() {
                       onRoomPress={(p) => setGeoRoomSheet(p)}
                     />
                   ) : null}
+                  {geoJsonPois.map((p) => {
+                    const kind = poiKindUi(p.pinKind);
+                    const bg = poiBg(kind);
+                    return (
+                      <TouchableOpacity
+                        key={p.pinId || `${p.x}-${p.y}-${p.pinKind}`}
+                        activeOpacity={0.85}
+                        onPress={() =>
+                          Alert.alert(p.label?.trim() || p.pinKind, `${p.pinKind}${p.pinId ? ` · ${p.pinId}` : ''}`)
+                        }
+                        style={{
+                          position: 'absolute',
+                          left: `${p.x * 100}%`,
+                          top: `${p.y * 100}%`,
+                          marginLeft: -11,
+                          marginTop: -11,
+                          width: 22,
+                          height: 22,
+                          borderRadius: 11,
+                          backgroundColor: bg,
+                          borderWidth: 2,
+                          borderColor: 'rgba(255,255,255,0.95)',
+                          zIndex: 4,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <FloorplanPoiKindIcon kind={kind} size={12} color="#fff" />
+                      </TouchableOpacity>
+                    );
+                  })}
                   {roomsOnFloor.map((room) => {
                     const cx = room.coordinateX;
                     const cy = room.coordinateY;

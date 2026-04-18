@@ -514,3 +514,5 @@ Thumbs.db
 # Stitch/collection exports mentioned in project notes
 /code.js
 /stitch/**/code.js
+*.zip
+*.zip
