@@ -516,3 +516,5 @@ Thumbs.db
 /stitch/**/code.js
 *.zip
 *.zip
+/images
+/src/backend/Omada.Api/wwwroot/images

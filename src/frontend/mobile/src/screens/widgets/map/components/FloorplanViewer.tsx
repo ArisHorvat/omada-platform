@@ -1,14 +1,21 @@
-import React, { useEffect, useMemo } from 'react';
-import { View, StyleSheet, useWindowDimensions, ActivityIndicator } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { View, StyleSheet, useWindowDimensions, ActivityIndicator, Image as RNImage } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { clamp, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import Animated, {
+  clamp,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
+import { Image as ExpoImage } from 'expo-image';
 import {
   Canvas,
   ColorMatrix,
   Image,
   useImage,
 } from '@shopify/react-native-skia';
-import { resolveMediaUrl } from '../utils/resolveMediaUrl';
+import { isDirectLocalOrBlobUri, resolveMediaUrl } from '../utils/resolveMediaUrl';
 import { computeContainRect } from '../utils/imageContainRect';
 import { FloorplanViewerMetricsContext } from './floorplanViewerMetrics';
 
@@ -31,6 +38,10 @@ export interface FloorplanViewerProps {
   heightRatio?: number;
   /** When false, pinch/pan disabled (e.g. while dragging polygon handles). */
   gesturesEnabled?: boolean;
+  /** Normalized tap inside the floorplan content rect [0..1] (e.g. place a POI while pan/zoom stay enabled). */
+  onTapNormalized?: (nx: number, ny: number) => void;
+  /** Digital twin: hide raster floorplan, show semantic overlay only (dark “wall” background). */
+  vectorMode?: boolean;
 }
 
 export function FloorplanViewer({
@@ -40,15 +51,31 @@ export function FloorplanViewer({
   layoutWidth: layoutWidthProp,
   heightRatio = 0.72,
   gesturesEnabled = true,
+  onTapNormalized,
+  vectorMode = false,
 }: FloorplanViewerProps) {
   const { width: windowWidth } = useWindowDimensions();
   const canvasWidth = layoutWidthProp ?? windowWidth;
   const height = canvasWidth * heightRatio;
   const resolved = resolveMediaUrl(imageUrl ?? undefined);
-  const image = useImage(resolved);
+  const useRasterImage = !!resolved && isDirectLocalOrBlobUri(resolved);
+  const skImage = useImage(useRasterImage ? null : resolved);
+  const [rasterNatural, setRasterNatural] = useState({ w: 0, h: 0 });
+  const [rasterLoaded, setRasterLoaded] = useState(false);
 
-  const iw = image?.width() ?? 0;
-  const ih = image?.height() ?? 0;
+  useEffect(() => {
+    setRasterNatural({ w: 0, h: 0 });
+    setRasterLoaded(false);
+    if (!resolved || !useRasterImage) return;
+    RNImage.getSize(
+      resolved,
+      (w, h) => setRasterNatural({ w, h }),
+      () => setRasterNatural({ w: canvasWidth, h: height }),
+    );
+  }, [resolved, useRasterImage, canvasWidth, height]);
+
+  const iw = useRasterImage ? rasterNatural.w : (skImage?.width() ?? 0);
+  const ih = useRasterImage ? rasterNatural.h : (skImage?.height() ?? 0);
   const contain = useMemo(
     () => computeContainRect(canvasWidth, height, iw, ih),
     [canvasWidth, height, iw, ih],
@@ -77,7 +104,34 @@ export function FloorplanViewer({
     savedTranslateY.value = 0;
   }, [resolved, canvasWidth]);
 
+  const rasterOpacity = useSharedValue(vectorMode ? 0 : 1);
+  useEffect(() => {
+    rasterOpacity.value = withTiming(vectorMode ? 0 : 1, { duration: 220 });
+  }, [vectorMode]);
+
+  const rasterFadeStyle = useAnimatedStyle(() => ({
+    opacity: rasterOpacity.value,
+  }));
+
+  const handleTapFromGesture = useCallback(
+    (absX: number, absY: number) => {
+      if (!onTapNormalized) return;
+      const x = (absX - contain.offsetX) / Math.max(1, metricsValue.contentWidth);
+      const y = (absY - contain.offsetY) / Math.max(1, metricsValue.contentHeight);
+      if (x < 0 || x > 1 || y < 0 || y > 1) return;
+      onTapNormalized(Math.max(0, Math.min(1, x)), Math.max(0, Math.min(1, y)));
+    },
+    [
+      onTapNormalized,
+      contain.offsetX,
+      contain.offsetY,
+      metricsValue.contentWidth,
+      metricsValue.contentHeight,
+    ],
+  );
+
   const pinchGesture = Gesture.Pinch()
+    .enabled(gesturesEnabled)
     .onStart(() => {
       savedScale.value = scale.value;
     })
@@ -89,6 +143,7 @@ export function FloorplanViewer({
     });
 
   const panGesture = Gesture.Pan()
+    .enabled(gesturesEnabled)
     .onStart(() => {
       savedTranslateX.value = translateX.value;
       savedTranslateY.value = translateY.value;
@@ -98,23 +153,49 @@ export function FloorplanViewer({
       translateY.value = savedTranslateY.value + e.translationY;
     });
 
-  const composed = Gesture.Simultaneous(pinchGesture, panGesture);
+  const tapGesture = Gesture.Tap()
+    .enabled(!!onTapNormalized)
+    .onEnd((e) => {
+      runOnJS(handleTapFromGesture)(e.x, e.y);
+    });
+
+  const composed = Gesture.Simultaneous(pinchGesture, panGesture, tapGesture);
+
+  const needsGestureRoot = gesturesEnabled || !!onTapNormalized;
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }, { translateY: translateY.value }, { scale: scale.value }],
   }));
 
-  const loading = !!resolved && !image;
+  const loading = !!resolved && (useRasterImage ? !rasterLoaded : !skImage);
 
-  const canvasBody = (
+  const canvasInner = (
     <>
-      <Canvas style={{ width: canvasWidth, height }} pointerEvents="none">
-        {image && (
-          <Image image={image} x={0} y={0} width={canvasWidth} height={height} fit="contain">
-            {isDark && <ColorMatrix matrix={INVERT_LINE_ART_MATRIX} />}
-          </Image>
-        )}
-      </Canvas>
+      {useRasterImage && resolved ? (
+        <Animated.View
+          style={[{ width: canvasWidth, height }, rasterFadeStyle]}
+          pointerEvents="none"
+        >
+          <ExpoImage
+            source={{ uri: resolved }}
+            style={[{ width: canvasWidth, height }, isDark && { opacity: 0.94 }]}
+            contentFit="contain"
+            transition={0}
+            onLoad={() => setRasterLoaded(true)}
+            onError={() => setRasterLoaded(true)}
+          />
+        </Animated.View>
+      ) : (
+        <Animated.View style={[{ width: canvasWidth, height }, rasterFadeStyle]} pointerEvents="none">
+          <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
+            {skImage && (
+              <Image image={skImage} x={0} y={0} width={canvasWidth} height={height} fit="contain">
+                {isDark && <ColorMatrix matrix={INVERT_LINE_ART_MATRIX} />}
+              </Image>
+            )}
+          </Canvas>
+        </Animated.View>
+      )}
       <FloorplanViewerMetricsContext.Provider value={metricsValue}>
         <View
           style={{
@@ -133,8 +214,20 @@ export function FloorplanViewer({
     </>
   );
 
+  const canvasBody = (
+    <Animated.View style={[styles.canvasOuter, { width: canvasWidth, height }, animatedStyle]}>
+      {canvasInner}
+    </Animated.View>
+  );
+
   return (
-    <View style={[styles.wrap, { height }]}>
+    <View
+      style={[
+        styles.wrap,
+        { height },
+        vectorMode && { backgroundColor: '#1E293B' },
+      ]}
+    >
       {loading && (
         <View style={styles.loading}>
           <ActivityIndicator size="large" />
@@ -146,15 +239,7 @@ export function FloorplanViewer({
         </View>
       )}
       {resolved ? (
-        gesturesEnabled ? (
-          <GestureDetector gesture={composed}>
-            <Animated.View style={[styles.canvasOuter, { width: canvasWidth, height }, animatedStyle]}>
-              {canvasBody}
-            </Animated.View>
-          </GestureDetector>
-        ) : (
-          <View style={[styles.canvasOuter, { width: canvasWidth, height }]}>{canvasBody}</View>
-        )
+        needsGestureRoot ? <GestureDetector gesture={composed}>{canvasBody}</GestureDetector> : canvasBody
       ) : null}
     </View>
   );

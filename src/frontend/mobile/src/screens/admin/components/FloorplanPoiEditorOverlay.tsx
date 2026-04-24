@@ -1,13 +1,12 @@
 import React, { useMemo, useRef, useState } from 'react';
-import type { GestureResponderEvent } from 'react-native';
-import { PanResponder, Pressable, StyleSheet, View } from 'react-native';
+import { PanResponder, Platform, Pressable, StyleSheet, View } from 'react-native';
 import type { EditablePoiFeature, FloorplanPoiKind } from '@/src/screens/admin/utils/floorplanGeoJsonEdit';
 import { AppText } from '@/src/components/ui';
 import { useFloorplanViewerMetrics } from '@/src/screens/widgets/map/components/floorplanViewerMetrics';
 import { FloorplanPoiKindIcon } from '@/src/screens/widgets/map/components/floorplanPoiIcons';
 
-const PIN_BOX = 22;
-const TOUCH = 44;
+const PIN_BOX = 32;
+const TOUCH = 54;
 
 function colorForKind(k: FloorplanPoiKind): string {
   switch (k) {
@@ -30,7 +29,6 @@ type Props = {
   pois: EditablePoiFeature[];
   placeKind: FloorplanPoiKind | null;
   selectedPoiIndex: number | null;
-  onAddAt: (x: number, y: number) => void;
   onMovePoi: (index: number, x: number, y: number) => void;
   onSelectPoi: (index: number | null) => void;
   width?: number;
@@ -41,7 +39,6 @@ export function FloorplanPoiEditorOverlay({
   pois,
   placeKind,
   selectedPoiIndex,
-  onAddAt,
   onMovePoi,
   onSelectPoi,
   width: wProp,
@@ -49,7 +46,6 @@ export function FloorplanPoiEditorOverlay({
 }: Props) {
   const metrics = useFloorplanViewerMetrics();
   const [layout, setLayout] = useState({ w: 0, h: 0 });
-  const mapRef = useRef<View>(null);
 
   const w =
     layout.w > 0
@@ -67,19 +63,14 @@ export function FloorplanPoiEditorOverlay({
   const safeW = Math.max(1, w);
   const safeH = Math.max(1, h);
 
-  const handlePlacePress = (e: GestureResponderEvent) => {
-    const { pageX, pageY } = e.nativeEvent;
-    mapRef.current?.measureInWindow((mx, my, mw, mh) => {
-      const nx = (pageX - mx) / Math.max(1, mw);
-      const ny = (pageY - my) / Math.max(1, mh);
-      onAddAt(Math.max(0, Math.min(1, nx)), Math.max(0, Math.min(1, ny)));
-    });
-  };
+  const webNoSelect =
+    Platform.OS === 'web'
+      ? ({ userSelect: 'none', WebkitUserSelect: 'none' } as Record<string, string>)
+      : {};
 
   return (
     <View
-      ref={mapRef}
-      style={[StyleSheet.absoluteFillObject, { zIndex: 25 }]}
+      style={[StyleSheet.absoluteFillObject, { zIndex: 25 }, webNoSelect]}
       pointerEvents="box-none"
       onLayout={(e) => {
         const { width, height } = e.nativeEvent.layout;
@@ -87,10 +78,11 @@ export function FloorplanPoiEditorOverlay({
       }}
       collapsable={false}
     >
-      {placeKind ? (
+      {selectedPoiIndex != null ? (
         <Pressable
-          style={[StyleSheet.absoluteFill, { zIndex: 1 }]}
-          onPress={handlePlacePress}
+          accessibilityLabel="Deselect pin"
+          onPress={() => onSelectPoi(null)}
+          style={[StyleSheet.absoluteFillObject, { zIndex: 1 }]}
         />
       ) : null}
       {pois.map((p, index) => (
@@ -104,6 +96,7 @@ export function FloorplanPoiEditorOverlay({
           onMovePoi={onMovePoi}
           onSelectPoi={onSelectPoi}
           placeMode={!!placeKind}
+          zIndex={selectedPoiIndex === index ? 42 : 22}
         />
       ))}
     </View>
@@ -119,6 +112,7 @@ function DraggablePoiPin({
   onMovePoi,
   onSelectPoi,
   placeMode,
+  zIndex,
 }: {
   poi: EditablePoiFeature;
   index: number;
@@ -128,6 +122,7 @@ function DraggablePoiPin({
   onMovePoi: (index: number, x: number, y: number) => void;
   onSelectPoi: (index: number | null) => void;
   placeMode: boolean;
+  zIndex: number;
 }) {
   const start = useRef({ x: poi.x, y: poi.y });
   const [drag, setDrag] = useState({ dx: 0, dy: 0 });
@@ -177,7 +172,7 @@ function DraggablePoiPin({
         height: TOUCH,
         justifyContent: 'center',
         alignItems: 'center',
-        zIndex: selected ? 40 : 20,
+        zIndex,
       }}
     >
       <View
@@ -192,24 +187,24 @@ function DraggablePoiPin({
           justifyContent: 'center',
           shadowColor: '#000',
           shadowOpacity: 0.35,
-          shadowRadius: 3,
-          elevation: 4,
+          shadowRadius: 6,
+          elevation: 6,
         }}
       >
-        <FloorplanPoiKindIcon kind={poi.pinKind} size={14} color="#fff" />
+        <FloorplanPoiKindIcon kind={poi.pinKind} size={18} color="#fff" />
       </View>
-      <View style={{ position: 'absolute', top: -38, maxWidth: 120, alignItems: 'center' }} pointerEvents="none">
+      <View style={{ position: 'absolute', top: -44, maxWidth: 140, alignItems: 'center' }} pointerEvents="none">
         <AppText
           variant="caption"
           numberOfLines={1}
           style={{
-            fontSize: 10,
+            fontSize: 11,
             color: '#0f172a',
             backgroundColor: 'rgba(255,255,255,0.95)',
             overflow: 'hidden',
-            paddingHorizontal: 6,
-            paddingVertical: 2,
-            borderRadius: 6,
+            paddingHorizontal: 8,
+            paddingVertical: 3,
+            borderRadius: 8,
           }}
         >
           {poi.label || poi.pinKind}
