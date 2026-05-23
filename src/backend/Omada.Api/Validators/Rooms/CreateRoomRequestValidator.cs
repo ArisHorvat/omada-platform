@@ -1,5 +1,6 @@
 using FluentValidation;
 using Omada.Api.DTOs.Rooms;
+using Omada.Api.Entities;
 
 namespace Omada.Api.Validators.Rooms;
 
@@ -36,5 +37,23 @@ public class CreateRoomRequestValidator : AbstractValidator<CreateRoomRequest>
         RuleFor(x => x.RequiredRoleId)
             .NotEqual(Guid.Empty)
             .When(x => x.RequiredRoleId.HasValue);
+
+        RuleFor(x => x.MapIconKey)
+            .MaximumLength(64)
+            .When(x => x.MapIconKey != null);
+
+        RuleFor(x => x.Resources)
+            .MaximumLength(2000)
+            .When(x => x.Resources != null);
+
+        RuleFor(x => x.AmenityKeys)
+            .Must(keys => keys == null || keys.All(k =>
+                string.IsNullOrWhiteSpace(k) || Enum.TryParse<RoomAmenity>(k.Trim(), ignoreCase: true, result: out _)))
+            .When(x => x.AmenityKeys != null)
+            .WithMessage("Unknown amenity key.");
+
+        RuleFor(x => x.AmenityKeys)
+            .Must(keys => keys == null || keys.Count <= 12)
+            .WithMessage("Too many amenities selected.");
     }
 }

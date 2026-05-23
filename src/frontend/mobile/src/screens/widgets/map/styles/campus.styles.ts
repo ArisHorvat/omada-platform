@@ -52,6 +52,6 @@ export const createStyles = (colors: any) => StyleSheet.create({
   markerBubble: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingBottom: 4,
+    paddingBottom: 2,
   },
 });

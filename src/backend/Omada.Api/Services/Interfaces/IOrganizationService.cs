@@ -13,4 +13,5 @@ public interface IOrganizationService
     Task<ServiceResponse<bool>> DeleteOrganizationAsync(Guid id); 
     Task<ServiceResponse<PagedResponse<OrganizationDetailsDto>>> GetAllAsync(PagedRequest request);
     Task<ServiceResponse<OrganizationDetailsDto>> GetByIdAsync(Guid id);
+    Task<ServiceResponse<OrganizationInvitePreviewDto>> GetInvitePreviewAsync(string inviteCode);
 }

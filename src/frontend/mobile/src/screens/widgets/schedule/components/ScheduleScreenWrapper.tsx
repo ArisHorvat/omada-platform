@@ -7,12 +7,12 @@ import UniversityScheduleScreen from './UniversityScheduleScreen';
 /**
  * Routes to corporate vs university schedule UI based on active org type.
  */
-export default function ScheduleScreenWrapper() {
+export default function ScheduleScreenWrapper({ initialRoomFilterId }: { initialRoomFilterId?: string }) {
   const { organization } = useCurrentOrganization();
 
   if (isCorporateOrganization(organization)) {
-    return <CorporateScheduleScreen />;
+    return <CorporateScheduleScreen initialRoomFilterId={initialRoomFilterId} />;
   }
 
-  return <UniversityScheduleScreen />;
+  return <UniversityScheduleScreen initialRoomFilterId={initialRoomFilterId} />;
 }

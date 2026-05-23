@@ -35,6 +35,10 @@ public class RoomDto
 
     public Guid? RequiredRoleId { get; set; }
 
+    public string? MapIconKey { get; set; }
+
+    public string? FloorplanFeatureKey { get; set; }
+
     [Required]
     public List<EventTypeDto> AllowedEventTypes { get; set; } = new();
 }

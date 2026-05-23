@@ -6,7 +6,7 @@ namespace Omada.Api.Services.Interfaces;
 
 public interface ITaskService
 {
-    Task<ServiceResponse<PagedResponse<TaskItemDto>>> GetUserTasksAsync(PagedRequest request);
+    Task<ServiceResponse<PagedResponse<TaskItemDto>>> GetUserTasksAsync(PagedRequest request, Guid? groupId = null);
 
     Task<ServiceResponse<TaskItemDto>> GetTaskByIdAsync(Guid id);
 

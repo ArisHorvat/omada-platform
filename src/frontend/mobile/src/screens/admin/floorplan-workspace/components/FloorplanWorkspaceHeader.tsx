@@ -8,7 +8,18 @@ type Props = {
 };
 
 export function FloorplanWorkspaceHeader({ model }: Props) {
-  const { colors, horizontalPad, goToWorkflowChoice, savingGeo, hasUnsavedChanges, handleSaveGeoJson } = model;
+  const {
+    colors,
+    horizontalPad,
+    goToWorkflowChoice,
+    savingGeo,
+    publishingRooms,
+    activeFloor,
+    geoDoc,
+    hasUnsavedChanges,
+    handleSaveGeoJsonAndPublishRooms,
+  } = model;
+  const savePublishBusy = savingGeo || publishingRooms;
 
   return (
     <View style={{ paddingHorizontal: horizontalPad, paddingBottom: 8 }}>
@@ -30,9 +41,11 @@ export function FloorplanWorkspaceHeader({ model }: Props) {
         </TouchableOpacity>
         <View style={{ flex: 1 }} />
         <AppButton
-          title={savingGeo ? 'Saving…' : 'Save'}
-          onPress={handleSaveGeoJson}
-          disabled={!hasUnsavedChanges || savingGeo}
+          title={
+            publishingRooms ? 'Publishing…' : savingGeo ? 'Saving…' : hasUnsavedChanges ? 'Save & publish' : 'Publish'
+          }
+          onPress={handleSaveGeoJsonAndPublishRooms}
+          disabled={savePublishBusy || !activeFloor?.floorplanId || !geoDoc}
           style={{ paddingHorizontal: 14, minWidth: 88 }}
         />
       </View>

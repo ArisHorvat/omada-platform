@@ -10,6 +10,7 @@ import { AppText } from '@/src/components/ui/AppText';
 import { ToggleSwitch } from '@/src/components/ui/ToggleSwitch';
 import { Icon } from '@/src/components/ui/Icon';
 import { PressClay } from '@/src/components/animations/PressClay';
+import { WidgetPageShell } from '@/src/components/layout';
 import { useThemeColors } from '@/src/hooks';
 import { orgApi, unwrap } from '@/src/api';
 import { QUERY_KEYS } from '@/src/api/queryKeys';
@@ -120,6 +121,7 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
+      <WidgetPageShell>
       {header}
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
         <ClayGroupedSection title="Appearance">
@@ -194,6 +196,7 @@ export default function SettingsScreen() {
           </View>
         </ClayGroupedSection>
       </ScrollView>
+      </WidgetPageShell>
     </SafeAreaView>
   );
 }

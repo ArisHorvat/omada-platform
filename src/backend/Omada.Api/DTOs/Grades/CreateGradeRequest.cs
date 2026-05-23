@@ -3,6 +3,8 @@ namespace Omada.Api.DTOs.Grades;
 /// <summary>Reserved for admin/teacher ingestion endpoints; validated for API consistency.</summary>
 public class CreateGradeRequest
 {
+    public Guid? GroupId { get; set; }
+
     public required Guid UserId { get; set; }
 
     public required string CourseName { get; set; }

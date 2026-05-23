@@ -14,6 +14,20 @@ public class Organization : BaseEntity
     public int OnboardingStep { get; set; } = 0;
     public bool IsActive { get; set; } = true;
 
+    /// <summary>Short code members use to join the organization (self-service registration).</summary>
+    public string InviteCode { get; set; } = string.Empty;
+
+    /// <summary>Public timetable HTML page for web spider (org admin).</summary>
+    public string? SpiderSchedulePageUrl { get; set; }
+
+    /// <summary>News site or section root for discovery crawl (org admin).</summary>
+    public string? SpiderNewsStartUrl { get; set; }
+
+    /// <summary>
+    /// JSON array of enabled widget keys for this organization. When null, all configurable widgets are enabled.
+    /// </summary>
+    public string? EnabledWidgetKeysJson { get; set; }
+
     // EF Core Navigation Properties
     public virtual ICollection<OrganizationMember> Members { get; set; } = new List<OrganizationMember>();
     public virtual ICollection<Role> Roles { get; set; } = new List<Role>();

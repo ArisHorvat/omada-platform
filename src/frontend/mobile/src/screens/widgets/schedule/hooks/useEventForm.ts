@@ -9,6 +9,8 @@ export const useEventForm = (initialDate: Date) => {
   const [roomId, setRoomId] = useState<string | null>(null);
   const [hostId, setHostId] = useState<string | null>(null);
   const [hostName, setHostName] = useState<string | null>(null);
+  const [groupId, setGroupId] = useState<string | null>(null);
+  const [groupName, setGroupName] = useState<string | null>(null);
   const [eventTypeId, setEventTypeId] = useState<string>('');
   const [maxCapacityText, setMaxCapacityText] = useState('');
   const [isPublic, setIsPublic] = useState(false);
@@ -28,7 +30,9 @@ export const useEventForm = (initialDate: Date) => {
 
   const resetForm = (date: Date) => {
       setTitle(''); setDescription(''); setColor('#3b82f6');
-      setRoomId(null); setHostId(null); setHostName(null); setEventTypeId('');
+      setRoomId(null); setHostId(null); setHostName(null);
+      setGroupId(null); setGroupName(null);
+      setEventTypeId('');
       setMaxCapacityText('');
       setIsPublic(false);
       const start = roundToQuarterHour(new Date(date.getTime()));
@@ -51,6 +55,8 @@ export const useEventForm = (initialDate: Date) => {
       setRoomId(event.roomId || null);
       setHostId(event.hostId || null);
       setHostName(event.hostName || null);
+      setGroupId(event.groupId || null);
+      setGroupName(event.groupName || null);
       setEventTypeId(event.eventTypeId || '');
       setMaxCapacityText(
         event.maxCapacity != null && event.maxCapacity > 0 ? String(event.maxCapacity) : ''
@@ -110,6 +116,7 @@ export const useEventForm = (initialDate: Date) => {
     
     request.roomId = roomId ? roomId : undefined;
     request.hostId = hostId ? hostId : undefined;
+    request.groupId = groupId ? groupId : undefined;
 
     const cap = parseInt(maxCapacityText.trim(), 10);
     if (!Number.isNaN(cap) && cap > 0) {
@@ -125,7 +132,9 @@ export const useEventForm = (initialDate: Date) => {
 
   return {
       title, setTitle, description, setDescription, color, setColor,
-      roomId, setRoomId, hostId, setHostId, hostName, setHostName, eventTypeId, setEventTypeId,
+      roomId, setRoomId, hostId, setHostId, hostName, setHostName,
+      groupId, setGroupId, groupName, setGroupName,
+      eventTypeId, setEventTypeId,
       maxCapacityText, setMaxCapacityText, isPublic, setIsPublic,
       startDate, setStartDate, endDate, setEndDate,
       recFreq, setRecFreq, recInterval, setRecInterval, recEndMode, setRecEndMode,

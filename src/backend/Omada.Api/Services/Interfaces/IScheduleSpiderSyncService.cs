@@ -1,3 +1,5 @@
+using Omada.Api.DTOs.Scraping;
+
 namespace Omada.Api.Services.Interfaces;
 
 /// <summary>
@@ -8,5 +10,5 @@ public interface IScheduleSpiderSyncService
     /// <summary>
     /// Downloads the configured schedule HTML, extracts rows, upserts by natural key, sets <c>IsChanged</c> when hash differs, removes rows no longer present in the scrape.
     /// </summary>
-    Task SyncScheduleDatabaseAsync(Guid organizationId, CancellationToken cancellationToken = default);
+    Task<SpiderSyncStatsDto> SyncScheduleDatabaseAsync(Guid organizationId, CancellationToken cancellationToken = default);
 }

@@ -2,6 +2,8 @@
 
 Welcome to the Omada Platform mobile app. This guide explains the primary workflows available in the application, focusing on the "Plug and Play" setup for new organizations and the daily experience for users.
 
+> **Developers:** [`../../../docs/Frontend.md`](../../../docs/Frontend.md) · [`../../../docs/Configuration.md`](../../../docs/Configuration.md)
+
 ## 🎓 Part 1: The SuperAdmin Experience (Setup)
 
 As a SuperAdmin, your goal is to set up a new tenant (University or Company) from scratch. The app provides a **Registration Wizard** to handle this.
@@ -9,7 +11,7 @@ As a SuperAdmin, your goal is to set up a new tenant (University or Company) fro
 ### Step 1: Organization Details
 - **Action**: Tap "Create Organization" on the landing screen.
 - **Input**: Enter the full name (e.g., "Hogwarts University") and a short name (e.g., "HU").
-- **Note**: The `Email Domain` is crucial. It determines which users belong to your organization (e.g., `@hogwarts.edu`).
+- **Note**: The email domain is derived from the admin email you enter in the next step (e.g., `@hogwarts.edu`).
 
 ### Step 2: Admin Account
 - **Action**: Create the root admin account.
@@ -18,29 +20,48 @@ As a SuperAdmin, your goal is to set up a new tenant (University or Company) fro
 ### Step 3: Branding & Theming 🎨
 - **Feature**: **Automatic Color Extraction**.
 - **Action**: Tap "Upload Logo" and select an image from your device.
-- **Result**: The app sends the image to the backend (`/api/tools/extract-colors`). The server analyzes the pixels and returns a `Primary`, `Secondary`, and `Tertiary` color palette.
+- **Result**: The app sends the image to the backend (`POST /api/tools/extract-colors`). The server analyzes the pixels and returns a `Primary`, `Secondary`, and `Tertiary` color palette.
 - **Preview**: Toggle "Light/Dark" mode to see how your app will look instantly.
 
 ### Step 4: Custom Roles
 - **Action**: Define who exists in your org.
-- **Defaults**: `Teacher`, `Student`.
-- **Custom**: Add roles like `Dean`, `Janitor`, `Guest`.
+- **Defaults**: Presets differ by org type (e.g. university: Student, Professor; corporate: Employee, Project Manager).
+- **Custom**: Add roles like `Dean`, `Janitor`, or `Guest`. `Admin` is always included.
 
-### Step 5: Bulk User Import 📂
-- **Feature**: **CSV Parsing**.
-- **Action**: Upload a `.csv` or `.xlsx` file containing user details.
-- **Logic**: The app parses this file locally on the device to preview the data before sending it to the server.
-- **Columns**: `First Name`, `Last Name`, `Email`, `Role`, `CNP`, `Phone`.
-
-### Step 6: Widget Selection
-- **Action**: Choose which features are enabled.
+### Step 5: Enable Widgets
+- **Action**: Choose which features are enabled and assign permission levels per role.
 - **Granularity**: You can assign widgets to specific roles.
-  - *Example*: Assign "Grades" only to `Student` and `Teacher`.
+  - *Example*: Assign "Grades" only to `Student` and `Professor`.
   - *Example*: Assign "User Management" only to `Admin`.
+
+### Step 6: Invite Users 🔗
+- **Feature**: **Organization invite link & code** (no CSV/Excel upload).
+- **Link & code tab**:
+  - After you tap **Finish**, the org gets a unique **invite code** and **invite link** (e.g. `http://localhost:8081/join?code=AB12CD34`).
+  - Share the link or code so people can register and join.
+  - Copy or share from the success screen after setup.
+- **Email invites tab**:
+  - Add colleague emails and assign a role.
+  - On finish, the backend sends invitation emails (logged to the API console in dev until real SMTP is configured).
+  - Each invite includes the join link and organization code.
+- **Templates**: The wizard shows preview text for **member invitation** and **admin onboarding** emails so you know what recipients will see.
 
 ---
 
-## 📱 Part 2: The User Experience (Daily Use)
+## 👥 Part 2: Joining an Organization (New Users)
+
+If you received an invite link or code from your admin:
+
+1. Open the invite link (`/join?code=…`) or tap **"Have an invite code? Join organization"** on the login screen.
+2. Enter the **organization code** (the app validates it and shows the org name).
+3. Fill in your name, email, and password.
+4. Tap **Create account & join** — you are signed in and added to the organization.
+
+If you already have an Omada account, use the same join flow; existing accounts are linked to the org (sign in afterward if needed).
+
+---
+
+## 📱 Part 3: The User Experience (Daily Use)
 
 Once the organization is set up, regular users (Students/Employees) log in.
 
@@ -69,23 +90,64 @@ Once the organization is set up, regular users (Students/Employees) log in.
 
 ---
 
-## 🛠 Part 3: Developer Guide (Adding Features)
+## 🏛 Part 4: Organization Admin Console
+
+After setup, **Admin** users land on **`/org-dashboard`** — the organization admin hub.
+
+### Getting started checklist
+
+The hub shows a **Getting started** checklist (invite team → roles → branding → groups → floorplans → spider → periods → grades → widgets → rooms). Completing each workspace advances onboarding progress.
+
+### Key workspaces
+
+| Workspace | What you do |
+|-----------|-------------|
+| **People & invites** | Search members, change roles, share invite link/code |
+| **Roles & permissions** | Define who can view/edit/admin each enabled widget |
+| **Branding** | Logo, colors, organization type (Corporate/University), active status |
+| **Widget catalog** | Enable or disable features org-wide (roles still control access) |
+| **Academic periods** | Semesters, terms, or sprints for grades and filters |
+| **Grades / Attendance** | Record grades (pick students from directory search); review attendance |
+| **Rooms** | Create and manage bookable rooms |
+| **Audit log** | Review recent admin actions (member updates, role changes, settings) |
+| **Floorplan / Web spider** | Map buildings and import timetable/news from your website |
+
+Switch organizations from **Change organization**; theme and permissions follow the active org.
+
+---
+
+## 🌐 Part 5: Platform Admin (SuperAdmin)
+
+SuperAdmins manage the whole platform from **`/admin-dashboard`**.
+
+- **Search and list** all organizations on the platform.
+- **Enter an organization** — tap an org to switch into its context and open the org admin hub (manage that tenant as SuperAdmin).
+- **Delete organization** — permanent removal (use with care).
+- **Platform audit log** — API endpoint for cross-tenant admin activity (org-level audit is in the org admin workspace).
+
+To create a **new** tenant, use the registration wizard from the platform admin header or landing flow.
+
+---
+
+## 🛠 Part 6: Developer Guide (Adding Features)
 
 ### How to add a new Widget?
 
-1. **Frontend**:
-   - Create a screen in `app/(app)/(tabs)/my-new-widget.tsx`.
-   - Add it to `WIDGET_INFO` in `dashboard.tsx` and `profile.tsx`.
-   - Add a route in `_layout.tsx`.
+1. **Backend**:
+   - Add entity/service/controller following the standard vertical slice.
+   - Register in `WidgetRegistry` (set `IsCoreFeature` if always-on).
+   - Add the widget key to `WidgetKeys` and mobile `permissions.config.ts`.
+   - Regenerate the NSwag client: `npm run generate-api`.
 
-2. **Backend**:
-   - If the widget needs data, create a table or use the `CustomDataController` (NoSQL storage).
-   - Add the widget key to the `WidgetRepository`.
+2. **Frontend**:
+   - Create a screen in `app/(app)/(widgets)/my-new-widget.tsx`.
+   - Add it to `WIDGET_REGISTRY` in the dashboard module.
+   - Enable for orgs via **Widget catalog** admin workspace (unless core).
 
 ### Future Roadmap 🚀
 
+- **Real email delivery** (SMTP/SendGrid) for invitation and onboarding messages.
 - **Push Notifications**: Notify students when grades are posted.
-- **Chat Widget**: Real-time chat using the existing WebSocket infrastructure.
 - **Biometric Login**: Enable FaceID/TouchID in `SecurityScreen`.
 
 ---

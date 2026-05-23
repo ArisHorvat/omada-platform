@@ -18,6 +18,8 @@ import { ClayAnimations } from '@/src/constants/animations';
 import { useTheme } from '@react-navigation/native';
 import { useUserPreferences } from '@/src/context/UserPreferencesContext';
 import { TaskItemDto } from '@/src/api/generatedClient';
+import { SearchableOptionPickerSheet } from '@/src/screens/admin/web-spider-workspace/components/SearchableOptionPickerSheet';
+import type { AssignableGroup } from '@/src/hooks/useAssignableGroups';
 
 export interface CreateTaskBottomSheetProps {
   visible: boolean;
@@ -32,6 +34,9 @@ export interface CreateTaskBottomSheetProps {
   showPickerInline: boolean;
   onShowPickerInline: (show: boolean) => void;
   onSave: () => void;
+  assignableGroups?: AssignableGroup[];
+  subjectGroupId: string | null;
+  onSubjectGroupIdChange: (id: string | null) => void;
 }
 
 /**
@@ -50,9 +55,28 @@ export function CreateTaskBottomSheet({
   showPickerInline,
   onShowPickerInline,
   onSave,
+  assignableGroups = [],
+  subjectGroupId,
+  onSubjectGroupIdChange,
 }: CreateTaskBottomSheetProps) {
   const { colors } = useTheme();
   const { isDarkMode } = useUserPreferences();
+  const [groupPickerOpen, setGroupPickerOpen] = React.useState(false);
+
+  const groupOptions = React.useMemo(
+    () =>
+      assignableGroups.map((g) => ({
+        value: g.id,
+        label: g.name,
+        subtitle: g.typeLabel,
+      })),
+    [assignableGroups],
+  );
+
+  const selectedGroupLabel =
+    subjectGroupId != null
+      ? groupOptions.find((o) => o.value === subjectGroupId)?.label ?? 'Linked group'
+      : null;
 
   return (
     <>
@@ -108,6 +132,27 @@ export function CreateTaskBottomSheet({
                   onFocus={() => onShowPickerInline(false)}
                 />
               </ClayView>
+
+              {assignableGroups.length > 0 ? (
+                <>
+                  <AppText weight="bold" style={{ marginBottom: 8, color: colors.subtle }}>
+                    Course / group (optional)
+                  </AppText>
+                  <PressClay onPress={() => setGroupPickerOpen(true)} style={{ marginBottom: 16 }}>
+                    <ClayView
+                      depth={2}
+                      color={colors.background}
+                      style={{ borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center' }}
+                    >
+                      <Icon name="groups" size={22} color={colors.primary} style={{ marginRight: 10 }} />
+                      <AppText style={{ flex: 1, color: selectedGroupLabel ? colors.text : colors.subtle }}>
+                        {selectedGroupLabel ?? 'Link to a class or team'}
+                      </AppText>
+                      <Icon name="chevron-right" size={20} color={colors.subtle} />
+                    </ClayView>
+                  </PressClay>
+                </>
+              ) : null}
 
               <AppText weight="bold" style={{ marginBottom: 8, color: colors.subtle }}>
                 Deadline (optional)
@@ -178,6 +223,20 @@ export function CreateTaskBottomSheet({
           </AnimatedItem>
         </KeyboardAvoidingView>
       </Modal>
+
+      <SearchableOptionPickerSheet
+        isVisible={groupPickerOpen && visible}
+        onClose={() => setGroupPickerOpen(false)}
+        title="Link assignment to group"
+        searchPlaceholder="Search groups…"
+        options={groupOptions}
+        selected={subjectGroupId}
+        onSelect={onSubjectGroupIdChange}
+        includeAllOption
+        allLabel="No group"
+        height={420}
+        zIndexBase={400}
+      />
 
       {showDatePicker && Platform.OS === 'android' ? (
         <DateTimePicker

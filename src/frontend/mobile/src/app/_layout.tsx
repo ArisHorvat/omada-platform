@@ -46,10 +46,9 @@ function AuthLayout() {
   // --- ROUTING LOGIC ---
   const inAuthGroup = segments[0] === '(auth)';
   
-  // 1. Not Logged In -> Redirect to Login
+  // 1. Not logged in -> landing (create org or login)
   if (!activeSession && !inAuthGroup) {
-    // FIX: Redirect to your actual login route
-    return <Redirect href="/login-flow" />;
+    return <Redirect href="/" />;
   }
 
   // 2. Logged In -> Redirect to App (if currently in Login screens)

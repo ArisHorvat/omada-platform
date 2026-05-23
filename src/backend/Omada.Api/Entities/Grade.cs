@@ -10,6 +10,9 @@ public class Grade : BaseEntity, IOrganizationScoped
     /// <summary>Student (course member) this grade belongs to.</summary>
     public Guid UserId { get; set; }
 
+    /// <summary>Optional link to an org group (subject, class, program, etc.).</summary>
+    public Guid? GroupId { get; set; }
+
     /// <summary>Course or subject display name.</summary>
     public string CourseName { get; set; } = string.Empty;
 
@@ -26,6 +29,8 @@ public class Grade : BaseEntity, IOrganizationScoped
     public string Semester { get; set; } = string.Empty;
 
     public virtual User User { get; set; } = null!;
+
+    public virtual Group? Group { get; set; }
 
     public virtual Organization Organization { get; set; } = null!;
 }

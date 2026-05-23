@@ -15,6 +15,12 @@ public class RoomSearchRequest : PagedRequest
     /// <summary>Room must include every listed amenity (see <see cref="Entities.RoomAmenity"/> names).</summary>
     public List<string>? AmenityKeys { get; set; }
 
+    /// <summary>When set, only rooms on this floor.</summary>
+    public Guid? FloorId { get; set; }
+
+    /// <summary>Exact match on <see cref="Room.FloorplanFeatureKey"/> (GeoJSON feature <c>roomId</c>).</summary>
+    public string? FloorplanFeatureKey { get; set; }
+
     // Availability Filter
     public DateTime? AvailableFrom { get; set; }
     public DateTime? AvailableTo { get; set; }

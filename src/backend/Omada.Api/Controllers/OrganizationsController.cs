@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Omada.Api.Services.Interfaces;
 using Omada.Api.DTOs.Organizations;
@@ -31,7 +32,15 @@ public class OrganizationsController : ControllerBase
         return response.IsSuccess ? Ok(response) : NotFound(response);
     }
 
+    [HttpGet("invite/{inviteCode}")]
+    public async Task<ActionResult<ServiceResponse<OrganizationInvitePreviewDto>>> GetInvitePreview(string inviteCode)
+    {
+        var response = await _organizationService.GetInvitePreviewAsync(inviteCode);
+        return response.IsSuccess ? Ok(response) : NotFound(response);
+    }
+
     [HttpGet]
+    [Authorize(Roles = "SuperAdmin,Super Admin")]
     public async Task<ActionResult<ServiceResponse<PagedResponse<OrganizationDetailsDto>>>> GetAll([FromQuery] PagedRequest request)
     {
         var response = await _organizationService.GetAllAsync(request);

@@ -3,16 +3,27 @@ import { View, StyleSheet } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { SplitPane } from '@/src/components/layout/SplitPane';
+import { WidgetPageShell } from '@/src/components/layout';
 import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
-import { useThemeColors } from '@/src/hooks';
-import { AppText, Icon, ClayView, Skeleton, WidgetErrorState, EmptyState } from '@/src/components/ui';
+import { useThemeColors, useBreakpoint } from '@/src/hooks';
+import {
+  AppText,
+  Icon,
+  ClayView,
+  Skeleton,
+  WidgetErrorState,
+  WidgetEmptyState,
+} from '@/src/components/ui';
 import { AnimatedItem } from '@/src/components/animations/AnimatedItem';
 import { createStyles } from '../styles/grades.styles';
 import { ScreenTransition } from '@/src/components/animations';
-import { useGradesLogic } from '../hooks/useGradesLogic';
-import { displayLetterOrScore } from '../utils/gradesTrend';
+import { displayLetterOrScore, computeSemesterGpaTrend } from '../utils/gradesTrend';
 import type { GradeDto } from '@/src/api/generatedClient';
 import { GradesBiometricGate } from './GradesBiometricGate';
+import { GradesFilterChips } from './GradesFilterChips';
+import { GradesGpaLineChart } from './GradesGpaLineChart';
+import { useGradesScreenLogic } from '../hooks/useGradesScreenLogic';
 
 type TranscriptRow =
   | { type: 'header'; id: string; semester: string }
@@ -45,6 +56,7 @@ function buildTranscriptRows(grades: GradeDto[]): TranscriptRow[] {
 
 function GradesScreenContent() {
   const colors = useThemeColors();
+  const { isWideShell } = useBreakpoint();
   const styles = createStyles(colors);
 
   const {
@@ -55,9 +67,45 @@ function GradesScreenContent() {
     isError,
     refetchGrades,
     gradesQuery,
-  } = useGradesLogic();
+    canView,
+    permissionsLoading,
+    activeGroupId,
+    setActiveGroupId,
+    activeSemester,
+    setActiveSemester,
+    semesters,
+    assignableGroups,
+    isFiltered,
+  } = useGradesScreenLogic();
 
   const rows = useMemo(() => buildTranscriptRows(grades), [grades]);
+  const trend = useMemo(() => computeSemesterGpaTrend(grades), [grades]);
+
+  const groupChips = useMemo(
+    () => (assignableGroups ?? []).map((g) => ({ id: g.id, label: g.name })),
+    [assignableGroups],
+  );
+  const semesterChips = useMemo(
+    () => semesters.map((s) => ({ id: s, label: s })),
+    [semesters],
+  );
+
+  if (!permissionsLoading && !canView) {
+    return (
+      <WidgetPageShell>
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
+          <ClayBackButton absolute />
+          <View style={{ flex: 1, padding: 24, justifyContent: 'center' }}>
+            <WidgetEmptyState
+              title="Grades unavailable"
+              description="You do not have permission to view grades in this organization."
+              icon="lock"
+            />
+          </View>
+        </View>
+      </WidgetPageShell>
+    );
+  }
 
   const listHeader = (
     <ScreenTransition style={styles.heroContainer}>
@@ -70,7 +118,7 @@ function GradesScreenContent() {
           </View>
 
           <View style={styles.heroContent}>
-            <View>
+            <View style={{ flex: 1 }}>
               {isLoading ? (
                 <>
                   <Skeleton width={140} height={56} borderRadius={12} />
@@ -91,8 +139,14 @@ function GradesScreenContent() {
                     </AppText>
                   </View>
                   <AppText variant="caption" style={{ color: colors.onSecondary, opacity: 0.75, marginTop: 4 }}>
-                    Cumulative{totalCredits > 0 ? ` • ${totalCredits} credits` : ''}
+                    {isFiltered ? 'Filtered' : 'Cumulative'}
+                    {totalCredits > 0 ? ` · ${totalCredits} credits` : ''}
                   </AppText>
+                  {trend.length >= 2 ? (
+                    <View style={{ marginTop: 12 }}>
+                      <GradesGpaLineChart points={trend} accentColor={colors.onSecondary} />
+                    </View>
+                  ) : null}
                 </>
               )}
             </View>
@@ -105,97 +159,147 @@ function GradesScreenContent() {
     </ScreenTransition>
   );
 
+  const filterBars = (
+    <>
+      <GradesFilterChips
+        chips={groupChips}
+        activeId={activeGroupId}
+        onSelect={setActiveGroupId}
+        allLabel="All courses"
+      />
+      <GradesFilterChips
+        chips={semesterChips}
+        activeId={activeSemester}
+        onSelect={setActiveSemester}
+        allLabel="All terms"
+      />
+    </>
+  );
+
+  const transcriptList = (
+    <FlashList
+      data={rows}
+      keyExtractor={(item) => item.id}
+      ListHeaderComponent={
+        isWideShell ? (
+          filterBars
+        ) : (
+          <>
+            {listHeader}
+            {filterBars}
+          </>
+        )
+      }
+      contentContainerStyle={styles.flashContent}
+      renderItem={({ item, index }) => {
+        if (item.type === 'header') {
+          return (
+            <AnimatedItem index={index}>
+              <AppText
+                variant="caption"
+                weight="bold"
+                style={{ color: colors.subtle, marginTop: index === 0 ? 8 : 20, marginBottom: 8 }}
+              >
+                {item.semester}
+              </AppText>
+            </AnimatedItem>
+          );
+        }
+
+        const g = item.grade;
+        return (
+          <AnimatedItem index={index}>
+            <ClayView
+              depth={6}
+              puffy={12}
+              color={colors.card}
+              style={[localStyles.row, { borderWidth: 1, borderColor: colors.border }]}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                <View style={[styles.subjectIcon, { backgroundColor: colors.background }]}>
+                  <AppText weight="bold" style={{ color: colors.subtle }}>
+                    {g.courseName.charAt(0).toUpperCase()}
+                  </AppText>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <AppText variant="body" weight="bold" numberOfLines={2}>
+                    {g.courseName}
+                  </AppText>
+                  <AppText variant="caption" style={{ color: colors.subtle }}>
+                    {g.groupName ? `${g.groupName} • ` : ''}
+                    Score {g.score.toFixed(0)} • {g.credits} cr.
+                  </AppText>
+                </View>
+              </View>
+              <View style={[styles.gradeBadge, { backgroundColor: colors.primary + '18' }]}>
+                <AppText variant="h3" weight="bold" style={{ color: colors.primary }}>
+                  {displayLetterOrScore(g)}
+                </AppText>
+              </View>
+            </ClayView>
+          </AnimatedItem>
+        );
+      }}
+    />
+  );
+
   if (isError) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.background }}>
-        <ClayBackButton absolute />
-        <View style={{ flex: 1, padding: 24, justifyContent: 'center' }}>
-          <WidgetErrorState message="Could not load grades." onRetry={() => void refetchGrades()} />
+      <WidgetPageShell>
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
+          <ClayBackButton absolute />
+          <View style={{ flex: 1, padding: 24, justifyContent: 'center' }}>
+            <WidgetErrorState message="Could not load grades." onRetry={() => void refetchGrades()} />
+          </View>
         </View>
-      </View>
+      </WidgetPageShell>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <ClayBackButton absolute />
+    <WidgetPageShell>
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <ClayBackButton absolute />
 
-      {isLoading && grades.length === 0 ? (
-        <View style={{ flex: 1, padding: 20, paddingTop: 120 }}>
-          <Skeleton height={200} borderRadius={24} />
-          <Skeleton height={72} borderRadius={16} style={{ marginTop: 16 }} />
-          <Skeleton height={72} borderRadius={16} style={{ marginTop: 12 }} />
-        </View>
-      ) : grades.length === 0 ? (
-        <View style={{ flex: 1, paddingTop: 100, paddingHorizontal: 24 }}>
-          {listHeader}
-          <View style={{ flex: 1, justifyContent: 'center', paddingBottom: 40 }}>
-            <EmptyState
-              title="No grades posted yet"
-              description="When your institution posts grades, they will appear here."
-              icon="book"
-            />
+        {isLoading && grades.length === 0 ? (
+          <View style={{ flex: 1, padding: 20, paddingTop: 120 }}>
+            <Skeleton height={200} borderRadius={24} />
+            <Skeleton height={72} borderRadius={16} style={{ marginTop: 16 }} />
+            <Skeleton height={72} borderRadius={16} style={{ marginTop: 12 }} />
           </View>
-        </View>
-      ) : (
-        <View style={{ flex: 1 }}>
-        <FlashList
-          data={rows}
-          keyExtractor={(item) => item.id}
-          ListHeaderComponent={listHeader}
-          contentContainerStyle={styles.flashContent}
-          renderItem={({ item, index }) => {
-            if (item.type === 'header') {
-              return (
-                <AnimatedItem index={index}>
-                  <AppText
-                    variant="caption"
-                    weight="bold"
-                    style={{ color: colors.subtle, marginTop: index === 0 ? 8 : 20, marginBottom: 8 }}
-                  >
-                    {item.semester}
-                  </AppText>
-                </AnimatedItem>
-              );
+        ) : grades.length === 0 ? (
+          <View style={{ flex: 1, paddingTop: 100, paddingHorizontal: 24 }}>
+            {listHeader}
+            {filterBars}
+            <View style={{ flex: 1, justifyContent: 'center', paddingBottom: 40 }}>
+              <WidgetEmptyState
+                title={isFiltered ? 'No grades in this view' : 'No grades posted yet'}
+                description={
+                  isFiltered
+                    ? 'Try another course or term filter.'
+                    : 'When your institution posts grades, they will appear here.'
+                }
+                icon="school"
+              />
+            </View>
+          </View>
+        ) : isWideShell ? (
+          <SplitPane
+            sidebar={
+              <>
+                {listHeader}
+                {filterBars}
+              </>
             }
-
-            const g = item.grade;
-            return (
-              <AnimatedItem index={index}>
-                <ClayView
-                  depth={6}
-                  puffy={12}
-                  color={colors.card}
-                  style={[localStyles.row, { borderWidth: 1, borderColor: colors.border }]}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                    <View style={[styles.subjectIcon, { backgroundColor: colors.background }]}>
-                      <AppText weight="bold" style={{ color: colors.subtle }}>
-                        {g.courseName.charAt(0).toUpperCase()}
-                      </AppText>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <AppText variant="body" weight="bold" numberOfLines={2}>
-                        {g.courseName}
-                      </AppText>
-                      <AppText variant="caption" style={{ color: colors.subtle }}>
-                        Score {g.score.toFixed(0)} • {g.credits} cr.
-                      </AppText>
-                    </View>
-                  </View>
-                  <View style={[styles.gradeBadge, { backgroundColor: colors.primary + '18' }]}>
-                    <AppText variant="h3" weight="bold" style={{ color: colors.primary }}>
-                      {displayLetterOrScore(g)}
-                    </AppText>
-                  </View>
-                </ClayView>
-              </AnimatedItem>
-            );
-          }}
-        />
-        </View>
-      )}
-    </View>
+            sidebarWidth={360}
+          >
+            <View style={{ flex: 1 }}>{transcriptList}</View>
+          </SplitPane>
+        ) : (
+          <View style={{ flex: 1 }}>{transcriptList}</View>
+        )}
+      </View>
+    </WidgetPageShell>
   );
 }
 

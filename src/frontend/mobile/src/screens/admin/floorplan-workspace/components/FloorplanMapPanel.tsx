@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { Platform, Switch, View } from 'react-native';
 import { AppButton, AppText, ClayView } from '@/src/components/ui';
 import { FloorplanFloorplanViewerBlock } from '@/src/screens/admin/floorplan-workspace/components/FloorplanFloorplanViewerBlock';
 import type { FloorplanWorkspaceModel } from '@/src/screens/admin/floorplan-workspace/hooks/useFloorplanWorkspace';
@@ -57,14 +57,32 @@ export function FloorplanMapPanel({ model, compactChrome = false }: Props) {
               : 'Pan, zoom, pick a pin type, then tap to place. Select a pin in the list or on the map to edit — the map locks while it is selected.'}
         </AppText>
       ) : null}
-      {!compactChrome && hasRoomPolygons ? (
-        <View style={{ marginBottom: 8, alignSelf: 'flex-start' }}>
-          <AppButton
-            title={isVectorMode ? 'Map view · on' : 'Toggle Map View'}
-            onPress={() => setIsVectorMode((v) => !v)}
-            variant={isVectorMode ? 'secondary' : 'outline'}
-            style={{ minWidth: 160 }}
-          />
+      {hasRoomPolygons ? (
+        <View style={{ marginBottom: compactChrome ? 8 : 12 }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+            }}
+          >
+            <AppText variant="body" style={{ color: colors.text, flex: 1 }}>
+              Map view
+            </AppText>
+            <Switch
+              value={isVectorMode}
+              onValueChange={setIsVectorMode}
+              trackColor={{ false: '#FFFFFF', true: colors.primary }}
+              thumbColor={Platform.OS === 'android' ? '#FFFFFF' : undefined}
+              ios_backgroundColor="#E8E8EA"
+            />
+          </View>
+          {!compactChrome ? (
+            <AppText variant="caption" style={{ color: colors.subtle, marginTop: 4 }}>
+              Turns on semantic blueprint styling instead of showing your scanned floorplan under the overlays.
+            </AppText>
+          ) : null}
         </View>
       ) : null}
       <FloorplanFloorplanViewerBlock model={model} />

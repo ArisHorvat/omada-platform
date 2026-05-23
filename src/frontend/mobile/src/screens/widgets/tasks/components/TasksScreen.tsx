@@ -13,16 +13,18 @@ import {
   WidgetEmptyState,
   WidgetErrorState,
 } from '@/src/components/ui';
-import { useTasksLogic } from '../hooks/useTasksLogic';
+import { useTasksScreenLogic } from '../hooks/useTasksLogic';
 import { ScreenTransition, AnimatedItem, PressClay } from '@/src/components/animations';
 import { ClayAnimations } from '@/src/constants/animations';
-import { TaskItemDto } from '@/src/api/generatedClient';
-import { useTabContentBottomPadding } from '@/src/hooks';
+import { TaskItemDto, type GroupPickerItemDto } from '@/src/api/generatedClient';
+import { PageContainer } from '@/src/components/layout/PageContainer';
+import { useTabContentBottomPadding, useBreakpoint } from '@/src/hooks';
 import { CreateTaskBottomSheet } from './CreateTaskBottomSheet';
 
 export default function TasksScreen() {
   const { colors } = useTheme();
   const tabBottomPad = useTabContentBottomPadding(32);
+  const { isWideShell } = useBreakpoint();
 
   const {
     loading,
@@ -45,7 +47,13 @@ export default function TasksScreen() {
     editingTask,
     startEditing,
     cancelEditing,
-  } = useTasksLogic();
+    activeGroupId,
+    setActiveGroupId,
+    assignableGroups,
+    subjectGroupId,
+    setSubjectGroupId,
+    canCreateTasks,
+  } = useTasksScreenLogic();
 
   const [isSheetVisible, setIsSheetVisible] = useState(false);
   const [showPickerInline, setShowPickerInline] = useState(false);
@@ -113,6 +121,15 @@ export default function TasksScreen() {
               {task.title}
             </AppText>
 
+            {task.groupName ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                <Icon name="groups" size={14} color={colors.subtle} />
+                <AppText variant="caption" style={{ color: colors.subtle, marginLeft: 6 }}>
+                  {task.groupName}
+                </AppText>
+              </View>
+            ) : null}
+
             {task.dueDate ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
                 <Icon name="event" size={14} color={isOverdue && !task.isCompleted ? colors.error : colors.subtle} />
@@ -147,6 +164,7 @@ export default function TasksScreen() {
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScreenTransition>
         <SafeAreaView style={{ flex: 1 }}>
+          <PageContainer>
           <Animated.View
             entering={ClayAnimations.Header}
             style={{
@@ -158,8 +176,8 @@ export default function TasksScreen() {
             }}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <ClayBackButton />
-              <AppText variant="h2" weight="bold" style={{ marginLeft: 16 }}>
+              {!isWideShell ? <ClayBackButton /> : null}
+              <AppText variant="h2" weight="bold" style={{ marginLeft: isWideShell ? 0 : 16 }}>
                 Tasks
               </AppText>
             </View>
@@ -178,6 +196,43 @@ export default function TasksScreen() {
               </ClayView>
             </PressClay>
           </Animated.View>
+
+          {assignableGroups && assignableGroups.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingBottom: 10 }}
+            >
+              <PressClay onPress={() => setActiveGroupId(null)}>
+                <ClayView
+                  depth={activeGroupId === null ? 5 : 2}
+                  color={activeGroupId === null ? colors.primary : colors.card}
+                  style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 14 }}
+                >
+                  <AppText weight="bold" style={{ color: activeGroupId === null ? '#FFF' : colors.text }}>
+                    All groups
+                  </AppText>
+                </ClayView>
+              </PressClay>
+              {assignableGroups.map((g: GroupPickerItemDto) => (
+                <PressClay key={g.id} onPress={() => setActiveGroupId(g.id)}>
+                  <ClayView
+                    depth={activeGroupId === g.id ? 5 : 2}
+                    color={activeGroupId === g.id ? colors.primary : colors.card}
+                    style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 14 }}
+                  >
+                    <AppText
+                      weight="bold"
+                      numberOfLines={1}
+                      style={{ color: activeGroupId === g.id ? '#FFF' : colors.text, maxWidth: 160 }}
+                    >
+                      {g.name}
+                    </AppText>
+                  </ClayView>
+                </PressClay>
+              ))}
+            </ScrollView>
+          ) : null}
 
           <View>
             <ScrollView
@@ -260,7 +315,11 @@ export default function TasksScreen() {
             showPickerInline={showPickerInline}
             onShowPickerInline={setShowPickerInline}
             onSave={onSaveTask}
+            assignableGroups={assignableGroups ?? []}
+            subjectGroupId={subjectGroupId}
+            onSubjectGroupIdChange={setSubjectGroupId}
           />
+          </PageContainer>
         </SafeAreaView>
       </ScreenTransition>
     </View>

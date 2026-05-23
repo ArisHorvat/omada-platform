@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Omada.Api.DTOs.Scraping;
 using Omada.Api.Entities;
+using Omada.Api.Infrastructure.Options;
 using Omada.Api.Services.Interfaces;
 
 namespace Omada.Api.Services;
@@ -36,7 +37,7 @@ public sealed class GeminiService : IGeminiService
         if (string.IsNullOrWhiteSpace(excerpt))
             return NewsCategory.General;
 
-        var apiKey = _configuration["Gemini:ApiKey"];
+        var apiKey = GeminiEnvFallbacks.ResolveApiKey(_configuration);
         if (string.IsNullOrWhiteSpace(apiKey))
         {
             _logger.LogDebug("Gemini:ApiKey is not configured; skipping triage.");
@@ -125,7 +126,7 @@ public sealed class GeminiService : IGeminiService
         if (string.IsNullOrWhiteSpace(rawText))
             return Array.Empty<ScrapedEventDto>();
 
-        var apiKey = _configuration["Gemini:ApiKey"];
+        var apiKey = GeminiEnvFallbacks.ResolveApiKey(_configuration);
         if (string.IsNullOrWhiteSpace(apiKey))
         {
             _logger.LogDebug("Gemini:ApiKey is not configured; schedule extraction fallback skipped.");
@@ -144,9 +145,9 @@ public sealed class GeminiService : IGeminiService
             "You extract timetable / class schedule rows from unstructured plain text (university or corporate). " +
             "Return ONLY a valid JSON array. No markdown, no code fences (no ```), no commentary before or after the JSON. " +
             "Each array element must be one JSON object with EXACTLY these five string properties: " +
-            "\"ClassName\", \"Time\", \"Room\", \"Professor\", \"GroupNumber\". " +
+            "\"ClassName\", \"Time\", \"Room\", \"Professor\", \"GroupNumber\", \"ActivityType\" (Curs, Laborator, Seminar, etc.). " +
             "Use empty string \"\" for any field that is unknown. " +
-            "Example output: [{\"ClassName\":\"Algorithms\",\"Time\":\"10:00-12:00\",\"Room\":\"C305\",\"Professor\":\"Jane Doe\",\"GroupNumber\":\"A2\"}]. " +
+            "Example output: [{\"ClassName\":\"Algorithms\",\"Time\":\"10:00-12:00\",\"Room\":\"C305\",\"Professor\":\"Jane Doe\",\"GroupNumber\":\"A2\",\"ActivityType\":\"Curs\"}]. " +
             "If there are no schedule rows, return an empty array [].";
 
         var text = $"{instruction}\n\nPlain text:\n{bodyText}";

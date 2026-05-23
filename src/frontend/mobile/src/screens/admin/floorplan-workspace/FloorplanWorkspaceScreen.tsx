@@ -11,6 +11,7 @@ import {
   type FloorplanWorkspaceModel,
   useFloorplanWorkspace,
 } from '@/src/screens/admin/floorplan-workspace/hooks/useFloorplanWorkspace';
+import { WidgetPageShell } from '@/src/components/layout';
 import { createFloorplanWorkspaceStyles } from '@/src/screens/admin/floorplan-workspace/styles/floorplanWorkspaceScreen.styles';
 
 function FloorplanTabContent({ model }: { model: FloorplanWorkspaceModel }) {
@@ -24,10 +25,15 @@ export default function FloorplanWorkspaceScreen() {
   const styles = createFloorplanWorkspaceStyles(model.colors);
 
   if (model.workspaceIntent === 'unset') {
-    return <FloorplanWorkspaceGate model={model} />;
+    return (
+      <WidgetPageShell>
+        <FloorplanWorkspaceGate model={model} />
+      </WidgetPageShell>
+    );
   }
 
   return (
+    <WidgetPageShell fullBleed>
     <View style={[styles.root, { paddingTop: model.insets.top }]}>
       <FloorplanWorkspaceHeader model={model} />
       <View style={{ flex: 1, minHeight: 0 }}>
@@ -77,5 +83,6 @@ export default function FloorplanWorkspaceScreen() {
         )}
       </View>
     </View>
+    </WidgetPageShell>
   );
 }

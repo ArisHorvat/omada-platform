@@ -1,43 +1,42 @@
-import { useState, useEffect } from 'react';
+import { useCallback } from 'react';
 import { Alert } from 'react-native';
+import { useQuery } from '@tanstack/react-query';
+
 import { useAuth } from '@/src/context/AuthContext';
-import { OrganizationDetailsDto } from '@/src/api/generatedClient';
-import { orgApi, unwrap } from '@/src/api';
+import { orgAdminApi, unwrap } from '@/src/api';
+import { QUERY_KEYS } from '@/src/api/queryKeys';
 
 export const useOrgAdminDashboardLogic = () => {
   const { activeSession, logout } = useAuth();
-  const [org, setOrg] = useState<OrganizationDetailsDto | null>(null);
-  const [loading, setLoading] = useState(true);
+  const orgId = activeSession?.orgId ?? '';
 
-  useEffect(() => {
-    const loadOrg = async () => {
-        if (!activeSession?.orgId) return;
-        try {
-            const data = await unwrap(orgApi.getById(activeSession.orgId));
-            setOrg(data);
-        } catch (e) {
-            console.error("Failed to load admin dashboard", e);
-        } finally {
-            setLoading(false);
-        }
-    };
-    loadOrg();
-  }, [activeSession?.orgId]);
+  const orgQuery = useQuery({
+    queryKey: QUERY_KEYS.orgAdmin.current(orgId),
+    queryFn: () => unwrap(orgAdminApi.getCurrent()),
+    enabled: !!orgId,
+  });
 
-  const handleLogout = () => {
-    Alert.alert("Logout", "Are you sure?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Logout", style: "destructive", onPress: logout }
+  const membersQuery = useQuery({
+    queryKey: QUERY_KEYS.orgAdmin.members(orgId, '', null),
+    queryFn: () => unwrap(orgAdminApi.getMembers(1, 1, null, null, undefined)),
+    enabled: !!orgId,
+  });
+
+  const org = orgQuery.data ?? null;
+  const memberCount = membersQuery.data?.totalCount ?? 0;
+
+  const handleLogout = useCallback(() => {
+    Alert.alert('Logout', 'Are you sure?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Logout', style: 'destructive', onPress: logout },
     ]);
-  };
-
-  const handleFeatureComingSoon = (feature: string) => 
-      Alert.alert('Coming Soon', `${feature} will be available soon.`);
+  }, [logout]);
 
   return {
     org,
-    loading,
+    memberCount,
+    loading: orgQuery.isLoading,
     handleLogout,
-    handleFeatureComingSoon
+    refetch: orgQuery.refetch,
   };
 };

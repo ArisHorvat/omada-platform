@@ -15,4 +15,12 @@ public interface IFloorplanProcessingService
 
     /// <summary>Replace stored GeoJSON (e.g. admin manual corrections). Does not re-run AI.</summary>
     Task<ServiceResponse<FloorplanDto>> UpdateGeoJsonAsync(Guid floorplanId, string geoJsonData, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Creates or updates <see cref="Entities.Room"/> rows from polygon features in the floorplan GeoJSON (centroid, bookability, map icon).
+    /// Skips shell/wall/door/window polygons. Non-bookable defaults follow name heuristics unless GeoJSON sets <c>isBookable</c>.
+    /// </summary>
+    Task<ServiceResponse<FloorplanRoomPublishResultDto>> PublishRoomsFromGeoJsonAsync(
+        Guid floorplanId,
+        CancellationToken cancellationToken = default);
 }

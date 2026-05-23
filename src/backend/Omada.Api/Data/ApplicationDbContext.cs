@@ -43,7 +43,10 @@ public class ApplicationDbContext : DbContext
     public DbSet<RoomBooking> RoomBookings { get; set; }
     public DbSet<EventType> EventTypes { get; set; }
     public DbSet<ScrapedClassEvent> ScrapedClassEvents { get; set; }
+    public DbSet<SpiderSyncRun> SpiderSyncRuns { get; set; }
+    public DbSet<OrganizationPeriod> OrganizationPeriods { get; set; }
     public DbSet<Grade> Grades { get; set; }
+    public DbSet<AuditLog> AuditLogs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -104,6 +107,9 @@ public class ApplicationDbContext : DbContext
             !b.IsDeleted && (_currentOrganizationId == null || b.OrganizationId == _currentOrganizationId));
 
         modelBuilder.Entity<Room>().HasQueryFilter(e =>
+            !e.IsDeleted && (_currentOrganizationId == null || e.OrganizationId == _currentOrganizationId));
+
+        modelBuilder.Entity<AuditLog>().HasQueryFilter(e =>
             !e.IsDeleted && (_currentOrganizationId == null || e.OrganizationId == _currentOrganizationId));
 
         modelBuilder.Entity<ScrapedClassEvent>().HasQueryFilter(e =>

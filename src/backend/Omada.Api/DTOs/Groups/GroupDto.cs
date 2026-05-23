@@ -14,4 +14,12 @@ public class GroupDto
     public required string Type { get; set; }
     
     public Guid? ParentGroupId { get; set; }
+
+    public Guid? ManagerId { get; set; }
+
+    [Required]
+    public required int MemberCount { get; set; }
+
+    [Required]
+    public required int ChildCount { get; set; }
 }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Dimensions, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,23 +8,24 @@ import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 import { AppText, ClayView, Icon, ProgressiveImage, SegmentedControl, WidgetErrorState } from '@/src/components/ui';
 import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
-import { useThemeColors } from '@/src/hooks';
+import { WidgetPageShell } from '@/src/components/layout';
+import { useThemeColors, useContentWidth } from '@/src/hooks';
 import { useDigitalIdLogic } from '../hooks/useDigitalIdLogic';
 import { useBrightnessWhileFocused } from '../hooks/useBrightnessWhileFocused';
 import { Code128BarcodeSvg } from './Code128BarcodeSvg';
 
-const { width: screenWidth } = Dimensions.get('window');
-
 export default function DigitalIdScreen() {
   const colors = useThemeColors();
+  const contentWidth = useContentWidth();
   const { digitalId, isLoading, isError, digitalIdQuery } = useDigitalIdLogic();
   useBrightnessWhileFocused();
   const [codeTab, setCodeTab] = useState(0); // 0 = QR, 1 = Barcode
 
-  const cardWidth = Math.min(screenWidth - 32, 400);
+  const cardWidth = Math.min(contentWidth - 32, 400);
 
   if (isLoading) {
     return (
+      <WidgetPageShell>
       <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]}>
         <View style={styles.headerRow}>
           <ClayBackButton style={{ backgroundColor: colors.card, borderRadius: 22 }} />
@@ -33,11 +34,13 @@ export default function DigitalIdScreen() {
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </SafeAreaView>
+      </WidgetPageShell>
     );
   }
 
   if (isError || !digitalId) {
     return (
+      <WidgetPageShell>
       <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]}>
         <View style={styles.headerRow}>
           <ClayBackButton style={{ backgroundColor: colors.card, borderRadius: 22 }} />
@@ -49,6 +52,7 @@ export default function DigitalIdScreen() {
           />
         </View>
       </SafeAreaView>
+      </WidgetPageShell>
     );
   }
 
@@ -60,6 +64,7 @@ export default function DigitalIdScreen() {
   const qrSize = Math.min(cardWidth - 80, 220);
 
   return (
+    <WidgetPageShell>
     <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
       <View style={styles.headerRow}>
         <ClayBackButton style={{ backgroundColor: colors.card, borderRadius: 22 }} />
@@ -198,6 +203,7 @@ export default function DigitalIdScreen() {
         </AppText>
       </ScrollView>
     </SafeAreaView>
+    </WidgetPageShell>
   );
 }
 

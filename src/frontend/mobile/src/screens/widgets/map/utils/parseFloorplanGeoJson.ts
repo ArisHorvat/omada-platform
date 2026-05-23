@@ -2,12 +2,45 @@
  * Parses Omada floorplan GeoJSON (normalized [0..1] x/y in polygon rings).
  */
 
+import type { DoorLineSegment } from '@/src/screens/admin/utils/floorplanGeoJsonEdit';
+import {
+  inferDefaultBookableFloorplanPolygon,
+  isBuildingShellFeature,
+} from '@/src/screens/widgets/map/utils/floorplanSemanticStyles';
+
 export type GeoJsonRoomPolygon = {
   roomName: string;
   roomId: string;
   /** Closed ring in normalized coordinates (same space as room pins). */
   ring: [number, number][];
+  /** Thin doorway marks authored on this room — see `DoorLineSegment`. */
+  doorLines?: DoorLineSegment[];
+  /** From GeoJSON when present — used for map glyph and DB publish. */
+  mapIconKey?: string;
+  /** Intended bookability when publishing to `Room` rows. */
+  isBookable?: boolean;
 };
+
+function clamp01(v: number): number {
+  return Math.max(0, Math.min(1, v));
+}
+
+function extractDoorLinesFromProps(props: Record<string, unknown>): DoorLineSegment[] | undefined {
+  const raw = props.doorLines;
+  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+  const segments: DoorLineSegment[] = [];
+  for (const item of raw) {
+    if (!Array.isArray(item) || item.length < 2) continue;
+    const p0 = item[0];
+    const p1 = item[1];
+    if (!Array.isArray(p0) || p0.length < 2 || !Array.isArray(p1) || p1.length < 2) continue;
+    segments.push({
+      a: [clamp01(Number(p0[0])), clamp01(Number(p0[1]))],
+      b: [clamp01(Number(p1[0])), clamp01(Number(p1[1]))],
+    });
+  }
+  return segments.length ? segments : undefined;
+}
 
 /** Axis-aligned bounds of a ring (normalized space); skips duplicate closing point. */
 export function polygonRingBBox(ring: [number, number][]): {
@@ -85,7 +118,26 @@ function parsePolygonRoomFromFeature(raw: unknown): GeoJsonRoomPolygon | null {
     : {}) as Record<string, unknown>;
   const roomName = props.roomName != null ? String(props.roomName) : 'Room';
   const roomId = props.roomId != null ? String(props.roomId) : '';
-  return { roomName, roomId, ring: pts };
+  const doorLines = extractDoorLinesFromProps(props);
+  const shell = isBuildingShellFeature(roomName);
+  const rawBookable = props.isBookable;
+  const isBookable = shell
+    ? false
+    : rawBookable === true
+      ? true
+      : rawBookable === false
+        ? false
+        : inferDefaultBookableFloorplanPolygon(roomName);
+  const mk = props.mapIconKey != null ? String(props.mapIconKey).trim() : '';
+  const mapIconKey = !shell && mk.length > 0 ? mk.slice(0, 64) : undefined;
+  return {
+    roomName,
+    roomId,
+    ring: pts,
+    isBookable,
+    ...(mapIconKey ? { mapIconKey } : {}),
+    ...(doorLines ? { doorLines } : {}),
+  };
 }
 
 /**
@@ -139,6 +191,10 @@ export type GeoJsonFloorPoi = {
   label: string;
   x: number;
   y: number;
+  iconKey?: string;
+  iconColor?: string;
+  /** When false, viewers show icon only (no caption chip). */
+  showLabel?: boolean;
 };
 
 /** Point features from floorplan GeoJSON (normalized coordinates). */
@@ -172,7 +228,24 @@ export function parseFloorplanPoiPoints(json: string | null | undefined): GeoJso
     const pinKind = props.pinKind != null ? String(props.pinKind) : 'other';
     const pinId = props.pinId != null ? String(props.pinId) : '';
     const label = props.label != null ? String(props.label) : '';
-    out.push({ pinId, pinKind, label, x, y });
+    const iconKeyRaw = props.iconKey != null ? String(props.iconKey).trim() : '';
+    const iconKey = iconKeyRaw.length > 0 ? iconKeyRaw.slice(0, 64) : undefined;
+    const iconColorRaw = props.iconColor != null ? String(props.iconColor).trim() : '';
+    const iconColor = /^#[0-9A-Fa-f]{6}$/.test(iconColorRaw) ? iconColorRaw : undefined;
+    let showLabel: boolean | undefined;
+    if (props.showLabel === true) showLabel = true;
+    else if (props.showLabel === false) showLabel = false;
+    else showLabel = undefined;
+    out.push({
+      pinId,
+      pinKind,
+      label,
+      x,
+      y,
+      ...(iconKey ? { iconKey } : {}),
+      ...(iconColor ? { iconColor } : {}),
+      ...(showLabel !== undefined ? { showLabel } : {}),
+    });
   }
   return out;
 }

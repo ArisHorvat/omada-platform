@@ -41,6 +41,25 @@ export const ROOM_AMENITY_PICKER_OPTIONS: PickerOption<string>[] = Object.keys(R
   icon: 'build',
 }));
 
+/** Grouped for admin Details and filter UX — keys must exist in `ROOM_AMENITY_LABELS`. */
+export const ROOM_AMENITY_CATEGORY_GROUPS: { id: string; title: string; keys: readonly string[] }[] = [
+  {
+    id: 'presentation',
+    title: 'Presentation & displays',
+    keys: ['VideoProjector', 'InteractiveSmartBoard', 'DocumentCamera', 'WirelessPresentation'],
+  },
+  {
+    id: 'conferencing',
+    title: 'Conferencing & audio',
+    keys: ['VideoConference', 'MicrophoneArray', 'HearingLoop'],
+  },
+  {
+    id: 'space',
+    title: 'Space & environment',
+    keys: ['WhiteboardWall', 'ComputerWorkstations', 'Kitchenette', 'AcousticPanels', 'DimmingLights'],
+  },
+];
+
 export function formatAmenityKeyLabel(key: string): string {
   return ROOM_AMENITY_LABELS[key] ?? key.replace(/([A-Z])/g, ' $1').replace(/^\s+/, '').trim();
 }

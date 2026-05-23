@@ -12,8 +12,8 @@ const WIDGETS = [
   { name: 'Profile', status: 'Done', icon: 'person' },
   
   // Org Controlled
-  { name: 'Assignments', status: 'Todo', icon: 'assignment' },
-  { name: 'Attendance', status: 'Todo', icon: 'how-to-reg' },
+  { name: 'Assignments', status: 'Done', icon: 'assignment' },
+  { name: 'Attendance', status: 'Done', icon: 'how-to-reg' },
   { name: 'Documents', status: 'Todo', icon: 'folder-shared' },
   { name: 'Events', status: 'Todo', icon: 'event' },
   { name: 'Finance', status: 'Todo', icon: 'attach-money' },

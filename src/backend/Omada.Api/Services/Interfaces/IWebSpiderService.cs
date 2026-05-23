@@ -18,6 +18,15 @@ public interface IWebSpiderService
     Task<IReadOnlyList<ScrapedEventDto>> ExtractScheduleFromTableAsync(string html, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Extracts timetable rows from <paramref name="startUrl"/> and, when it is a hub/index page,
+    /// follows same-directory HTML links to year/group schedule pages (e.g. UBB orar tabelar).
+    /// </summary>
+    Task<SiteScheduleExtractionResult> ExtractScheduleFromSiteAsync(
+        string startUrl,
+        int maxSchedulePages = 32,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Fetches raw HTML from the schedule page URL (used by Hangfire sync / merge).
     /// </summary>
     Task<string?> FetchSchedulePageHtmlAsync(string url, CancellationToken cancellationToken = default);

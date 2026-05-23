@@ -39,5 +39,14 @@ public class RoomSearchRequestValidator : AbstractValidator<RoomSearchRequest>
         RuleFor(x => x.AmenityKeys)
             .Must(keys => keys == null || keys.Count <= 12)
             .WithMessage("Too many amenities selected.");
+
+        RuleFor(x => x.FloorId)
+            .NotEqual(Guid.Empty)
+            .When(x => x.FloorId.HasValue)
+            .WithMessage("Invalid floor id.");
+
+        RuleFor(x => x.FloorplanFeatureKey)
+            .MaximumLength(128)
+            .When(x => x.FloorplanFeatureKey != null);
     }
 }

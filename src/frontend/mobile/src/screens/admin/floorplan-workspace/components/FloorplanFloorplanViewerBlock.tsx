@@ -5,6 +5,7 @@ import { FloorplanPolygonEditorOverlay } from '@/src/screens/admin/components/Fl
 import { FloorplanPoiEditorOverlay } from '@/src/screens/admin/components/FloorplanPoiEditorOverlay';
 import type { FloorplanWorkspaceModel } from '@/src/screens/admin/floorplan-workspace/hooks/useFloorplanWorkspace';
 import { FloorplanViewer } from '@/src/screens/widgets/map/components/FloorplanViewer';
+import { FloorplanMapLegendPanel } from '@/src/screens/widgets/map/components/FloorplanMapLegendPanel';
 
 type Props = {
   model: FloorplanWorkspaceModel;
@@ -18,6 +19,7 @@ export function FloorplanFloorplanViewerBlock({ model }: Props) {
     previewHeightRatio,
     floorplanMapHeight,
     mapGesturesEnabled,
+    outlineTraceActive,
     previewImageUrl,
     floorplanLoading,
     activeFloor,
@@ -39,7 +41,26 @@ export function FloorplanFloorplanViewerBlock({ model }: Props) {
     selectedPoiIndex,
     onMovePoi,
     isVectorMode,
+    shellTraceDraft,
+    roomTraceDraft,
+    doorPlacement,
+    appendOutlineDraftTap,
+    onDoorPlacementTap,
+    onTranslateWholeFeature,
+    onNudgeEdgeRelease,
   } = model;
+
+  const mapAuthoringTap =
+    activeTab === 'pins' && placePoiKind != null
+      ? onAddPoiAt
+      : shellTraceDraft != null || roomTraceDraft != null
+        ? appendOutlineDraftTap
+        : doorPlacement != null
+          ? onDoorPlacementTap
+          : undefined;
+
+  const blockPolygonHitTesting =
+    shellTraceDraft != null || roomTraceDraft != null || doorPlacement != null;
 
   return (
     <>
@@ -56,8 +77,12 @@ export function FloorplanFloorplanViewerBlock({ model }: Props) {
             isDark={colors.isDark}
             heightRatio={previewHeightRatio}
             gesturesEnabled={mapGesturesEnabled}
+            outlineTraceActive={outlineTraceActive}
             vectorMode={isVectorMode}
-            onTapNormalized={activeTab === 'pins' && placePoiKind != null ? onAddPoiAt : undefined}
+            onTapNormalized={mapAuthoringTap}
+            onOutlineTraceDrag={
+              shellTraceDraft != null || roomTraceDraft != null ? appendOutlineDraftTap : undefined
+            }
           >
             {showPolygonLayer ? (
               <FloorplanPolygonEditorOverlay
@@ -68,8 +93,13 @@ export function FloorplanFloorplanViewerBlock({ model }: Props) {
                 selectedFeatureIndex={selectedRoomIndex}
                 editMode={editMode}
                 onMoveVertex={onMoveVertex}
-                isVectorMode={isVectorMode}
-                interactive
+                /** Keep authoring geometry/labels aligned with “map view off”; background still uses vector toggle. */
+                isVectorMode={false}
+                interactive={!blockPolygonHitTesting}
+                shellTraceDraftPoints={shellTraceDraft ?? undefined}
+                roomTraceDraftPoints={roomTraceDraft ?? undefined}
+                onTranslateWholeFeature={onTranslateWholeFeature}
+                onNudgeEdgeRelease={onNudgeEdgeRelease}
                 onSelectRoom={(fi) => {
                   setPlacePoiKind(null);
                   setSelectedPoiIndex(null);
@@ -95,6 +125,20 @@ export function FloorplanFloorplanViewerBlock({ model }: Props) {
               />
             ) : null}
           </FloorplanViewer>
+          <FloorplanMapLegendPanel
+            colors={colors}
+            mode="admin"
+            wideLayout={isWideLayout}
+            style={{
+              position: 'absolute',
+              bottom: 8,
+              zIndex: 4,
+              maxHeight: isWideLayout ? 200 : 150,
+              ...(isWideLayout
+                ? { right: 8, width: Math.min(420, Math.max(280, mapColumnWidth - 16)) }
+                : { left: 8, right: 8 }),
+            }}
+          />
         </View>
       ) : (
         <AppText variant="body" style={{ color: colors.subtle, textAlign: 'center', paddingVertical: 28 }}>

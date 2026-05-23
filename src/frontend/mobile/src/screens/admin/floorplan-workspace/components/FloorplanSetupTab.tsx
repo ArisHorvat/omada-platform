@@ -1,5 +1,5 @@
-import React from 'react';
-import { ActivityIndicator, ScrollView, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { ActivityIndicator, Platform, ScrollView, TextInput, TouchableOpacity, View } from 'react-native';
 import { AppButton, AppText, ClayView, Icon } from '@/src/components/ui';
 import type { FloorplanWorkspaceModel } from '@/src/screens/admin/floorplan-workspace/hooks/useFloorplanWorkspace';
 import { createFloorplanWorkspaceStyles } from '@/src/screens/admin/floorplan-workspace/styles/floorplanWorkspaceScreen.styles';
@@ -39,11 +39,14 @@ export function FloorplanSetupTab({ model }: Props) {
     handleCreateFloor,
     handleRunExtraction,
     confirmCreateBuildingAndLevel,
-    isVectorMode,
-    setIsVectorMode,
+    handleCreateBuilding,
+    newBuildingName,
+    setNewBuildingName,
+    creatingBuilding,
   } = model;
 
   const styles = createFloorplanWorkspaceStyles(colors);
+  const [showImageTips, setShowImageTips] = useState(false);
 
   return (
     <>
@@ -67,7 +70,16 @@ export function FloorplanSetupTab({ model }: Props) {
         {(() => {
           const lockBuildingForCreate = workspaceIntent === 'create' && createLevelChoiceLocked;
           return (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ marginBottom: 12 }}
+              contentContainerStyle={{
+                alignItems: 'center',
+                flexGrow: 0,
+                paddingVertical: Platform.OS === 'web' ? 8 : 4,
+              }}
+            >
               {buildings.map((b) => (
                 <TouchableOpacity
                   key={b.id}
@@ -79,6 +91,7 @@ export function FloorplanSetupTab({ model }: Props) {
                 >
                   <ClayView
                     depth={selectedBuildingId === b.id ? 2 : 5}
+                    contentFlexGrow={0}
                     color={selectedBuildingId === b.id ? colors.primary : colors.background}
                     style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 }}
                   >
@@ -90,9 +103,33 @@ export function FloorplanSetupTab({ model }: Props) {
           );
         })()}
         {!buildings.length && !buildingsQuery.isLoading ? (
-          <AppText variant="caption" style={{ color: colors.subtle }}>
-            No buildings in this organization yet.
-          </AppText>
+          <View style={{ marginBottom: 12 }}>
+            <AppText variant="caption" style={{ color: colors.subtle, marginBottom: 8 }}>
+              No buildings in this organization yet. Create one to start adding floor levels.
+            </AppText>
+            <TextInput
+              value={newBuildingName}
+              onChangeText={setNewBuildingName}
+              placeholder="Building name (e.g. Main Hall)"
+              placeholderTextColor={colors.subtle}
+              style={{
+                borderWidth: 1,
+                borderColor: colors.border,
+                borderRadius: 10,
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+                color: colors.text,
+                backgroundColor: colors.background,
+                marginBottom: 10,
+              }}
+            />
+            <AppButton
+              title={creatingBuilding ? 'Creating…' : 'Create building'}
+              onPress={handleCreateBuilding}
+              disabled={creatingBuilding || !newBuildingName.trim()}
+              style={{ alignSelf: 'flex-start', minWidth: 150 }}
+            />
+          </View>
         ) : null}
 
         {workspaceIntent === 'edit' ? (
@@ -105,11 +142,20 @@ export function FloorplanSetupTab({ model }: Props) {
                 No levels for this building yet. Use “Create a new floor” in Workflow to add one.
               </AppText>
             ) : (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{
+                  alignItems: 'center',
+                  flexGrow: 0,
+                  paddingVertical: Platform.OS === 'web' ? 8 : 4,
+                }}
+              >
                 {floors.map((f) => (
                   <TouchableOpacity key={f.id} onPress={() => setSelectedFloorId(f.id!)} style={{ marginRight: 8 }}>
                     <ClayView
                       depth={selectedFloorId === f.id ? 2 : 5}
+                      contentFlexGrow={0}
                       color={selectedFloorId === f.id ? colors.primary : colors.background}
                       style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 }}
                     >
@@ -193,18 +239,17 @@ export function FloorplanSetupTab({ model }: Props) {
       </ClayView>
 
       <ClayView depth={4} color={colors.card} style={{ borderRadius: 14, padding: 14, marginBottom: 14 }}>
-        <AppText variant="label" style={{ color: colors.subtle, marginBottom: 8 }}>
+        <AppText variant="label" style={{ color: colors.subtle, marginBottom: 6 }}>
           Floorplan image & processing
         </AppText>
         <AppText variant="caption" style={{ color: colors.subtle, marginBottom: 10 }}>
           {workspaceIntent === 'create'
-            ? 'Preview your image first. Add the new level (uploads this image) so the server can store it — then you may run AI room detection, or skip it and draw rooms manually. AI needs Map Admin and the Python AiService (AiService:BaseUrl).'
-            : 'Preview your image first. Changing the image clears room outlines here until you run AI extraction or save new geometry. Extraction needs Map Admin and the Python AiService (AiService:BaseUrl).'}
+            ? 'Choose an image, add the level, then optionally run AI — or trace rooms manually in the Rooms tab.'
+            : 'Choose an image on the selected floor, run AI if you want, then refine polygons in Rooms. Changing the image clears local outlines until you extract or redraw.'}{' '}
+          Requires Map Admin and Roboflow configuration on the API.
         </AppText>
-        <AppText variant="caption" style={{ color: colors.subtle, marginBottom: 12 }}>
-          Tips: export PNG/PDF→PNG from CAD (not a screen photo), high resolution, black walls on white, straight scan.
-        </AppText>
-        <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
+
+        <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
           <AppButton
             title={
               pickingImage
@@ -239,32 +284,52 @@ export function FloorplanSetupTab({ model }: Props) {
             style={{ flex: 1, minWidth: 150 }}
             disabled={!selectedFloorId || uploading || !pendingFloorAsset || pickingImage}
           />
-          <AppButton
-            title={isVectorMode ? 'Map view · on' : 'Toggle Map View'}
-            onPress={() => setIsVectorMode((v) => !v)}
-            variant={isVectorMode ? 'secondary' : 'outline'}
-            style={{ flex: 1, minWidth: 150 }}
-          />
         </View>
-        <AppText variant="caption" style={{ color: colors.subtle, marginTop: 10 }}>
+
+        <TouchableOpacity
+          onPress={() => setShowImageTips((v) => !v)}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: showImageTips ? 6 : 2 }}
+          hitSlop={8}
+        >
+          <Icon name={showImageTips ? 'expand-less' : 'expand-more'} size={18} color={colors.subtle} />
+          <AppText variant="caption" style={{ color: colors.subtle }}>
+            {showImageTips ? 'Hide' : 'Show'} image & AI tips
+          </AppText>
+        </TouchableOpacity>
+        {showImageTips ? (
+          <AppText variant="caption" style={{ color: colors.subtle, marginBottom: 10, paddingLeft: 4 }}>
+            Use a CAD export as PNG — not a blurry photo — with high resolution, black walls on white, and minimal skew.
+            Extraction runs on the API (Roboflow); Rooms tab accepts hand-drawn shapes without AI.
+          </AppText>
+        ) : null}
+
+        <AppText variant="caption" weight="bold" style={{ color: colors.text }}>
           {pendingFloorAsset
             ? `Selected: ${pendingFloorAsset.fileName}`
             : workspaceIntent === 'create'
-              ? 'No file yet — choose an image, add the level, then optionally run AI.'
-              : 'No file selected — choose an image to preview. Old room shapes clear when you pick a new image until you extract or redraw.'}
+              ? 'No file selected yet.'
+              : 'No file selected — a new pick clears outlines until you extract or redraw.'}
         </AppText>
-        <ClayView depth={2} color={colors.background} style={{ borderRadius: 12, padding: 12, marginTop: 12 }}>
-          <AppText variant="caption" weight="bold" style={{ color: colors.text, marginBottom: 4 }}>
-            Selected level flow
+        {!pendingFloorAsset ? (
+          <AppText variant="caption" style={{ color: colors.subtle, marginTop: 4 }}>
+            {activeFloor != null ? (
+              <>Active level {activeFloor.levelNumber}. </>
+            ) : workspaceIntent === 'create' ? (
+              <>Confirm level (step 2) to select it — then preview and AI use that floor. </>
+            ) : (
+              <>Pick a building and floor in Location first. </>
+            )}
           </AppText>
-          <AppText variant="caption" style={{ color: colors.subtle }}>
-            {activeFloor
-              ? `Level ${activeFloor.levelNumber} is selected. Choose an image to preview it, then run extraction to update that level.`
-              : workspaceIntent === 'create'
-                ? 'After you add the level (step 2), it becomes selected and you can run AI on the same image file, or skip AI and edit rooms by hand.'
-                : 'Pick a floor above to attach the image and extraction to a level.'}
+        ) : activeFloor ? (
+          <AppText variant="caption" style={{ color: colors.subtle, marginTop: 4 }}>
+            Will attach to level {activeFloor.levelNumber}
+            {!activeFloor.floorplanId ? ' (new floorplan on save).' : '.'}
           </AppText>
-        </ClayView>
+        ) : (
+          <AppText variant="caption" style={{ color: colors.primary, marginTop: 4 }}>
+            Add this level before the server stores the upload.
+          </AppText>
+        )}
       </ClayView>
 
       <ClayView depth={4} color={colors.card} style={{ borderRadius: 14, padding: 14, marginBottom: 14 }}>

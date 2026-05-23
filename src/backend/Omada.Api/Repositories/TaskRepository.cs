@@ -13,14 +13,23 @@ public class TaskRepository : GenericRepository<TaskItem>, ITaskRepository
     {
     }
 
-    public async Task<PagedResponse<TaskItem>> GetPagedForUserAsync(Guid organizationId, Guid userId, int page, int pageSize)
+    public async Task<PagedResponse<TaskItem>> GetPagedForUserAsync(
+        Guid organizationId,
+        Guid userId,
+        int page,
+        int pageSize,
+        Guid? groupId = null)
     {
         var query = _context.Tasks
             .AsNoTracking()
             .Where(t =>
                 t.OrganizationId == organizationId &&
-                (t.AssigneeId == userId || t.CreatedByUserId == userId))
-            .OrderByDescending(t => t.CreatedAt);
+                (t.AssigneeId == userId || t.CreatedByUserId == userId));
+
+        if (groupId.HasValue)
+            query = query.Where(t => t.SubjectId == groupId.Value);
+
+        query = query.OrderByDescending(t => t.CreatedAt);
 
         var totalCount = await query.CountAsync();
         var items = await query

@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { WidgetPageShell } from '@/src/components/layout';
 import { useThemeColors, useTabContentBottomPadding } from '@/src/hooks';
 import { createStyles } from '@/src/screens/widgets/profile/styles/edit-profile.styles';
 import { useEditProfileLogic } from '@/src/screens/widgets/profile/hooks/useEditProfileLogic';
@@ -70,6 +71,7 @@ export default function EditProfileScreen() {
   };
 
   return (
+    <WidgetPageShell>
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
         <ClayBackButton />
@@ -165,5 +167,6 @@ export default function EditProfileScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
+    </WidgetPageShell>
   );
 }

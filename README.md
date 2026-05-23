@@ -1,4 +1,4 @@
-# 🏢 Omada Platform
+# Omada Platform
 
 Omada is a **multi-tenant platform for universities and organizations** that brings schedules, news, tasks, rooms, map navigation, directory, chat, and digital identity into a single, customizable experience.
 
@@ -6,204 +6,201 @@ Each user account can belong to **multiple organizations**. Switching organizati
 
 ---
 
-## ✨ Key capabilities
+## Key capabilities
 
-- 📊 **Widget-driven dashboard**: organizations enable the modules they need (news, schedule, rooms, map, grades, tasks, chat, etc.)
-- 🔐 **Multi-tenant & secure by default**: tenant isolation via `OrganizationId` and role-based widget permissions
-- ⚡ **Real-time + offline-friendly**: SignalR updates where relevant, plus client-side caching and resilient UX patterns on mobile
-- 🕷️ **Optional web ingestion**: crawl and parse public university/organization pages for **schedule tables** and **news-style articles**, with AI-assisted fallbacks when HTML layout changes
-- 🗺️ **Map & floorplans**: upload building floorplan images, run a **CV + OCR** microservice to derive **GeoJSON** room geometry, and visualize pins/rooms in the mobile map experience
-
----
-
-## 🛠️ Tech stack
-
-- **Backend**: ASP.NET Core (.NET 8), EF Core, NSwag (OpenAPI), FluentValidation, SignalR
-- **Mobile**: React Native (Expo Router), React Query, Axios, Skia
-- **Web**:
-  - **Primary web build**: Expo web (`src/frontend/mobile` → `npm run web`)
-  - **Optional** Next.js app: `src/frontend/web` (placeholder / future separate web-only surfaces)
-- **Services**: Python microservice for AI-powered floorplan processing (`src/services/ai-floorplan`)
+- **Organization admin console** — members, roles, branding, academic periods, grades, attendance, widget catalog, rooms, audit log, map/floorplans, web spider, groups
+- **Platform admin (SuperAdmin)** — list/manage organizations, enter any org context, platform-wide audit log
+- **Universal search** — cross-widget search scoped to permissions and org-enabled widgets
+- **Widget-driven dashboard** — org-wide widget catalog plus per-role permissions (news, schedule, rooms, map, grades, tasks, chat, etc.)
+- **Multi-tenant & secure by default** — tenant isolation via `OrganizationId` and role-based widget permissions
+- **Organization invites** — unique invite code + link per org; email invitations at registration; self-service join via `/join`
+- **Real-time** — SignalR where relevant; mobile uses React Query and offline-friendly patterns
+- **Web ingestion** — crawl public timetable and news pages (`WebSpiderService`), with optional Gemini fallbacks
+- **Map & floorplans** — upload floorplan images; **Roboflow** segmentation in the API produces **GeoJSON** room geometry for the map viewer
 
 ---
 
-## 📁 Repository structure
+## Tech stack
+
+| Area | Stack |
+|------|--------|
+| **Backend** | ASP.NET Core (.NET 8), EF Core, NSwag, FluentValidation, SignalR, Hangfire |
+| **Mobile / web app** | React Native (Expo Router), React Query, generated Axios client |
+| **Optional** | Next.js placeholder at `src/frontend/web` (not the main product UI) |
+
+---
+
+## Repository structure
 
 ```text
 .
 ├─ src/
 │  ├─ backend/
-│  │  ├─ Omada.Api/                 # ASP.NET Core API (Swagger, SignalR, tenancy, permissions)
-│  │  ├─ Omada.Web/                 # Optional server-rendered site / docs pages (if used)
+│  │  ├─ Omada.Api/          # Main API (Swagger, SignalR, tenancy, floorplan AI, web spider)
+│  │  ├─ Omada.Web/          # Optional server-rendered pages
 │  │  └─ Omada.sln
-│  ├─ frontend/
-│  │  ├─ mobile/                    # Expo app (iOS/Android/Web)
-│  │  └─ web/                       # Optional Next.js app (not the main web client)
-│  └─ services/
-│     └─ ai-floorplan/              # Python service (floorplan processing)
+│  └─ frontend/
+│     ├─ mobile/             # Primary client (iOS, Android, Expo web)
+│     └─ web/                # Optional Next.js (marketing / future use)
+├─ docs/
+│  ├─ Configuration.md       # .env, appsettings, EXPO_PUBLIC_* — start here for setup
+│  ├─ Backend.md             # API folder structure and features
+│  ├─ Frontend.md            # Mobile/web folder structure
+│  └─ WebSpider.md           # Web spider architecture and admin API
 └─ README.md
 ```
 
----
-
-## 🧭 Product model (high level)
-
-### 👥 Organizations, membership, and tenancy
-
-- **Organization**: a university/company “space” with its own theme and enabled widgets.
-- **User**: a global account that can be a member of multiple organizations.
-- **Active organization**: selected at runtime; drives theming + permission checks + data scoping.
-
-On the backend, tenant isolation is enforced using `OrganizationId` (from JWT) and EF Core query filters. On the frontend, API calls and UI state align to the currently selected organization context.
-
-### 🧩 Widgets (modules)
-
-Widget keys are centralized on the backend in `Omada.Api.Infrastructure.WidgetKeys` and mirrored on the mobile app for capability mapping. Examples include:
-
-- **Core**: `profile`, `security`, `settings`, `more`, `admin`, `super-admin`
-- **Communication**: `chat`, `news`, `events`
-- **Productivity**: `schedule`, `tasks`, `documents`
-- **Academic**: `grades`, `assignments`, `attendance`
-- **Operations**: `users`, `groups`, `rooms`, `map`, `digital-id`
-
-### 🔐 Permissions
-
-Permissions are widget-scoped with cumulative levels: **View → Edit → Admin**. The API enforces access with a `HasPermission` policy per widget and access level.
+There is **no separate Python service**; floorplan AI runs inside `Omada.Api`.
 
 ---
 
-## 🚀 Getting started (local development)
+## Getting started (local development)
 
-### 📋 Prerequisites
+Full details: **[`docs/Configuration.md`](docs/Configuration.md)**
 
-- **.NET 8 SDK**
-- **Node.js** (LTS recommended)
-- **Expo development environment** (Android Studio / Xcode as needed)
+### Prerequisites
 
-### 1) ⚙️ Run the backend API
+- .NET 8 SDK  
+- Node.js (LTS)  
+- SQL Server or LocalDB (Development config uses LocalDB by default)  
+- Expo tooling (Android Studio / Xcode as needed)  
+- Roboflow API key (only if you use **floorplan AI extraction** in map admin)
 
-The API is configured to run on **port `5069`** in development.
+### 1) Backend API
 
 ```bash
 cd src/backend/Omada.Api
+copy .env.example .env
+# Edit .env — set ROBOFLOW_API_KEY if using floorplan AI; override SQL connection if needed
 dotnet restore
 dotnet run
 ```
 
-- 📄 **Swagger UI**: `http://localhost:5069/swagger`
+| Resource | URL |
+|----------|-----|
+| Swagger | `http://localhost:5069/swagger` |
+| Hangfire dashboard | `http://localhost:5069/hangfire` (when enabled) |
 
-> 💡 Note: `appsettings.json` currently contains example/local values. For real deployments, secrets (JWT keys, API keys) should be stored via environment variables / user secrets.
-
-### 2) 📱 Run the mobile app (Expo)
+### 2) Mobile app
 
 ```bash
 cd src/frontend/mobile
+copy .env.example .env
+# Set EXPO_PUBLIC_API_BASE_URL (LAN IP when testing on a physical device)
 npm install
 npm run start
 ```
 
-The mobile app API base URL lives in:
+`config.ts` reads `EXPO_PUBLIC_API_BASE_URL` and defaults to `http://localhost:5069`.
 
-- `src/frontend/mobile/src/config/config.ts` (`API_BASE_URL`, `WS_BASE_URL`)
+### 3) Generate TypeScript API client
 
-If you test on a physical device, set `API_BASE_URL` to your machine’s LAN IP (as shown in the current config).
-
-### 3) 🔌 Generate the TypeScript API client (NSwag)
-
-The mobile app uses NSwag to generate `src/api/generatedClient.ts` directly from Swagger:
+With the API running:
 
 ```bash
 cd src/frontend/mobile
 npm run generate-api
 ```
 
-This command reads:
-
-- `http://localhost:5069/swagger/v1/swagger.json`
-
-So make sure the backend is running first.
+Reads `http://localhost:5069/swagger/v1/swagger.json` → `src/api/generatedClient.ts`.
 
 ---
 
-## 🕷️ Web spider (schedule & news ingestion)
+## Configuration summary
 
-The backend includes a **`WebSpiderService`** that fetches public HTML with a dedicated `HttpClient` (custom **User-Agent**, bounded timeouts). It is built for **university-style sites** where timetables are often published as HTML tables and news lives under predictable URL patterns.
+| What | Where |
+|------|--------|
+| Roboflow model ids, Gemini model name, JWT issuer | `appsettings.json` / `appsettings.Development.json` |
+| Roboflow API key, SQL override, Gemini key | `src/backend/Omada.Api/.env` |
+| Mobile API URL | `src/frontend/mobile/.env` → `EXPO_PUBLIC_API_BASE_URL` |
+| Mobile app URL (invite links) | `src/frontend/mobile/.env` → `EXPO_PUBLIC_APP_BASE_URL` |
+| Backend invite link base | `AppConfig:PublicAppUrl` in appsettings or `AppConfig__PublicAppUrl` in `.env` |
+| Spider timetable/news URLs | Organization record (admin UI), not env files |
 
-### 🔍 What it does
-
-**📅 Schedule discovery & extraction**
-
-- **Breadth-first crawl** of in-domain links starting from a URL, with **hard caps** on how many pages are visited so crawls cannot run unbounded.
-- Each page is **classified** (e.g. menu-like vs schedule-like) using heuristics such as table headers matching timetable vocabulary (time, room, course, group, professor, etc.).
-- **Primary path**: parse the first schedule-like **HTML `<table>`** with **HtmlAgilityPack**, including tricky layouts with **`rowspan` / `colspan`**, and map columns to structured rows (`ScrapedEventDto`: time, class name, room text, professor, group).
-- **Fallback path**: if the site’s markup drifts (no table, empty grid, zero rows), the service strips HTML to plain text and uses the **Gemini** integration (`IGeminiService`) to extract schedule rows from text—so brittle scrapers get a second chance when the DOM changes.
-
-**📰 News discovery & extraction**
-
-- Separate crawl tuned for **news / blog / announcements** URL patterns and article vs listing pages.
-- **Article extraction** removes boilerplate (scripts, nav, sidebars), pulls a main **title + body**, and optionally asks **Gemini** to **categorize** the excerpt when an API key is configured—if categorization fails, the app falls back to a default category.
-
-### 💾 Syncing scraped schedules into the database
-
-**`ScheduleSpiderSyncService`** turns HTML rows into durable **`ScrapedClassEvent`** records **per organization**:
-
-- Resolves the schedule page URL from configuration (see below), fetches HTML via the spider, runs **`ExtractScheduleFromTableAsync`**, then **merges** with existing rows using a **natural key** (normalized class name, time, group) and a **content hash** so updates are detected without rewriting unchanged rows.
-- **`ScrapedEntityResolutionService`** links scraped **room text** and **professor names** to internal **room / host** entities where possible, so downstream features (rooms, map, schedule UI) can relate scraped strings to real IDs.
-- Rows that disappear from the latest scrape are **removed** from the stored set so the DB mirrors the current page.
-
-**⏰ Automation (Hangfire)**
-
-- The API hosts **Hangfire** (SQL Server storage) and exposes the dashboard at **`/hangfire`** in development. Job entry points live in **`ScheduleSyncJobs`** (e.g. `SyncScheduleDatabaseAsync` per organization) so long-running sync work runs outside the HTTP request thread with **scoped DI** and **automatic retries**.
-
-### ⚙️ Configuration (`appsettings`)
-
-| Key | Purpose |
-|-----|--------|
-| `Spider:DefaultSchedulePageUrl` | Fallback URL for the published timetable page when no per-org override exists |
-| `Spider:Organizations:{OrganizationId}:SchedulePageUrl` | Per-organization schedule page (GUID key) |
-| `Gemini:ApiKey` / `Gemini:Model` | Optional; enables Gemini fallbacks for schedule extraction and news categorization |
-
-⚠️ Respect **robots.txt**, **terms of use**, and **rate limits** of source sites; this subsystem is intended for **authorized** institutional use and pages you are allowed to ingest.
+See **[`docs/Configuration.md`](docs/Configuration.md)** for variable names, priority, and checklists.
 
 ---
 
-## 🗺️ Floorplan processing (AI microservice + API)
+## Product model (high level)
 
-Indoor **map** flows use **building → floor → floorplan image + GeoJSON** so the app can overlay rooms and pins. Heavy image work is delegated to a **small Python service** so the .NET API stays focused on auth, tenancy, and persistence.
+### Organizations and tenancy
 
-### 🐍 Python service (`src/services/ai-floorplan`)
+- **Organization** — tenant with theme, enabled widgets, and a unique **invite code** for self-service join  
+- **User** — global account; can belong to multiple organizations  
+- **Active organization** — drives theme, permissions, and API scoping  
+- **Invites** — share link/code or email invites at registration; new users join via `POST /api/Auth/join`
 
-- **Stack**: **FastAPI** + **OpenCV** + **Tesseract** (via `pytesseract`) for contour detection and OCR of room labels.
-- **Endpoints**:
-  - `GET /health` — liveness check
-  - `POST /process-floorplan` — multipart upload (`file` field); returns a **GeoJSON `FeatureCollection`** describing detected regions (normalized coordinates aligned with the **\[0..1\]** convention used by the mobile floorplan viewer).
-- **Pipeline (summary)**: decode image → optional resize → adaptive threshold + morphology → find contours → filter by area → approximate polygons → OCR on bounding boxes → build GeoJSON; if CV fails, a **mock GeoJSON** path can still return a valid payload for development.
-- **Run locally** (from `main.py`):
+Backend: `OrganizationId` from JWT + EF global filters (`IUserContext` / `ITenantAccessor`).
 
-```bash
-cd src/services/ai-floorplan
-python -m venv .venv
-# Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn main:app --host 0.0.0.0 --port 8000
-```
+### Widgets and permissions
 
-💻 **Note:** Tesseract must be installed on the machine (the code looks for common Windows install paths if `tesseract` is not on `PATH`).
+Widget keys live in `Omada.Api.Infrastructure.WidgetKeys` and mirror `src/frontend/mobile/src/config/permissions.config.ts`.
 
-### 🔷 .NET integration (`FloorplanProcessingService`)
+**Two layers:**
 
-- Configuration: **`AiService:BaseUrl`** (e.g. `http://localhost:8000`) — if missing, floorplan upload returns a clear configuration error.
-- On upload: validates **image** content type, ensures the **floor** belongs to the **current organization**, saves the file under **`wwwroot/images/maps/floorplans/`**, **POSTs** the file to `{BaseUrl}/process-floorplan`, normalizes the returned GeoJSON, and **upserts** the **`Floorplan`** row (image URL + `GeoJsonData`).
-- HTTP client factory registers a named client with a **long timeout** (minutes) suitable for image processing.
+1. **Organization widget catalog** — which features are enabled org-wide (`Organization.EnabledWidgetKeysJson`; all configurable widgets enabled when unset).
+2. **Role permissions** — per-role **View → Edit → Admin** access on enabled widgets only.
 
-### 🌐 HTTP API & app surface
+Enforced with `[HasPermission]` on controllers. SuperAdmin bypasses widget checks; SuperAdmins can switch into any active org via `POST /api/Auth/switch-org`.
 
-- **`FloorplansController`**: upload requires **`map` widget + Admin**; read by id requires **`map` + View**. Admin flows in the mobile app (e.g. mapping tool) upload floorplans; end users with map access consume the stored image + GeoJSON in the **floorplan viewer** (pins, room overlays, theme-aware rendering).
+Examples: `schedule`, `news`, `map`, `rooms`, `chat`, `grades`, `admin`, `super-admin`.
+
+### Organization admin API
+
+Tenant-scoped admin lives under **`/api/Organizations/current`** (`OrganizationAdminController`): settings, members, roles, periods, enabled widgets, audit logs. Widget catalog metadata: **`GET /api/Admin/widgets`**.
+
+Mobile hub: **`/org-dashboard`** with workspaces (members, roles, branding, widgets, periods, grades, attendance, rooms, audit, floorplan, web spider, groups, event types).
+
+### Platform admin (SuperAdmin)
+
+**`/api/super-admin`** — list/detail/delete organizations, platform audit log. Mobile: **`/admin-dashboard`**; entering an org switches JWT context then opens org admin.
 
 ---
 
-## 📝 Notes on code quality & conventions
+## Web spider (schedule & news)
 
-- **Monorepo, vertical slices**: backend contracts/DTOs → NSwag client → mobile hooks/UI
-- **Consistent API envelopes**: backend uses a structured error/result model (`AppError`, `ServiceResponse`)
-- **Security & multi-tenancy**: tenant and permission checks are enforced server-side; the client renders UI capabilities accordingly
+Crawls public HTML for timetables and news; org admins configure URLs in the mobile **Web crawling** workspace.
+
+| Doc | Content |
+|-----|---------|
+| [`docs/WebSpider.md`](docs/WebSpider.md) | Architecture, API endpoints, sync jobs, Gemini fallback |
+| Admin UI | Organization admin → Web crawling (`/web-spider-workspace`) |
+| API | `/api/web-spider/*` (requires **admin** widget + Admin) |
+
+Optional: `Gemini:ApiKey` in `.env` when table parsing fails.
+
+---
+
+## Floorplan processing (map admin)
+
+| Step | Component |
+|------|-----------|
+| Upload image | `FloorplansController` + `FloorplanProcessingService` |
+| AI extraction | `RoboflowFloorplanGeoJsonExtractor` (ImageSharp + Roboflow detect API) |
+| Storage | `wwwroot/images/maps/floorplans/` + `Floorplan.GeoJsonData` |
+| Publish rooms | `PublishRoomsFromGeoJsonAsync` from GeoJSON polygons |
+
+Requires **`map` widget + Admin** for upload; **`map` + View** to read. Configure **`ROBOFLOW_API_KEY`** in backend `.env` (see Configuration doc).
+
+---
+
+## Further reading
+
+| Document | Purpose |
+|----------|---------|
+| [`docs/Configuration.md`](docs/Configuration.md) | Environment and appsettings for API + mobile |
+| [`docs/Backend.md`](docs/Backend.md) | Backend folders, controllers, services, features |
+| [`docs/Frontend.md`](docs/Frontend.md) | Mobile/web folder structure and conventions |
+| [`src/backend/README.md`](src/backend/README.md) | Backend quick start |
+| [`src/frontend/mobile/README.md`](src/frontend/mobile/README.md) | Mobile quick start and scripts |
+| [`src/frontend/web/README.md`](src/frontend/web/README.md) | Optional Next.js app vs Expo web |
+| [`docs/WebSpider.md`](docs/WebSpider.md) | Web spider deep dive |
+
+---
+
+## Conventions
+
+- **Vertical slices** — backend DTOs → Swagger → `npm run generate-api` → mobile hooks/UI  
+- **API envelopes** — `ServiceResponse<T>` + `AppError`  
+- **Tenancy** — never bypass org filters without an explicit reason  
+- **Secrets** — only in `.env`, user secrets, or host configuration — never committed  

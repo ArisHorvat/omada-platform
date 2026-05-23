@@ -10,41 +10,51 @@ public class ScheduleSpiderSyncService : IScheduleSpiderSyncService
 {
     private readonly IUnitOfWork _uow;
     private readonly IWebSpiderService _spider;
-    private readonly IConfiguration _configuration;
+    private readonly ISpiderUrlResolver _urlResolver;
     private readonly IScrapedEntityResolutionService _resolution;
     private readonly ILogger<ScheduleSpiderSyncService> _logger;
 
     public ScheduleSpiderSyncService(
         IUnitOfWork uow,
         IWebSpiderService spider,
-        IConfiguration configuration,
+        ISpiderUrlResolver urlResolver,
         IScrapedEntityResolutionService resolution,
         ILogger<ScheduleSpiderSyncService> logger)
     {
         _uow = uow;
         _spider = spider;
-        _configuration = configuration;
+        _urlResolver = urlResolver;
         _resolution = resolution;
         _logger = logger;
     }
 
-    public async Task SyncScheduleDatabaseAsync(Guid organizationId, CancellationToken cancellationToken = default)
+    public async Task<SpiderSyncStatsDto> SyncScheduleDatabaseAsync(Guid organizationId, CancellationToken cancellationToken = default)
     {
-        var scheduleUrl = ResolveSchedulePageUrl(organizationId);
+        var stats = new SpiderSyncStatsDto();
+        var scheduleUrl = _urlResolver.ResolveSchedulePageUrl(organizationId);
         if (string.IsNullOrWhiteSpace(scheduleUrl))
         {
             _logger.LogWarning("No Spider schedule URL configured for organization {OrganizationId}. Skipping sync.", organizationId);
-            return;
+            return stats;
         }
 
-        var html = await _spider.FetchSchedulePageHtmlAsync(scheduleUrl, cancellationToken);
-        if (string.IsNullOrWhiteSpace(html))
+        SiteScheduleExtractionResult extraction;
+        try
         {
-            _logger.LogWarning("Empty HTML from schedule URL for organization {OrganizationId}.", organizationId);
-            return;
+            extraction = await _spider.ExtractScheduleFromSiteAsync(scheduleUrl, maxSchedulePages: 120, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Schedule site extraction failed for organization {OrganizationId}.", organizationId);
+            throw;
         }
 
-        var scraped = await _spider.ExtractScheduleFromTableAsync(html, cancellationToken);
+        var scraped = extraction.Events;
+        if (scraped.Count == 0)
+        {
+            _logger.LogWarning("No scraped rows from schedule URL for organization {OrganizationId}.", organizationId);
+            return stats;
+        }
         var maps = await _resolution.BuildMapsAsync(organizationId, scraped, cancellationToken);
 
         var scrapedWithKeys = scraped
@@ -63,6 +73,7 @@ public class ScheduleSpiderSyncService : IScheduleSpiderSyncService
 
         foreach (var item in scrapedWithKeys)
         {
+            stats.Processed++;
             var profKey = NormalizeKeyPart(item.Dto.Professor);
             var roomKey = NormalizeKeyPart(item.Dto.Room);
             maps.HostByProfessorKey.TryGetValue(profKey, out var hostId);
@@ -78,6 +89,7 @@ public class ScheduleSpiderSyncService : IScheduleSpiderSyncService
                     entity.HostId = hostId;
                     entity.RoomId = roomId;
                     _uow.Repository<ScrapedClassEvent>().Update(entity);
+                    stats.Updated++;
                 }
                 else
                 {
@@ -96,7 +108,14 @@ public class ScheduleSpiderSyncService : IScheduleSpiderSyncService
                     }
 
                     if (needsUpdate)
+                    {
                         _uow.Repository<ScrapedClassEvent>().Update(entity);
+                        stats.Updated++;
+                    }
+                    else
+                    {
+                        stats.Skipped++;
+                    }
                 }
             }
             else
@@ -109,12 +128,14 @@ public class ScheduleSpiderSyncService : IScheduleSpiderSyncService
                     RoomText = item.Dto.Room,
                     Professor = item.Dto.Professor,
                     GroupNumber = item.Dto.GroupNumber,
+                    ActivityType = item.Dto.ActivityType,
                     DataHash = item.Hash,
                     IsChanged = false,
                     HostId = hostId,
                     RoomId = roomId
                 };
                 await _uow.Repository<ScrapedClassEvent>().AddAsync(newEntity);
+                stats.Created++;
             }
         }
 
@@ -123,18 +144,13 @@ public class ScheduleSpiderSyncService : IScheduleSpiderSyncService
             .ToList();
 
         foreach (var entity in toRemove)
+        {
             _uow.Repository<ScrapedClassEvent>().Remove(entity);
+            stats.Removed++;
+        }
 
         await _uow.CompleteAsync();
-    }
-
-    private string? ResolveSchedulePageUrl(Guid organizationId)
-    {
-        var perOrg = _configuration[$"Spider:Organizations:{organizationId}:SchedulePageUrl"];
-        if (!string.IsNullOrWhiteSpace(perOrg))
-            return perOrg.Trim();
-
-        return _configuration["Spider:DefaultSchedulePageUrl"]?.Trim();
+        return stats;
     }
 
     private static string BuildNaturalKey(ScrapedEventDto dto) =>
@@ -161,5 +177,6 @@ public class ScheduleSpiderSyncService : IScheduleSpiderSyncService
         entity.RoomText = dto.Room;
         entity.Professor = dto.Professor;
         entity.GroupNumber = dto.GroupNumber;
+        entity.ActivityType = dto.ActivityType;
     }
 }

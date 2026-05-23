@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
@@ -17,14 +17,20 @@ import {
   WidgetErrorState,
 } from '@/src/components/ui';
 import { OptionPickerSheet, type PickerOption } from '@/src/components/filters';
-import { useThemeColors } from '@/src/hooks';
+import { PageContainer } from '@/src/components/layout/PageContainer';
+import { SplitPane } from '@/src/components/layout/SplitPane';
+import { SPLIT_PANE_LIST_WIDTH } from '@/src/constants/layout';
+import { useThemeColors, useBreakpoint } from '@/src/hooks';
+import { UserProfilePanel } from './UserProfilePanel';
 import type { UserDirectoryItemDto } from '@/src/api/generatedClient';
 import { useDirectoryLogic } from '../hooks/useDirectoryLogic';
 
 export default function DirectoryScreen() {
   const colors = useThemeColors();
+  const { isWideShell } = useBreakpoint();
   const router = useRouter();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   const {
     search,
@@ -61,16 +67,34 @@ export default function DirectoryScreen() {
     [selectDepartment],
   );
 
-  const renderItem = ({ item }: { item: UserDirectoryItemDto }) => (
-    <PressClay
-      onPress={() =>
-        router.push({
-          pathname: '/user-profile',
-          params: { id: item.id },
-        } as any)
-      }
-    >
-      <ClayView depth={8} puffy={12} style={styles.card}>
+  useEffect(() => {
+    if (!isWideShell || items.length === 0) return;
+    setSelectedUserId((prev) => {
+      if (prev && items.some((x) => x.id === prev)) return prev;
+      return items[0]?.id ?? null;
+    });
+  }, [isWideShell, items]);
+
+  const openUser = (id: string) => {
+    if (isWideShell) {
+      setSelectedUserId(id);
+      return;
+    }
+    router.push({
+      pathname: '/user-profile',
+      params: { id },
+    } as never);
+  };
+
+  const renderItem = ({ item }: { item: UserDirectoryItemDto }) => {
+    const selected = isWideShell && selectedUserId === item.id;
+    return (
+    <PressClay onPress={() => openUser(item.id)}>
+      <ClayView
+        depth={selected ? 4 : 8}
+        puffy={12}
+        style={[styles.card, selected && { borderWidth: 2, borderColor: colors.primary }]}
+      >
         <View style={styles.row}>
           <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
             {item.avatarUrl ? (
@@ -100,14 +124,17 @@ export default function DirectoryScreen() {
       </ClayView>
     </PressClay>
   );
+  };
 
-  return (
-    <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]} edges={['top', 'left', 'right', 'bottom']}>
-      <ScreenTransition style={{ flex: 1 }}>
-        <View style={styles.inner}>
+  const directoryList = (
+    <View style={[styles.inner, isWideShell && { paddingHorizontal: 12 }]}>
           <View style={styles.header}>
-            <ClayBackButton />
-            <AppText variant="h2" weight="bold" style={[styles.headerTitle, { color: colors.text }]}>
+            {!isWideShell ? <ClayBackButton /> : null}
+            <AppText
+              variant="h2"
+              weight="bold"
+              style={[styles.headerTitle, { color: colors.text }, !isWideShell && { marginLeft: 10 }]}
+            >
               Directory
             </AppText>
           </View>
@@ -188,7 +215,24 @@ export default function DirectoryScreen() {
               }
             />
           )}
-        </View>
+    </View>
+  );
+
+  return (
+    <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]} edges={['top', 'left', 'right', 'bottom']}>
+      <ScreenTransition style={{ flex: 1 }}>
+        <PageContainer>
+          {isWideShell ? (
+            <SplitPane sidebar={directoryList} sidebarWidth={SPLIT_PANE_LIST_WIDTH}>
+              <UserProfilePanel
+                userId={selectedUserId ?? undefined}
+                onOpenUser={(id) => setSelectedUserId(id)}
+              />
+            </SplitPane>
+          ) : (
+            directoryList
+          )}
+        </PageContainer>
       </ScreenTransition>
 
       <OptionPickerSheet
@@ -217,7 +261,6 @@ const makeStyles = (_colors: any) =>
       gap: 4,
     },
     headerTitle: {
-      marginLeft: 10,
       flex: 1,
     },
     helper: {

@@ -31,7 +31,10 @@ public class TaskItemDto
 
     public Guid? ProjectId { get; set; }
 
+    /// <summary>Linked org group (typically subject, class, or project).</summary>
     public Guid? SubjectId { get; set; }
+
+    public string? GroupName { get; set; }
 
     public int? MaxScore { get; set; }
 

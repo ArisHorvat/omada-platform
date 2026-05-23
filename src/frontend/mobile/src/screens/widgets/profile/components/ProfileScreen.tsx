@@ -19,6 +19,7 @@ import { AppButton } from '@/src/components/ui/AppButton';
 import { Icon } from '@/src/components/ui/Icon';
 import { PressClay } from '@/src/components/animations/PressClay';
 import { ProgressiveImage } from '@/src/components/ui/ProgressiveImage';
+import { PageContainer } from '@/src/components/layout/PageContainer';
 import { useThemeColors, useTabContentBottomPadding } from '@/src/hooks';
 import { createStyles } from '@/src/screens/widgets/profile/styles/profile.styles';
 import { useProfileLogic } from '@/src/screens/widgets/profile/hooks/useProfileLogic';
@@ -83,6 +84,7 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <PageContainer>
       <ScrollView
         contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPad }]}
         showsVerticalScrollIndicator={false}
@@ -205,6 +207,7 @@ export default function ProfileScreen() {
           {menuRow('logout', 'Log out', handleLogout, true, true)}
         </ClayGroupedSection>
       </ScrollView>
+      </PageContainer>
 
       <Modal
         visible={showAccountSwitcher}

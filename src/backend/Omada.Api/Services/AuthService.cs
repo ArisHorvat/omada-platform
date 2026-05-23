@@ -19,13 +19,23 @@ public class AuthService : IAuthService
     private readonly IUserContext _userContext;
     private readonly IConfiguration _configuration;
     private readonly IPublicMediaUrlResolver _mediaUrls;
+    private readonly IEmailService _emailService;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public AuthService(IUnitOfWork uow, IUserContext userContext, IConfiguration configuration, IPublicMediaUrlResolver mediaUrls)
+    public AuthService(
+        IUnitOfWork uow,
+        IUserContext userContext,
+        IConfiguration configuration,
+        IPublicMediaUrlResolver mediaUrls,
+        IEmailService emailService,
+        IHttpContextAccessor httpContextAccessor)
     {
         _uow = uow;
         _userContext = userContext;
         _configuration = configuration;
         _mediaUrls = mediaUrls;
+        _emailService = emailService;
+        _httpContextAccessor = httpContextAccessor;
     }
 
     public async Task<ServiceResponse<LoginResponse>> LoginAsync(LoginRequest request)
@@ -143,7 +153,29 @@ public class AuthService : IAuthService
             .FindAsync(m => m.UserId == userId && m.OrganizationId == request.OrganizationId)).FirstOrDefault();
 
         if (membership == null)
-            return new ServiceResponse<LoginResponse>(false, null, new AppError(ErrorCodes.Forbidden, "Not a member of this organization"));
+        {
+            if (!IsCallerSuperAdmin())
+                return new ServiceResponse<LoginResponse>(false, null, new AppError(ErrorCodes.Forbidden, "Not a member of this organization"));
+
+            var targetOrg = await _uow.Repository<Organization>().GetByIdAsync(request.OrganizationId);
+            if (targetOrg == null || !targetOrg.IsActive)
+                return new ServiceResponse<LoginResponse>(false, null, new AppError(ErrorCodes.Forbidden, "This organization is currently inactive or suspended."));
+
+            var superAdminToken = GenerateJwtToken(user, request.OrganizationId, "SuperAdmin");
+            return new ServiceResponse<LoginResponse>(true, new LoginResponse
+            {
+                AccessToken = superAdminToken,
+                User = new UserDto
+                {
+                    Id = user.Id,
+                    Email = user.Email,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName
+                },
+                OrganizationId = request.OrganizationId,
+                Role = "SuperAdmin"
+            });
+        }
 
         // 3. Check if the User was banned from this specific organization
         if (!membership.IsActive)
@@ -204,6 +236,102 @@ public class AuthService : IAuthService
         await _uow.CompleteAsync();
 
         return new ServiceResponse<string>(true, "Password has been reset successfully.");
+    }
+
+    public async Task<ServiceResponse<LoginResponse>> JoinOrganizationAsync(JoinOrganizationRequest request)
+    {
+        var normalizedCode = request.InviteCode.Trim().ToUpperInvariant();
+        var org = (await _uow.Repository<Organization>().FindAsync(o =>
+            o.InviteCode == normalizedCode && o.IsActive)).FirstOrDefault();
+
+        if (org == null)
+            return new ServiceResponse<LoginResponse>(false, null, new AppError(ErrorCodes.NotFound, "Invalid or expired invite code."));
+
+        var roles = (await _uow.Repository<Role>().FindAsync(r => r.OrganizationId == org.Id)).ToList();
+        var joinRole = roles.FirstOrDefault(r => r.Name.Equals("Member", StringComparison.OrdinalIgnoreCase))
+            ?? roles.FirstOrDefault(r => !r.Name.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+            ?? roles.FirstOrDefault();
+
+        if (joinRole == null)
+            return new ServiceResponse<LoginResponse>(false, null, new AppError(ErrorCodes.InvalidInput, "Organization has no roles configured."));
+
+        var email = request.Email.Trim();
+        var existingUser = (await _uow.Repository<User>().FindAsync(u => u.Email == email)).FirstOrDefault();
+
+        if (existingUser != null)
+        {
+            var existingMembership = (await _uow.Repository<OrganizationMember>().FindAsync(m =>
+                m.UserId == existingUser.Id && m.OrganizationId == org.Id)).FirstOrDefault();
+
+            if (existingMembership != null)
+                return new ServiceResponse<LoginResponse>(false, null, new AppError(ErrorCodes.InvalidInput, "You are already a member of this organization. Sign in instead."));
+
+            await _uow.Repository<OrganizationMember>().AddAsync(new OrganizationMember
+            {
+                OrganizationId = org.Id,
+                UserId = existingUser.Id,
+                RoleId = joinRole.Id,
+                IsActive = true
+            });
+            await _uow.CompleteAsync();
+
+            var existingJwt = GenerateJwtToken(existingUser, org.Id, joinRole.Name);
+            var existingRefresh = await CreateRefreshTokenAsync(existingUser.Id);
+
+            return new ServiceResponse<LoginResponse>(true, new LoginResponse
+            {
+                AccessToken = existingJwt,
+                RefreshToken = existingRefresh.Token,
+                OrganizationId = org.Id,
+                Role = joinRole.Name,
+                User = new UserDto
+                {
+                    Id = existingUser.Id,
+                    Email = existingUser.Email,
+                    FirstName = existingUser.FirstName,
+                    LastName = existingUser.LastName
+                }
+            });
+        }
+
+        var user = new User
+        {
+            FirstName = request.FirstName.Trim(),
+            LastName = request.LastName.Trim(),
+            Email = email,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+            IsTwoFactorEnabled = false
+        };
+
+        await _uow.Repository<User>().AddAsync(user);
+        await _uow.Repository<OrganizationMember>().AddAsync(new OrganizationMember
+        {
+            OrganizationId = org.Id,
+            User = user,
+            RoleId = joinRole.Id,
+            IsActive = true
+        });
+        await _uow.CompleteAsync();
+
+        _ = _emailService.SendJoinWelcomeEmailAsync(user.Email, user.FirstName, org.Name);
+
+        var jwt = GenerateJwtToken(user, org.Id, joinRole.Name);
+        var refresh = await CreateRefreshTokenAsync(user.Id);
+
+        return new ServiceResponse<LoginResponse>(true, new LoginResponse
+        {
+            AccessToken = jwt,
+            RefreshToken = refresh.Token,
+            OrganizationId = org.Id,
+            Role = joinRole.Name,
+            User = new UserDto
+            {
+                Id = user.Id,
+                Email = user.Email,
+                FirstName = user.FirstName,
+                LastName = user.LastName
+            }
+        });
     }
 
 
@@ -267,5 +395,11 @@ public class AuthService : IAuthService
             throw new SecurityTokenException("Invalid token");
 
         return principal;
+    }
+
+    private bool IsCallerSuperAdmin()
+    {
+        var user = _httpContextAccessor.HttpContext?.User;
+        return user?.IsInRole("SuperAdmin") == true || user?.IsInRole("Super Admin") == true;
     }
 }

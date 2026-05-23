@@ -37,6 +37,7 @@ public static class DbInitializer
         await SeedGroupsAndMembersAsync(context, state);
 
         await SeedScheduleEventsAsync(context, state, tomorrow8Am);
+        await SeedAttendanceAsync(context, state, tomorrow8Am);
         await SeedNewsAsync(context, state);
         await SeedTasksAsync(context, state, now);
         await SeedGradesAsync(context, state);
@@ -250,7 +251,8 @@ public static class DbInitializer
             PrimaryColor = "#7f1d1d",
             SecondaryColor = "#fbbf24",
             TertiaryColor = "#0ea5e9",
-            IsActive = true
+            IsActive = true,
+            InviteCode = "OMADAUNI"
         };
 
         s.OrgCorp = new Organization
@@ -263,7 +265,8 @@ public static class DbInitializer
             PrimaryColor = "#0f172a",
             SecondaryColor = "#38bdf8",
             TertiaryColor = "#a78bfa",
-            IsActive = true
+            IsActive = true,
+            InviteCode = "NEXUSCORP"
         };
 
         await context.Organizations.AddRangeAsync(s.OrgUni, s.OrgCorp);
@@ -835,6 +838,54 @@ public static class DbInitializer
 
         await context.Events.AddRangeAsync(events);
         await context.SaveChangesAsync();
+
+        s.EventCs101 = events[0];
+        s.EventStandup = events[3];
+    }
+
+    private static async Task SeedAttendanceAsync(ApplicationDbContext context, SeedState s, DateTime anchor)
+    {
+        if (s.EventCs101 == null || s.EventStandup == null)
+            return;
+
+        var rows = new List<EventAttendance>();
+        for (var i = 1; i <= 5; i++)
+        {
+            var instance = anchor.AddDays(-i * 2);
+            rows.Add(new EventAttendance
+            {
+                EventId = s.EventCs101.Id,
+                UserId = s.UniStudent1.Id,
+                InstanceDate = instance,
+                Status = i == 2 ? AttendanceStatus.Declined : AttendanceStatus.Expected
+            });
+        }
+
+        rows.Add(new EventAttendance
+        {
+            EventId = s.EventCs101.Id,
+            UserId = s.UniStudent2.Id,
+            InstanceDate = anchor.AddDays(-2),
+            Status = AttendanceStatus.Expected
+        });
+
+        rows.Add(new EventAttendance
+        {
+            EventId = s.EventStandup.Id,
+            UserId = s.CorpDev.Id,
+            InstanceDate = anchor.AddDays(-1),
+            Status = AttendanceStatus.Accepted
+        });
+        rows.Add(new EventAttendance
+        {
+            EventId = s.EventStandup.Id,
+            UserId = s.CorpDev.Id,
+            InstanceDate = anchor.AddDays(-2),
+            Status = AttendanceStatus.Tentative
+        });
+
+        await context.Set<EventAttendance>().AddRangeAsync(rows);
+        await context.SaveChangesAsync();
     }
 
     // -------------------------------------------------------------------------
@@ -1000,6 +1051,7 @@ public static class DbInitializer
             {
                 OrganizationId = s.OrgUni.Id,
                 UserId = s.UniStudent1.Id,
+                GroupId = s.GrpCs101.Id,
                 CourseName = "CS101 — Intro to Programming",
                 Score = 88,
                 Credits = 4,
@@ -1031,6 +1083,7 @@ public static class DbInitializer
             {
                 OrganizationId = s.OrgUni.Id,
                 UserId = s.UniStudent2.Id,
+                GroupId = s.GrpCs101.Id,
                 CourseName = "CS101 — Intro to Programming",
                 Score = 94,
                 Credits = 4,
@@ -1052,6 +1105,7 @@ public static class DbInitializer
             {
                 OrganizationId = s.OrgUni.Id,
                 UserId = s.DualUser.Id,
+                GroupId = s.GrpCs101.Id,
                 CourseName = "CS101 — Intro to Programming",
                 Score = 90,
                 Credits = 4,
@@ -1159,5 +1213,7 @@ public static class DbInitializer
 
         public Group GrpCs101 { get; set; } = null!;
         public Group GrpEng { get; set; } = null!;
+        public Event EventCs101 { get; set; } = null!;
+        public Event EventStandup { get; set; } = null!;
     }
 }

@@ -3,6 +3,7 @@ import { useTasksApi } from './useTasksApi';
 import { useTasksFilter } from './useTasksFilter';
 import { CreateTaskRequest, UpdateTaskRequest, TaskItemDto } from '@/src/api/generatedClient';
 import { useAuth } from '@/src/context/AuthContext';
+import { useAssignableGroups } from '@/src/hooks';
 
 export type TasksViewMode = 'creator' | 'viewer';
 
@@ -19,6 +20,11 @@ export interface UseTasksLogicResult {
   setShowCompleted: Dispatch<SetStateAction<boolean>>;
   activeList: string;
   setActiveList: Dispatch<SetStateAction<string>>;
+  activeGroupId: string | null;
+  setActiveGroupId: Dispatch<SetStateAction<string | null>>;
+  assignableGroups: ReturnType<typeof useAssignableGroups>['data'];
+  subjectGroupId: string | null;
+  setSubjectGroupId: Dispatch<SetStateAction<string | null>>;
   showDatePicker: boolean;
   setShowDatePicker: Dispatch<SetStateAction<boolean>>;
   selectedDate: Date | null;
@@ -32,7 +38,11 @@ export interface UseTasksLogicResult {
 }
 
 export const useTasksScreenLogic = (): UseTasksLogicResult => {
-  const tasksRemote = useTasksApi({ page: 1, pageSize: 100 });
+  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
+  const [subjectGroupId, setSubjectGroupId] = useState<string | null>(null);
+
+  const assignableQuery = useAssignableGroups('assignment');
+  const tasksRemote = useTasksApi({ page: 1, pageSize: 100, groupId: activeGroupId });
   const { activeSession } = useAuth();
 
   const [newTaskTitle, setNewTaskTitle] = useState('');
@@ -55,6 +65,7 @@ export const useTasksScreenLogic = (): UseTasksLogicResult => {
 
     setNewTaskTitle('');
     setSelectedDate(null);
+    setSubjectGroupId(null);
     setShowDatePicker(false);
 
     if (editingTask) {
@@ -64,6 +75,7 @@ export const useTasksScreenLogic = (): UseTasksLogicResult => {
           title: titleToSave,
           dueDate: dateToSave,
           isCompleted: editingTask.isCompleted,
+          subjectId: subjectGroupId ?? undefined,
         }),
       });
       setEditingTask(null);
@@ -72,7 +84,8 @@ export const useTasksScreenLogic = (): UseTasksLogicResult => {
         new CreateTaskRequest({
           title: titleToSave,
           dueDate: dateToSave,
-        })
+          subjectId: subjectGroupId ?? undefined,
+        }),
       );
     }
   };
@@ -81,12 +94,14 @@ export const useTasksScreenLogic = (): UseTasksLogicResult => {
     setEditingTask(task);
     setNewTaskTitle(task.title);
     setSelectedDate(task.dueDate ? new Date(task.dueDate) : null);
+    setSubjectGroupId(task.subjectId ?? null);
   };
 
   const cancelEditing = () => {
     setEditingTask(null);
     setNewTaskTitle('');
     setSelectedDate(null);
+    setSubjectGroupId(null);
   };
 
   const toggleTask = (task: TaskItemDto) => {
@@ -108,6 +123,11 @@ export const useTasksScreenLogic = (): UseTasksLogicResult => {
     setShowCompleted,
     activeList,
     setActiveList,
+    activeGroupId,
+    setActiveGroupId,
+    assignableGroups: assignableQuery.data,
+    subjectGroupId,
+    setSubjectGroupId,
     showDatePicker,
     setShowDatePicker,
     selectedDate,
@@ -120,6 +140,3 @@ export const useTasksScreenLogic = (): UseTasksLogicResult => {
     deleteTask,
   };
 };
-
-/** Tasks widget/screen: filters + local UI state; server state from `./useTasksApi`. */
-export const useTasksLogic = useTasksScreenLogic;

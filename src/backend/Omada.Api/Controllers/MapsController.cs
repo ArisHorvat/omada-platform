@@ -28,6 +28,34 @@ public class MapsController : ControllerBase
         return response.IsSuccess ? Ok(response) : BadRequest(response);
     }
 
+    [HttpPost("organizations/{organizationId:guid}/buildings")]
+    [HasPermission(WidgetKeys.Map, nameof(AccessLevel.Edit))]
+    public async Task<ActionResult<ServiceResponse<BuildingDto>>> CreateBuildingForOrganization(
+        Guid organizationId,
+        [FromBody] CreateBuildingRequest request)
+    {
+        var response = await _mapService.CreateBuildingAsync(request);
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
+    }
+
+    [HttpPut("buildings/{buildingId:guid}")]
+    [HasPermission(WidgetKeys.Map, nameof(AccessLevel.Edit))]
+    public async Task<ActionResult<ServiceResponse<BuildingDto>>> UpdateBuilding(
+        Guid buildingId,
+        [FromBody] UpdateBuildingRequest request)
+    {
+        var response = await _mapService.UpdateBuildingAsync(buildingId, request);
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
+    }
+
+    [HttpDelete("buildings/{buildingId:guid}")]
+    [HasPermission(WidgetKeys.Map, nameof(AccessLevel.Admin))]
+    public async Task<ActionResult<ServiceResponse<bool>>> DeleteBuilding(Guid buildingId)
+    {
+        var response = await _mapService.DeleteBuildingAsync(buildingId);
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
+    }
+
     [HttpGet("buildings/{buildingId:guid}/floors")]
     [HasPermission(WidgetKeys.Map, nameof(AccessLevel.View))]
     public async Task<ActionResult<ServiceResponse<IEnumerable<FloorDto>>>> GetFloorsForBuilding(Guid buildingId)
@@ -54,6 +82,14 @@ public class MapsController : ControllerBase
         return response.IsSuccess ? Ok(response) : BadRequest(response);
     }
 
+    [HttpDelete("floors/{floorId:guid}")]
+    [HasPermission(WidgetKeys.Map, nameof(AccessLevel.Admin))]
+    public async Task<ActionResult<ServiceResponse<bool>>> DeleteFloor(Guid floorId)
+    {
+        var response = await _mapService.DeleteFloorAsync(floorId);
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
+    }
+
     [HttpPost("floors/{floorId:guid}/pins")]
     [HasPermission(WidgetKeys.Map, nameof(AccessLevel.Edit))]
     public async Task<ActionResult<ServiceResponse<MapPinDto>>> CreatePinForFloor(
@@ -61,6 +97,14 @@ public class MapsController : ControllerBase
         [FromBody] CreateMapPinRequest request)
     {
         var response = await _mapService.CreatePinForFloorAsync(floorId, request);
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
+    }
+
+    [HttpDelete("pins/{pinId:guid}")]
+    [HasPermission(WidgetKeys.Map, nameof(AccessLevel.Edit))]
+    public async Task<ActionResult<ServiceResponse<bool>>> DeleteMapPin(Guid pinId)
+    {
+        var response = await _mapService.DeleteMapPinAsync(pinId);
         return response.IsSuccess ? Ok(response) : BadRequest(response);
     }
 }

@@ -1,24 +1,20 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
-import { mapsApi, roomsApi, scheduleApi, unwrap, usersApi } from '@/src/api';
-import { useEventForm } from '../../schedule/hooks/useEventForm';
+import { mapsApi, roomsApi, scheduleApi, unwrap } from '@/src/api';
 import { roundToQuarterHour } from '../../schedule/utils/quarterHour';
 import { Alert } from 'react-native';
 import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
-import { useAuth } from '@/src/context/AuthContext';
-import { QUERY_KEYS } from '@/src/api/queryKeys';
 import { RoomDto, ScheduleItemDto } from '@/src/api/generatedClient';
+import { useRoomBooking } from './useRoomBooking';
 
-export const useRoomsLogic = () => {
+export type UseRoomsLogicOptions = {
+  /** Open Rooms with this room selected (from map deep link). */
+  focusRoomId?: string | null;
+};
+
+export const useRoomsLogic = (options?: UseRoomsLogicOptions) => {
   const { organization } = useCurrentOrganization();
   const orgId = organization?.id;
-  const { token } = useAuth();
-  const { data: profile } = useQuery({
-    queryKey: QUERY_KEYS.userProfile,
-    queryFn: () => unwrap(usersApi.getMe()),
-    enabled: !!token,
-    staleTime: 1000 * 60 * 5,
-  });
 
   const [filters, setFilters] = useState({
     searchTerm: '',
@@ -61,6 +57,8 @@ export const useRoomsLogic = () => {
           buildingIds,
           filters.eventTypeId,
           amenityKeys,
+          undefined,
+          undefined,
           start,
           end,
           page,
@@ -80,6 +78,8 @@ export const useRoomsLogic = () => {
     queryFn: async () =>
       unwrap(
         roomsApi.search(
+          undefined,
+          undefined,
           undefined,
           undefined,
           undefined,
@@ -116,24 +116,22 @@ export const useRoomsLogic = () => {
     return set;
   }, [liveScheduleQuery.data, now]);
 
-  // 4) Metadata
-  const { data: eventTypes = [] } = useQuery({
-    queryKey: ['event-types'],
-    queryFn: async () => unwrap(scheduleApi.getEventTypes()),
-  });
-
   const { data: buildings = [] } = useQuery({
     queryKey: ['map-buildings', orgId],
     queryFn: async () => unwrap(mapsApi.getBuildingsForOrganization(orgId!)),
     enabled: !!orgId,
   });
 
-  // 5) Booking modal logic (reuse schedule EventForm)
-  const form = useEventForm(new Date());
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  const focusId = options?.focusRoomId?.trim() || '';
+
+  const focusedRoomQuery = useQuery({
+    queryKey: ['room-detail', focusId],
+    queryFn: async () => unwrap(roomsApi.getById(focusId)),
+    enabled: !!focusId && !!orgId,
+    staleTime: 60_000,
+  });
+
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
-  const [bookingRoom, setBookingRoom] = useState<RoomDto | null>(null);
   const [timelineDate, setTimelineDate] = useState(() => {
     const d = new Date();
     d.setHours(12, 0, 0, 0);
@@ -150,10 +148,39 @@ export const useRoomsLogic = () => {
     refetchInterval: 60_000,
   });
 
+  const {
+    form,
+    isModalVisible,
+    isSaving,
+    bookingRoom,
+    startBooking: openBookingModal,
+    confirmBooking,
+    closeModal,
+    eventTypes,
+    searchHosts,
+  } = useRoomBooking({
+    onBooked: () => {
+      refetch();
+      availableNowQuery.refetch();
+      roomTimelineQuery.refetch();
+    },
+  });
+
+  useEffect(() => {
+    const r = focusedRoomQuery.data;
+    if (r?.id) setSelectedRoomId(r.id);
+  }, [focusedRoomQuery.data?.id]);
+
   const startBooking = (roomId: string) => {
+    const fromFocused = focusedRoomQuery.data?.id === roomId ? focusedRoomQuery.data : undefined;
     const fromList =
-      rooms.find((r) => r.id === roomId) ?? (availableNowRooms as RoomDto[]).find((r) => r.id === roomId);
-    setBookingRoom(fromList ?? null);
+      rooms.find((r) => r.id === roomId) ??
+      (availableNowRooms as RoomDto[]).find((r) => r.id === roomId) ??
+      fromFocused;
+    if (!fromList) {
+      Alert.alert('Room', 'Could not load this room yet. Pull to refresh or open it from search results.');
+      return;
+    }
 
     let start = combineDateTime(filters.date, filters.startTime);
     let end = combineDateTime(filters.date, filters.endTime);
@@ -161,54 +188,9 @@ export const useRoomsLogic = () => {
       end = new Date(start.getTime() + 60 * 60 * 1000);
     }
 
-    form.resetForm(start);
-    form.setEndDate(end);
-    form.setRoomId(roomId);
+    openBookingModal(fromList, { start, end });
     if (filters.eventTypeId) {
       form.setEventTypeId(filters.eventTypeId);
-    } else if (fromList?.allowedEventTypes?.length) {
-      const first = fromList.allowedEventTypes[0];
-      if (first?.id) form.setEventTypeId(first.id);
-    }
-    form.setRecFreq('NONE');
-    form.setRecLabel('Never');
-    if (profile?.id) {
-      const name = [profile.firstName, profile.lastName].filter(Boolean).join(' ').trim();
-      form.setHostId(profile.id);
-      form.setHostName(name || 'You');
-    }
-    setIsModalVisible(true);
-  };
-
-  const confirmBooking = async () => {
-    if (!form.eventTypeId?.trim()) {
-      Alert.alert('Event type', 'Choose an event type on step 1 before booking.');
-      return;
-    }
-    if (!form.title?.trim()) {
-      Alert.alert('Title', 'Add a booking title on step 1.');
-      return;
-    }
-    const rid = bookingRoom?.id ?? form.roomId;
-    if (!rid) {
-      Alert.alert('Room', 'No room selected. Close and tap Book again from a room card.');
-      return;
-    }
-    setIsSaving(true);
-    try {
-      const req = form.getRequestObject(null);
-      req.roomId = rid;
-      await unwrap(scheduleApi.createEvent(req));
-      Alert.alert('Success', 'Room booked!');
-      setIsModalVisible(false);
-      setBookingRoom(null);
-      refetch();
-      availableNowQuery.refetch();
-      roomTimelineQuery.refetch();
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to book.');
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -248,7 +230,17 @@ export const useRoomsLogic = () => {
     });
   };
 
-  const selectedRoom = useMemo(() => decoratedRooms.find((r) => r.id === selectedRoomId) ?? null, [decoratedRooms, selectedRoomId]);
+  const focusedRoomDecorated = useMemo(() => {
+    const r = focusedRoomQuery.data;
+    if (!r) return null;
+    return { ...r, isBusy: busyRoomIds.has(r.id) };
+  }, [focusedRoomQuery.data, busyRoomIds]);
+
+  const selectedRoom = useMemo(() => {
+    if (!selectedRoomId) return null;
+    if (focusedRoomDecorated?.id === selectedRoomId) return focusedRoomDecorated;
+    return decoratedRooms.find((r) => r.id === selectedRoomId) ?? null;
+  }, [decoratedRooms, selectedRoomId, focusedRoomDecorated]);
 
   return {
     rooms: decoratedRooms,
@@ -264,15 +256,12 @@ export const useRoomsLogic = () => {
     isModalVisible,
     startBooking,
     confirmBooking,
-    closeModal: () => {
-      setIsModalVisible(false);
-      setBookingRoom(null);
-    },
+    closeModal,
     form,
     isSaving,
     eventTypes,
     allRooms: rooms,
-    searchHosts: async (q: string) => unwrap(scheduleApi.searchHosts(q)),
+    searchHosts,
     selectedRoomId,
     selectedRoom,
     selectRoom,
@@ -281,6 +270,7 @@ export const useRoomsLogic = () => {
     timelineDate,
     setTimelineDate,
     bookingRoom,
+    focusedRoomLoading: !!focusId && focusedRoomQuery.isLoading,
     refreshNow: () => {
       availableNowQuery.refetch();
       liveScheduleQuery.refetch();

@@ -141,6 +141,7 @@ export function OptionPickerSheet<T>({
 const styles = StyleSheet.create({
   sheetInner: {
     flex: 1,
+    minHeight: 0,
   },
   header: {
     flexDirection: 'row',

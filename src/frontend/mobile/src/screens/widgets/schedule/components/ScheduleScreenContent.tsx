@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useQueries } from '@tanstack/react-query';
 import { startOfDay, endOfDay, isSameDay } from 'date-fns';
 import {
@@ -13,7 +13,10 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useScheduleLogic } from '../hooks/useScheduleLogic';
 import { createStyles } from '../styles/schedule.styles';
-import { useThemeColors, useTabContentBottomPadding } from '@/src/hooks';
+import { PageContainer } from '@/src/components/layout/PageContainer';
+import { SplitPane } from '@/src/components/layout/SplitPane';
+import { useThemeColors, useTabContentBottomPadding, useBreakpoint, useAssignableGroups } from '@/src/hooks';
+import { mergeGroupOptions } from '@/src/utils/groupOptions';
 import { AnimatedItem, PressClay } from '@/src/components/animations';
 import { ClayView, Icon, AppText } from '@/src/components/ui';
 import { ClayAnimations } from '@/src/constants/animations';
@@ -41,6 +44,8 @@ interface Props {
   universityStudentUi?: boolean;
   /** Corporate: org feed, scheduling assistant, meeting bottom sheet. */
   corporateWorkflow?: boolean;
+  /** Deep link / map: narrow schedule to events in this room. */
+  initialRoomFilterId?: string;
 }
 
 type CorporateTab = 'my' | 'orgFeed' | 'assistant';
@@ -49,9 +54,11 @@ export default function ScheduleScreenContent({
   dictionary,
   universityStudentUi = false,
   corporateWorkflow = false,
+  initialRoomFilterId,
 }: Props) {
   const colors = useThemeColors();
   const tabBottomPad = useTabContentBottomPadding(48);
+  const { isWideShell } = useBreakpoint();
   const insets = useSafeAreaInsets();
   const styles = createStyles(colors);
 
@@ -96,6 +103,32 @@ export default function ScheduleScreenContent({
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [selectedHostLabel, setSelectedHostLabel] = useState<string | null>(null);
 
+  const roomDeepLinkApplied = useRef(false);
+  useLayoutEffect(() => {
+    const rid = initialRoomFilterId?.trim();
+    if (!rid || roomDeepLinkApplied.current) return;
+    roomDeepLinkApplied.current = true;
+    setFilters({
+      myScheduleOnly: false,
+      publicOnly: false,
+      roomId: rid,
+      hostId: undefined,
+      groupId: undefined,
+      eventTypeId: undefined,
+      subjectTopic: undefined,
+    });
+    if (corporateWorkflow && dictionary.orgKind === 'Corporate') {
+      setCorporateTab('orgFeed');
+    }
+  }, [initialRoomFilterId, setFilters, corporateWorkflow, dictionary.orgKind]);
+
+  const roomFilterBannerName = useMemo(() => {
+    if (!filters.roomId) return '';
+    const list = rooms as RoomDto[];
+    const hit = list.find((r) => r.id === filters.roomId);
+    return hit?.name?.trim() || 'this room';
+  }, [filters.roomId, rooms]);
+
   const eventTypeNames = useMemo(
     () => eventTypes.map((t) => t.name).filter(Boolean) as string[],
     [eventTypes]
@@ -114,15 +147,16 @@ export default function ScheduleScreenContent({
         subjectTopic: undefined,
       });
     } else if (corporateTab === 'orgFeed') {
-      setFilters({
+      setFilters((prev) => ({
         myScheduleOnly: false,
-        publicOnly: true,
+        /** When drilling into one room (map deep link), include non-public occurrences too. */
+        publicOnly: prev.roomId ? false : true,
         hostId: undefined,
         groupId: undefined,
-        roomId: undefined,
+        roomId: prev.roomId,
         eventTypeId: undefined,
         subjectTopic: undefined,
-      });
+      }));
     } else {
       setFilters({
         myScheduleOnly: true,
@@ -208,13 +242,20 @@ export default function ScheduleScreenContent({
     [setFilters]
   );
 
-  const groupOptions = useMemo(() => {
+  const assignableGroupsQuery = useAssignableGroups('schedule');
+
+  const groupOptionsFromEvents = useMemo(() => {
     const m = new Map<string, string>();
     for (const e of events) {
       if (e.groupId && e.groupName) m.set(e.groupId, e.groupName);
     }
     return [...m.entries()].map(([id, name]) => ({ id, name }));
   }, [events]);
+
+  const groupOptions = useMemo(
+    () => mergeGroupOptions(assignableGroupsQuery.data, groupOptionsFromEvents),
+    [assignableGroupsQuery.data, groupOptionsFromEvents],
+  );
 
   const subjectTopics = useMemo(() => {
     const s = new Set<string>();
@@ -526,9 +567,47 @@ export default function ScheduleScreenContent({
     );
   };
 
-  return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <ScheduleHeader selectedDate={selectedDate} onDateSelect={setSelectedDate} />
+  const scheduleControls = (
+    <>
+      <ScheduleHeader
+        selectedDate={selectedDate}
+        onDateSelect={setSelectedDate}
+        showBackButton={!isWideShell}
+      />
+
+      {filters.roomId ? (
+        <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+          <ClayView depth={3} color={colors.card} style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 12, gap: 10 }}>
+            <Icon name="meeting-room" size={20} color={colors.primary} />
+            <View style={{ flex: 1 }}>
+              <AppText weight="bold" style={{ color: colors.text }}>
+                Room schedule
+              </AppText>
+              <AppText variant="caption" style={{ color: colors.subtle }}>
+                Events in {roomFilterBannerName}
+              </AppText>
+            </View>
+            <TouchableOpacity
+              hitSlop={10}
+              onPress={() =>
+                setFilters({
+                  myScheduleOnly: true,
+                  publicOnly: false,
+                  roomId: undefined,
+                  hostId: undefined,
+                  groupId: undefined,
+                  eventTypeId: undefined,
+                  subjectTopic: undefined,
+                })
+              }
+            >
+              <AppText weight="bold" style={{ color: colors.primary }}>
+                Clear
+              </AppText>
+            </TouchableOpacity>
+          </ClayView>
+        </View>
+      ) : null}
 
       {showCorporateTabs ? (
         <View style={{ flexDirection: 'row', paddingHorizontal: 12, paddingBottom: 8, gap: 8 }}>
@@ -607,7 +686,10 @@ export default function ScheduleScreenContent({
           </TouchableOpacity>
         </View>
       )}
+    </>
+  );
 
+  const scheduleScroll = (
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{
@@ -727,7 +809,11 @@ export default function ScheduleScreenContent({
           renderMyScheduleDayView()
         )}
       </ScrollView>
+  );
 
+  const scheduleMain = (
+    <View style={{ flex: 1, minHeight: 0 }}>
+      {scheduleScroll}
       <AnimatedItem animation={ClayAnimations.FAB} style={{ position: 'absolute', bottom: tabBottomPad + 16, right: 20 }}>
         <PressClay onPress={startCreating}>
           <ClayView depth={15} puffy={20} color={colors.primary} style={{ width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' }}>
@@ -735,6 +821,20 @@ export default function ScheduleScreenContent({
           </ClayView>
         </PressClay>
       </AnimatedItem>
+    </View>
+  );
+
+  return (
+    <PageContainer>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      {isWideShell ? (
+        <SplitPane sidebar={scheduleControls}>{scheduleMain}</SplitPane>
+      ) : (
+        <>
+          {scheduleControls}
+          {scheduleMain}
+        </>
+      )}
 
       <EventModal
         visible={isModalVisible}
@@ -748,6 +848,7 @@ export default function ScheduleScreenContent({
         eventTypes={eventTypes}
         rooms={rooms}
         searchHosts={searchHosts}
+        groupOptions={groupOptions}
       />
 
       <EventBottomSheet
@@ -792,6 +893,7 @@ export default function ScheduleScreenContent({
         rooms={rooms as RoomDto[]}
         subjectTopics={subjectTopics}
         searchHosts={searchHosts}
+        groupOptions={groupOptions}
         onApply={(payload) => {
           setExploreKind(payload.kind);
           setSelectedHostLabel(payload.hostLabel);
@@ -817,5 +919,6 @@ export default function ScheduleScreenContent({
         }}
       />
     </View>
+    </PageContainer>
   );
 }

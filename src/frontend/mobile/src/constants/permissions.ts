@@ -90,11 +90,12 @@ export const ORG_PRESETS: Record<string, OrgPreset> = {
           rooms: 'view',
           schedule: 'view',
           chat: 'view',
+          attendance: 'view',
         },
       },
       {
         name: 'Team Lead',
-        widgets: { tasks: 'edit', users: 'view', rooms: 'view', chat: 'edit' },
+        widgets: { tasks: 'edit', users: 'view', rooms: 'view', chat: 'edit', attendance: 'edit' },
       },
       {
         name: 'Project Manager',

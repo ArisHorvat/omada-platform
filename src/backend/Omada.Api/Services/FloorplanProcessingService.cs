@@ -1,4 +1,3 @@
-using System.Net.Http.Headers;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
@@ -13,14 +12,11 @@ namespace Omada.Api.Services;
 
 public sealed class FloorplanProcessingService : IFloorplanProcessingService
 {
-    public const string FloorplanAiHttpClientName = "FloorplanAi";
-
     private readonly ApplicationDbContext _db;
     private readonly IUserContext _userContext;
     private readonly IWebHostEnvironment _env;
     private readonly IPublicMediaUrlResolver _mediaUrls;
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly IConfiguration _configuration;
+    private readonly IFloorplanGeoJsonExtractor _geoJsonExtractor;
     private readonly ILogger<FloorplanProcessingService> _logger;
 
     public FloorplanProcessingService(
@@ -28,16 +24,14 @@ public sealed class FloorplanProcessingService : IFloorplanProcessingService
         IUserContext userContext,
         IWebHostEnvironment env,
         IPublicMediaUrlResolver mediaUrls,
-        IHttpClientFactory httpClientFactory,
-        IConfiguration configuration,
+        IFloorplanGeoJsonExtractor geoJsonExtractor,
         ILogger<FloorplanProcessingService> logger)
     {
         _db = db;
         _userContext = userContext;
         _env = env;
         _mediaUrls = mediaUrls;
-        _httpClientFactory = httpClientFactory;
-        _configuration = configuration;
+        _geoJsonExtractor = geoJsonExtractor;
         _logger = logger;
     }
 
@@ -64,10 +58,10 @@ public sealed class FloorplanProcessingService : IFloorplanProcessingService
             return new ServiceResponse<FloorplanDto>(false, null,
                 new AppError(ErrorCodes.NotFound, "Floor not found."));
 
-        var baseUrl = _configuration["AiService:BaseUrl"]?.TrimEnd('/');
-        if (string.IsNullOrEmpty(baseUrl))
+        if (!_geoJsonExtractor.IsConfigured)
             return new ServiceResponse<FloorplanDto>(false, null,
-                new AppError(ErrorCodes.OperationFailed, "AI floorplan service is not configured (AiService:BaseUrl)."));
+                new AppError(ErrorCodes.OperationFailed,
+                    "Floorplan AI extraction is not configured (set Roboflow:ApiKey)."));
 
         var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
         var mapsPath = Path.Combine(webRoot, "images", "maps", "floorplans");
@@ -86,13 +80,16 @@ public sealed class FloorplanProcessingService : IFloorplanProcessingService
         string geoJsonRaw;
         try
         {
-            geoJsonRaw = await CallAiProcessFloorplanAsync(baseUrl, filePath, file.FileName, file.ContentType, cancellationToken);
+            await using var readStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, 65536, FileOptions.Asynchronous);
+            using var ms = new MemoryStream();
+            await readStream.CopyToAsync(ms, cancellationToken);
+            geoJsonRaw = await _geoJsonExtractor.ExtractGeoJsonAsync(ms.ToArray(), cancellationToken);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "AI floorplan processing failed for floor {FloorId}", floorId);
             return new ServiceResponse<FloorplanDto>(false, null,
-                new AppError(ErrorCodes.OperationFailed, "Floorplan processing service failed.", ex.Message));
+                new AppError(ErrorCodes.OperationFailed, "Floorplan processing failed.", ex.Message));
         }
 
         var geoJsonData = NormalizeGeoJsonPayload(geoJsonRaw);
@@ -202,6 +199,117 @@ public sealed class FloorplanProcessingService : IFloorplanProcessingService
         return new ServiceResponse<FloorplanDto>(true, MapToDto(entity));
     }
 
+    public async Task<ServiceResponse<FloorplanRoomPublishResultDto>> PublishRoomsFromGeoJsonAsync(
+        Guid floorplanId,
+        CancellationToken cancellationToken = default)
+    {
+        var orgId = _userContext.OrganizationId;
+
+        var entity = await _db.Floorplans
+            .Include(p => p.Floor)
+            .ThenInclude(f => f.Building)
+            .FirstOrDefaultAsync(p => p.Id == floorplanId && !p.IsDeleted, cancellationToken);
+
+        if (entity == null || entity.Floor == null || entity.Floor.IsDeleted)
+            return new ServiceResponse<FloorplanRoomPublishResultDto>(false, null,
+                new AppError(ErrorCodes.NotFound, "Floorplan not found."));
+
+        if (entity.Floor.Building.OrganizationId != orgId)
+            return new ServiceResponse<FloorplanRoomPublishResultDto>(false, null,
+                new AppError(ErrorCodes.NotFound, "Floorplan not found."));
+
+        var floor = entity.Floor;
+        var buildingId = floor.BuildingId;
+        var candidates = FloorplanGeoJsonRoomPublishParser.ExtractPublishablePolygons(entity.GeoJsonData);
+        if (candidates.Count == 0)
+        {
+            return new ServiceResponse<FloorplanRoomPublishResultDto>(true, new FloorplanRoomPublishResultDto
+            {
+                CreatedCount = 0,
+                UpdatedCount = 0,
+                SkippedCount = 0
+            });
+        }
+
+        var existing = await _db.Rooms
+            .Where(r => r.OrganizationId == orgId && r.FloorId == floor.Id && !r.IsDeleted)
+            .ToListAsync(cancellationToken);
+
+        var created = 0;
+        var updated = 0;
+        foreach (var p in candidates)
+        {
+            var name = TruncateRoomName(p.RoomName);
+            var room = existing.FirstOrDefault(r =>
+                           !string.IsNullOrEmpty(r.FloorplanFeatureKey) &&
+                           string.Equals(r.FloorplanFeatureKey, p.RoomId, StringComparison.Ordinal))
+                       ?? existing.FirstOrDefault(r =>
+                           string.Equals(r.Name.Trim(), name.Trim(), StringComparison.OrdinalIgnoreCase));
+
+            if (room == null)
+            {
+                var nr = new Room
+                {
+                    Id = Guid.NewGuid(),
+                    OrganizationId = orgId,
+                    Name = name,
+                    Capacity = GuessCapacity(p.RoomName),
+                    IsBookable = p.IsBookable,
+                    BuildingId = buildingId,
+                    FloorId = floor.Id,
+                    CoordinateX = p.CentroidX,
+                    CoordinateY = p.CentroidY,
+                    FloorplanFeatureKey = p.RoomId.Length > 128 ? p.RoomId[..128] : p.RoomId,
+                    MapIconKey = p.MapIconKey,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _db.Rooms.Add(nr);
+                existing.Add(nr);
+                created++;
+            }
+            else
+            {
+                room.Name = name;
+                room.IsBookable = p.IsBookable;
+                room.CoordinateX = p.CentroidX;
+                room.CoordinateY = p.CentroidY;
+                room.MapIconKey = p.MapIconKey;
+                room.FloorId = floor.Id;
+                room.BuildingId ??= buildingId;
+                if (string.IsNullOrWhiteSpace(room.FloorplanFeatureKey))
+                    room.FloorplanFeatureKey = p.RoomId.Length > 128 ? p.RoomId[..128] : p.RoomId;
+                room.UpdatedAt = DateTime.UtcNow;
+                updated++;
+            }
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return new ServiceResponse<FloorplanRoomPublishResultDto>(true, new FloorplanRoomPublishResultDto
+        {
+            CreatedCount = created,
+            UpdatedCount = updated,
+            SkippedCount = 0
+        });
+    }
+
+    private static string TruncateRoomName(string name)
+    {
+        var t = (name ?? "Room").Trim();
+        return t.Length <= 100 ? t : t[..100];
+    }
+
+    private static int GuessCapacity(string roomName)
+    {
+        var n = roomName.ToLowerInvariant();
+        if (n.Contains("conference", StringComparison.Ordinal) || n.Contains("meeting", StringComparison.Ordinal)
+            || n.Contains("boardroom", StringComparison.Ordinal) || n.Contains("seminar", StringComparison.Ordinal))
+            return 8;
+        if (n.Contains("class", StringComparison.Ordinal) || n.Contains("lecture", StringComparison.Ordinal))
+            return 30;
+        return 4;
+    }
+
     private FloorplanDto MapToDto(Floorplan entity)
     {
         var publicImage = _mediaUrls.ToPublicUrl(entity.ImageUrl) ?? entity.ImageUrl;
@@ -212,32 +320,6 @@ public sealed class FloorplanProcessingService : IFloorplanProcessingService
             ImageUrl = publicImage,
             GeoJsonData = entity.GeoJsonData
         };
-    }
-
-    private async Task<string> CallAiProcessFloorplanAsync(
-        string baseUrl,
-        string savedFilePath,
-        string originalFileName,
-        string? contentType,
-        CancellationToken cancellationToken)
-    {
-        var client = _httpClientFactory.CreateClient(FloorplanAiHttpClientName);
-        using var content = new MultipartFormDataContent();
-        await using var stream = new FileStream(savedFilePath, FileMode.Open, FileAccess.Read, FileShare.Read, 65536, FileOptions.Asynchronous);
-        var streamContent = new StreamContent(stream);
-        streamContent.Headers.ContentType = new MediaTypeHeaderValue(
-            string.IsNullOrEmpty(contentType) ? "application/octet-stream" : contentType);
-        content.Add(streamContent, "file", originalFileName);
-
-        var response = await client.PostAsync(new Uri($"{baseUrl}/process-floorplan"), content, cancellationToken);
-        var body = await response.Content.ReadAsStringAsync(cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            throw new InvalidOperationException($"AI service returned {(int)response.StatusCode}: {body}");
-        }
-
-        return body;
     }
 
     /// <summary>

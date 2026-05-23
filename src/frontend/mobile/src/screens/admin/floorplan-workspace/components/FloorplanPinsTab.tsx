@@ -1,10 +1,11 @@
 import React from 'react';
-import { TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, TextInput, TouchableOpacity, View } from 'react-native';
 import { AppButton, AppText, ClayView, Icon } from '@/src/components/ui';
 import { floorplanPoiButtonLabel } from '@/src/screens/admin/floorplan-workspace/utils/floorplanPoiButtonLabel';
 import type { FloorplanWorkspaceModel } from '@/src/screens/admin/floorplan-workspace/hooks/useFloorplanWorkspace';
-import { FLOORPLAN_POI_KINDS, removePoiAt, updatePoiLabel } from '@/src/screens/admin/utils/floorplanGeoJsonEdit';
-import { FloorplanPoiKindIcon } from '@/src/screens/widgets/map/components/floorplanPoiIcons';
+import { FLOORPLAN_POI_KINDS, patchPoi, removePoiAt, updatePoiLabel } from '@/src/screens/admin/utils/floorplanGeoJsonEdit';
+import { FloorplanPoiKindIcon, FloorplanPoiMarkerIcon } from '@/src/screens/widgets/map/components/floorplanPoiIcons';
+import { FLOORPLAN_POI_OTHER_ICON_CHOICES } from '@/src/screens/widgets/map/utils/floorplanPoiCustomIcons';
 
 type Props = {
   model: FloorplanWorkspaceModel;
@@ -22,6 +23,7 @@ export function FloorplanPinsTab({ model }: Props) {
     selectedPoiIndex,
     setSelectedPoiIndex,
     setGeoDoc,
+    commitGeoDoc,
     hasUnsavedChanges,
     savingGeo,
     handleDiscard,
@@ -43,8 +45,9 @@ export function FloorplanPinsTab({ model }: Props) {
         Map pins (POI)
       </AppText>
       <AppText variant="caption" style={{ color: colors.subtle, marginBottom: 10 }}>
-        Pan and zoom anytime nothing is selected. Choose a pin type, move the map if needed, then tap the floorplan to
-        drop it. Select a pin to edit its label — the map locks until you deselect.
+        Pan and zoom when nothing is selected. Pick a pin type, then tap the floorplan to place it. Pins use fixed
+        legend colors on the map (no captions). Tap a pin on the map to see its label and type. Select a pin below to
+        edit the label or remove it.
       </AppText>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
         {FLOORPLAN_POI_KINDS.map((kind) => (
@@ -126,15 +129,79 @@ export function FloorplanPinsTab({ model }: Props) {
               backgroundColor: colors.card,
             }}
           />
+          {selectedPoiIndex === idx && p.pinKind === 'other' ? (
+            <View
+              style={{
+                marginTop: 10,
+                padding: 12,
+                borderRadius: 12,
+                backgroundColor: colors.card,
+                borderWidth: 1,
+                borderColor: colors.border,
+              }}
+            >
+              <AppText variant="caption" style={{ color: colors.subtle, marginBottom: 6 }}>
+                Icon (custom POI)
+              </AppText>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={{ flexDirection: 'row', gap: 8, paddingVertical: 4 }}>
+                  {FLOORPLAN_POI_OTHER_ICON_CHOICES.map((ic) => {
+                    const on = p.iconKey === ic.material;
+                    return (
+                      <TouchableOpacity
+                        key={ic.material}
+                        onPress={() =>
+                          commitGeoDoc((prev) => (prev ? patchPoi(prev, idx, { iconKey: ic.material }) : prev))
+                        }
+                      >
+                        <ClayView
+                          depth={on ? 2 : 5}
+                          color={on ? colors.primary : colors.background}
+                          style={{
+                            borderRadius: 12,
+                            paddingHorizontal: 10,
+                            paddingVertical: 8,
+                            alignItems: 'center',
+                            minWidth: 56,
+                          }}
+                        >
+                          <FloorplanPoiMarkerIcon
+                            kind="other"
+                            customIconKey={ic.material}
+                            size={22}
+                            color={on ? '#fff' : colors.primary}
+                          />
+                          <AppText
+                            variant="caption"
+                            numberOfLines={1}
+                            style={{ color: on ? '#fff' : colors.subtle, marginTop: 4, maxWidth: 72 }}
+                          >
+                            {ic.label}
+                          </AppText>
+                        </ClayView>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+            </View>
+          ) : null}
           <TouchableOpacity
             onPress={() => {
-              setGeoDoc((prev) => (prev ? removePoiAt(prev, idx) : prev));
+              commitGeoDoc((prev) => removePoiAt(prev, idx));
               setSelectedPoiIndex(null);
             }}
             style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}
           >
-            <Icon name="delete-outline" size={18} color="#ef4444" />
-            <AppText variant="caption" style={{ color: '#ef4444' }}>
+            <Icon
+              name="delete-outline"
+              size={18}
+              color={selectedPoiIndex === idx ? '#FFFFFF' : '#ef4444'}
+            />
+            <AppText
+              variant="caption"
+              style={{ color: selectedPoiIndex === idx ? '#FFFFFF' : '#ef4444', fontWeight: '600' }}
+            >
               Remove pin
             </AppText>
           </TouchableOpacity>

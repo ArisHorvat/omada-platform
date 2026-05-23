@@ -11,6 +11,7 @@ using Omada.Api.Abstractions;
 using Omada.Api.Data;
 using Omada.Api.Hubs;
 using Omada.Api.Infrastructure;
+using Omada.Api.Infrastructure.Configuration;
 using Omada.Api.Infrastructure.Filters;
 using Omada.Api.Infrastructure.Hangfire;
 using Omada.Api.Infrastructure.Middleware;
@@ -19,13 +20,16 @@ using Omada.Api.Infrastructure.Security;
 using Omada.Api.Repositories;
 using Omada.Api.Repositories.Interfaces;
 using Omada.Api.Services;
+using Omada.Api.Services.FloorplanAi;
 using Omada.Api.Services.Interfaces;
 using Serilog; // Add this
 using System.Text;
 using System.Text.Json.Serialization;
 using ZymLabs.NSwag.FluentValidation;
 
+DotEnvBootstrap.LoadForOmadaApi();
 var builder = WebApplication.CreateBuilder(args);
+DotEnvBootstrap.LoadForOmadaApi(builder.Environment.ContentRootPath);
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -70,11 +74,13 @@ builder.Services.AddScoped<IScrapedClassEventRepository, ScrapedClassEventReposi
 builder.Services.AddScoped<INewsRepository, NewsRepository>();
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
 builder.Services.AddScoped<IGradeRepository, GradeRepository>();
+builder.Services.AddScoped<IAttendanceRepository, AttendanceRepository>();
 
 // 5. Core Infrastructure
 builder.Services.AddSignalR();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IPublicMediaUrlResolver, PublicMediaUrlResolver>();
+builder.Services.AddSingleton<IInviteLinkBuilder, InviteLinkBuilder>();
 builder.Services.AddScoped<ITenantAccessor, HttpTenantAccessor>();
 builder.Services.AddScoped<IUserContext, UserContext>();
 
@@ -82,24 +88,31 @@ builder.Services.AddScoped<IUserContext, UserContext>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IOrganizationService, OrganizationService>();
+builder.Services.AddScoped<IOrganizationAdminService, OrganizationAdminService>();
+builder.Services.AddScoped<IAuditLogService, AuditLogService>();
+builder.Services.AddScoped<IPermissionCacheInvalidator, PermissionCacheInvalidator>();
 builder.Services.AddScoped<IGroupService, GroupService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
-builder.Services.AddScoped<IImportService, ImportService>();
 builder.Services.AddScoped<IColorExtractionService, ColorExtractionService>();
 builder.Services.AddScoped<IScheduleService, ScheduleService>();
 builder.Services.AddScoped<ITaskService, TaskService>();
 builder.Services.AddScoped<IGradeService, GradeService>();
+builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 builder.Services.Configure<DigitalIdOptions>(builder.Configuration.GetSection(DigitalIdOptions.SectionName));
 builder.Services.AddScoped<IDigitalIdService, DigitalIdService>();
 builder.Services.AddScoped<INewsService, NewsService>();
 builder.Services.AddScoped<IChatService, ChatService>();
 builder.Services.AddScoped<IRoomService, RoomService>();
 builder.Services.AddScoped<IMapService, MapService>();
-builder.Services.AddHttpClient(FloorplanProcessingService.FloorplanAiHttpClientName, client =>
+builder.Services.AddOptions<RoboflowFloorplanOptions>()
+    .Bind(builder.Configuration.GetSection(RoboflowFloorplanOptions.SectionName))
+    .PostConfigure(RoboflowFloorplanEnvFallbacks.Apply);
+builder.Services.AddHttpClient(RoboflowFloorplanGeoJsonExtractor.HttpClientName, client =>
 {
     client.Timeout = TimeSpan.FromMinutes(2);
 });
+builder.Services.AddScoped<IFloorplanGeoJsonExtractor, RoboflowFloorplanGeoJsonExtractor>();
 builder.Services.AddScoped<IFloorplanProcessingService, FloorplanProcessingService>();
 builder.Services.AddScoped<IEventTypeService, EventTypeService>();
 builder.Services.AddHttpClient<IWebSpiderService, WebSpiderService>(client =>
@@ -112,7 +125,12 @@ builder.Services.AddHttpClient<IGeminiService, GeminiService>(client =>
     client.Timeout = TimeSpan.FromSeconds(45);
 });
 builder.Services.AddScoped<IScheduleSpiderSyncService, ScheduleSpiderSyncService>();
+builder.Services.AddScoped<INewsSpiderSyncService, NewsSpiderSyncService>();
+builder.Services.AddScoped<ISpiderSyncRunService, SpiderSyncRunService>();
+builder.Services.AddScoped<ISpiderUrlResolver, SpiderUrlResolver>();
+builder.Services.AddScoped<IWebSpiderAdminService, WebSpiderAdminService>();
 builder.Services.AddScoped<IScrapedEntityResolutionService, ScrapedEntityResolutionService>();
+builder.Services.AddScoped<ISearchService, SearchService>();
 builder.Services.AddSingleton<ScheduleSyncJobs>();
 
 // 7. Security & Authentication
@@ -141,15 +159,12 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddScoped<IAuthorizationHandler, PermissionHandler>();
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
 
-builder.Services.AddControllersWithViews(options =>
+builder.Services.AddControllers(options =>
     {
-        // ADD THIS: Register the global validation filter
         options.Filters.Add<ValidationFilterAttribute>();
     })
-    .AddRazorRuntimeCompilation()
     .AddJsonOptions(options =>
     {
-        // This tells the serializer to ignore infinite loops!
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
     });
 
@@ -211,8 +226,6 @@ app.UseStaticFiles();
 
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
@@ -230,10 +243,16 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
 app.UseWebSockets();
 
 app.MapHub<AppHub>("/ws/app");
-app.MapControllerRoute(
-    name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
 
 app.MapControllers();
+
+if (app.Environment.IsDevelopment())
+{
+    app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
+}
+else
+{
+    app.MapGet("/", () => Results.Ok(new { name = "Omada.Api", status = "running" })).ExcludeFromDescription();
+}
 
 app.Run();

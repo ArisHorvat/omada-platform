@@ -5,6 +5,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
 import { AppText, AppButton } from '@/src/components/ui';
 import { BottomSheet } from '@/src/components/ui/BottomSheet';
+import { WidgetPageShell } from '@/src/components/layout';
 import { useThemeColors } from '@/src/hooks';
 import { ScreenTransition } from '@/src/components/animations';
 import { createStyles } from '../styles/campus.styles';
@@ -40,6 +41,7 @@ export default function CampusMapScreen() {
   const isDarkMap = colors.isDark;
 
   return (
+    <WidgetPageShell fullBleed>
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ClayBackButton absolute style={{ backgroundColor: colors.card, borderRadius: 22 }} />
 
@@ -75,7 +77,7 @@ export default function CampusMapScreen() {
                   onPress={() => setSelected(b)}
                 >
                   <View style={styles.markerBubble}>
-                    <MaterialIcons name="apartment" size={28} color={colors.primary} />
+                    <MaterialIcons name="apartment" size={22} color={colors.primary} />
                   </View>
                 </Marker>
               );
@@ -84,7 +86,12 @@ export default function CampusMapScreen() {
         )}
       </ScreenTransition>
 
-      <BottomSheet isVisible={!!selected} onClose={() => setSelected(null)} height={280}>
+      <BottomSheet
+        isVisible={!!selected}
+        onClose={() => setSelected(null)}
+        height={280}
+        zIndexBase={520}
+      >
         {selected && (
           <>
             <AppText variant="h3" weight="bold" style={{ marginBottom: 8 }}>
@@ -109,5 +116,6 @@ export default function CampusMapScreen() {
         )}
       </BottomSheet>
     </View>
+    </WidgetPageShell>
   );
 }

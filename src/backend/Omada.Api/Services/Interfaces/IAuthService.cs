@@ -11,4 +11,5 @@ public interface IAuthService
     Task<ServiceResponse<LoginResponse>> SwitchOrganizationAsync(SwitchOrgRequest request);
     Task<ServiceResponse<string>> ForgotPasswordAsync(ForgotPasswordRequest request);
     Task<ServiceResponse<string>> ResetPasswordAsync(ResetPasswordRequest request);
+    Task<ServiceResponse<LoginResponse>> JoinOrganizationAsync(JoinOrganizationRequest request);
 }

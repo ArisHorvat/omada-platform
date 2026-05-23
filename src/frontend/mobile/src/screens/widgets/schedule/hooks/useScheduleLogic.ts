@@ -34,6 +34,7 @@ export const useScheduleLogic = () => {
       setEditingEvent(null);
       form.resetForm(selectedDate);
       if (filters.roomId) form.setRoomId(filters.roomId);
+      if (filters.groupId) form.setGroupId(filters.groupId);
       if (profile?.id) {
         const name = [profile.firstName, profile.lastName].filter(Boolean).join(' ').trim();
         form.setHostId(profile.id);

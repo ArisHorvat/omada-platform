@@ -20,6 +20,9 @@ public class ScrapedClassEvent : BaseEntity, IOrganizationScoped
     public string Professor { get; set; } = string.Empty;
     public string GroupNumber { get; set; } = string.Empty;
 
+    /// <summary>Curs, Laborator, Seminar, etc. (from Tipul column).</summary>
+    public string ActivityType { get; set; } = string.Empty;
+
     /// <summary>Hash of normalized fields for change detection (populated by merge/spider steps).</summary>
     public string DataHash { get; set; } = string.Empty;
 

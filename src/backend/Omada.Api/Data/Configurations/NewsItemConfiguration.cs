@@ -21,6 +21,16 @@ public class NewsItemConfiguration : IEntityTypeConfiguration<NewsItem>
         builder.Property(e => e.CoverImageUrl)
             .HasMaxLength(1024);
 
+        builder.Property(e => e.SourceUrl)
+            .HasMaxLength(2048);
+
+        builder.Property(e => e.SourceContentHash)
+            .HasMaxLength(64);
+
+        builder.HasIndex(e => new { e.OrganizationId, e.SourceUrl })
+            .IsUnique()
+            .HasFilter("[SourceUrl] IS NOT NULL AND [IsDeleted] = 0");
+
         builder.Property(e => e.Type).HasConversion<int>();
         builder.Property(e => e.Category).HasConversion<int>()
             .HasDefaultValue(NewsCategory.General);

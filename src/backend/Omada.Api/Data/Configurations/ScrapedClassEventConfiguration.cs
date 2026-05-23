@@ -15,6 +15,7 @@ public class ScrapedClassEventConfiguration : IEntityTypeConfiguration<ScrapedCl
         builder.Property(e => e.RoomText).HasColumnName("Room").IsRequired().HasMaxLength(200);
         builder.Property(e => e.Professor).IsRequired().HasMaxLength(200);
         builder.Property(e => e.GroupNumber).IsRequired().HasMaxLength(100);
+        builder.Property(e => e.ActivityType).IsRequired().HasMaxLength(64);
         builder.Property(e => e.DataHash).IsRequired().HasMaxLength(128);
 
         builder.HasIndex(e => new { e.OrganizationId, e.DataHash });

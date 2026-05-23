@@ -23,9 +23,11 @@ public class TasksController : ControllerBase
 
     [HttpGet]
     [HasPermission(WidgetKeys.Tasks, nameof(AccessLevel.View))]
-    public async Task<ActionResult<ServiceResponse<PagedResponse<TaskItemDto>>>> GetAll([FromQuery] PagedRequest request)
+    public async Task<ActionResult<ServiceResponse<PagedResponse<TaskItemDto>>>> GetAll(
+        [FromQuery] PagedRequest request,
+        [FromQuery] Guid? groupId)
     {
-        var response = await _taskService.GetUserTasksAsync(request);
+        var response = await _taskService.GetUserTasksAsync(request, groupId);
         return response.IsSuccess ? Ok(response) : StatusCode(500, response);
     }
 

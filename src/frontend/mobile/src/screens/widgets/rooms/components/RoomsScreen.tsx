@@ -1,8 +1,11 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { useThemeColors } from '@/src/hooks';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { PageContainer } from '@/src/components/layout/PageContainer';
+import { SplitPane } from '@/src/components/layout/SplitPane';
+import { SPLIT_PANE_LIST_WIDTH } from '@/src/constants/layout';
+import { useThemeColors, useBreakpoint } from '@/src/hooks';
 import { AppText, ClayView, Icon, AppButton } from '@/src/components/ui';
 import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
 import { ClayDatePicker } from '@/src/components/ui/ClayDatePicker';
@@ -10,9 +13,11 @@ import { AnimatedItem, PressClay } from '@/src/components/animations';
 import { ClayAnimations } from '@/src/constants/animations';
 import { useRoomsLogic } from '../hooks/useRoomsLogic';
 import { RoomBookingModal } from './RoomBookingModal';
+import { RoomsDetailPanel } from './RoomsDetailPanel';
 import { RoomsFilterSheet } from './RoomsFilterSheet';
 import { RoomDayTimeline } from '@/src/screens/widgets/schedule/components/RoomDayTimeline';
 import { roomAmenityChips } from '../utils/roomAmenityTags';
+import { displayRoomName } from '../utils/roomDisplayName';
 
 function filtersActiveCount(f: {
   searchTerm: string;
@@ -32,8 +37,11 @@ function filtersActiveCount(f: {
 
 export default function RoomsScreen() {
   const colors = useThemeColors();
+  const { isWideShell } = useBreakpoint();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const params = useLocalSearchParams<{ roomId?: string }>();
+  const focusRoomFromMap = typeof params.roomId === 'string' ? params.roomId : params.roomId?.[0];
   const {
     rooms,
     availableNowRooms,
@@ -62,17 +70,22 @@ export default function RoomsScreen() {
     bookingRoom,
     eventTypes,
     refreshNow,
-  } = useRoomsLogic();
+    focusedRoomLoading,
+  } = useRoomsLogic({ focusRoomId: focusRoomFromMap });
 
   const [showFilterModal, setShowFilterModal] = React.useState(false);
   const activeFilterCount = useMemo(() => filtersActiveCount(filters), [filters]);
 
-  return (
-    <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top }}>
+  useEffect(() => {
+    if (!isWideShell || rooms.length === 0 || selectedRoomId) return;
+    selectRoom(rooms[0].id);
+  }, [isWideShell, rooms, selectedRoomId, selectRoom]);
+
+  const roomsHeader = (
       <View style={{ paddingHorizontal: 20, paddingBottom: 12, paddingTop: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-          <ClayBackButton />
-          <View style={{ marginLeft: 16, flex: 1 }}>
+          {!isWideShell ? <ClayBackButton /> : null}
+          <View style={{ marginLeft: isWideShell ? 0 : 16, flex: 1 }}>
             <AppText variant="h2" weight="bold">
               Rooms
             </AppText>
@@ -112,13 +125,37 @@ export default function RoomsScreen() {
           </ClayView>
         </TouchableOpacity>
       </View>
+  );
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}>
+  const roomsListBody = (
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: isWideShell ? 24 : 100 }}>
         {loading && (
           <View style={{ marginBottom: 12 }}>
             <ActivityIndicator color={colors.primary} />
           </View>
         )}
+
+        {focusRoomFromMap ? (
+          <ClayView depth={2} color={colors.primary} style={{ borderRadius: 16, padding: 14, marginBottom: 16 }}>
+            <AppText weight="bold" style={{ color: '#FFF', marginBottom: 6 }}>
+              {focusedRoomLoading ? 'Loading selected room…' : selectedRoom ? displayRoomName(selectedRoom) : 'Room from map'}
+            </AppText>
+            <AppText variant="caption" style={{ color: 'rgba(255,255,255,0.9)', marginBottom: 10 }}>
+              {selectedRoom
+                ? `${selectedRoom.isBookable ? 'You can book this space below.' : 'View-only — not bookable.'} Scroll for the day timeline or tap Book.`
+                : 'Could not load this room. It may be on another floor or unpublished.'}
+            </AppText>
+            {selectedRoom?.isBookable ? (
+              <PressClay onPress={() => startBooking(selectedRoom.id)}>
+                <ClayView depth={5} color="#FFF" style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, alignSelf: 'flex-start' }}>
+                  <AppText weight="bold" style={{ color: colors.primary }}>
+                    Book this room
+                  </AppText>
+                </ClayView>
+              </PressClay>
+            ) : null}
+          </ClayView>
+        ) : null}
 
         <ClayView depth={4} color={colors.card} style={{ borderRadius: 18, padding: 14, marginBottom: 16 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -133,10 +170,10 @@ export default function RoomsScreen() {
             Spaces free for the next 30 minutes (updates every minute)
           </AppText>
           {availableNowRooms.slice(0, 5).map((room) => (
-            <TouchableOpacity key={`available-${room.id}`} onPress={() => selectRoom(room.id)} activeOpacity={0.85} style={{ marginBottom: 10 }}>
+              <TouchableOpacity key={`available-${room.id}`} onPress={() => selectRoom(room.id)} activeOpacity={0.85} style={{ marginBottom: 10 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#22c55e', marginRight: 8 }} />
-                <AppText style={{ flex: 1 }}>{room.name}</AppText>
+                <AppText style={{ flex: 1 }}>{displayRoomName(room)}</AppText>
                 <AppText variant="caption" style={{ color: colors.subtle }}>
                   {room.capacity} seats
                 </AppText>
@@ -148,14 +185,23 @@ export default function RoomsScreen() {
 
         {rooms.map((room, index) => {
           const amenityChips = roomAmenityChips(room);
+          const selected = selectedRoomId === room.id;
           return (
             <AnimatedItem key={room.id} animation={ClayAnimations.SlideInFlow(index)} style={{ marginBottom: 16 }}>
-              <ClayView depth={selectedRoomId === room.id ? 2 : 5} color={colors.card} style={{ borderRadius: 20, padding: 16 }}>
+              <ClayView
+                depth={selected ? 2 : 5}
+                color={colors.card}
+                style={{
+                  borderRadius: 20,
+                  padding: 16,
+                  ...(selected && isWideShell ? { borderWidth: 2, borderColor: colors.primary } : {}),
+                }}
+              >
                 <TouchableOpacity onPress={() => selectRoom(room.id)} activeOpacity={0.92}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <View style={{ flex: 1, paddingRight: 12 }}>
                       <AppText variant="h3" weight="bold">
-                        {room.name}
+                        {displayRoomName(room)}
                       </AppText>
                       <AppText style={{ color: colors.subtle }}>{room.location || 'Main Building'}</AppText>
                     </View>
@@ -164,31 +210,34 @@ export default function RoomsScreen() {
                       <AppText style={{ fontSize: 12, fontWeight: 'bold' }}>{room.capacity}</AppText>
                     </View>
                   </View>
-                  {amenityChips.length > 0 ? (
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
-                      {amenityChips.map((chip) => (
-                        <View
-                          key={chip.id}
-                          style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            paddingHorizontal: 10,
-                            paddingVertical: 6,
-                            borderRadius: 12,
-                            backgroundColor: colors.background,
-                            borderWidth: 1,
-                            borderColor: colors.border + '66',
-                            maxWidth: '100%',
-                          }}
-                        >
-                          <Icon name={chip.icon} size={16} color={colors.primary} style={{ marginRight: 6 }} />
-                          <AppText variant="caption" numberOfLines={2} style={{ color: colors.text, flexShrink: 1 }}>
-                            {chip.label}
-                          </AppText>
-                        </View>
-                      ))}
-                    </View>
-                  ) : null}
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+                    {amenityChips.map((chip) => (
+                      <View
+                        key={chip.id}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          paddingHorizontal: 10,
+                          paddingVertical: 6,
+                          borderRadius: 12,
+                          backgroundColor: colors.background,
+                          borderWidth: 1,
+                          borderColor: colors.border + '66',
+                          maxWidth: '100%',
+                        }}
+                      >
+                        <Icon name={chip.icon} size={16} color={colors.primary} style={{ marginRight: 6 }} />
+                        <AppText variant="caption" numberOfLines={2} style={{ color: colors.text, flexShrink: 1 }}>
+                          {chip.label}
+                        </AppText>
+                      </View>
+                    ))}
+                    {amenityChips.length === 0 ? (
+                      <AppText variant="caption" style={{ color: colors.subtle }}>
+                        No amenities or resources listed — admins can add them when editing the room.
+                      </AppText>
+                    ) : null}
+                  </View>
                   <View style={{ height: 1, backgroundColor: colors.border + '20', marginTop: 12 }} />
                   <View style={{ paddingTop: 12, flexDirection: 'row', alignItems: 'center' }}>
                     <View
@@ -219,10 +268,10 @@ export default function RoomsScreen() {
           );
         })}
 
-        {selectedRoom && (
+        {!isWideShell && selectedRoom ? (
           <ClayView depth={3} color={colors.card} style={{ borderRadius: 16, padding: 14, marginBottom: 16 }}>
             <AppText weight="bold" style={{ marginBottom: 4 }}>
-              {selectedRoom.name}
+              {displayRoomName(selectedRoom)}
             </AppText>
             <AppText variant="caption" style={{ color: colors.subtle, marginBottom: 12 }}>
               See when this room is free or busy for any day. Times are shown in 15-minute steps (same as booking).
@@ -238,11 +287,21 @@ export default function RoomsScreen() {
             {roomTimelineLoading ? (
               <AppText style={{ color: colors.subtle }}>Loading schedule…</AppText>
             ) : (
-              <RoomDayTimeline day={timelineDate} events={roomTimeline} selection={null} roomName={selectedRoom.name} />
+              <RoomDayTimeline
+                day={timelineDate}
+                events={roomTimeline}
+                selection={null}
+                roomName={displayRoomName(selectedRoom)}
+              />
             )}
 
             <TouchableOpacity
-              onPress={() => router.push('/(app)/(tabs)/schedule')}
+              onPress={() =>
+                router.push({
+                  pathname: '/(app)/(tabs)/schedule',
+                  params: selectedRoom?.id ? { roomId: selectedRoom.id } : undefined,
+                })
+              }
               style={{ marginTop: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10 }}
               activeOpacity={0.85}
             >
@@ -256,7 +315,7 @@ export default function RoomsScreen() {
               See your meetings and org-wide events in one place
             </AppText>
           </ClayView>
-        )}
+        ) : null}
 
         {totalPages > 1 && (
           <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 10, gap: 20 }}>
@@ -268,6 +327,36 @@ export default function RoomsScreen() {
           </View>
         )}
       </ScrollView>
+  );
+
+  const roomsListColumn = (
+    <View style={{ flex: 1, minHeight: 0 }}>
+      {roomsHeader}
+      {roomsListBody}
+    </View>
+  );
+
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top }}>
+      <PageContainer>
+        {isWideShell ? (
+          <SplitPane sidebar={roomsListColumn} sidebarWidth={SPLIT_PANE_LIST_WIDTH}>
+            <RoomsDetailPanel
+              room={selectedRoom}
+              timelineDate={timelineDate}
+              onTimelineDateChange={setTimelineDate}
+              roomTimeline={roomTimeline}
+              roomTimelineLoading={roomTimelineLoading}
+              onBook={() => selectedRoom && startBooking(selectedRoom.id)}
+            />
+          </SplitPane>
+        ) : (
+          <>
+            {roomsHeader}
+            {roomsListBody}
+          </>
+        )}
+      </PageContainer>
 
       <RoomsFilterSheet
         visible={showFilterModal}

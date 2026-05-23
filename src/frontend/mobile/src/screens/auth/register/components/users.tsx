@@ -1,117 +1,236 @@
 import React from 'react';
-import { View, ScrollView } from 'react-native';
+import { View, ScrollView, TextInput, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useThemeColors } from '@/src/hooks';
 import { WizardLayout } from '@/src/components/layout';
-import { AppText, ClayView, Icon, SegmentedControl, AppButton } from '@/src/components/ui';
-import { useUsersImportLogic } from '../hooks/useUsersImportLogic';
+import { AppText, ClayView, Icon, SegmentedControl, AppButton, CodeBlock } from '@/src/components/ui';
+import { useOrganizationInviteLogic } from '../hooks/useOrganizationInviteLogic';
 
 export default function UsersScreen() {
   const router = useRouter();
   const colors = useThemeColors();
-  
-  // Destructure our new exports
-  const { 
-    importedUsers, submitRegistration, isSubmitting, activeTab, 
-    setActiveTab, handleInviteLink, pickDocument, isLoading,
-    roles, defaultUserPassword
-  } = useUsersImportLogic();
+
+  const {
+    importedUsers,
+    submitRegistration,
+    isSubmitting,
+    activeTab,
+    setActiveTab,
+    emailInput,
+    setEmailInput,
+    selectedRole,
+    setSelectedRole,
+    inviteableRoles,
+    addInviteEmail,
+    removeInviteEmail,
+    previewInviteCode,
+    previewInviteLink,
+    createdOrgInvite,
+    memberEmailTemplate,
+    adminEmailTemplate,
+    copyInviteLink,
+    shareInviteLink,
+  } = useOrganizationInviteLogic();
 
   return (
-    <WizardLayout 
-        step={5} totalSteps={6} title="Add Users" subtitle="Invite your team"
-        onBack={() => router.back()} onNext={submitRegistration} nextLabel={isSubmitting ? "Creating..." : "Finish"}
-        isNextDisabled={isSubmitting || isLoading} isNextLoading={isSubmitting || isLoading}
+    <WizardLayout
+      step={5}
+      totalSteps={6}
+      title="Invite Users"
+      subtitle="Share a link, code, or email invites"
+      onBack={() => router.back()}
+      onNext={submitRegistration}
+      nextLabel={isSubmitting ? 'Creating...' : 'Finish'}
+      isNextDisabled={isSubmitting}
+      isNextLoading={isSubmitting}
     >
       <View style={{ marginBottom: 24 }}>
-        <SegmentedControl options={['Invite Link', 'Bulk Upload']} selectedIndex={activeTab === 'email' ? 0 : 1} onChange={(i) => setActiveTab(i===0?'email':'upload')} />
+        <SegmentedControl
+          options={['Link & code', 'Email invites']}
+          selectedIndex={activeTab === 'link' ? 0 : 1}
+          onChange={(i) => setActiveTab(i === 0 ? 'link' : 'email')}
+        />
       </View>
 
-      {activeTab === 'email' ? (
-          <ClayView style={{ padding: 24, borderRadius: 24, alignItems: 'center', backgroundColor: colors.card }}>
-              <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: colors.primary + '20', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-                <Icon name="link" size={32} color={colors.primary} />
-              </View>
-              <AppText variant="h3">Share Magic Link</AppText>
-              <AppText style={{ textAlign: 'center', color: colors.subtle, marginVertical: 8 }}>Anyone with this link can join instantly.</AppText>
-              <AppButton title="Generate Link" variant="outline" onPress={handleInviteLink} style={{ width: '100%' }} icon="share" />
-          </ClayView>
+      {activeTab === 'link' ? (
+        <ClayView style={{ padding: 24, borderRadius: 24, backgroundColor: colors.card, gap: 16 }}>
+          <View style={{ alignItems: 'center' }}>
+            <View
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: 32,
+                backgroundColor: colors.primary + '20',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 8,
+              }}
+            >
+              <Icon name="link" size={32} color={colors.primary} />
+            </View>
+            <AppText variant="h3">Organization invite</AppText>
+            <AppText style={{ textAlign: 'center', color: colors.subtle, marginTop: 8 }}>
+              {createdOrgInvite
+                ? 'Share your link or code so people can register and join.'
+                : 'Your unique link and code are generated when you finish this step.'}
+            </AppText>
+          </View>
+
+          <View style={{ gap: 8 }}>
+            <AppText variant="caption" style={{ color: colors.subtle }}>
+              ORGANIZATION CODE
+            </AppText>
+            <ClayView
+              style={{
+                padding: 16,
+                borderRadius: 16,
+                backgroundColor: colors.background,
+                alignItems: 'center',
+              }}
+            >
+              <AppText variant="h2" weight="bold" style={{ letterSpacing: 4 }}>
+                {previewInviteCode}
+              </AppText>
+            </ClayView>
+          </View>
+
+          <View style={{ gap: 8 }}>
+            <AppText variant="caption" style={{ color: colors.subtle }}>
+              INVITE LINK
+            </AppText>
+            <AppText variant="caption" style={{ color: colors.text }} selectable>
+              {previewInviteLink}
+            </AppText>
+          </View>
+
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <AppButton
+              title="Copy link"
+              variant="outline"
+              onPress={copyInviteLink}
+              style={{ flex: 1 }}
+              icon="content-copy"
+              disabled={!createdOrgInvite}
+            />
+            <AppButton
+              title="Share"
+              variant="primary"
+              onPress={shareInviteLink}
+              style={{ flex: 1 }}
+              icon="share"
+            />
+          </View>
+        </ClayView>
       ) : (
-          <View style={{ gap: 16 }}>
-              {/* Main Upload Box */}
-              <ClayView style={{ padding: 24, borderRadius: 24, alignItems: 'center', backgroundColor: colors.card }}>
-                  <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: colors.secondary + '20', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-                    <Icon name="cloud-upload" size={32} color={colors.secondary} />
-                  </View>
-                  <AppText variant="h3">Upload CSV</AppText>
-                  <AppText style={{ textAlign: 'center', color: colors.subtle, marginVertical: 8 }}>
-                    Columns must exactly match: FirstName, LastName, Email, Role
-                  </AppText>
-                  <AppButton 
-                     title={isLoading ? "Parsing..." : "Select File"} 
-                     variant="outline" onPress={pickDocument} 
-                     style={{ width: '100%' }} disabled={isLoading} 
-                  />
-              </ClayView>
+        <View style={{ gap: 16 }}>
+          <ClayView style={{ padding: 20, borderRadius: 24, backgroundColor: colors.card, gap: 12 }}>
+            <AppText variant="h3">Invite by email</AppText>
+            <AppText style={{ color: colors.subtle }}>
+              Each person receives an invitation email with your link and organization code.
+            </AppText>
 
-              {/* Password Info Banner */}
-              <ClayView style={{ padding: 16, borderRadius: 16, backgroundColor: colors.primaryContainer, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                 <Icon name="info" size={24} color={colors.primary} />
-                 <View style={{ flex: 1 }}>
-                     <AppText variant="caption" weight="bold" style={{ color: colors.onPrimaryContainer }}>DEFAULT PASSWORD</AppText>
-                     <AppText variant="caption" style={{ color: colors.onPrimaryContainer, opacity: 0.8 }}>
-                        Imported users will sign in using: <AppText weight="bold" style={{ color: colors.primary }}>{defaultUserPassword}</AppText>
-                     </AppText>
-                 </View>
-              </ClayView>
+            <TextInput
+              value={emailInput}
+              onChangeText={setEmailInput}
+              placeholder="colleague@company.com"
+              placeholderTextColor={colors.subtle}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              style={{
+                borderWidth: 1,
+                borderColor: colors.border,
+                borderRadius: 12,
+                padding: 14,
+                color: colors.text,
+                backgroundColor: colors.background,
+              }}
+            />
 
-              {/* Dynamic CSV Template Preview */}
-              <ClayView style={{ padding: 16, borderRadius: 16, backgroundColor: colors.background }}>
-                  <AppText variant="caption" style={{ color: colors.subtle, marginBottom: 8 }}>CSV TEMPLATE PREVIEW</AppText>
-                  
-                  {/* Header Row */}
-                  <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: 8, marginBottom: 8 }}>
-                     <AppText variant="caption" weight="bold" style={{ flex: 1 }}>FirstName</AppText>
-                     <AppText variant="caption" weight="bold" style={{ flex: 1 }}>LastName</AppText>
-                     <AppText variant="caption" weight="bold" style={{ flex: 1.5 }}>Email</AppText>
-                     <AppText variant="caption" weight="bold" style={{ flex: 1 }}>Role</AppText>
-                  </View>
-                  
-                  {/* Generated Rows based on their chosen roles! */}
-                  {roles.slice(0, 4).map((role, idx) => (
-                      <View key={idx} style={{ flexDirection: 'row', marginBottom: 6 }}>
-                         <AppText variant="caption" style={{ flex: 1, color: colors.text }}>Jane</AppText>
-                         <AppText variant="caption" style={{ flex: 1, color: colors.text }}>Doe</AppText>
-                         <AppText variant="caption" style={{ flex: 1.5, color: colors.subtle }}>jane{idx}@test.com</AppText>
-                         <AppText variant="caption" style={{ flex: 1, color: colors.secondary }}>{role}</AppText>
-                      </View>
-                  ))}
-                  {roles.length > 4 && (
-                      <AppText variant="caption" style={{ color: colors.subtle, fontStyle: 'italic', marginTop: 4 }}>
-                         ... and {roles.length - 4} more roles
-                      </AppText>
-                  )}
-              </ClayView>
-          </View>
-      )}
-
-      {/* Render the actual imported users if the array has data */}
-      {importedUsers.length > 0 && (
-          <View style={{ marginTop: 24 }}>
-              <AppText variant="caption" style={{ marginBottom: 12, color: colors.subtle }}>READY TO IMPORT ({importedUsers.length})</AppText>
-              {importedUsers.map((u, idx) => (
-                  <ClayView key={idx} style={{ padding: 12, borderRadius: 12, marginBottom: 8, flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card }}>
-                      <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                          <AppText style={{ color: '#FFF', fontWeight: 'bold' }}>{u.firstName?.charAt(0)}</AppText>
-                      </View>
-                      <View>
-                          <AppText weight="bold">{u.firstName} {u.lastName}</AppText>
-                          <AppText variant="caption" style={{ color: colors.subtle }}>{u.email} • {u.role}</AppText>
-                      </View>
+            <AppText variant="caption" style={{ color: colors.subtle }}>
+              ROLE
+            </AppText>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {inviteableRoles.map((role) => (
+                <Pressable key={role} onPress={() => setSelectedRole(role)}>
+                  <ClayView
+                    style={{
+                      paddingHorizontal: 14,
+                      paddingVertical: 8,
+                      borderRadius: 20,
+                      backgroundColor:
+                        selectedRole === role ? colors.primaryContainer : colors.background,
+                    }}
+                  >
+                    <AppText
+                      variant="caption"
+                      weight={selectedRole === role ? 'bold' : 'regular'}
+                      style={{
+                        color: selectedRole === role ? colors.primary : colors.subtle,
+                      }}
+                    >
+                      {role}
+                    </AppText>
                   </ClayView>
+                </Pressable>
               ))}
-          </View>
+            </View>
+
+            <AppButton title="Add to invite list" variant="outline" onPress={addInviteEmail} icon="person-add" />
+          </ClayView>
+
+          {importedUsers.length > 0 && (
+            <View>
+              <AppText variant="caption" style={{ marginBottom: 12, color: colors.subtle }}>
+                WILL RECEIVE EMAIL ({importedUsers.length})
+              </AppText>
+              {importedUsers.map((u) => (
+                <ClayView
+                  key={u.email}
+                  style={{
+                    padding: 12,
+                    borderRadius: 12,
+                    marginBottom: 8,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    backgroundColor: colors.card,
+                  }}
+                >
+                  <View style={{ flex: 1 }}>
+                    <AppText weight="bold">{u.email}</AppText>
+                    <AppText variant="caption" style={{ color: colors.subtle }}>
+                      {u.role}
+                    </AppText>
+                  </View>
+                  <Pressable onPress={() => removeInviteEmail(u.email!)} hitSlop={12}>
+                    <Icon name="close" size={20} color={colors.subtle} />
+                  </Pressable>
+                </ClayView>
+              ))}
+            </View>
+          )}
+        </View>
       )}
+
+      <View style={{ marginTop: 24, gap: 16 }}>
+        <ClayView style={{ padding: 16, borderRadius: 16, backgroundColor: colors.card }}>
+          <AppText variant="caption" style={{ color: colors.subtle, marginBottom: 8 }}>
+            EMAIL TEMPLATE — TEAM MEMBER
+          </AppText>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <CodeBlock code={memberEmailTemplate} />
+          </ScrollView>
+        </ClayView>
+
+        <ClayView style={{ padding: 16, borderRadius: 16, backgroundColor: colors.background }}>
+          <AppText variant="caption" style={{ color: colors.subtle, marginBottom: 8 }}>
+            EMAIL TEMPLATE — SENT TO YOU (ADMIN)
+          </AppText>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <CodeBlock code={adminEmailTemplate} />
+          </ScrollView>
+        </ClayView>
+      </View>
     </WizardLayout>
   );
 }

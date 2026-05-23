@@ -55,7 +55,9 @@ export const RoomsWidget: React.FC<BaseWidgetProps> = ({ variant, color }) => {
   const availableQuery = useQuery({
     queryKey: ['rooms-widget-available', orgId, now.toISOString().slice(0, 16)],
     queryFn: async () =>
-      unwrap(roomsApi.search(undefined, undefined, undefined, undefined, undefined, now, windowEnd, 1, 20)),
+      unwrap(
+        roomsApi.search(undefined, undefined, undefined, undefined, undefined, undefined, undefined, now, windowEnd, 1, 20),
+      ),
     enabled: !!orgId,
     refetchInterval: 60_000,
   });
@@ -89,7 +91,19 @@ export const RoomsWidget: React.FC<BaseWidgetProps> = ({ variant, color }) => {
       const windowStart = roundToQuarterHour(new Date());
       const windowEndFresh = roundToQuarterHour(new Date(windowStart.getTime() + 30 * 60 * 1000));
       const page = await unwrap(
-        roomsApi.search(undefined, undefined, undefined, undefined, undefined, windowStart, windowEndFresh, 1, 30),
+        roomsApi.search(
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          windowStart,
+          windowEndFresh,
+          1,
+          30,
+        ),
       );
       const list = (page.items ?? []) as RoomDto[];
       if (!list.length) throw new Error('No rooms are free for the next 30 minutes.');

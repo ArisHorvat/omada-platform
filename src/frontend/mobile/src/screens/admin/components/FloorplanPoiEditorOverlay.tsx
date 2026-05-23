@@ -1,29 +1,16 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { PanResponder, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, PanResponder, Platform, Pressable, StyleSheet, View } from 'react-native';
 import type { EditablePoiFeature, FloorplanPoiKind } from '@/src/screens/admin/utils/floorplanGeoJsonEdit';
-import { AppText } from '@/src/components/ui';
 import { useFloorplanViewerMetrics } from '@/src/screens/widgets/map/components/floorplanViewerMetrics';
-import { FloorplanPoiKindIcon } from '@/src/screens/widgets/map/components/floorplanPoiIcons';
+import { FloorplanPoiMarkerIcon } from '@/src/screens/widgets/map/components/floorplanPoiIcons';
+import {
+  DEFAULT_FLOORPLAN_POI_COLORS,
+  defaultPoiLegendLabel,
+} from '@/src/screens/widgets/map/utils/floorplanMapLegendConstants';
 
 const PIN_BOX = 32;
 const TOUCH = 54;
-
-function colorForKind(k: FloorplanPoiKind): string {
-  switch (k) {
-    case 'entrance':
-      return '#2563eb';
-    case 'exit':
-      return '#16a34a';
-    case 'elevator':
-      return '#7c3aed';
-    case 'stairs':
-      return '#ea580c';
-    case 'restroom':
-      return '#0d9488';
-    default:
-      return '#64748b';
-  }
-}
+const TAP_MOVE_MAX = 8;
 
 type Props = {
   pois: EditablePoiFeature[];
@@ -103,6 +90,16 @@ export function FloorplanPoiEditorOverlay({
   );
 }
 
+function showPoiInfoAlert(poi: EditablePoiFeature) {
+  const title = defaultPoiLegendLabel(poi.pinKind);
+  const lines = [
+    poi.label?.trim() ? `Label: ${poi.label.trim()}` : null,
+    poi.pinKind === 'other' && poi.iconKey?.trim() ? `Icon: ${poi.iconKey.trim()}` : null,
+    `Id: ${poi.pinId}`,
+  ].filter(Boolean) as string[];
+  Alert.alert(title, lines.join('\n'));
+}
+
 function DraggablePoiPin({
   poi,
   index,
@@ -129,7 +126,7 @@ function DraggablePoiPin({
 
   const px = poi.x * width + drag.dx;
   const py = poi.y * height + drag.dy;
-  const bg = colorForKind(poi.pinKind);
+  const bg = DEFAULT_FLOORPLAN_POI_COLORS[poi.pinKind];
 
   const panResponder = useMemo(
     () =>
@@ -146,19 +143,31 @@ function DraggablePoiPin({
           setDrag({ dx: g.dx, dy: g.dy });
         },
         onPanResponderRelease: (_, g) => {
+          const moved = Math.abs(g.dx) + Math.abs(g.dy);
+          if (moved < TAP_MOVE_MAX) {
+            showPoiInfoAlert(poi);
+            setDrag({ dx: 0, dy: 0 });
+            return;
+          }
           const nx = Math.max(0, Math.min(1, start.current.x + g.dx / width));
           const ny = Math.max(0, Math.min(1, start.current.y + g.dy / height));
           onMovePoi(index, nx, ny);
           setDrag({ dx: 0, dy: 0 });
         },
         onPanResponderTerminate: (_, g) => {
+          const moved = Math.abs(g.dx) + Math.abs(g.dy);
+          if (moved < TAP_MOVE_MAX) {
+            showPoiInfoAlert(poi);
+            setDrag({ dx: 0, dy: 0 });
+            return;
+          }
           const nx = Math.max(0, Math.min(1, start.current.x + g.dx / width));
           const ny = Math.max(0, Math.min(1, start.current.y + g.dy / height));
           onMovePoi(index, nx, ny);
           setDrag({ dx: 0, dy: 0 });
         },
       }),
-    [poi.x, poi.y, width, height, index, onMovePoi, onSelectPoi, placeMode],
+    [poi, width, height, index, onMovePoi, onSelectPoi, placeMode],
   );
 
   return (
@@ -191,24 +200,7 @@ function DraggablePoiPin({
           elevation: 6,
         }}
       >
-        <FloorplanPoiKindIcon kind={poi.pinKind} size={18} color="#fff" />
-      </View>
-      <View style={{ position: 'absolute', top: -44, maxWidth: 140, alignItems: 'center' }} pointerEvents="none">
-        <AppText
-          variant="caption"
-          numberOfLines={1}
-          style={{
-            fontSize: 11,
-            color: '#0f172a',
-            backgroundColor: 'rgba(255,255,255,0.95)',
-            overflow: 'hidden',
-            paddingHorizontal: 8,
-            paddingVertical: 3,
-            borderRadius: 8,
-          }}
-        >
-          {poi.label || poi.pinKind}
-        </AppText>
+        <FloorplanPoiMarkerIcon kind={poi.pinKind} customIconKey={poi.iconKey} size={18} color="#fff" />
       </View>
     </View>
   );

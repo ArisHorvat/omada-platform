@@ -3,7 +3,9 @@ import ScheduleScreenContent from './ScheduleScreenContent';
 import { useScheduleDictionary } from '../hooks/useScheduleDictionary';
 
 /** University tenant: dictionary uses Class / Teacher. */
-export default function UniversityScheduleScreen() {
+export default function UniversityScheduleScreen({ initialRoomFilterId }: { initialRoomFilterId?: string }) {
   const dictionary = useScheduleDictionary('University');
-  return <ScheduleScreenContent dictionary={dictionary} universityStudentUi />;
+  return (
+    <ScheduleScreenContent dictionary={dictionary} universityStudentUi initialRoomFilterId={initialRoomFilterId} />
+  );
 }

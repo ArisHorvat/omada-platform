@@ -1,20 +1,19 @@
 import React from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 
+import { AuthContentShell } from '@/src/components/layout';
 import { useThemeColors } from '@/src/hooks'; 
 import { PressScale } from '@/src/components/animations';
 import { AppText, AppButton, ClayView, Icon } from '@/src/components/ui';
-
-const { width } = Dimensions.get('window');
 
 export default function LandingScreen() {
   const router = useRouter();
   const colors = useThemeColors();
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <AuthContentShell centered style={{ backgroundColor: colors.background }}>
       <StatusBar style={colors.text === '#111827' ? 'dark' : 'light'} />
 
       <View style={styles.contentContainer}>
@@ -37,28 +36,22 @@ export default function LandingScreen() {
           Your all-in-one platform for university and company management.
         </AppText>
 
-        {/* Primary Action */}
         <View style={styles.buttonContainer}>
-          <AppButton 
-            title="Create Organization" 
+          <AppButton
+            title="Create Organization"
             onPress={() => router.push('/register-flow')}
             variant="primary"
             size="lg"
             rightIcon="arrow-forward"
             style={{ width: '100%' }}
           />
-        </View>
-
-        {/* Secondary Action (Login) */}
-        <View style={styles.secondaryContainer}>
-          <AppText variant="caption" style={{ color: colors.subtle }}>
-            Already have an account?
-          </AppText>
-          <PressScale onPress={() => router.push('/login-flow')}>
-            <AppText variant="caption" weight="bold" style={{ color: colors.primary, marginLeft: 6 }}>
-              Login
-            </AppText>
-          </PressScale>
+          <AppButton
+            title="Sign In"
+            onPress={() => router.push('/login-flow')}
+            variant="outline"
+            size="lg"
+            style={{ width: '100%', marginTop: 12 }}
+          />
         </View>
 
       </View>
@@ -71,16 +64,11 @@ export default function LandingScreen() {
           </AppText>
         </PressScale>
       </View>
-    </View>
+    </AuthContentShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   contentContainer: {
     width: '100%',
     paddingHorizontal: 32,
@@ -112,11 +100,6 @@ const styles = StyleSheet.create({
   buttonContainer: {
     width: '100%',
     maxWidth: 340,
-  },
-  secondaryContainer: {
-    flexDirection: 'row',
-    marginTop: 24,
-    alignItems: 'center',
   },
   footer: {
     position: 'absolute',

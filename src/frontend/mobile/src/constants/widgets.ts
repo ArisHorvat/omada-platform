@@ -22,7 +22,7 @@ export const BASE_WIDGETS: Record<string, WidgetDef> = {
   // 2. UNIVERSITY SPECIFIC
   grades:      { name: 'Grades', icon: 'analytics', category: 'Academics', priority: 2, availability: 'university', defaultSize: 'wide' },
   assignments: { name: 'Assignments', icon: 'assignment', category: 'Academics', priority: 2, availability: 'university', defaultSize: 'small' },
-  attendance:  { name: 'Attendance', icon: 'how-to-reg', category: 'Academics', priority: 2, availability: 'university', defaultSize: 'small' },
+  attendance:  { name: 'Attendance', icon: 'how-to-reg', category: 'Academics', priority: 2, availability: 'all', defaultSize: 'small' },
 
   // 3. CORPORATE SPECIFIC
   finance:     { name: 'Finance', icon: 'attach-money', category: 'Productivity', priority: 2, availability: 'corporate', defaultSize: 'small' },
@@ -61,8 +61,8 @@ export const ORG_PRESETS: Record<string, OrgPreset> = {
   },
   corporate: {
     roles: [
-      { name: 'Employee', widgets: { tasks: 'view', documents: 'view', finance: 'view', map: 'view', rooms: 'view' } },
-      { name: 'Team Lead', widgets: { tasks: 'edit', users: 'view', rooms: 'view', chat: 'edit' } },
+      { name: 'Employee', widgets: { tasks: 'view', documents: 'view', finance: 'view', map: 'view', rooms: 'view', attendance: 'view' } },
+      { name: 'Team Lead', widgets: { tasks: 'edit', users: 'view', rooms: 'view', chat: 'edit', attendance: 'edit' } },
       { name: 'Project Manager', widgets: { tasks: 'admin', documents: 'edit', finance: 'view', users: 'view' } },
       { name: 'Director', widgets: { finance: 'view', news: 'edit', users: 'view' } },
       { name: 'HR Manager', widgets: { documents: 'admin', users: 'admin', finance: 'view', news: 'edit' } },

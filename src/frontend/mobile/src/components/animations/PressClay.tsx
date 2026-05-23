@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, ViewStyle, StyleProp } from 'react-native'; 
+import { Platform, Pressable, ViewStyle, StyleProp } from 'react-native'; 
 import Animated, { 
   useAnimatedStyle, 
   useSharedValue, 
@@ -18,8 +18,10 @@ interface PressClayProps {
 }
 
 const pressEase = { duration: 300, easing: Easing.out(Easing.ease) };
+const IS_WEB = Platform.OS === 'web';
+const hoverEase = { duration: 150, easing: Easing.out(Easing.ease) };
 
-export const PressClay = ({ children, onPress, onLongPress, style }: PressClayProps) => { // <-- 2. Destructure it
+export const PressClay = ({ children, onPress, onLongPress, style }: PressClayProps) => {
   // 0 = Up, 1 = Pressed Down
   const pressProgress = useSharedValue(0);
 
@@ -37,22 +39,35 @@ export const PressClay = ({ children, onPress, onLongPress, style }: PressClayPr
 
   const handlePressIn = () => {
     pressProgress.value = withTiming(1, pressEase);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (!IS_WEB) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
   };
 
   const handlePressOut = () => {
     pressProgress.value = withTiming(0, pressEase);
   };
 
+  const handleHoverIn = () => {
+    if (!IS_WEB || !onPress) return;
+    pressProgress.value = withTiming(0.35, hoverEase);
+  };
+
+  const handleHoverOut = () => {
+    if (!IS_WEB) return;
+    pressProgress.value = withTiming(0, hoverEase);
+  };
+
   return (
-    // 3. Pass it to the Pressable!
     <ClayPressContext.Provider value={pressProgress}>
-      <Pressable 
-          onPress={onPress} 
-          onLongPress={onLongPress} 
-          onPressIn={handlePressIn} 
+      <Pressable
+          onPress={onPress}
+          onLongPress={onLongPress}
+          onPressIn={handlePressIn}
           onPressOut={handlePressOut}
-          style={style}
+          onHoverIn={handleHoverIn}
+          onHoverOut={handleHoverOut}
+          style={[style, IS_WEB && onPress ? ({ cursor: 'pointer' } as ViewStyle) : undefined]}
       >
           <Animated.View style={[style, animatedStyle]}>
               {children}

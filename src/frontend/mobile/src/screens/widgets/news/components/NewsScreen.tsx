@@ -5,9 +5,11 @@ import { useTheme } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 
 import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
+import { WidgetPageShell } from '@/src/components/layout';
 import { AppText, AppButton, Icon, ClayView } from '@/src/components/ui';
 import { ScreenTransition, AnimatedItem, PressClay } from '@/src/components/animations';
 import { ClayAnimations } from '@/src/constants/animations';
+import { useEscapeKey } from '@/src/hooks';
 import { usePermission } from '@/src/context/PermissionContext';
 import { useNewsAdminLogic } from '../hooks/useNewsAdminLogic';
 import { NewsType } from '@/src/api/generatedClient';
@@ -41,6 +43,8 @@ export default function NewsScreen() {
   } = useNewsAdminLogic();
 
   const router = useRouter();
+
+  useEscapeKey(createModalVisible, () => setCreateModalVisible(false));
 
   const renderItem = ({ item, index }: any) => (
     <AnimatedItem animation={ClayAnimations.SlideInFlow(index)}>
@@ -78,6 +82,7 @@ export default function NewsScreen() {
   );
 
   return (
+    <WidgetPageShell>
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScreenTransition>
         <SafeAreaView style={{ flex: 1 }}>
@@ -178,5 +183,6 @@ export default function NewsScreen() {
         </SafeAreaView>
       </ScreenTransition>
     </View>
+    </WidgetPageShell>
   );
 }

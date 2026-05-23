@@ -38,10 +38,16 @@ export interface FloorplanViewerProps {
   heightRatio?: number;
   /** When false, pinch/pan disabled (e.g. while dragging polygon handles). */
   gesturesEnabled?: boolean;
+  /** While tracing an outline, allow pinch-zoom even if `gesturesEnabled` is false. */
+  outlineTraceActive?: boolean;
   /** Normalized tap inside the floorplan content rect [0..1] (e.g. place a POI while pan/zoom stay enabled). */
   onTapNormalized?: (nx: number, ny: number) => void;
+  /** Samples while dragging during outline trace (freehand) — same normalized space as taps. */
+  onOutlineTraceDrag?: (nx: number, ny: number) => void;
   /** Digital twin: hide raster floorplan, show semantic overlay only (dark “wall” background). */
   vectorMode?: boolean;
+  /** Full-bleed map: no rounded card chrome (e.g. indoor map fills the screen). */
+  fullBleed?: boolean;
 }
 
 export function FloorplanViewer({
@@ -51,8 +57,11 @@ export function FloorplanViewer({
   layoutWidth: layoutWidthProp,
   heightRatio = 0.72,
   gesturesEnabled = true,
+  outlineTraceActive = false,
   onTapNormalized,
+  onOutlineTraceDrag,
   vectorMode = false,
+  fullBleed = false,
 }: FloorplanViewerProps) {
   const { width: windowWidth } = useWindowDimensions();
   const canvasWidth = layoutWidthProp ?? windowWidth;
@@ -130,8 +139,25 @@ export function FloorplanViewer({
     ],
   );
 
+  const handleOutlineDragFromGesture = useCallback(
+    (absX: number, absY: number) => {
+      if (!onOutlineTraceDrag) return;
+      const x = (absX - contain.offsetX) / Math.max(1, metricsValue.contentWidth);
+      const y = (absY - contain.offsetY) / Math.max(1, metricsValue.contentHeight);
+      if (x < 0 || x > 1 || y < 0 || y > 1) return;
+      onOutlineTraceDrag(Math.max(0, Math.min(1, x)), Math.max(0, Math.min(1, y)));
+    },
+    [
+      onOutlineTraceDrag,
+      contain.offsetX,
+      contain.offsetY,
+      metricsValue.contentWidth,
+      metricsValue.contentHeight,
+    ],
+  );
+
   const pinchGesture = Gesture.Pinch()
-    .enabled(gesturesEnabled)
+    .enabled(gesturesEnabled || outlineTraceActive)
     .onStart(() => {
       savedScale.value = scale.value;
     })
@@ -159,9 +185,16 @@ export function FloorplanViewer({
       runOnJS(handleTapFromGesture)(e.x, e.y);
     });
 
-  const composed = Gesture.Simultaneous(pinchGesture, panGesture, tapGesture);
+  const outlineDragGesture = Gesture.Pan()
+    .enabled(!!onOutlineTraceDrag)
+    .minDistance(0)
+    .onUpdate((e) => {
+      runOnJS(handleOutlineDragFromGesture)(e.x, e.y);
+    });
 
-  const needsGestureRoot = gesturesEnabled || !!onTapNormalized;
+  const composed = Gesture.Simultaneous(pinchGesture, panGesture, tapGesture, outlineDragGesture);
+
+  const needsGestureRoot = gesturesEnabled || !!onTapNormalized || !!onOutlineTraceDrag;
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }, { translateY: translateY.value }, { scale: scale.value }],
@@ -224,6 +257,7 @@ export function FloorplanViewer({
     <View
       style={[
         styles.wrap,
+        fullBleed && styles.wrapFullBleed,
         { height },
         vectorMode && { backgroundColor: '#1E293B' },
       ]}
@@ -251,6 +285,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderRadius: 12,
     backgroundColor: 'rgba(0,0,0,0.04)',
+  },
+  wrapFullBleed: {
+    borderRadius: 0,
+    backgroundColor: 'transparent',
   },
   canvasOuter: {
     alignSelf: 'center',

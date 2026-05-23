@@ -16,7 +16,8 @@ public static class ScrapedEventHasher
             Normalize(dto.Time),
             Normalize(dto.Room),
             Normalize(dto.Professor),
-            Normalize(dto.GroupNumber));
+            Normalize(dto.GroupNumber),
+            Normalize(dto.ActivityType));
 
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(payload));
         return Convert.ToHexString(bytes).ToLowerInvariant();

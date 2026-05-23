@@ -10,6 +10,7 @@ import { AppButton } from '@/src/components/ui/AppButton';
 import { ToggleSwitch } from '@/src/components/ui/ToggleSwitch';
 import { Icon } from '@/src/components/ui/Icon';
 import { PressClay } from '@/src/components/animations/PressClay';
+import { WidgetPageShell } from '@/src/components/layout';
 import { useThemeColors } from '@/src/hooks';
 import { useSecurityLogic } from '@/src/screens/widgets/security/hooks/useSecurityLogic';
 
@@ -53,6 +54,7 @@ export default function SecurityScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
+      <WidgetPageShell>
       <ClayView depth={12} puffy={16} style={{ marginHorizontal: 20, marginBottom: 16, paddingHorizontal: 8, paddingVertical: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <PressClay onPress={() => router.back()}>
@@ -156,6 +158,7 @@ export default function SecurityScreen() {
           </View>
         </ClayGroupedSection>
       </ScrollView>
+      </WidgetPageShell>
     </SafeAreaView>
   );
 }

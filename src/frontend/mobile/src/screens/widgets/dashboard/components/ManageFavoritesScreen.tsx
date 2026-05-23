@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText, ClayView, Icon, IconName } from '@/src/components/ui';
+import { WidgetPageShell } from '@/src/components/layout';
 import { useThemeColors } from '@/src/hooks';
 import { AnimatedItem, PressScale } from '@/src/components/animations';
 import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
@@ -47,6 +48,7 @@ export default function ManageFavoritesScreen() {
   const availableWidgets = (data.allWidgets || []).filter(id => !user.favorites.includes(id));
 
   return (
+    <WidgetPageShell>
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       
       {/* HEADER */}
@@ -148,6 +150,7 @@ export default function ManageFavoritesScreen() {
 
       </ScrollView>
     </View>
+    </WidgetPageShell>
   );
 }
 

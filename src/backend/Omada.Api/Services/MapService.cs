@@ -51,6 +51,98 @@ public class MapService : IMapService
         return new ServiceResponse<IEnumerable<BuildingDto>>(true, list);
     }
 
+    public async Task<ServiceResponse<BuildingDto>> CreateBuildingAsync(CreateBuildingRequest request)
+    {
+        var orgId = _userContext.OrganizationId;
+        var name = request.Name.Trim();
+
+        var duplicate = await _db.Buildings
+            .AnyAsync(b => b.OrganizationId == orgId && !b.IsDeleted && b.Name == name);
+        if (duplicate)
+        {
+            return new ServiceResponse<BuildingDto>(false, null,
+                new AppError(ErrorCodes.InvalidInput, "A building with this name already exists."));
+        }
+
+        var building = new Building
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = orgId,
+            Name = name,
+            ShortCode = string.IsNullOrWhiteSpace(request.ShortCode) ? null : request.ShortCode.Trim(),
+            Address = string.IsNullOrWhiteSpace(request.Address) ? null : request.Address.Trim(),
+            Latitude = request.Latitude,
+            Longitude = request.Longitude,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.Buildings.Add(building);
+        await _db.SaveChangesAsync();
+
+        return new ServiceResponse<BuildingDto>(true, MapBuilding(building));
+    }
+
+    public async Task<ServiceResponse<BuildingDto>> UpdateBuildingAsync(Guid buildingId, UpdateBuildingRequest request)
+    {
+        var orgId = _userContext.OrganizationId;
+        var building = await _db.Buildings.FirstOrDefaultAsync(b => b.Id == buildingId && !b.IsDeleted);
+        if (building == null || building.OrganizationId != orgId)
+        {
+            return new ServiceResponse<BuildingDto>(false, null,
+                new AppError(ErrorCodes.NotFound, "Building not found."));
+        }
+
+        var name = request.Name.Trim();
+        var duplicate = await _db.Buildings
+            .AnyAsync(b => b.OrganizationId == orgId && !b.IsDeleted && b.Id != buildingId && b.Name == name);
+        if (duplicate)
+        {
+            return new ServiceResponse<BuildingDto>(false, null,
+                new AppError(ErrorCodes.InvalidInput, "A building with this name already exists."));
+        }
+
+        building.Name = name;
+        building.ShortCode = string.IsNullOrWhiteSpace(request.ShortCode) ? null : request.ShortCode.Trim();
+        building.Address = string.IsNullOrWhiteSpace(request.Address) ? null : request.Address.Trim();
+        building.Latitude = request.Latitude;
+        building.Longitude = request.Longitude;
+        building.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return new ServiceResponse<BuildingDto>(true, MapBuilding(building));
+    }
+
+    public async Task<ServiceResponse<bool>> DeleteBuildingAsync(Guid buildingId)
+    {
+        var orgId = _userContext.OrganizationId;
+        var building = await _db.Buildings
+            .Include(b => b.Floors)
+            .ThenInclude(f => f.MapPins)
+            .FirstOrDefaultAsync(b => b.Id == buildingId && !b.IsDeleted);
+        if (building == null || building.OrganizationId != orgId)
+        {
+            return new ServiceResponse<bool>(false, false,
+                new AppError(ErrorCodes.NotFound, "Building not found."));
+        }
+
+        building.IsDeleted = true;
+        building.UpdatedAt = DateTime.UtcNow;
+
+        foreach (var floor in building.Floors.Where(f => !f.IsDeleted))
+        {
+            floor.IsDeleted = true;
+            floor.UpdatedAt = DateTime.UtcNow;
+            foreach (var pin in floor.MapPins.Where(p => !p.IsDeleted))
+            {
+                pin.IsDeleted = true;
+                pin.UpdatedAt = DateTime.UtcNow;
+            }
+        }
+
+        await _db.SaveChangesAsync();
+        return new ServiceResponse<bool>(true, true);
+    }
+
     public async Task<ServiceResponse<IEnumerable<FloorDto>>> GetFloorsForBuildingAsync(Guid buildingId)
     {
         var orgId = _userContext.OrganizationId;
@@ -151,6 +243,32 @@ public class MapService : IMapService
         });
     }
 
+    public async Task<ServiceResponse<bool>> DeleteFloorAsync(Guid floorId)
+    {
+        var orgId = _userContext.OrganizationId;
+        var floor = await _db.Floors
+            .Include(f => f.Building)
+            .Include(f => f.MapPins)
+            .FirstOrDefaultAsync(f => f.Id == floorId && !f.IsDeleted);
+
+        if (floor == null || floor.Building.OrganizationId != orgId)
+        {
+            return new ServiceResponse<bool>(false, false,
+                new AppError(ErrorCodes.NotFound, "Floor not found."));
+        }
+
+        floor.IsDeleted = true;
+        floor.UpdatedAt = DateTime.UtcNow;
+        foreach (var pin in floor.MapPins.Where(p => !p.IsDeleted))
+        {
+            pin.IsDeleted = true;
+            pin.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await _db.SaveChangesAsync();
+        return new ServiceResponse<bool>(true, true);
+    }
+
     public async Task<ServiceResponse<MapPinDto>> CreatePinForFloorAsync(Guid floorId, CreateMapPinRequest request)
     {
         var orgId = _userContext.OrganizationId;
@@ -207,4 +325,34 @@ public class MapService : IMapService
             Label = pin.Label
         });
     }
+
+    public async Task<ServiceResponse<bool>> DeleteMapPinAsync(Guid pinId)
+    {
+        var orgId = _userContext.OrganizationId;
+        var pin = await _db.MapPins
+            .Include(p => p.Floor)
+            .ThenInclude(f => f.Building)
+            .FirstOrDefaultAsync(p => p.Id == pinId && !p.IsDeleted);
+
+        if (pin == null || pin.Floor.Building.OrganizationId != orgId)
+        {
+            return new ServiceResponse<bool>(false, false,
+                new AppError(ErrorCodes.NotFound, "Map pin not found."));
+        }
+
+        pin.IsDeleted = true;
+        pin.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return new ServiceResponse<bool>(true, true);
+    }
+
+    private static BuildingDto MapBuilding(Building b) => new()
+    {
+        Id = b.Id,
+        Name = b.Name,
+        ShortCode = b.ShortCode,
+        Address = b.Address,
+        Latitude = b.Latitude,
+        Longitude = b.Longitude
+    };
 }

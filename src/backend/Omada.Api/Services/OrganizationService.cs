@@ -18,19 +18,22 @@ public class OrganizationService : IOrganizationService
     private readonly IEmailService _emailService;
     private readonly ILogger<OrganizationService> _logger;
     private readonly IPublicMediaUrlResolver _mediaUrls;
+    private readonly IInviteLinkBuilder _inviteLinks;
 
     public OrganizationService(
         IUnitOfWork uow,
         IHubContext<AppHub> hubContext,
         IEmailService emailService,
         ILogger<OrganizationService> logger,
-        IPublicMediaUrlResolver mediaUrls)
+        IPublicMediaUrlResolver mediaUrls,
+        IInviteLinkBuilder inviteLinks)
     {
         _uow = uow;
         _hubContext = hubContext;
         _emailService = emailService;
         _logger = logger;
         _mediaUrls = mediaUrls;
+        _inviteLinks = inviteLinks;
     }
 
     public async Task<ServiceResponse<OrganizationDetailsDto>> CreateOrganizationAsync(RegisterOrganizationRequest request)
@@ -56,10 +59,15 @@ public class OrganizationService : IOrganizationService
         await _uow.CompleteAsync(); // If this fails, no emails are sent.
 
         // 5. Post-Save: Safe to send emails now
+        var inviteLink = _inviteLinks.BuildJoinLink(org.InviteCode);
         foreach (var (user, token) in usersToEmail)
         {
-            _ = _emailService.SendInvitationEmailAsync(user.Email, user.FirstName, org.Name, token);
+            _ = _emailService.SendInvitationEmailAsync(
+                user.Email, user.FirstName, org.Name, inviteLink, org.InviteCode, token);
         }
+
+        _ = _emailService.SendAdminOnboardingEmailAsync(
+            request.AdminEmail, request.AdminFirstName, org.Name, inviteLink, org.InviteCode);
 
         // 6. Map Response & Broadcast
         var detailsDto = MapToOrganizationDetailsDto(org);
@@ -108,21 +116,7 @@ public class OrganizationService : IOrganizationService
         var orgIdsOnPage = pagedOrganizations.Items.Select(o => o.Id).ToList();
         var roles = await _uow.Repository<Role>().FindAsync(r => orgIdsOnPage.Contains(r.OrganizationId));
         
-        var mappedItems = pagedOrganizations.Items.Select(org => new OrganizationDetailsDto
-        {
-            Id = org.Id,
-            OrganizationType = org.OrganizationType,
-            Name = org.Name,
-            ShortName = org.ShortName ?? "",
-            EmailDomain = org.EmailDomain,
-            LogoUrl = _mediaUrls.ToPublicUrl(string.IsNullOrEmpty(org.LogoUrl) ? null : org.LogoUrl),
-            PrimaryColor = org.PrimaryColor,
-            SecondaryColor = org.SecondaryColor,
-            TertiaryColor = org.TertiaryColor,
-            Roles = roles.Where(r => r.OrganizationId == org.Id).Select(r => r.Name),
-            Widgets = new List<string>(), 
-            RoleWidgetMappings = new Dictionary<string, List<string>>()
-        }).ToList();
+        var mappedItems = pagedOrganizations.Items.Select(org => MapOrganizationListItem(org, roles.Where(r => r.OrganizationId == org.Id).Select(r => r.Name))).ToList();
 
         return new ServiceResponse<PagedResponse<OrganizationDetailsDto>>(true, new PagedResponse<OrganizationDetailsDto>
         {
@@ -148,23 +142,35 @@ public class OrganizationService : IOrganizationService
             r => permissions.Where(p => p.RoleId == r.Id).Select(p => p.WidgetKey).ToList()
         );
 
-        var dto = new OrganizationDetailsDto
-        {
-            Id = org.Id,
-            OrganizationType = org.OrganizationType,
-            Name = org.Name,
-            ShortName = org.ShortName ?? "",
-            EmailDomain = org.EmailDomain,
-            LogoUrl = _mediaUrls.ToPublicUrl(string.IsNullOrEmpty(org.LogoUrl) ? null : org.LogoUrl),
-            PrimaryColor = org.PrimaryColor,
-            SecondaryColor = org.SecondaryColor,
-            TertiaryColor = org.TertiaryColor,
-            Roles = roles.Select(r => r.Name),
-            Widgets = permissions.Select(p => p.WidgetKey).Distinct(),
-            RoleWidgetMappings = mappingDict
-        };
+        var dto = MapOrganizationListItem(org, roles.Select(r => r.Name));
+        var widgetKeys = OrganizationWidgetKeys.FilterWidgetKeys(
+            org,
+            permissions.Select(p => p.WidgetKey).Distinct()).ToList();
+        dto.Widgets = widgetKeys;
+        dto.RoleWidgetMappings = OrganizationWidgetKeys.FilterRoleWidgetMappings(org, mappingDict);
 
         return new ServiceResponse<OrganizationDetailsDto>(true, dto);
+    }
+
+    public async Task<ServiceResponse<OrganizationInvitePreviewDto>> GetInvitePreviewAsync(string inviteCode)
+    {
+        if (string.IsNullOrWhiteSpace(inviteCode))
+            return new ServiceResponse<OrganizationInvitePreviewDto>(false, null, new AppError(ErrorCodes.InvalidInput, "Invite code is required."));
+
+        var normalized = inviteCode.Trim().ToUpperInvariant();
+        var org = (await _uow.Repository<Organization>().FindAsync(o =>
+            o.InviteCode == normalized && o.IsActive)).FirstOrDefault();
+
+        if (org == null)
+            return new ServiceResponse<OrganizationInvitePreviewDto>(false, null, new AppError(ErrorCodes.NotFound, "Invalid or expired invite code."));
+
+        return new ServiceResponse<OrganizationInvitePreviewDto>(true, new OrganizationInvitePreviewDto
+        {
+            OrganizationId = org.Id,
+            Name = org.Name,
+            LogoUrl = _mediaUrls.ToPublicUrl(string.IsNullOrEmpty(org.LogoUrl) ? null : org.LogoUrl),
+            InviteCode = org.InviteCode
+        });
     }
 
     // --- Private Helper Methods ---
@@ -185,7 +191,8 @@ public class OrganizationService : IOrganizationService
             LogoUrl = request.LogoUrl,
             PrimaryColor = request.PrimaryColor,
             SecondaryColor = request.SecondaryColor,
-            TertiaryColor = request.TertiaryColor
+            TertiaryColor = request.TertiaryColor,
+            InviteCode = OrganizationInviteCodeGenerator.Generate()
         };
 
         var roleNames = request.Roles ?? new List<string>();
@@ -217,7 +224,7 @@ public class OrganizationService : IOrganizationService
 
         if (invalidRoles.Any())
         {
-            var errorMessage = $"Import failed. The following roles in the CSV do not exist: {string.Join(", ", invalidRoles)}";
+            var errorMessage = $"Invite failed. The following roles do not exist: {string.Join(", ", invalidRoles)}";
             return new ServiceResponse<OrganizationDetailsDto>(false, null, new AppError(ErrorCodes.InvalidInput, errorMessage));
         }
 
@@ -304,10 +311,11 @@ public class OrganizationService : IOrganizationService
                 var tempPassword = request.DefaultUserPassword ?? "Welcome123!";
                 var token = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
 
+                var emailLocal = userDto.Email.Split('@')[0];
                 importedUser = new User
                 {
-                    FirstName = userDto.FirstName,
-                    LastName = userDto.LastName,
+                    FirstName = string.IsNullOrWhiteSpace(userDto.FirstName) ? emailLocal : userDto.FirstName,
+                    LastName = string.IsNullOrWhiteSpace(userDto.LastName) ? "Member" : userDto.LastName,
                     Email = userDto.Email,
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword(tempPassword),
                     PhoneNumber = userDto.PhoneNumber,
@@ -329,14 +337,25 @@ public class OrganizationService : IOrganizationService
 
     private OrganizationDetailsDto MapToOrganizationDetailsDto(Organization org)
     {
-        var rolesWithPermissions = org.Roles.ToDictionary(
-            r => r.Name, 
-            r => r.Permissions.Select(p => p.WidgetKey).ToList()
-        );
+        var dto = MapOrganizationListItem(org, org.Roles.Select(r => r.Name));
+        dto.Widgets = OrganizationWidgetKeys.FilterWidgetKeys(
+            org,
+            org.Roles.SelectMany(r => r.Permissions).Select(p => p.WidgetKey).Distinct()).ToList();
+        dto.RoleWidgetMappings = OrganizationWidgetKeys.FilterRoleWidgetMappings(
+            org,
+            org.Roles.ToDictionary(
+                r => r.Name,
+                r => r.Permissions.Select(p => p.WidgetKey).ToList()));
+        return dto;
+    }
 
+    private OrganizationDetailsDto MapOrganizationListItem(Organization org, IEnumerable<string> roleNames)
+    {
+        var inviteLink = _inviteLinks.BuildJoinLink(org.InviteCode);
         return new OrganizationDetailsDto
         {
             Id = org.Id,
+            OrganizationType = org.OrganizationType,
             Name = org.Name,
             ShortName = org.ShortName ?? "",
             EmailDomain = org.EmailDomain,
@@ -344,9 +363,14 @@ public class OrganizationService : IOrganizationService
             SecondaryColor = org.SecondaryColor,
             TertiaryColor = org.TertiaryColor,
             LogoUrl = _mediaUrls.ToPublicUrl(string.IsNullOrEmpty(org.LogoUrl) ? null : org.LogoUrl),
-            Roles = org.Roles.Select(r => r.Name).ToList(),
-            Widgets = org.Roles.SelectMany(r => r.Permissions).Select(p => p.WidgetKey).Distinct().ToList(),
-            RoleWidgetMappings = rolesWithPermissions
+            Roles = roleNames,
+            Widgets = new List<string>(),
+            RoleWidgetMappings = new Dictionary<string, List<string>>(),
+            InviteCode = org.InviteCode,
+            InviteLink = inviteLink,
+            OnboardingStep = org.OnboardingStep,
+            IsActive = org.IsActive,
+            EnabledWidgets = OrganizationWidgetKeys.GetEffectiveEnabledKeys(org).OrderBy(k => k).ToList()
         };
     }
 }

@@ -19,6 +19,8 @@ import { ClayTimeSpinner } from '@/src/components/ui/ClayTimeSpinner';
 import { useThemeColors, useTabContentBottomPadding } from '@/src/hooks';
 import { RoomDto } from '@/src/api/generatedClient';
 import { HostPickerSheet } from './HostPickerSheet';
+import { SearchableOptionPickerSheet } from '@/src/screens/admin/web-spider-workspace/components/SearchableOptionPickerSheet';
+import type { GroupOption } from '@/src/utils/groupOptions';
 import { formatRecurrenceLabel } from '../utils/recurrenceLabels';
 
 const EVENT_COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6'];
@@ -40,6 +42,7 @@ export const EventModal = ({
   eventTypes,
   rooms,
   searchHosts,
+  groupOptions = [],
 }: any) => {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
@@ -49,6 +52,7 @@ export const EventModal = ({
   const [buildingFilter, setBuildingFilter] = useState<BuildingFilter>('all');
   const [activePicker, setActivePicker] = useState<'none' | 'date' | 'start' | 'end'>('none');
   const [hostPickerOpen, setHostPickerOpen] = useState(false);
+  const [groupPickerOpen, setGroupPickerOpen] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -57,8 +61,25 @@ export const EventModal = ({
       setBuildingFilter('all');
       setActivePicker('none');
       setHostPickerOpen(false);
+      setGroupPickerOpen(false);
     }
   }, [visible]);
+
+  const groupPickerOptions = useMemo(
+    () =>
+      (groupOptions as GroupOption[]).map((g) => ({
+        value: g.id,
+        label: g.name,
+        subtitle: g.subtitle,
+      })),
+    [groupOptions],
+  );
+
+  useEffect(() => {
+    if (!visible || !form.groupId || form.groupName) return;
+    const match = groupPickerOptions.find((o) => o.value === form.groupId);
+    if (match) form.setGroupName(match.label);
+  }, [visible, form.groupId, form.groupName, groupPickerOptions]);
 
   const isRoomAllowed = (room: RoomDto, currentTypeId: string) => {
     if (!currentTypeId) return true;
@@ -502,6 +523,25 @@ export const EventModal = ({
       </AppText>
 
       <AppText weight="bold" style={{ color: colors.subtle, marginBottom: 8 }}>
+        Group / class (optional)
+      </AppText>
+      <TouchableOpacity
+        onPress={() => setGroupPickerOpen(true)}
+        activeOpacity={0.85}
+        style={{ marginBottom: 16 }}
+      >
+        <ClayView depth={3} color={colors.card} style={{ padding: 18, borderRadius: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <AppText style={{ color: form.groupName || form.groupId ? colors.text : colors.subtle, flex: 1 }} numberOfLines={2}>
+            {form.groupName ||
+              (form.groupId
+                ? groupPickerOptions.find((o) => o.value === form.groupId)?.label ?? 'Selected group'
+                : 'None — tap to link a class or team')}
+          </AppText>
+          <Icon name="chevron-right" size={22} color={colors.subtle} />
+        </ClayView>
+      </TouchableOpacity>
+
+      <AppText weight="bold" style={{ color: colors.subtle, marginBottom: 8 }}>
         Host
       </AppText>
       <TouchableOpacity onPress={() => setHostPickerOpen(true)} activeOpacity={0.85} style={{ marginBottom: 20 }}>
@@ -754,6 +794,24 @@ export const EventModal = ({
             form.setHostId(h.id);
             form.setHostName(h.fullName);
           }}
+        />
+
+        <SearchableOptionPickerSheet
+          isVisible={groupPickerOpen && visible}
+          onClose={() => setGroupPickerOpen(false)}
+          title="Link to group"
+          searchPlaceholder="Search groups…"
+          options={groupPickerOptions}
+          selected={form.groupId}
+          onSelect={(id) => {
+            form.setGroupId(id);
+            const match = groupPickerOptions.find((o) => o.value === id);
+            form.setGroupName(match?.label ?? null);
+          }}
+          includeAllOption
+          allLabel="No group"
+          height={440}
+          zIndexBase={530}
         />
       </View>
     </Modal>

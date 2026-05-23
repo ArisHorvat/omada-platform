@@ -4,12 +4,11 @@ export const createStyles = (colors: any) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    paddingBottom: 100,
   },
   header: {
     padding: 16,
     zIndex: 10,
-    backgroundColor: colors.background, // Ensure text stays readable
+    backgroundColor: colors.background,
   },
   title: {
     fontSize: 20,
@@ -29,44 +28,6 @@ export const createStyles = (colors: any) => StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  legend: {
-    position: 'absolute',
-    bottom: 20,
-    left: 20,
-    right: 20,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  legendTitle: {
-    fontWeight: 'bold',
-    marginRight: 10,
-    color: colors.text,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  legendColor: {
-    width: 16,
-    height: 16,
-    borderRadius: 4,
-    marginRight: 8,
-  },
-  legendText: {
-    fontSize: 14,
-    color: colors.text,
-  },
   floorSwitcher: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -79,10 +40,10 @@ export const createStyles = (colors: any) => StyleSheet.create({
     borderColor: colors.border,
   },
   floorButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
     borderRadius: 6,
-    marginHorizontal: 4,
+    marginHorizontal: 3,
   },
   activeFloorButton: {
     backgroundColor: colors.primary,
@@ -95,9 +56,8 @@ export const createStyles = (colors: any) => StyleSheet.create({
     color: '#ffffff',
   },
   floorScroll: {
-    maxHeight: 52,
-    marginBottom: 12,
-    paddingHorizontal: 16,
+    maxHeight: 44,
+    paddingHorizontal: 10,
   },
   floorScrollContent: {
     gap: 8,
@@ -125,6 +85,6 @@ export const createStyles = (colors: any) => StyleSheet.create({
   },
   floorplanBlock: {
     flex: 1,
-    minHeight: 200,
+    minHeight: 0,
   },
 });

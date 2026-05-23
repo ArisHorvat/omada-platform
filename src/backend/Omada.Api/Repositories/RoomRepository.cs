@@ -43,6 +43,15 @@ public class RoomRepository : GenericRepository<Room>, IRoomRepository
             query = query.Where(r => r.BuildingId.HasValue && bids.Contains(r.BuildingId.Value));
         }
 
+        if (request.FloorId.HasValue)
+            query = query.Where(r => r.FloorId == request.FloorId);
+
+        if (!string.IsNullOrWhiteSpace(request.FloorplanFeatureKey))
+        {
+            var fk = request.FloorplanFeatureKey.Trim();
+            query = query.Where(r => r.FloorplanFeatureKey != null && r.FloorplanFeatureKey == fk);
+        }
+
         if (!string.IsNullOrEmpty(request.SearchTerm))
         {
             var term = request.SearchTerm.ToLower();

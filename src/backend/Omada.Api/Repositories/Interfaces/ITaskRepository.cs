@@ -5,7 +5,12 @@ namespace Omada.Api.Repositories.Interfaces;
 
 public interface ITaskRepository : IGenericRepository<TaskItem>
 {
-    Task<PagedResponse<TaskItem>> GetPagedForUserAsync(Guid organizationId, Guid userId, int page, int pageSize);
+    Task<PagedResponse<TaskItem>> GetPagedForUserAsync(
+        Guid organizationId,
+        Guid userId,
+        int page,
+        int pageSize,
+        Guid? groupId = null);
 
     Task<TaskItem?> GetByIdForUserReadAsync(Guid id, Guid organizationId, Guid userId);
 

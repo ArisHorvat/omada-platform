@@ -37,6 +37,9 @@ interface RegistrationContextType {
   defaultUserPassword: string;
   setDefaultUserPassword: (pass: string) => void;
 
+  createdOrgInvite: { inviteCode: string; inviteLink: string } | null;
+  setCreatedOrgInvite: (invite: { inviteCode: string; inviteLink: string } | null) => void;
+
   submitRegistration: () => Promise<void>;
   isSubmitting: boolean;
 }
@@ -57,6 +60,10 @@ export const RegistrationProvider = ({ children }: { children: React.ReactNode }
   
   const [importedUsers, setImportedUsers] = useState<UserImportDto[]>([]);
   const [defaultUserPassword, setDefaultUserPassword] = useState('Welcome123!');
+  const [createdOrgInvite, setCreatedOrgInvite] = useState<{
+    inviteCode: string;
+    inviteLink: string;
+  } | null>(null);
 
   const setOrganizationType = (type: 'university' | 'corporate') => {
     setOrgData(prev => ({ ...prev, type }));
@@ -142,7 +149,13 @@ export const RegistrationProvider = ({ children }: { children: React.ReactNode }
         }))
       });
 
-      await unwrap(orgApi.create(request));
+      const created = await unwrap(orgApi.create(request));
+      if (created.inviteCode && created.inviteLink) {
+        setCreatedOrgInvite({
+          inviteCode: created.inviteCode,
+          inviteLink: created.inviteLink,
+        });
+      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace('/register-flow/registration-success');
     } catch (error: any) {
@@ -163,6 +176,7 @@ export const RegistrationProvider = ({ children }: { children: React.ReactNode }
       roleWidgetAccess, setRoleWidgetAccess, toggleWidgetForRole,
       importedUsers, setImportedUsers,
       defaultUserPassword, setDefaultUserPassword,
+      createdOrgInvite, setCreatedOrgInvite,
       submitRegistration, isSubmitting
     }}>
       {children}

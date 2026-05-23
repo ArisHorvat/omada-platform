@@ -58,4 +58,21 @@ public class FloorplansController : ControllerBase
             return NotFound(response);
         return BadRequest(response);
     }
+
+    /// <summary>
+    /// Upserts org <see cref="Room"/> rows from polygon features in this floorplan (for booking). Skips shell/architectural polygons.
+    /// </summary>
+    [HttpPost("{id:guid}/publish-rooms")]
+    [HasPermission(WidgetKeys.Map, nameof(AccessLevel.Edit))]
+    public async Task<ActionResult<ServiceResponse<FloorplanRoomPublishResultDto>>> PublishRooms(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var response = await _floorplanProcessingService.PublishRoomsFromGeoJsonAsync(id, cancellationToken);
+        if (response.IsSuccess)
+            return Ok(response);
+        if (response.Error?.Code == ErrorCodes.NotFound)
+            return NotFound(response);
+        return BadRequest(response);
+    }
 }

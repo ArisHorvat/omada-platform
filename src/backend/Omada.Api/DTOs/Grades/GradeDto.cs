@@ -7,6 +7,10 @@ public class GradeDto
     [Required]
     public required Guid Id { get; set; }
 
+    public Guid? GroupId { get; set; }
+
+    public string? GroupName { get; set; }
+
     [Required]
     public required string CourseName { get; set; }
 

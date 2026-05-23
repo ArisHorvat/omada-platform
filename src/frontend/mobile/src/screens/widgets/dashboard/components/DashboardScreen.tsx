@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { format } from 'date-fns';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,8 +11,10 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 
-import { useThemeColors, useTabContentBottomPadding } from '@/src/hooks';
-import { createStyles, SNAP_INTERVAL } from '@/src/screens/widgets/dashboard/styles/dashboard.styles'; 
+import { PageContainer } from '@/src/components/layout/PageContainer';
+import { useThemeColors, useTabContentBottomPadding, useBreakpoint, useContentWidth } from '@/src/hooks';
+import type { BentoColumnCount } from '../utils/bentoLayout';
+import { createStyles, getHighlightMetrics } from '@/src/screens/widgets/dashboard/styles/dashboard.styles'; 
 import { useDashboardLogic } from '@/src/screens/widgets/dashboard/hooks/useDashboardLogic';
 import { DashboardWidget } from './DashboardWidget';
 import { AppText, ClayView, BentoGrid, Divider, AppButton } from '@/src/components/ui';
@@ -29,14 +31,20 @@ export default function DashboardScreen() {
   const router = useRouter();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
-  const { width: screenWidth } = useWindowDimensions();
+  const contentWidth = useContentWidth();
+  const { isWideShell, breakpoint } = useBreakpoint();
+  const bentoColumns: BentoColumnCount = breakpoint === 'wide' ? 3 : 2;
+  const { snapInterval: highlightSnap } = useMemo(
+    () => getHighlightMetrics(contentWidth),
+    [contentWidth],
+  );
 
   const { meta, data, config, user } = useDashboardLogic();
 
   const bentoItems = useMemo(() => {
     const favorites = user.favorites.filter((id: string) => id !== 'digital-id' && id !== 'groups');
-    return computeBentoLayout(favorites, config.definitions);
-  }, [user.favorites, config.definitions]);
+    return computeBentoLayout(favorites, config.definitions, bentoColumns);
+  }, [user.favorites, config.definitions, bentoColumns]);
 
   const handleRemoveWidget = (widgetId: string) => {
      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -51,8 +59,11 @@ export default function DashboardScreen() {
 
   const BENTO_CONTAINER_PADDING = 20;
   const BENTO_GAP = 12;
-  const availableWidth = Math.max(0, screenWidth - BENTO_CONTAINER_PADDING * 2);
-  const smallWidth = (availableWidth - BENTO_GAP) / 2;
+  const availableWidth = Math.max(0, contentWidth - BENTO_CONTAINER_PADDING * 2);
+  const smallWidth =
+    bentoColumns === 3
+      ? (availableWidth - BENTO_GAP * 2) / 3
+      : (availableWidth - BENTO_GAP) / 2;
   const largeWidth = availableWidth;
   const smallHeight = Math.round(smallWidth);
   // Required formula: LARGE_HEIGHT = (SMALL_HEIGHT * 2) + GAP
@@ -73,7 +84,10 @@ export default function DashboardScreen() {
     };
   });
 
+  const editBannerBottom = isWideShell ? insets.bottom + 24 : insets.bottom + 100;
+
   return (
+    <PageContainer>
     <View style={[styles.container, { flex: 1 }]}>
       
       {/* STICKY HEADER */}
@@ -89,7 +103,7 @@ export default function DashboardScreen() {
                  </AppText>
              </View>
              <View style={styles.stickyHeaderSearchContainer}>
-                <SearchBar onPress={() => router.push('..')} compact />
+                <SearchBar onPress={() => router.push('/search' as never)} compact />
              </View>
          </ClayView>
       </Animated.View>
@@ -115,7 +129,7 @@ export default function DashboardScreen() {
         {/* SEARCH & DATE */}
         <AnimatedItem index={0}>
           <View style={{ paddingHorizontal: 20 }}>
-            <SearchBar onPress={() => router.push('..')} />
+            <SearchBar onPress={() => router.push('/search' as never)} />
           </View>
         </AnimatedItem>
         <View style={styles.spacer} />
@@ -132,7 +146,7 @@ export default function DashboardScreen() {
               </View>
             </View>
             <Animated.ScrollView 
-              horizontal showsHorizontalScrollIndicator={false} snapToInterval={SNAP_INTERVAL} 
+              horizontal showsHorizontalScrollIndicator={false} snapToInterval={highlightSnap} 
               decelerationRate="fast" contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 10 }}
               onScroll={scrollHandler} scrollEventThrottle={16}
             >
@@ -262,7 +276,7 @@ export default function DashboardScreen() {
             entering={ClayAnimations.SlideInFlow(0)} 
             style={{ 
                 position: 'absolute', 
-                bottom: insets.bottom + 100, // Floats nicely above bottom tabs
+                bottom: editBannerBottom,
                 left: 20, right: 20, 
                 zIndex: 999, // Guarantees it's on top
                 elevation: 10 // For Android
@@ -289,5 +303,6 @@ export default function DashboardScreen() {
       )}
 
     </View>
+    </PageContainer>
   );
 }

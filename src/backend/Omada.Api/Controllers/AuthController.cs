@@ -62,4 +62,11 @@ public class AuthController : ControllerBase
         var response = await _authService.ResetPasswordAsync(request);
         return response.IsSuccess ? Ok(response) : BadRequest(response);
     }
+
+    [HttpPost("join")]
+    public async Task<ActionResult<ServiceResponse<LoginResponse>>> JoinOrganization([FromBody] JoinOrganizationRequest request)
+    {
+        var response = await _authService.JoinOrganizationAsync(request);
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
+    }
 }

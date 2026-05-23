@@ -1,88 +1,79 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useCallback, useState } from 'react';
 import { Alert } from 'react-native';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+
+import { superAdminApi, unwrap } from '@/src/api';
+import { QUERY_KEYS } from '@/src/api/queryKeys';
+import type { OrganizationDetailsDto } from '@/src/api/generatedClient';
 import { useAuth } from '@/src/context/AuthContext';
-import { OrganizationDetailsDto } from '@/src/api/generatedClient';
-import { orgApi, unwrap } from '@/src/api';
 
-export const useSuperAdminDashboardLogic = () => {
-  const { logout } = useAuth(); // Use proper logout action
-  const [organizations, setOrganizations] = useState<OrganizationDetailsDto[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+export function useSuperAdminDashboardLogic() {
+  const queryClient = useQueryClient();
+  const { switchSession } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
 
-  // Pagination State
-  const [page, setPage] = useState<number>(1);
-  const [pageSize, setPageSize] = useState<number>(10);
-  const [totalItems, setTotalItems] = useState<number>(0);
+  const orgsQuery = useQuery({
+    queryKey: QUERY_KEYS.superAdmin.organizations(page, pageSize),
+    queryFn: () => unwrap(superAdminApi.getOrganizations(page, pageSize)),
+  });
 
-  const loadOrganizations = async () => {
-    setIsLoading(true);
-    try {
-      // Look here! Pass the primitive values directly to the generated client
-      const response = await unwrap(orgApi.getAll(page, pageSize));
-      
-      // Update state with the nested PagedResponse data
-      setOrganizations(response.items || []);
-      setTotalItems(response.totalCount || 0);
-    } catch (error) {
-      console.error("Failed to load orgs", error);
-      // TODO: Show an error toast to the user
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const organizations = (orgsQuery.data?.items ?? []) as OrganizationDetailsDto[];
+  const totalItems = orgsQuery.data?.totalCount ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
 
-  // 3. Trigger Fetch on Mount AND when pagination changes
-  useEffect(() => {
-    loadOrganizations();
-  }, [page, pageSize]);
-
-  const handleLogout = () => {
-    Alert.alert(
-      "Logout",
-      "Are you sure you want to logout?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Logout", style: "destructive", onPress: logout }
-      ]
-    );
-  };
-
-  const deleteOrganization = async (id: string) => {
-    Alert.alert("Delete Organization", "This action cannot be undone.", [
-        { text: "Cancel", style: "cancel" },
-        { 
-            text: "Delete", 
-            style: "destructive", 
-            onPress: async () => {
-                try {
-                    // await OrganizationService.delete(id);
-                    // Refresh local list
-                    setOrganizations(prev => prev.filter(o => o.id !== id));
-                } catch (e) {
-                    Alert.alert("Error", "Failed to delete organization");
-                }
-            } 
-        }
-    ]);
-  };
-
-  const filteredOrganizations = useMemo(() => {
-    if (!searchQuery) return organizations;
+  const filteredOrganizations = organizations.filter((org) => {
+    if (!searchQuery.trim()) return true;
     const lower = searchQuery.toLowerCase();
-    return organizations.filter(org => 
-      (org.name && org.name.toLowerCase().includes(lower)) || 
+    return (
+      (org.name && org.name.toLowerCase().includes(lower)) ||
       (org.emailDomain && org.emailDomain.toLowerCase().includes(lower))
     );
-  }, [organizations, searchQuery]);
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => unwrap(superAdminApi.deleteOrganization(id)),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['superAdmin'] });
+    },
+    onError: (e: Error) => Alert.alert('Delete failed', e.message),
+  });
+
+  const deleteOrganization = useCallback(
+    (id: string, name: string) => {
+      Alert.alert('Delete organization', `Permanently delete "${name}"? This cannot be undone.`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => deleteMutation.mutate(id) },
+      ]);
+    },
+    [deleteMutation],
+  );
+
+  const enterOrganization = useCallback(
+    async (orgId: string) => {
+      try {
+        await switchSession(orgId);
+      } catch (e) {
+        Alert.alert('Enter organization failed', e instanceof Error ? e.message : 'Could not switch organization.');
+      }
+    },
+    [switchSession],
+  );
 
   return {
     organizations: filteredOrganizations,
     searchQuery,
     setSearchQuery,
-    handleLogout,
+    isLoading: orgsQuery.isLoading,
+    isRefreshing: orgsQuery.isFetching,
+    refresh: orgsQuery.refetch,
+    page,
+    setPage,
+    totalPages,
+    totalItems,
     deleteOrganization,
-    isLoading,
-    // refresh: loadOrganizations
+    deleting: deleteMutation.isPending,
+    enterOrganization,
   };
-};
+}

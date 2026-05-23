@@ -1,9 +1,7 @@
 import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 
-import apiClient from '@/src/api/apiClient';
-import { API_BASE_URL } from '@/src/config/config';
-import { unwrap } from '@/src/api';
+import { tasksApi, unwrap } from '@/src/api';
 import { QUERY_KEYS } from '@/src/api/queryKeys';
 import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
 import {
@@ -17,6 +15,7 @@ export interface UseTasksApiParams {
   page?: number;
   pageSize?: number;
   taskId?: string | null;
+  groupId?: string | null;
   enabled?: boolean;
   client?: TasksClient;
 }
@@ -58,6 +57,7 @@ export function useTasksApi(params: UseTasksApiParams = {}): UseTasksApiResult {
     page = 1,
     pageSize = 50,
     taskId = null,
+    groupId = null,
     enabled = true,
     client,
   } = params;
@@ -66,10 +66,7 @@ export function useTasksApi(params: UseTasksApiParams = {}): UseTasksApiResult {
   const orgId = organization?.id;
   const queryClient = useQueryClient();
 
-  const tasksClient = useMemo(
-    () => client ?? new TasksClient(API_BASE_URL, apiClient),
-    [client]
-  );
+  const tasksClient = useMemo(() => client ?? tasksApi, [client]);
 
   const invalidateTasks = async () => {
     if (!orgId) return;
@@ -77,9 +74,9 @@ export function useTasksApi(params: UseTasksApiParams = {}): UseTasksApiResult {
   };
 
   const tasksQuery = useQuery({
-    queryKey: QUERY_KEYS.tasks.paginated(orgId ?? '', page, pageSize),
+    queryKey: QUERY_KEYS.tasks.paginated(orgId ?? '', page, pageSize, groupId),
     queryFn: async () => {
-      const data = await unwrap(tasksClient.getAll(page, pageSize));
+      const data = await unwrap(tasksClient.getAll(page, pageSize, groupId));
       return {
         items: data.items ?? [],
         totalCount: data.totalCount,

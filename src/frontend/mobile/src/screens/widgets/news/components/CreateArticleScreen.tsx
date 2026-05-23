@@ -31,6 +31,7 @@ import {
 } from '@/src/components/ui';
 import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
 import { usePermission } from '@/src/context/PermissionContext';
+import { WidgetPageShell } from '@/src/components/layout';
 import { useThemeColors } from '@/src/hooks';
 import { useNewsLogic } from '../hooks/useNewsLogic';
 import type { NewsBlock } from '../types/newsBlocks';
@@ -242,6 +243,7 @@ function CreateArticleScreenContent() {
   }
 
   return (
+    <WidgetPageShell>
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
         <View style={{ flex: 1 }}>
           <View style={styles.header}>
@@ -590,6 +592,7 @@ function CreateArticleScreenContent() {
         </ScrollView>
       </BottomSheet>
     </SafeAreaView>
+    </WidgetPageShell>
   );
 }
 

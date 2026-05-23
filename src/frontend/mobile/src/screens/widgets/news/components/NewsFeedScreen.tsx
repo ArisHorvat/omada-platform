@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, StyleSheet, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
@@ -17,7 +17,11 @@ import {
 } from '@/src/components/ui';
 import { AnimatedItem, PressClay } from '@/src/components/animations';
 import { ClayAnimations } from '@/src/constants/animations';
-import { useThemeColors, useTabContentBottomPadding } from '@/src/hooks';
+import { PageContainer } from '@/src/components/layout/PageContainer';
+import { SplitPane } from '@/src/components/layout/SplitPane';
+import { SPLIT_PANE_LIST_WIDTH } from '@/src/constants/layout';
+import { useThemeColors, useTabContentBottomPadding, useBreakpoint } from '@/src/hooks';
+import { ArticlePanel } from './ArticlePanel';
 import { usePermission } from '@/src/context/PermissionContext';
 import { newsApi, unwrap } from '@/src/api';
 import type { NewsItemDto } from '@/src/api/generatedClient';
@@ -50,8 +54,10 @@ const typeMeta = (type: NewsType, colors: { error: string; tertiary: string; sec
 export default function NewsFeedScreen() {
   const colors = useThemeColors();
   const tabBottomPad = useTabContentBottomPadding(24);
+  const { isWideShell } = useBreakpoint();
   const router = useRouter();
   const { can } = usePermission();
+  const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
 
   // Applied filters drive fetching. Draft filters live in the sheet and only apply on Done.
   const [appliedType, setAppliedType] = useState<NewsType | null>(null);
@@ -106,6 +112,25 @@ export default function NewsFeedScreen() {
   }, [feedQuery.data]);
 
   const totalCount = feedQuery.data?.pages?.[0]?.totalCount ?? 0;
+
+  useEffect(() => {
+    if (!isWideShell || items.length === 0) return;
+    setSelectedArticleId((prev) => {
+      if (prev && items.some((x) => x.id === prev)) return prev;
+      return items[0]?.id ?? null;
+    });
+  }, [isWideShell, items]);
+
+  const openArticle = (id: string) => {
+    if (isWideShell) {
+      setSelectedArticleId(id);
+      return;
+    }
+    router.push({
+      pathname: '/news-article',
+      params: { id },
+    } as never);
+  };
 
   const openFilters = () => {
     setDraftType(appliedType);
@@ -192,53 +217,52 @@ export default function NewsFeedScreen() {
     );
   }
 
-  return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.header}>
-        <ClayBackButton />
-        <AppText variant="h2" weight="bold" style={styles.headerTitle}>
-          News & Alerts
-        </AppText>
-      </View>
+  const feedHeader = (
+    <View style={styles.header}>
+      {!isWideShell ? <ClayBackButton /> : null}
+      <AppText variant="h2" weight="bold" style={[styles.headerTitle, !isWideShell && { marginLeft: 14 }]}>
+        News & Alerts
+      </AppText>
+    </View>
+  );
 
-      {items.length === 0 ? (
-        <View style={{ flex: 1 }}>
-          {listHeader}
-          <View style={styles.emptyWrap}>
-            <WidgetEmptyState title="No matches" description="Try another filter or check back later." icon="campaign" />
-          </View>
+  const feedList =
+    items.length === 0 ? (
+      <View style={{ flex: 1 }}>
+        {listHeader}
+        <View style={styles.emptyWrap}>
+          <WidgetEmptyState title="No matches" description="Try another filter or check back later." icon="campaign" />
         </View>
-      ) : (
-        <FlashList
-          style={{ flex: 1 }}
-          data={items}
-          keyExtractor={(i) => i.id}
-          ListHeaderComponent={listHeader}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl
-              refreshing={feedQuery.isRefetching && !feedQuery.isFetchingNextPage}
-              onRefresh={() => feedQuery.refetch()}
-              tintColor={colors.primary}
-            />
-          }
-          renderItem={({ item }) => (
-            <PressClay
-              onPress={() =>
-                router.push({
-                  pathname: '/news-article',
-                  params: { id: item.id },
-                } as never)
-              }
-            >
-              <ClayView depth={7} puffy={12} style={styles.card}>
+      </View>
+    ) : (
+      <FlashList
+        style={{ flex: 1 }}
+        data={items}
+        keyExtractor={(i) => i.id}
+        ListHeaderComponent={listHeader}
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={feedQuery.isRefetching && !feedQuery.isFetchingNextPage}
+            onRefresh={() => feedQuery.refetch()}
+            tintColor={colors.primary}
+          />
+        }
+        renderItem={({ item }) => {
+          const selected = isWideShell && selectedArticleId === item.id;
+          return (
+            <PressClay onPress={() => openArticle(item.id)}>
+              <ClayView
+                depth={selected ? 4 : 7}
+                puffy={12}
+                style={[
+                  styles.card,
+                  selected && { borderWidth: 2, borderColor: colors.primary },
+                ]}
+              >
                 <View style={styles.row}>
                   {item.coverImageUrl ? (
-                    <ProgressiveImage
-                      source={{ uri: item.coverImageUrl }}
-                      style={styles.thumb}
-                      resizeMode="cover"
-                    />
+                    <ProgressiveImage source={{ uri: item.coverImageUrl }} style={styles.thumb} resizeMode="cover" />
                   ) : (
                     <View style={styles.thumbFallback}>
                       <Icon name="campaign" size={18} />
@@ -257,25 +281,48 @@ export default function NewsFeedScreen() {
                 </View>
               </ClayView>
             </PressClay>
-          )}
-          onEndReached={() => {
-            if (feedQuery.hasNextPage && !feedQuery.isFetchingNextPage) {
-              feedQuery.fetchNextPage();
-            }
-          }}
-          onEndReachedThreshold={0.5}
-          ListFooterComponent={
-            feedQuery.isFetchingNextPage ? (
-              <View style={{ paddingVertical: 16 }}>
-                <Skeleton height={18} width="60%" borderRadius={10} />
-              </View>
-            ) : null
+          );
+        }}
+        onEndReached={() => {
+          if (feedQuery.hasNextPage && !feedQuery.isFetchingNextPage) {
+            feedQuery.fetchNextPage();
           }
-        />
-      )}
+        }}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          feedQuery.isFetchingNextPage ? (
+            <View style={{ paddingVertical: 16 }}>
+              <Skeleton height={18} width="60%" borderRadius={10} />
+            </View>
+          ) : null
+        }
+      />
+    );
+
+  const feedColumn = (
+    <View style={{ flex: 1, minHeight: 0 }}>
+      {feedHeader}
+      {feedList}
+    </View>
+  );
+
+  return (
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
+      <PageContainer>
+        {isWideShell ? (
+          <SplitPane sidebar={feedColumn} sidebarWidth={SPLIT_PANE_LIST_WIDTH}>
+            <ArticlePanel articleId={selectedArticleId ?? undefined} />
+          </SplitPane>
+        ) : (
+          feedColumn
+        )}
+      </PageContainer>
 
       {can('news.create') ? (
-        <AnimatedItem animation={ClayAnimations.FAB} style={{ position: 'absolute', bottom: tabBottomPad + 16, right: 20 }}>
+        <AnimatedItem
+          animation={ClayAnimations.FAB}
+          style={{ position: 'absolute', bottom: tabBottomPad + 16, right: isWideShell ? 24 : 20 }}
+        >
           <PressClay onPress={() => router.push('/news-create-article' as never)}>
             <ClayView depth={15} puffy={20} color={colors.primary} style={styles.fab}>
               <Icon name="add" size={30} color="#FFF" />
@@ -360,7 +407,6 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   headerTitle: {
-    marginLeft: 14,
     flex: 1,
   },
   filterRow: {

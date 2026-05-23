@@ -1,6 +1,7 @@
 import type { GradeDto } from '@/src/api/generatedClient';
 
-function weightedGpaForRows(rows: GradeDto[]): number {
+/** Weighted GPA on a 4.0 scale for a set of grade rows (matches server calculator). */
+export function weightedGpaForGrades(rows: GradeDto[]): number {
   let q = 0;
   let c = 0;
   for (const r of rows) {
@@ -24,7 +25,7 @@ export function computeSemesterGpaTrend(grades: GradeDto[]): { semester: string;
 
   const entries = Array.from(bySem.entries()).map(([semester, rows]) => ({
     semester,
-    gpa: weightedGpaForRows(rows),
+    gpa: weightedGpaForGrades(rows),
     sortKey: Math.max(...rows.map((r) => new Date(r.createdAt).getTime())),
   }));
 
@@ -43,4 +44,38 @@ export function getLatestGrade(grades: GradeDto[]): GradeDto | undefined {
 export function displayLetterOrScore(g: GradeDto): string {
   if (g.letterGrade?.trim()) return g.letterGrade.trim();
   return `${Math.round(g.score)}%`;
+}
+
+export function getTotalCredits(grades: GradeDto[]): number {
+  return grades.filter((g) => g.credits > 0).reduce((sum, g) => sum + g.credits, 0);
+}
+
+export function countDistinctCourses(grades: GradeDto[]): number {
+  return new Set(grades.map((g) => g.courseName.trim().toLowerCase())).size;
+}
+
+/** Semesters ordered newest first (by latest grade row in each term). */
+export function getUniqueSemesters(grades: GradeDto[]): string[] {
+  const bySem = new Map<string, number>();
+  for (const g of grades) {
+    const t = new Date(g.createdAt).getTime();
+    const prev = bySem.get(g.semester) ?? 0;
+    if (t > prev) bySem.set(g.semester, t);
+  }
+  return Array.from(bySem.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([semester]) => semester);
+}
+
+/** Positive = improved vs previous term. */
+export function getGpaDeltaFromTrend(trend: { semester: string; gpa: number }[]): number | null {
+  if (trend.length < 2) return null;
+  const latest = trend[trend.length - 1]!.gpa;
+  const previous = trend[trend.length - 2]!.gpa;
+  return Math.round((latest - previous) * 100) / 100;
+}
+
+export function formatGpaDelta(delta: number): string {
+  const sign = delta > 0 ? '+' : '';
+  return `${sign}${delta.toFixed(2)}`;
 }

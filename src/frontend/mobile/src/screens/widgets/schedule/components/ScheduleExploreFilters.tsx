@@ -7,6 +7,7 @@ import { ClayView, AppText, Icon } from '@/src/components/ui';
 import { useThemeColors, TAB_BAR_OVERLAY_CLEARANCE } from '@/src/hooks';
 import type { ScheduleDictionary } from '../hooks/useScheduleDictionary';
 import type { ScheduleItemDto, RoomDto, HostDto } from '@/src/api/generatedClient';
+import type { GroupOption } from '@/src/utils/groupOptions';
 import { HostPickerSheet } from './HostPickerSheet';
 
 export type ExploreFilterKind = 'all' | 'host' | 'group' | 'room' | 'subject';
@@ -28,6 +29,7 @@ interface Props {
   /** Distinct subject labels for the selected day (see deriveSubjectLabel). */
   subjectTopics: string[];
   searchHosts: (query: string) => Promise<HostDto[]>;
+  groupOptions: GroupOption[];
   onApply: (payload: {
     kind: ExploreFilterKind;
     hostId?: string;
@@ -49,6 +51,7 @@ export function ScheduleExploreFiltersSheet({
   rooms,
   subjectTopics,
   searchHosts,
+  groupOptions: groupOptionsProp,
   onApply,
 }: Props) {
   const colors = useThemeColors();
@@ -107,17 +110,16 @@ export function ScheduleExploreFiltersSheet({
     })) as PickerOption<string>[];
   }, [events]);
 
-  const groupOptions = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const e of events) {
-      if (e.groupId && e.groupName) m.set(e.groupId, e.groupName);
-    }
-    return [...m.entries()].map(([id, name]) => ({
-      value: id,
-      label: name,
-      icon: 'groups',
-    })) as PickerOption<string>[];
-  }, [events]);
+  const groupOptions = useMemo(
+    () =>
+      groupOptionsProp.map((g) => ({
+        value: g.id,
+        label: g.name,
+        subtitle: g.subtitle,
+        icon: 'groups' as const,
+      })) as PickerOption<string>[],
+    [groupOptionsProp],
+  );
 
   const roomOptions = useMemo(() => {
     return (rooms as RoomDto[]).map((r) => ({

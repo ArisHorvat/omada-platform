@@ -58,6 +58,15 @@ public class UserService : IUserService
                 widgetAccess[perm.WidgetKey] = perm.AccessLevel.ToString().ToLower();
         }
 
+        var org = await _uow.Repository<Organization>().GetByIdAsync(orgId);
+        if (org != null)
+        {
+            var enabledKeys = OrganizationWidgetKeys.GetEffectiveEnabledKeys(org);
+            widgetAccess = widgetAccess
+                .Where(kv => OrganizationWidgetKeys.IsCoreWidget(kv.Key) || enabledKeys.Contains(kv.Key))
+                .ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
+        }
+
         var preferences = ParsePreferencesJson(user.PreferencesJson);
 
         return new ServiceResponse<UserProfileDto>(true, new UserProfileDto

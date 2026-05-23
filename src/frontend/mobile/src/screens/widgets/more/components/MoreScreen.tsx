@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 import { AppText, ClayView, Icon, IconName } from '@/src/components/ui';
+import { PageContainer } from '@/src/components/layout/PageContainer';
 import { useThemeColors, useDebounce } from '@/src/hooks'; 
 import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
 import { SearchBar } from '@/src/screens/widgets/dashboard/components/SearchBar';
@@ -51,7 +52,7 @@ export default function AllAppsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      
+      <PageContainer>
       {/* HEADER */}
       <View style={[styles.header, { paddingTop: insets.top }]}>
         <View style={styles.headerTop}>
@@ -130,6 +131,7 @@ export default function AllAppsScreen() {
         )}
 
       </ScrollView>
+      </PageContainer>
     </View>
   );
 }

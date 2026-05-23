@@ -15,9 +15,15 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 interface Props {
     selectedDate: Date;
     onDateSelect: (date: Date) => void;
+    /** Hidden on wide tab shell (sidebar nav is primary). */
+    showBackButton?: boolean;
 }
 
-export const ScheduleHeader: React.FC<Props> = ({ selectedDate, onDateSelect }) => {
+export const ScheduleHeader: React.FC<Props> = ({
+  selectedDate,
+  onDateSelect,
+  showBackButton = true,
+}) => {
     const colors = useThemeColors();
     const [showCalendar, setShowCalendar] = useState(false);
 
@@ -32,8 +38,8 @@ export const ScheduleHeader: React.FC<Props> = ({ selectedDate, onDateSelect }) 
             <View style={{ paddingHorizontal: 20, paddingBottom: 8, paddingTop: 8 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <ClayBackButton />
-                        <AppText variant="h2" weight="bold" style={{ marginLeft: 16 }}>Schedule</AppText>
+                        {showBackButton ? <ClayBackButton /> : null}
+                        <AppText variant="h2" weight="bold" style={{ marginLeft: showBackButton ? 16 : 0 }}>Schedule</AppText>
                     </View>
                     
                     {/* 🚀 TODAY BUTTON (Icon Style) */}

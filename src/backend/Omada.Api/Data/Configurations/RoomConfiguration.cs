@@ -14,6 +14,8 @@ public class RoomConfiguration : IEntityTypeConfiguration<Room>
         builder.Property(r => r.Resources).HasMaxLength(500);
         builder.Property(r => r.CustomAttributes).HasColumnType("nvarchar(max)");
         builder.Property(r => r.AmenitiesJson).HasColumnType("nvarchar(max)");
+        builder.Property(r => r.MapIconKey).HasMaxLength(64);
+        builder.Property(r => r.FloorplanFeatureKey).HasMaxLength(128);
 
         // Organization Cascade (Keep this)
         // 1. 🚀 ADD GLOBAL FILTER

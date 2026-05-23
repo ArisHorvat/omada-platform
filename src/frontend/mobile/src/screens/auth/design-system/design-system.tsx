@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
 // Imports from your system
+import { PageContainer } from '@/src/components/layout';
 import { AppText, Icon } from '@/src/components/ui';
 import { PressScale } from '@/src/components/animations';
 import { useThemeColors } from '@/src/hooks';
@@ -31,6 +32,7 @@ export default function DesignSystemScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar style="auto" />
+      <PageContainer style={{ flex: 1 }}>
       
       {/* Header */}
       <View style={styles.header}>
@@ -77,6 +79,7 @@ export default function DesignSystemScreen() {
         {activeTab === 'Logic' && <HooksGallery />}
       </ScrollView>
 
+      </PageContainer>
     </SafeAreaView>
   );
 }

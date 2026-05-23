@@ -26,14 +26,15 @@ export interface UseGradesLogicOptions {
   enabled?: boolean;
   /** Optional injected client (tests). */
   client?: GradesClient;
+  /** Filter transcript rows by linked org group. */
+  groupId?: string | null;
 }
 
 /**
- * Fetches grades + GPA via NSwag `GradesClient.getMyGrades` (`GET /api/grades/me`).
- * Scoped by React Query key to the active organization id.
+ * Fetches grades + GPA via `GET /api/grades/me` (optional `groupId` query).
  */
 export function useGradesLogic(options: UseGradesLogicOptions = {}): UseGradesLogicResult {
-  const { enabled = true, client: clientOverride } = options;
+  const { enabled = true, client: clientOverride, groupId = null } = options;
   const { organization } = useCurrentOrganization();
   const orgId = organization?.id ?? '';
   const queryClient = useQueryClient();
@@ -41,8 +42,8 @@ export function useGradesLogic(options: UseGradesLogicOptions = {}): UseGradesLo
   const client = useMemo(() => clientOverride ?? gradesApi, [clientOverride]);
 
   const gradesQuery = useQuery({
-    queryKey: QUERY_KEYS.grades.me(orgId),
-    queryFn: async () => unwrap(client.getMyGrades()),
+    queryKey: QUERY_KEYS.grades.me(orgId, groupId),
+    queryFn: async () => unwrap(client.getMyGrades(groupId)),
     enabled: enabled && !!orgId,
     staleTime: 1000 * 60 * 2,
   });
@@ -51,7 +52,7 @@ export function useGradesLogic(options: UseGradesLogicOptions = {}): UseGradesLo
 
   const invalidateGrades = async () => {
     if (!orgId) return;
-    await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.grades.me(orgId) });
+    await queryClient.invalidateQueries({ queryKey: ['grades', orgId] });
   };
 
   return {

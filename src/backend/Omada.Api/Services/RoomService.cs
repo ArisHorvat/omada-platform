@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Omada.Api.Abstractions;
@@ -69,7 +70,10 @@ public class RoomService : IRoomService
             Name = request.Name,
             Location = request.Location,
             Capacity = request.Capacity,
-            IsBookable = request.IsBookable
+            IsBookable = request.IsBookable,
+            MapIconKey = string.IsNullOrWhiteSpace(request.MapIconKey) ? null : request.MapIconKey.Trim(),
+            AmenitiesJson = SerializeAmenityKeys(request.AmenityKeys),
+            Resources = string.IsNullOrWhiteSpace(request.Resources) ? null : request.Resources.Trim()
         };
 
         var placementError = await TryApplyBuildingFloorAndRoleAsync(request, orgId, room);
@@ -111,6 +115,10 @@ public class RoomService : IRoomService
         room.Location = request.Location;
         room.Capacity = request.Capacity;
         room.IsBookable = request.IsBookable;
+        room.MapIconKey = string.IsNullOrWhiteSpace(request.MapIconKey) ? null : request.MapIconKey.Trim();
+        room.Resources = string.IsNullOrWhiteSpace(request.Resources) ? null : request.Resources.Trim();
+        if (request.AmenityKeys != null)
+            room.AmenitiesJson = SerializeAmenityKeys(request.AmenityKeys);
 
         var placementError = await TryApplyBuildingFloorAndRoleAsync(request, orgId, room);
         if (placementError != null)
@@ -278,6 +286,23 @@ public class RoomService : IRoomService
         return null;
     }
 
+    private static string? SerializeAmenityKeys(IEnumerable<string>? keys)
+    {
+        if (keys == null)
+            return null;
+        var names = new List<string>();
+        foreach (var raw in keys)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+                continue;
+            if (!Enum.TryParse<RoomAmenity>(raw.Trim(), ignoreCase: true, out var a))
+                continue;
+            names.Add(a.ToString());
+        }
+
+        return names.Count == 0 ? null : JsonSerializer.Serialize(names);
+    }
+
     private static RoomBookingDto MapBookingToDto(RoomBooking b) =>
         new()
         {
@@ -323,6 +348,8 @@ public class RoomService : IRoomService
             CustomAttributes = room.CustomAttributes,
             Amenities = ParseAmenitiesJson(room.AmenitiesJson).ToList(),
             RequiredRoleId = room.RequiredRoleId,
+            MapIconKey = room.MapIconKey,
+            FloorplanFeatureKey = room.FloorplanFeatureKey,
             AllowedEventTypes = room.AllowedEventTypes.Select(et => new EventTypeDto
             {
                 Id = et.Id,

@@ -2,6 +2,8 @@
 
 This directory is an **optional Next.js 16** app. It is **not** the primary Omada web client.
 
+**Main docs:** [`../../README.md`](../../README.md) · [`../../docs/Frontend.md`](../../docs/Frontend.md) · [`../../docs/Configuration.md`](../../docs/Configuration.md) · **Mobile (Expo web):** [`../mobile/README.md`](../mobile/README.md)
+
 ## What to use for the product
 
 The **Expo** app under `src/frontend/mobile` targets iOS, Android, and **web** (`npm run web`). Shared screens and **platform-specific** files (e.g. `Component.web.tsx` / `Component.tsx`) must live **inside that project** so Metro resolves them when bundling for web.

@@ -7,8 +7,8 @@ public class UserImportDtoValidator : AbstractValidator<UserImportDto>
 {
     public UserImportDtoValidator()
     {
-        RuleFor(x => x.FirstName).NotEmpty().WithMessage("First name is required for imported users.");
-        RuleFor(x => x.LastName).NotEmpty().WithMessage("Last name is required for imported users.");
+        RuleFor(x => x.FirstName).MaximumLength(100);
+        RuleFor(x => x.LastName).MaximumLength(100);
         
         RuleFor(x => x.Email)
             .NotEmpty().WithMessage("Email is required for imported users.")

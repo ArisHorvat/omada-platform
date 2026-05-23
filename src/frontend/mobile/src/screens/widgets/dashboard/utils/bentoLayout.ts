@@ -9,12 +9,22 @@ export interface BentoLayoutItem {
   effectiveSize: BentoEffectiveSize;
 }
 
+export type BentoColumnCount = 2 | 3;
+
 export function computeBentoLayout(
   favorites: string[],
-  definitions: Record<string, { defaultSize?: BentoEffectiveSize } | undefined>
+  definitions: Record<string, { defaultSize?: BentoEffectiveSize } | undefined>,
+  columns: BentoColumnCount = 2,
 ): BentoLayoutItem[] {
   const out: BentoLayoutItem[] = [];
   let i = 0;
+
+  const isSmallNatural = (widgetId: string) => {
+    const def = definitions[widgetId];
+    if (!def) return false;
+    const natural = def.defaultSize ?? 'small';
+    return natural !== 'wide' && natural !== 'large';
+  };
 
   while (i < favorites.length) {
     const id = favorites[i];
@@ -29,6 +39,31 @@ export function computeBentoLayout(
 
     if (isNaturalWide) {
       out.push({ id, effectiveSize: natural });
+      i += 1;
+      continue;
+    }
+
+    if (columns === 3) {
+      const smallBatch: string[] = [];
+      let j = i;
+      while (j < favorites.length && smallBatch.length < 3) {
+        const batchId = favorites[j];
+        if (!definitions[batchId] || !isSmallNatural(batchId)) break;
+        smallBatch.push(batchId);
+        j += 1;
+      }
+
+      if (smallBatch.length === 3) {
+        smallBatch.forEach((sid) => out.push({ id: sid, effectiveSize: 'small' }));
+        i += 3;
+        continue;
+      }
+      if (smallBatch.length === 2) {
+        smallBatch.forEach((sid) => out.push({ id: sid, effectiveSize: 'small' }));
+        i += 2;
+        continue;
+      }
+      out.push({ id, effectiveSize: 'wide' });
       i += 1;
       continue;
     }

@@ -34,11 +34,17 @@ public class WebSpiderService : IWebSpiderService
 
     private static readonly string[] ScheduleHeaderKeywords =
     [
-        "time", "ora", "orar", "interval", "hour",
+        "time", "ora", "orele", "orar", "interval", "hour", "ziua",
         "room", "sala", "classroom", "cabinet",
         "course", "curs", "class", "disciplina", "materie", "subject",
         "professor", "prof", "teacher", "titular", "cadru",
-        "group", "grup", "grupa", "serie"
+        "group", "grup", "grupa", "serie", "formatia", "formatie"
+    ];
+
+    /// <summary>Minimum timetable header signals (avoids treating program index tables as schedules).</summary>
+    private static readonly string[] StrongScheduleHeaderSignals =
+    [
+        "orele", "disciplina", "formatia", "formatie", "ziua", "cadrul didactic"
     ];
 
     public WebSpiderService(HttpClient http, IGeminiService gemini, ILogger<WebSpiderService> logger)
@@ -218,7 +224,7 @@ public class WebSpiderService : IWebSpiderService
 
         try
         {
-            return ExtractScheduleFromTableCore(html);
+            return ExtractScheduleFromHtmlCore(html);
         }
         catch (HtmlStructureChangedException ex)
         {
@@ -234,63 +240,167 @@ public class WebSpiderService : IWebSpiderService
         }
     }
 
-    /// <summary>HtmlAgilityPack-only extraction; throws <see cref="HtmlStructureChangedException"/> when no schedule rows can be read.</summary>
-    private List<ScrapedEventDto> ExtractScheduleFromTableCore(string html)
+    public async Task<SiteScheduleExtractionResult> ExtractScheduleFromSiteAsync(
+        string startUrl,
+        int maxSchedulePages = 64,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(startUrl))
+            throw new ArgumentException("Start URL is required.", nameof(startUrl));
+
+        if (!Uri.TryCreate(startUrl, UriKind.Absolute, out var startUri))
+            throw new ArgumentException("Start URL must be absolute.", nameof(startUrl));
+
+        var allowedHost = startUri.Host;
+        var hubDirectory = GetDirectoryPrefix(startUri);
+        var queue = new Queue<string>();
+        var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var pageSummaries = new List<ScrapedSchedulePageSummaryDto>();
+        var allEvents = new List<ScrapedEventDto>();
+        var hubLinksDiscovered = 0;
+        var schedulePagesScraped = 0;
+        const int maxHttpFetches = 120;
+
+        var startNormalized = NormalizeUrl(startUri);
+        var startHtml = await FetchHtmlAsync(startNormalized, cancellationToken);
+        if (startHtml != null)
+        {
+            visited.Add(startNormalized);
+            var startKind = ClassifyPage(startHtml);
+            List<ScrapedEventDto> startEvents;
+            try
+            {
+                startEvents = ExtractScheduleFromHtmlCore(startHtml, startNormalized);
+            }
+            catch (HtmlStructureChangedException)
+            {
+                startEvents = new List<ScrapedEventDto>();
+            }
+
+            if (startEvents.Count > 0)
+            {
+                allEvents.AddRange(startEvents);
+                schedulePagesScraped++;
+                pageSummaries.Add(new ScrapedSchedulePageSummaryDto
+                {
+                    SourceUrl = startNormalized,
+                    EventCount = startEvents.Count,
+                    PageKind = SpiderPageKind.Schedule,
+                });
+            }
+            else
+            {
+                pageSummaries.Add(new ScrapedSchedulePageSummaryDto
+                {
+                    SourceUrl = startNormalized,
+                    EventCount = 0,
+                    PageKind = startKind,
+                });
+
+                var hubLinks = ExtractScheduleHubHrefs(startHtml, new Uri(startNormalized), allowedHost, hubDirectory)
+                    .OrderBy(u => u, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                hubLinksDiscovered = hubLinks.Count;
+                foreach (var link in hubLinks)
+                {
+                    if (!visited.Contains(link))
+                        queue.Enqueue(link);
+                }
+            }
+        }
+
+        var httpFetches = visited.Count;
+
+        while (queue.Count > 0 && schedulePagesScraped < maxSchedulePages && httpFetches < maxHttpFetches)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var url = queue.Dequeue();
+            if (!visited.Add(url))
+                continue;
+
+            httpFetches++;
+            var html = await FetchHtmlAsync(url, cancellationToken);
+            if (html == null)
+                continue;
+
+            var kind = ClassifyPage(html);
+            List<ScrapedEventDto> pageEvents;
+            try
+            {
+                pageEvents = ExtractScheduleFromHtmlCore(html, url);
+            }
+            catch (HtmlStructureChangedException)
+            {
+                pageEvents = new List<ScrapedEventDto>();
+            }
+
+            if (pageEvents.Count > 0)
+            {
+                allEvents.AddRange(pageEvents);
+                schedulePagesScraped++;
+                pageSummaries.Add(new ScrapedSchedulePageSummaryDto
+                {
+                    SourceUrl = url,
+                    EventCount = pageEvents.Count,
+                    PageKind = SpiderPageKind.Schedule,
+                });
+                continue;
+            }
+
+            pageSummaries.Add(new ScrapedSchedulePageSummaryDto
+            {
+                SourceUrl = url,
+                EventCount = 0,
+                PageKind = kind,
+            });
+
+            if (kind == SpiderPageKind.Schedule)
+                continue;
+
+            var baseUri = new Uri(url);
+            foreach (var next in ExtractScheduleHubHrefs(html, baseUri, allowedHost, hubDirectory))
+            {
+                if (!visited.Contains(next))
+                    queue.Enqueue(next);
+            }
+        }
+
+        var wasTruncated = queue.Count > 0 || schedulePagesScraped >= maxSchedulePages;
+
+        return new SiteScheduleExtractionResult
+        {
+            StartUrl = startUrl,
+            Events = allEvents,
+            Pages = pageSummaries,
+            CrawledMultiplePages = schedulePagesScraped > 1
+                || (hubLinksDiscovered > 0 && schedulePagesScraped > 0),
+            HubLinksDiscovered = hubLinksDiscovered,
+            SchedulePagesScraped = schedulePagesScraped,
+            WasTruncated = wasTruncated,
+        };
+    }
+
+    /// <summary>HtmlAgilityPack-only extraction from all timetable tables on one page.</summary>
+    private static List<ScrapedEventDto> ExtractScheduleFromHtmlCore(string html, string? sourcePageUrl = null)
     {
         try
         {
             var doc = new HtmlDocument();
             doc.LoadHtml(html);
-
-            HtmlNode? table = null;
-            foreach (var t in doc.DocumentNode.SelectNodes("//table") ?? Enumerable.Empty<HtmlNode>())
-            {
-                if (TableLooksLikeSchedule(t))
-                {
-                    table = t;
-                    break;
-                }
-            }
-
-            table ??= doc.DocumentNode.SelectSingleNode("//table");
-
-            if (table == null)
-                throw new HtmlStructureChangedException("No HTML <table> found or no schedule-like table matched.");
-
-            var grid = ParseTableIntoGrid(table);
-            if (grid.Count == 0)
-                throw new HtmlStructureChangedException("Schedule table parsed to an empty grid (structure may have changed).");
-
-            var headerRowIndex = FindHeaderRowIndex(grid);
-            if (headerRowIndex < 0)
-                headerRowIndex = 0;
-
-            var columnMap = MapColumnsFromHeaderRow(grid[headerRowIndex]);
             var results = new List<ScrapedEventDto>();
 
-            for (var r = headerRowIndex + 1; r < grid.Count; r++)
+            foreach (var table in doc.DocumentNode.SelectNodes("//table") ?? Enumerable.Empty<HtmlNode>())
             {
-                var row = grid[r];
-                if (row.All(string.IsNullOrWhiteSpace))
+                if (!TableLooksLikeSchedule(table))
                     continue;
 
-                var dto = new ScrapedEventDto
-                {
-                    Time = GetCell(row, columnMap.Time),
-                    ClassName = GetCell(row, columnMap.ClassName),
-                    Room = GetCell(row, columnMap.Room),
-                    Professor = GetCell(row, columnMap.Professor),
-                    GroupNumber = GetCell(row, columnMap.Group)
-                };
-
-                if (string.IsNullOrWhiteSpace(dto.ClassName) && string.IsNullOrWhiteSpace(dto.Time))
-                    continue;
-
-                results.Add(dto);
+                var groupHint = InferGroupLabelBeforeTable(table);
+                results.AddRange(ExtractRowsFromScheduleTable(table, groupHint, sourcePageUrl));
             }
 
             if (results.Count == 0)
-                throw new HtmlStructureChangedException("HtmlAgilityPack completed but extracted zero class rows.");
+                throw new HtmlStructureChangedException("No schedule-like tables with class rows were found on the page.");
 
             return results;
         }
@@ -302,6 +412,135 @@ public class WebSpiderService : IWebSpiderService
         {
             throw new HtmlStructureChangedException("HtmlAgilityPack table schedule extraction failed unexpectedly.", ex);
         }
+    }
+
+    private static List<ScrapedEventDto> ExtractRowsFromScheduleTable(
+        HtmlNode table,
+        string? groupHint,
+        string? sourcePageUrl = null)
+    {
+        var grid = ParseTableIntoGrid(table);
+        if (grid.Count == 0)
+            return new List<ScrapedEventDto>();
+
+        var headerRowIndex = FindHeaderRowIndex(grid);
+        if (headerRowIndex < 0)
+            headerRowIndex = 0;
+
+        var columnMap = MapColumnsFromHeaderRow(grid[headerRowIndex]);
+        var results = new List<ScrapedEventDto>();
+
+        for (var r = headerRowIndex + 1; r < grid.Count; r++)
+        {
+            var row = grid[r];
+            if (row.All(string.IsNullOrWhiteSpace))
+                continue;
+
+            var day = GetCell(row, columnMap.Day);
+            var hours = GetCell(row, columnMap.Time);
+            var frequency = GetCell(row, columnMap.Frequency);
+            var time = string.Join(" ",
+                new[] { day, hours, frequency }.Where(s => !string.IsNullOrWhiteSpace(s)));
+
+            var className = GetCell(row, columnMap.ClassName);
+            var activityType = NormalizeActivityType(GetCell(row, columnMap.ActivityType));
+
+            var group = GetCell(row, columnMap.Group);
+            if (string.IsNullOrWhiteSpace(group) && !string.IsNullOrWhiteSpace(groupHint))
+                group = groupHint;
+
+            var dto = new ScrapedEventDto
+            {
+                Time = time,
+                ClassName = className,
+                Room = GetCell(row, columnMap.Room),
+                Professor = GetCell(row, columnMap.Professor),
+                GroupNumber = group,
+                ActivityType = activityType,
+                SourcePageUrl = sourcePageUrl,
+            };
+
+            if (string.IsNullOrWhiteSpace(dto.ClassName) && string.IsNullOrWhiteSpace(dto.Time))
+                continue;
+
+            results.Add(dto);
+        }
+
+        return results;
+    }
+
+    private static string? InferGroupLabelBeforeTable(HtmlNode table)
+    {
+        for (var node = table.PreviousSibling; node != null; node = node.PreviousSibling)
+        {
+            if (node.NodeType != HtmlNodeType.Element)
+                continue;
+
+            if (node.Name is "h1" or "h2" or "h3" or "h4")
+            {
+                var text = HtmlEntity.DeEntitize(node.InnerText ?? "").Trim();
+                if (!string.IsNullOrWhiteSpace(text))
+                    return text;
+            }
+        }
+
+        return null;
+    }
+
+    private static IEnumerable<string> ExtractScheduleHubHrefs(
+        string html,
+        Uri pageUri,
+        string allowedHost,
+        string? directoryPrefix)
+    {
+        var doc = new HtmlDocument();
+        doc.LoadHtml(html);
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var a in doc.DocumentNode.SelectNodes("//a[@href]") ?? Enumerable.Empty<HtmlNode>())
+        {
+            var href = a.GetAttributeValue("href", string.Empty);
+            if (string.IsNullOrWhiteSpace(href))
+                continue;
+
+            if (href.StartsWith('#') || href.StartsWith("mailto:", StringComparison.OrdinalIgnoreCase)
+                || href.StartsWith("javascript:", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (!Uri.TryCreate(pageUri, href, out var absolute))
+                continue;
+
+            if (!string.Equals(absolute.Host, allowedHost, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (absolute.Scheme != Uri.UriSchemeHttp && absolute.Scheme != Uri.UriSchemeHttps)
+                continue;
+
+            if (!absolute.AbsolutePath.EndsWith(".html", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (!string.IsNullOrWhiteSpace(directoryPrefix)
+                && !absolute.AbsolutePath.StartsWith(directoryPrefix, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var fileName = Path.GetFileName(absolute.LocalPath);
+            if (fileName.Equals("index.html", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var normalized = NormalizeUrl(absolute);
+            if (seen.Add(normalized))
+                yield return normalized;
+        }
+    }
+
+    private static string? GetDirectoryPrefix(Uri uri)
+    {
+        var path = uri.AbsolutePath;
+        if (!path.EndsWith(".html", StringComparison.OrdinalIgnoreCase))
+            return path.TrimEnd('/');
+
+        var dir = Path.GetDirectoryName(path)?.Replace('\\', '/') ?? "/";
+        return dir.EndsWith('/') ? dir : dir + "/";
     }
 
     private static string StripHtmlToPlainText(string html)
@@ -568,15 +807,19 @@ public class WebSpiderService : IWebSpiderService
         if (rows == null)
             return false;
 
-        foreach (var tr in rows.Take(3))
+        foreach (var tr in rows.Take(4))
         {
             var cells = tr.SelectNodes("./th|./td");
-            if (cells == null || cells.Count == 0)
+            if (cells == null || cells.Count < 4)
                 continue;
 
             var joined = string.Join(" ", cells.Select(c => c.InnerText)).ToLowerInvariant();
+            var strongHits = StrongScheduleHeaderSignals.Count(k => joined.Contains(k, StringComparison.Ordinal));
+            if (strongHits >= 2)
+                return true;
+
             var matches = ScheduleHeaderKeywords.Count(k => joined.Contains(k, StringComparison.Ordinal));
-            if (matches >= 2)
+            if (matches >= 3 && joined.Contains("disciplina", StringComparison.Ordinal))
                 return true;
         }
 
@@ -735,11 +978,14 @@ public class WebSpiderService : IWebSpiderService
 
     private sealed class ColumnMap
     {
+        public int Day = -1;
         public int Time = -1;
+        public int Frequency = -1;
         public int ClassName = -1;
         public int Room = -1;
         public int Professor = -1;
         public int Group = -1;
+        public int ActivityType = -1;
     }
 
     private static ColumnMap MapColumnsFromHeaderRow(IReadOnlyList<string> headerCells)
@@ -748,16 +994,22 @@ public class WebSpiderService : IWebSpiderService
         for (var i = 0; i < headerCells.Count; i++)
         {
             var h = headerCells[i].ToLowerInvariant();
-            if (map.Time < 0 && MatchesAny(h, "time", "ora", "interval", "hour", "zi", "day"))
+            if (map.Day < 0 && MatchesAny(h, "ziua", "zi ", "day"))
+                map.Day = i;
+            if (map.Time < 0 && MatchesAny(h, "orele", "ora", "time", "interval", "hour"))
                 map.Time = i;
+            if (map.Frequency < 0 && MatchesAny(h, "frecventa", "frecven", "frequency", "sapt"))
+                map.Frequency = i;
             if (map.ClassName < 0 && MatchesAny(h, "curs", "disciplina", "materie", "class", "course", "subject", "denumire"))
                 map.ClassName = i;
             if (map.Room < 0 && MatchesAny(h, "room", "sala", "cabinet", "classroom"))
                 map.Room = i;
-            if (map.Professor < 0 && MatchesAny(h, "prof", "teacher", "titular", "cadru"))
+            if (map.Professor < 0 && MatchesAny(h, "prof", "teacher", "titular", "cadru", "didactic"))
                 map.Professor = i;
-            if (map.Group < 0 && MatchesAny(h, "group", "grup", "grupa", "serie"))
+            if (map.Group < 0 && MatchesAny(h, "group", "grup", "grupa", "serie", "formatia", "formatie"))
                 map.Group = i;
+            if (map.ActivityType < 0 && MatchesAny(h, "tipul", "tip ", "type", "activitate"))
+                map.ActivityType = i;
         }
 
         Fallback(map, headerCells.Count);
@@ -792,11 +1044,14 @@ public class WebSpiderService : IWebSpiderService
             }
         }
 
-        Pick(ref map.Time, 0);
-        Pick(ref map.ClassName, 1);
-        Pick(ref map.Room, 2);
-        Pick(ref map.Professor, 3);
+        Pick(ref map.Day, 0);
+        Pick(ref map.Time, 1);
+        Pick(ref map.Frequency, 2);
+        Pick(ref map.Room, 3);
         Pick(ref map.Group, 4);
+        Pick(ref map.ActivityType, 5);
+        Pick(ref map.ClassName, 6);
+        Pick(ref map.Professor, 7);
     }
 
     private static bool MatchesAny(string cell, params string[] tokens) =>
@@ -807,5 +1062,25 @@ public class WebSpiderService : IWebSpiderService
         if (index < 0 || index >= row.Count)
             return string.Empty;
         return row[index].Trim();
+    }
+
+    private static string NormalizeActivityType(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+            return string.Empty;
+
+        var t = raw.Trim();
+        if (t.Contains("laborator", StringComparison.OrdinalIgnoreCase))
+            return "Laborator";
+        if (t.Contains("seminar", StringComparison.OrdinalIgnoreCase))
+            return "Seminar";
+        if (t.Contains("curs", StringComparison.OrdinalIgnoreCase))
+            return "Curs";
+        if (t.Contains("proiect", StringComparison.OrdinalIgnoreCase))
+            return "Proiect";
+        if (t.Contains("consult", StringComparison.OrdinalIgnoreCase))
+            return "Consultatie";
+
+        return char.ToUpper(t[0]) + t[1..];
     }
 }

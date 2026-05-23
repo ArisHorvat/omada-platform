@@ -5,7 +5,9 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 
+import { AuthContentShell } from '@/src/components/layout';
 import { useThemeColors } from '@/src/hooks';
+import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
 import { AppText, IconInput, AppButton, ClayView } from '@/src/components/ui';
 import { useLoginLogic } from '../hooks/useLoginLogic';
 import SelectOrganization from './select-organization';
@@ -48,7 +50,9 @@ export default function LoginScreen() {
   };
 
   return (
+    <AuthContentShell style={{ flex: 1 }}>
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+      <ClayBackButton absolute onPress={() => router.replace('/')} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.container}>
           
@@ -125,7 +129,12 @@ export default function LoginScreen() {
           </ClayView>
 
           <View style={styles.footer}>
-            <AppText style={{ color: colors.subtle }}>Don't have an organization?</AppText>
+            <TouchableOpacity onPress={() => router.push('/(auth)/join')}>
+              <AppText weight="bold" style={{ color: colors.primary }}>
+                Have an invite code? Join organization
+              </AppText>
+            </TouchableOpacity>
+            <AppText style={{ color: colors.subtle, marginTop: 16 }}>Don't have an organization?</AppText>
             <TouchableOpacity onPress={() => router.push('/(auth)/register-flow')}>
               <AppText weight="bold" style={{ color: colors.primary, marginTop: 4 }}>
                 Create New Organization
@@ -144,6 +153,7 @@ export default function LoginScreen() {
         isLoading={isSubmitting} // Use RHF submitting state
       />
     </KeyboardAvoidingView>
+    </AuthContentShell>
   );
 }
 

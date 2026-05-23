@@ -71,7 +71,7 @@ export default function CampusMapScreen() {
                 ]}
               >
                 <View style={styles.markerBubble}>
-                  <MaterialIcons name="apartment" size={28} color={colors.primary} />
+                  <MaterialIcons name="apartment" size={22} color={colors.primary} />
                 </View>
                 <View style={{ flex: 1, marginLeft: 12 }}>
                   <AppText variant="body" weight="bold" numberOfLines={2}>

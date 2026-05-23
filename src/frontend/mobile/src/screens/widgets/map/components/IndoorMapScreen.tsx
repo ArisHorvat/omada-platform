@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   ScrollView,
@@ -6,27 +6,70 @@ import {
   ActivityIndicator,
   Alert,
   useWindowDimensions,
+  StyleSheet,
+  Dimensions,
 } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { mapsApi, roomsApi, unwrap } from '@/src/api';
-import type { FloorDto, RoomDto } from '@/src/api/generatedClient';
+import type { FloorDto, RoomDto, ScheduleItemDto } from '@/src/api/generatedClient';
+import { WidgetPageShell } from '@/src/components/layout';
 import { useThemeColors } from '@/src/hooks';
-import { AppText, BottomSheet } from '@/src/components/ui';
+import { AppButton, AppText, BottomSheet } from '@/src/components/ui';
+import { roomAmenityTags } from '@/src/screens/widgets/rooms/utils/roomAmenityTags';
+import { displayGeoRoomName, displayRoomName } from '@/src/screens/widgets/rooms/utils/roomDisplayName';
 import { createStyles } from '../styles/indoor.styles';
 import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
 import { buildBusyRoomIdSet } from '../utils/roomOccupancy';
 import { useMapScheduleForToday } from '../hooks/useMapSchedule';
 import { useFloorplan } from '../hooks/useFloorplan';
-import { parseFloorplanPoiPoints } from '../utils/parseFloorplanGeoJson';
-import { FloorplanPoiKindIcon } from './floorplanPoiIcons';
+import {
+  parseFloorplanPoiPoints,
+  parseFloorplanPolygonsWithFeatureIndices,
+  type GeoJsonRoomPolygon,
+} from '../utils/parseFloorplanGeoJson';
+import { FloorplanPolygonEditorOverlay } from '@/src/screens/admin/components/FloorplanPolygonEditorOverlay';
+import { inferDefaultBookableFloorplanPolygon } from '@/src/screens/widgets/map/utils/floorplanSemanticStyles';
+import { FloorplanPoiMarkerIcon } from './floorplanPoiIcons';
+import { FloorplanRoomMapGlyph } from './FloorplanRoomMapGlyph';
 import { FLOORPLAN_POI_KINDS, type FloorplanPoiKind } from '@/src/screens/admin/utils/floorplanGeoJsonEdit';
 import { FloorplanViewer } from './FloorplanViewer';
-import { FloorplanGeoJsonOverlay } from './FloorplanGeoJsonOverlay';
+import { FloorplanMapLegendPanel } from './FloorplanMapLegendPanel';
+import {
+  DEFAULT_FLOORPLAN_POI_COLORS,
+  defaultPoiLegendLabel,
+  MAP_VIEW_ROOM_BUSY,
+  MAP_VIEW_ROOM_FREE,
+} from '@/src/screens/widgets/map/utils/floorplanMapLegendConstants';
+import { RoomBookingModal } from '@/src/screens/widgets/rooms/components/RoomBookingModal';
+import { useRoomBooking } from '@/src/screens/widgets/rooms/hooks/useRoomBooking';
+
+function formatEventTime(isoStart: Date, isoEnd: Date): string {
+  const o: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit' };
+  const a = isoStart.toLocaleTimeString(undefined, o);
+  const b = isoEnd.toLocaleTimeString(undefined, o);
+  return `${a} – ${b}`;
+}
+
+function resolveRoomFromGeoOverlay(rooms: RoomDto[], geo: { roomName: string; roomId: string }): RoomDto | undefined {
+  const id = geo.roomId?.trim();
+  if (id) {
+    const byId = rooms.find((r) => r.id === id);
+    if (byId) return byId;
+    const byKey = rooms.find((r) => (r.floorplanFeatureKey ?? '').trim() === id);
+    if (byKey) return byKey;
+  }
+  const nm = geo.roomName?.trim().toLowerCase();
+  if (nm) return rooms.find((r) => r.name.trim().toLowerCase() === nm);
+  return undefined;
+}
 
 export default function IndoorMapScreen() {
   const colors = useThemeColors();
+  const router = useRouter();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const { organization } = useCurrentOrganization();
   const orgId = organization?.id;
@@ -38,12 +81,7 @@ export default function IndoorMapScreen() {
 
   const [activeFloorId, setActiveFloorId] = useState<string | null>(null);
   const [geoRoomSheet, setGeoRoomSheet] = useState<{ roomName: string; roomId: string } | null>(null);
-
-  const buildingsQuery = useQuery({
-    queryKey: ['map-buildings', orgId],
-    queryFn: async () => unwrap(mapsApi.getBuildingsForOrganization(orgId!)),
-    enabled: !!orgId,
-  });
+  const [mapViewport, setMapViewport] = useState<{ w: number; h: number } | null>(null);
 
   const floorsQuery = useQuery({
     queryKey: ['map-floors', buildingId],
@@ -58,6 +96,23 @@ export default function IndoorMapScreen() {
   });
 
   const scheduleQuery = useMapScheduleForToday();
+
+  const {
+    form: bookingForm,
+    isModalVisible: isBookingModalVisible,
+    bookingRoom,
+    isSaving: isBookingSaving,
+    startBooking,
+    confirmBooking,
+    closeModal: closeBookingModal,
+    eventTypes,
+    searchHosts,
+  } = useRoomBooking({
+    onBooked: () => {
+      scheduleQuery.refetch();
+      roomsQuery.refetch();
+    },
+  });
 
   const floors = useMemo(() => {
     const list = floorsQuery.data ?? [];
@@ -95,32 +150,17 @@ export default function IndoorMapScreen() {
 
   const geoJsonPois = useMemo(() => parseFloorplanPoiPoints(floorplanGeoJson), [floorplanGeoJson]);
 
+  const indexedFloorplanPolygons = useMemo(
+    () => (floorplanGeoJson ? parseFloorplanPolygonsWithFeatureIndices(floorplanGeoJson) : []),
+    [floorplanGeoJson],
+  );
+
   const poiKindUi = (raw: string): FloorplanPoiKind => {
     const x = raw.toLowerCase();
     return (FLOORPLAN_POI_KINDS as readonly string[]).includes(x) ? (x as FloorplanPoiKind) : 'other';
   };
 
-  const poiBg = (kind: FloorplanPoiKind) => {
-    switch (kind) {
-      case 'entrance':
-        return '#2563eb';
-      case 'exit':
-        return '#16a34a';
-      case 'elevator':
-        return '#7c3aed';
-      case 'stairs':
-        return '#ea580c';
-      case 'restroom':
-        return '#0d9488';
-      default:
-        return '#64748b';
-    }
-  };
-
-  const buildingName = useMemo(() => {
-    if (!buildingId) return 'Building';
-    return buildingsQuery.data?.find((b) => b.id === buildingId)?.name ?? 'Building';
-  }, [buildingsQuery.data, buildingId]);
+  const poiBg = (kind: FloorplanPoiKind) => DEFAULT_FLOORPLAN_POI_COLORS[kind];
 
   const roomsOnFloor: RoomDto[] = useMemo(() => {
     if (!activeFloor || !buildingId) return [];
@@ -131,56 +171,105 @@ export default function IndoorMapScreen() {
     });
   }, [roomsQuery.data, activeFloor, buildingId]);
 
+  /** Bookable-only: opening the room sheet for WC / storage / not-on-Rooms rows is misleading. */
+  const isIndoorPolygonBookable = useCallback(
+    (room: GeoJsonRoomPolygon) => {
+      const dto = resolveRoomFromGeoOverlay(roomsOnFloor, { roomName: room.roomName, roomId: room.roomId });
+      if (dto) return dto.isBookable === true;
+      if (room.isBookable === false) return false;
+      if (room.isBookable === true) return true;
+      return inferDefaultBookableFloorplanPolygon(room.roomName);
+    },
+    [roomsOnFloor],
+  );
+
   const busyRoomIds = useMemo(
     () => buildBusyRoomIdSet(scheduleQuery.data, new Date()),
     [scheduleQuery.data],
   );
 
-  const floorplanHeight = width * 0.72;
+  const geoBusyIds = useMemo(() => {
+    const out = new Set<string>();
+    for (const id of busyRoomIds) {
+      out.add(id);
+      const room = roomsOnFloor.find((r) => r.id === id);
+      const fk = room?.floorplanFeatureKey?.trim();
+      if (fk) out.add(fk);
+    }
+    return out;
+  }, [busyRoomIds, roomsOnFloor]);
 
-  const onRoomPress = (room: RoomDto, busy: boolean) => {
-    Alert.alert(room.name, busy ? 'Busy (scheduled now)' : 'Free');
-  };
+  const mapLayoutWidth = mapViewport?.w ?? width;
+  const mapHeightRatio =
+    mapViewport && mapViewport.w > 0 ? mapViewport.h / mapViewport.w : 0.68;
 
-  const loading =
-    floorsQuery.isLoading ||
-    roomsQuery.isLoading ||
-    buildingsQuery.isLoading ||
-    scheduleQuery.isLoading;
+  const sheetRoom = useMemo(
+    () => (geoRoomSheet ? resolveRoomFromGeoOverlay(roomsOnFloor, geoRoomSheet) : undefined),
+    [geoRoomSheet, roomsOnFloor],
+  );
+
+  const sheetRoomBusy = sheetRoom ? busyRoomIds.has(sheetRoom.id) : false;
+
+  const sheetRoomSchedule: ScheduleItemDto[] = useMemo(() => {
+    const rid = sheetRoom?.id;
+    if (!rid || !scheduleQuery.data?.length) return [];
+    return scheduleQuery.data
+      .filter((e) => e.roomId === rid)
+      .sort((a, b) => a.startTime.getTime() - b.startTime.getTime())
+      .slice(0, 12);
+  }, [sheetRoom?.id, scheduleQuery.data]);
+
+  const sheetHeight = useMemo(
+    () => Math.min(Math.round(Dimensions.get('window').height * 0.54), 480),
+    [],
+  );
 
   const floorplanLoading = !!activeFloor?.floorplanId && floorplanQuery.isLoading;
 
   return (
+    <WidgetPageShell fullBleed>
     <View style={styles.container}>
-      <View style={styles.header}>
-        <AppText variant="h3" weight="bold" style={styles.title}>
-          {buildingName}
-        </AppText>
-        <AppText variant="body" style={styles.subtitle}>
-          Floorplans and live room status
-        </AppText>
-      </View>
-
-      {loading && (
-        <View style={{ padding: 24, alignItems: 'center' }}>
-          <ActivityIndicator color={colors.primary} />
+      {floorsQuery.isLoading && floors.length === 0 ? (
+        <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
         </View>
-      )}
+      ) : null}
 
-      {!floorsQuery.isLoading && floors.length === 0 && (
-        <View style={{ padding: 24 }}>
+      {!floorsQuery.isLoading && floors.length === 0 ? (
+        <View style={{ flex: 1, padding: 24, justifyContent: 'center' }}>
           <AppText variant="body" style={{ color: colors.subtle }}>
             No floors are configured for this building yet.
           </AppText>
         </View>
-      )}
+      ) : null}
 
-      {floors.length > 0 && (
-        <>
+      {floors.length > 0 ? (
+        <View
+          style={{ flex: 1 }}
+          onLayout={(e) => {
+            const { width: lw, height: lh } = e.nativeEvent.layout;
+            if (lw > 0 && lh > 0) setMapViewport({ w: lw, h: lh });
+          }}
+        >
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            style={styles.floorScroll}
+            style={[
+              styles.floorScroll,
+              {
+                position: 'absolute',
+                left: 8,
+                right: 8,
+                top: insets.top + 6,
+                zIndex: 8,
+                backgroundColor: colors.card,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: colors.border,
+              },
+            ]}
             contentContainerStyle={styles.floorScrollContent}
           >
             {floors.map((f) => (
@@ -190,92 +279,163 @@ export default function IndoorMapScreen() {
                 onPress={() => setActiveFloorId(f.id)}
               >
                 <AppText
-                  variant="body"
+                  variant="caption"
                   weight="bold"
                   style={[styles.floorText, activeFloorId === f.id && styles.activeFloorText]}
                 >
-                  {`Level ${f.levelNumber}`}
+                  {`Lvl ${f.levelNumber}`}
                 </AppText>
               </TouchableOpacity>
             ))}
           </ScrollView>
 
-          <View style={[styles.floorplanBlock, { minHeight: floorplanHeight }]}>
+          <View style={[styles.floorplanBlock, { position: 'relative' }]}>
             {displayFloorplanImageUrl ? (
               <>
                 {floorplanLoading && (
-                  <View style={{ position: 'absolute', top: 8, right: 8, zIndex: 3 }}>
+                  <View style={{ position: 'absolute', top: insets.top + 52, right: 10, zIndex: 7 }}>
                     <ActivityIndicator color={colors.primary} />
                   </View>
                 )}
-                <FloorplanViewer imageUrl={displayFloorplanImageUrl} isDark={colors.isDark}>
+                <FloorplanViewer
+                  imageUrl={displayFloorplanImageUrl}
+                  isDark={colors.isDark}
+                  fullBleed
+                  layoutWidth={mapLayoutWidth}
+                  heightRatio={mapHeightRatio}
+                  vectorMode
+                >
                   {floorplanGeoJson ? (
-                    <FloorplanGeoJsonOverlay
+                    <FloorplanPolygonEditorOverlay
                       geoJsonData={floorplanGeoJson}
-                      width={width}
-                      height={floorplanHeight}
+                      width={mapLayoutWidth}
+                      height={mapLayoutWidth * mapHeightRatio}
                       colors={colors}
-                      onRoomPress={(p) => setGeoRoomSheet(p)}
+                      selectedFeatureIndex={null}
+                      editMode={false}
+                      onMoveVertex={() => {}}
+                      interactive
+                      isVectorMode={false}
+                      availabilityTintActive={scheduleQuery.isSuccess}
+                      busyRoomIds={geoBusyIds}
+                      darkFloorplanSlab
+                      showRoomMapIcons
+                      resolveIsBookable={isIndoorPolygonBookable}
+                      resolveMapIconKey={(room) => {
+                        const g = room.mapIconKey?.trim();
+                        if (g) return g;
+                        const dto = resolveRoomFromGeoOverlay(roomsOnFloor, {
+                          roomName: room.roomName,
+                          roomId: room.roomId,
+                        });
+                        return dto?.mapIconKey?.trim() || undefined;
+                      }}
+                      resolveRoomLabelName={(r) => displayGeoRoomName(r)}
+                      roomLabelVariant={scheduleQuery.isSuccess ? 'indoor-map' : 'overlay'}
+                      onSelectRoom={(roomIndex) => {
+                        const entry = indexedFloorplanPolygons[roomIndex];
+                        if (!entry || !isIndoorPolygonBookable(entry.room)) return;
+                        setGeoRoomSheet({ roomName: entry.room.roomName, roomId: entry.room.roomId });
+                      }}
                     />
                   ) : null}
                   {geoJsonPois.map((p) => {
                     const kind = poiKindUi(p.pinKind);
                     const bg = poiBg(kind);
+                    const pin = 26;
+                    const half = pin / 2;
                     return (
                       <TouchableOpacity
                         key={p.pinId || `${p.x}-${p.y}-${p.pinKind}`}
                         activeOpacity={0.85}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                         onPress={() =>
-                          Alert.alert(p.label?.trim() || p.pinKind, `${p.pinKind}${p.pinId ? ` · ${p.pinId}` : ''}`)
+                          Alert.alert(
+                            p.label?.trim() || defaultPoiLegendLabel(kind),
+                            [p.pinKind, p.pinId ? `Id: ${p.pinId}` : null].filter(Boolean).join('\n'),
+                          )
                         }
                         style={{
                           position: 'absolute',
                           left: `${p.x * 100}%`,
                           top: `${p.y * 100}%`,
-                          marginLeft: -11,
-                          marginTop: -11,
-                          width: 22,
-                          height: 22,
-                          borderRadius: 11,
-                          backgroundColor: bg,
-                          borderWidth: 2,
-                          borderColor: 'rgba(255,255,255,0.95)',
-                          zIndex: 4,
+                          marginLeft: -half,
+                          marginTop: -half,
+                          width: pin,
+                          height: pin,
                           alignItems: 'center',
                           justifyContent: 'center',
+                          zIndex: 4,
                         }}
                       >
-                        <FloorplanPoiKindIcon kind={kind} size={12} color="#fff" />
+                        <View
+                          style={{
+                            width: pin,
+                            height: pin,
+                            borderRadius: half,
+                            backgroundColor: bg,
+                            borderWidth: 2,
+                            borderColor: 'rgba(255,255,255,0.95)',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 1 },
+                            shadowOpacity: 0.25,
+                            shadowRadius: 2,
+                            elevation: 3,
+                          }}
+                        >
+                          <FloorplanPoiMarkerIcon kind={kind} customIconKey={p.iconKey} size={13} color="#fff" />
+                        </View>
                       </TouchableOpacity>
                     );
                   })}
-                  {roomsOnFloor.map((room) => {
-                    const cx = room.coordinateX;
-                    const cy = room.coordinateY;
-                    if (cx == null || cy == null) return null;
-                    const busy = busyRoomIds.has(room.id);
-                    const focused = focusRoomId === room.id;
-                    return (
-                      <TouchableOpacity
-                        key={room.id}
-                        activeOpacity={0.85}
-                        onPress={() => onRoomPress(room, busy)}
-                        style={[
-                          styles.roomPin,
-                          focused && styles.roomPinFocused,
-                          {
-                            left: `${cx * 100}%`,
-                            top: `${cy * 100}%`,
-                            backgroundColor: busy ? '#ef4444' : '#22c55e',
-                            borderColor: focused ? colors.primary : 'rgba(255,255,255,0.9)',
-                            borderWidth: focused ? 3 : 2,
-                            zIndex: 2,
-                          },
-                        ]}
-                      />
-                    );
-                  })}
+                  {!floorplanGeoJson
+                    ? roomsOnFloor.map((room) => {
+                        const cx = room.coordinateX;
+                        const cy = room.coordinateY;
+                        if (cx == null || cy == null) return null;
+                        const busy = busyRoomIds.has(room.id);
+                        return (
+                          <TouchableOpacity
+                            key={`status-${room.id}`}
+                            activeOpacity={0.85}
+                            onPress={() => {
+                              if (room.isBookable !== true) return;
+                              setGeoRoomSheet({ roomName: displayRoomName(room), roomId: room.id });
+                            }}
+                            style={{
+                              position: 'absolute',
+                              left: `${cx * 100}%`,
+                              top: `${cy * 100}%`,
+                              width: 14,
+                              height: 14,
+                              borderRadius: 7,
+                              marginLeft: 3,
+                              marginTop: -17,
+                              backgroundColor: busy ? MAP_VIEW_ROOM_BUSY : MAP_VIEW_ROOM_FREE,
+                              borderWidth: 1.5,
+                              borderColor: '#FFFFFF',
+                              zIndex: 4,
+                            }}
+                          />
+                        );
+                      })
+                    : null}
                 </FloorplanViewer>
+                <FloorplanMapLegendPanel
+                  colors={colors}
+                  mode="indoor"
+                  wideLayout={width >= 560}
+                  style={{
+                    position: 'absolute',
+                    left: 8,
+                    right: 8,
+                    bottom: Math.max(insets.bottom, 8) + 6,
+                    zIndex: 6,
+                    maxHeight: width >= 560 ? 120 : 168,
+                  }}
+                />
               </>
             ) : (
               <View style={{ flex: 1, minHeight: 160, justifyContent: 'center', alignItems: 'center' }}>
@@ -285,38 +445,139 @@ export default function IndoorMapScreen() {
               </View>
             )}
           </View>
-        </>
-      )}
+        </View>
+      ) : null}
 
-      <BottomSheet isVisible={!!geoRoomSheet} onClose={() => setGeoRoomSheet(null)} height={280}>
+      <BottomSheet isVisible={!!geoRoomSheet} onClose={() => setGeoRoomSheet(null)} height={sheetHeight}>
         {geoRoomSheet ? (
-          <>
-            <AppText variant="h3" weight="bold" style={{ marginBottom: 8, color: colors.text }}>
-              {geoRoomSheet.roomName}
+          <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            <AppText variant="h3" weight="bold" style={{ marginBottom: 6, color: colors.text }}>
+              {sheetRoom ? displayRoomName(sheetRoom) : displayGeoRoomName(geoRoomSheet)}
             </AppText>
-            <AppText variant="caption" style={{ color: colors.subtle, marginBottom: 16 }}>
-              Room ID: {geoRoomSheet.roomId || '—'}
+            <View
+              style={{
+                alignSelf: 'flex-start',
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                borderRadius: 999,
+                marginBottom: 10,
+                backgroundColor: sheetRoomBusy ? `${MAP_VIEW_ROOM_BUSY}33` : `${MAP_VIEW_ROOM_FREE}33`,
+                borderWidth: 1,
+                borderColor: sheetRoomBusy ? MAP_VIEW_ROOM_BUSY : MAP_VIEW_ROOM_FREE,
+              }}
+            >
+              <AppText
+                variant="caption"
+                weight="bold"
+                style={{ color: sheetRoomBusy ? MAP_VIEW_ROOM_BUSY : MAP_VIEW_ROOM_FREE }}
+              >
+                {sheetRoomBusy ? 'Busy now' : 'Available now'}
+              </AppText>
+            </View>
+
+            {sheetRoom ? (
+              <>
+                <AppText variant="body" style={{ color: colors.text, marginBottom: 6 }}>
+                  {[
+                    sheetRoom.capacity != null ? `Up to ${sheetRoom.capacity} people` : null,
+                    sheetRoom.location?.trim() || null,
+                    sheetRoom.isBookable ? null : 'Not bookable',
+                  ]
+                    .filter(Boolean)
+                    .join(' · ') || (sheetRoom.isBookable ? 'Bookable space' : 'Not bookable')}
+                </AppText>
+                <AppText variant="caption" style={{ color: colors.subtle, marginBottom: 12 }}>
+                  {(() => {
+                    const tags = roomAmenityTags(sheetRoom);
+                    return tags.length > 0
+                      ? tags.join(' · ')
+                      : 'No amenities or resources listed — admins can add them when editing the room.';
+                  })()}
+                </AppText>
+              </>
+            ) : (
+              <AppText variant="caption" style={{ color: colors.primary, marginBottom: 12 }}>
+                This polygon is not linked to a bookable room yet. Ask an admin to publish rooms from the floorplan
+                editor.
+              </AppText>
+            )}
+
+            <AppText variant="label" weight="bold" style={{ color: colors.subtle, marginBottom: 8 }}>
+              Today’s schedule here
             </AppText>
-            <AppText variant="body" style={{ color: colors.text }}>
-              Scheduling and room details can be linked here in a future iteration.
-            </AppText>
-          </>
+            {sheetRoom && sheetRoomSchedule.length > 0 ? (
+              sheetRoomSchedule.map((e) => (
+                <View key={e.id} style={{ marginBottom: 10 }}>
+                  <AppText variant="caption" style={{ color: colors.subtle, marginBottom: 2 }}>
+                    {formatEventTime(e.startTime, e.endTime)}
+                  </AppText>
+                  <AppText variant="body" weight="bold" style={{ color: colors.text }}>
+                    {e.title?.trim() || e.typeName || 'Event'}
+                  </AppText>
+                  {!!e.hostName?.trim() && (
+                    <AppText variant="caption" style={{ color: colors.subtle }}>
+                      {e.hostName}
+                    </AppText>
+                  )}
+                </View>
+              ))
+            ) : (
+              <AppText variant="caption" style={{ color: colors.subtle, marginBottom: 16 }}>
+                {sheetRoom
+                  ? 'No events on today’s campus schedule for this room (or your org has no events yet).'
+                  : 'Link this area to a room to see shared schedule entries.'}
+              </AppText>
+            )}
+
+            <View style={{ gap: 10, marginTop: 8, paddingBottom: 12 }}>
+              <AppButton
+                title="Book this room"
+                disabled={!sheetRoom?.isBookable}
+                onPress={() => {
+                  if (!sheetRoom?.isBookable) return;
+                  setGeoRoomSheet(null);
+                  startBooking(sheetRoom);
+                }}
+              />
+              <AppButton
+                title="View in Rooms"
+                variant="secondary"
+                disabled={!sheetRoom}
+                onPress={() => {
+                  setGeoRoomSheet(null);
+                  router.push({
+                    pathname: '/(app)/(widgets)/rooms',
+                    params: sheetRoom?.id ? { roomId: sheetRoom.id } : undefined,
+                  });
+                }}
+              />
+              <AppButton
+                title="Open schedule"
+                variant="outline"
+                onPress={() => {
+                  setGeoRoomSheet(null);
+                  router.push({
+                    pathname: '/(app)/(tabs)/schedule',
+                    params: sheetRoom?.id ? { roomId: sheetRoom.id } : undefined,
+                  });
+                }}
+              />
+            </View>
+          </ScrollView>
         ) : null}
       </BottomSheet>
 
-      <View style={styles.legend}>
-        <AppText variant="body" weight="bold" style={styles.legendTitle}>
-          Status
-        </AppText>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendColor, { backgroundColor: '#22c55e' }]} />
-          <AppText style={styles.legendText}>Free</AppText>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendColor, { backgroundColor: '#ef4444' }]} />
-          <AppText style={styles.legendText}>Busy</AppText>
-        </View>
-      </View>
+      <RoomBookingModal
+        visible={isBookingModalVisible && !!bookingRoom}
+        onClose={closeBookingModal}
+        room={bookingRoom}
+        form={bookingForm}
+        isSaving={isBookingSaving}
+        onSave={confirmBooking}
+        eventTypes={eventTypes}
+        searchHosts={searchHosts}
+      />
     </View>
+    </WidgetPageShell>
   );
 }

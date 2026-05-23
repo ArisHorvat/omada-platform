@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, TouchableOpacity, ScrollView, Modal, StyleSheet } from 'react-native';
-import { useThemeColors } from '@/src/hooks';
+import { useEscapeKey, useThemeColors } from '@/src/hooks';
 import { AppText, ClayView, Icon, AppButton } from '@/src/components/ui';
 import { UserOrganizationDto } from '@/src/api/generatedClient';
 
@@ -20,6 +20,8 @@ export default function SelectOrganization({
   isLoading,
 }: SelectOrganizationProps) {
   const colors = useThemeColors();
+
+  useEscapeKey(visible, onCancel);
 
   return (
     <Modal visible={visible} transparent animationType="fade">

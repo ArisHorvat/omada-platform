@@ -1,5 +1,4 @@
 import apiClient from '@/src/api/apiClient';
-import { UserImportDto } from '@/src/api/generatedClient';
 
 export const ToolsService = {
   extractColors: async (imageUri: string): Promise<string[]> => {
@@ -20,19 +19,6 @@ export const ToolsService = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     
-    return response.data.data; 
-  },
-
-  parseUsers: async (fileUri: string, fileName: string, mimeType: string): Promise<UserImportDto[]> => {
-    const formData = new FormData();
-    // @ts-ignore
-    formData.append('file', { uri: fileUri, name: fileName, type: mimeType });
-
-    const response = await apiClient.post('/tools/parse-users', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-
-    // FIX: Unwrap the Axios response AND the C# ServiceResponse
     return response.data.data; 
   },
 

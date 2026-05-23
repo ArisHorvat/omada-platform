@@ -6,7 +6,7 @@ export default function AppIndex() {
 
   // Safety check
   if (!activeSession) {
-    return <Redirect href="/(auth)/login-flow" />;
+    return <Redirect href="/" />;
   }
 
   const role = activeSession.role;

@@ -1,46 +1,62 @@
 import { StyleSheet } from 'react-native';
 
-export const createStyles = (colors: any) => StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-  },
-  header: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 16,
-  },
-  card: {
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 16,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  course: {
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  due: {
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 16,
-  },
-  button: {
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-});
+export const createStyles = (colors: {
+  text: string;
+  card: string;
+  background: string;
+  primary: string;
+  secondary: string;
+  subtle: string;
+}) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      paddingHorizontal: 20,
+      paddingTop: 56,
+    },
+    headerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    addBtn: {
+      width: 44,
+      height: 44,
+      borderRadius: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    chipRow: {
+      gap: 8,
+      paddingBottom: 12,
+    },
+    chip: {
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 14,
+    },
+    listContent: {
+      paddingBottom: 120,
+    },
+    card: {
+      padding: 16,
+      borderRadius: 18,
+      marginBottom: 14,
+      borderWidth: 1,
+      borderColor: colors.subtle + '33',
+    },
+    cardHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 8,
+      gap: 8,
+    },
+    title: {
+      marginBottom: 12,
+    },
+    actions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+  });

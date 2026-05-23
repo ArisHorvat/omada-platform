@@ -29,6 +29,12 @@ public class Room : BaseEntity, IOrganizationScoped
     public Guid? RequiredRoleId { get; set; }
     public virtual Role? RequiredRole { get; set; }
 
+    /// <summary>Optional icon key for map UIs (matches floorplan GeoJSON <c>mapIconKey</c> presets).</summary>
+    public string? MapIconKey { get; set; }
+
+    /// <summary>Stable id from floorplan GeoJSON <c>roomId</c> — used when publishing polygons to bookable <see cref="Room"/> rows.</summary>
+    public string? FloorplanFeatureKey { get; set; }
+
     public Guid OrganizationId { get; set; }
     public ICollection<EventType> AllowedEventTypes { get; set; } = new List<EventType>();
     public virtual ICollection<MapPin> MapPins { get; set; } = new List<MapPin>();

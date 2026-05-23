@@ -1,6 +1,8 @@
 # Omada Web Spider — Documentation
 
-This document describes the **Web Spider** subsystem in `src/backend/Omada.Api/`: crawling HTML pages, extracting **timetable rows** and **news articles**, **merging** them into the database with hash-based change detection, **entity resolution** (host + room), **Google Gemini** for NLP (news triage, schedule fallback), and **Hangfire** background jobs.
+This document describes the **Web Spider** subsystem in `src/backend/Omada.Api/`: crawling public HTML, extracting **timetable rows** and **news articles**, **merging** schedules into the database with hash-based change detection, **entity resolution** (host + room), optional **Google Gemini** fallbacks, **Hangfire** background jobs, and the **mobile admin workspace** used to configure URLs and preview results.
+
+**Related:** [Configuration.md](Configuration.md) (`.env`, `appsettings`, mobile API URL) · [Root README](../README.md)
 
 ---
 
@@ -9,12 +11,14 @@ This document describes the **Web Spider** subsystem in `src/backend/Omada.Api/`
 | Capability | Role |
 |------------|------|
 | **Schedule discovery** | Breadth-first crawl of same-host links; classify pages as **menu** vs **schedule** (HTML table heuristics). |
-| **Schedule extraction** | Parse timetable-like `<table>` grids (rowspan/colspan) into `ScrapedEventDto`. If the DOM no longer matches, **self-heal** via Gemini JSON extraction from plain text. |
+| **Schedule extraction (single page)** | Parse timetable-like `<table>` grids (rowspan/colspan) into `ScrapedEventDto`. Romanian and English column headers supported (e.g. Ziua, Orele, Disciplina, Sala, Formatia, Cadrul didactic, Tipul). |
+| **Schedule extraction (site / hub)** | When the start URL is an **index** (no rows on first page), pre-queue same-directory `.html` links (e.g. UBB `tabelar/index.html` → `I1.html`, `M2.html`) and scrape up to a configurable page cap. |
 | **News discovery** | Crawl with news-oriented heuristics (paths, `<article>`, archives). |
 | **News extraction** | Strip boilerplate, extract title + body; optional **Gemini** `NewsCategory` triage. |
-| **Persistence & merge** | Hangfire job loads org schedule URL → extract rows → **upsert** `ScrapedClassEvent` by natural key + **SHA-256 hash**; resolve **HostId** / **RoomId** in batch + cache. |
+| **Persistence & merge** | Hangfire job loads org schedule URL → **site extraction** → **upsert** `ScrapedClassEvent` by natural key + **SHA-256 hash**; resolve **HostId** / **RoomId** in batch + cache. |
+| **Admin preview API** | Authenticated endpoints for org admins to save URLs, preview scrape, discover links, and enqueue sync without editing `appsettings.json`. |
 
-The in-app calendar entity is **`Event`**. Persisted spider timetable snapshots live in **`ScrapedClassEvent`** (separate table).
+The in-app calendar entity is **`Event`**. Persisted spider timetable snapshots live in **`ScrapedClassEvent`** (separate table). The admin UI previews scraped rows before sync.
 
 ---
 
@@ -22,6 +26,11 @@ The in-app calendar entity is **`Event`**. Persisted spider timetable snapshots 
 
 ```mermaid
 flowchart TB
+    subgraph Admin["Admin HTTP"]
+        WC[WebSpiderController]
+        WAS[WebSpiderAdminService]
+    end
+
     subgraph HTTP["HTTP / jobs"]
         HF[Hangfire ScheduleSyncJobs]
     end
@@ -29,6 +38,7 @@ flowchart TB
     subgraph Services["Services"]
         WSS[WebSpiderService]
         SSS[ScheduleSpiderSyncService]
+        SUR[SpiderUrlResolver]
         SER[ScrapedEntityResolutionService]
         GEM[GeminiService]
     end
@@ -38,175 +48,43 @@ flowchart TB
         DB[(SQL Server)]
     end
 
+    WC --> WAS
+    WAS --> WSS
+    WAS --> SUR
     HF --> SSS
     SSS --> WSS
-    SSS --> SER
+    SSS --> SUR
     SSS --> GEM
     WSS --> GEM
     SSS --> UOW
-    UOW --> DB
-    SER --> DB
+    SUR --> DB
+    SUR --> DB
 ```
 
-- **`WebSpiderService`**: HTTP fetch (via injected `HttpClient`), HTML parsing (HtmlAgilityPack), discovery + extraction.
-- **`scheduleSpiderSyncService`**: orchestrates URL config → HTML → `ExtractScheduleFromTableAsync` → resolution maps → upsert `ScrapedClassEvent`.
-- **`GeminiService`**: Google Generative Language API (`generateContent`) for categories and schedule JSON fallback.
-- **`ScrapedEntityResolutionService`**: batched org users + rooms + fuzzy match; `IMemoryCache` per org.
+- **`WebSpiderService`**: HTTP fetch (injected `HttpClient`), HtmlAgilityPack parsing, discovery, single-page and multi-page schedule extraction, news extraction.
+- **`WebSpiderAdminService`**: Org-scoped preview/discover/sync orchestration for the admin API.
+- **`SpiderUrlResolver`**: Resolves schedule/news URLs — **database first** (`Organization.SpiderSchedulePageUrl`, `Organization.SpiderNewsStartUrl`), then `appsettings.json` fallback for schedule only.
+- **`ScheduleSpiderSyncService`**: Uses **`ExtractScheduleFromSiteAsync`** (not single-page only), resolution maps, hash upsert.
+- **`GeminiService`**: Generative Language API for news categories and schedule JSON fallback when DOM parsing fails.
 
 ---
 
-## 3. File inventory
+## 3. URL configuration
 
-### 3.1 Core service & contract
+### 3.1 Database (preferred)
 
-| File | Purpose |
-|------|---------|
-| `Services/WebSpiderService.cs` | Main implementation: BFS crawls, `ClassifyPage` / `ClassifyNewsPage`, table grid parsing, `ExtractScheduleFromTableAsync` (HAP + Gemini fallback), `ExtractNewsArticleAsync`, HTML strip helpers. |
-| `Services/Interfaces/IWebSpiderService.cs` | Public API surface for the spider (see §5). |
+| Column | Entity | Purpose |
+|--------|--------|---------|
+| `SpiderSchedulePageUrl` | `Organization` | Timetable index or year page (e.g. UBB tabelar index or `I1.html`). |
+| `SpiderNewsStartUrl` | `Organization` | News site entry URL for discovery/preview. |
 
-### 3.2 Gemini (shared by spider + news)
+Migration: `AddOrganizationSpiderUrls`.
 
-| File | Purpose |
-|------|---------|
-| `Services/GeminiService.cs` | `CategorizeNewsExcerptAsync`, `ExtractScheduleFromRawTextAsync` (JSON array → `ScrapedEventDto`), HTTP POST to `generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`. |
-| `Services/Interfaces/IGeminiService.cs` | Interface for Gemini operations. |
+Saved via **`PUT /api/web-spider/config`** (`SaveSpiderConfigRequest`). The mobile **Web crawling** workspace calls this so admins do not need to edit server config files.
 
-### 3.3 Schedule merge / Hangfire
+### 3.2 appsettings.json (fallback)
 
-| File | Purpose |
-|------|---------|
-| `Services/ScheduleSpiderSyncService.cs` | `SyncScheduleDatabaseAsync`: fetch HTML, parse schedule, build resolution maps, hash upsert, `ScrapedClassEvent` CRUD. |
-| `Services/Interfaces/IScheduleSpiderSyncService.cs` | Contract for merge job. |
-| `Infrastructure/Hangfire/ScheduleSyncJobs.cs` | Hangfire entry point: `SyncScheduleDatabaseAsync(Guid organizationId)` with `[AutomaticRetry(Attempts = 3)]`, resolves scoped `IScheduleSpiderSyncService`. |
-| `Infrastructure/Hangfire/HangfireDashboardNoAuthFilter.cs` | Dashboard auth filter (currently allows all — **lock down in production**). |
-
-### 3.4 Entity resolution (batch + cache)
-
-| File | Purpose |
-|------|---------|
-| `Services/ScrapedEntityResolutionService.cs` | Loads org members (+ role) and rooms once (cached); fuzzy-matches professor string → `HostId`, room text → `RoomId`; returns `ScrapedEventResolutionMaps`. |
-| `Services/Interfaces/IScrapedEntityResolutionService.cs` | Contract. |
-| `DTOs/Scraping/ScrapedEventResolutionMaps.cs` | `HostByProfessorKey` + `RoomByRoomTextKey` dictionaries. |
-
-### 3.5 Hashing & exceptions
-
-| File | Purpose |
-|------|---------|
-| `Infrastructure/Scraping/ScrapedEventHasher.cs` | `CalculateHash(ScrapedEventDto)` — SHA-256 over normalized timetable fields for change detection. |
-| `Infrastructure/Scraping/HtmlStructureChangedException.cs` | Thrown when the table parser cannot produce rows or HAP throws; triggers **Gemini schedule fallback** in `WebSpiderService`. |
-
-### 3.6 DTOs (`DTOs/Scraping/`)
-
-| File | Purpose |
-|------|---------|
-| `ScrapedEventDto.cs` | One timetable row: `ClassName`, `Time`, `Room`, `Professor`, `GroupNumber`. |
-| `SpiderDiscoveryResult.cs` | Wrapper: `StartUrl` + list of `DiscoveredPageDto`. |
-| `DiscoveredPageDto.cs` | `Url` + `Kind` (`SpiderPageKind`). |
-| `SpiderPageKind.cs` | Enum: e.g. schedule vs menu vs unknown (see code). |
-| `NewsDiscoveryResult.cs` | Wrapper for news crawl: `StartUrl` + `DiscoveredNewsPageDto` list. |
-| `DiscoveredNewsPageDto.cs` | `Url` + `NewsPageKind`. |
-| `NewsPageKind.cs` | Article / archive / unknown. |
-| `ExtractedNewsArticleDto.cs` | `Title`, `Content`, `Category` (`NewsCategory`) for news pipeline. |
-
-### 3.7 Persistence (entities & EF)
-
-| File | Purpose |
-|------|---------|
-| `Entities/ScrapedClassEvent.cs` | Org-scoped row: raw text fields + `DataHash`, `IsChanged`, `HostId`, `RoomId` (resolved FKs), FKs to `User`/`Room`. |
-| `Data/Configurations/ScrapedClassEventConfiguration.cs` | Table `ScrapedClassEvents`, column `Room` maps to property `RoomText`, indexes, FKs. |
-| `Repositories/ScrapedClassEventRepository.cs` | Repository implementation. |
-| `Repositories/Interfaces/IScrapedClassEventRepository.cs` | Repository contract. |
-| `Data/ApplicationDbContext.cs` | `DbSet<ScrapedClassEvent>`, global filters for tenancy + soft delete. |
-
-### 3.8 Related enums
-
-| File | Purpose |
-|------|---------|
-| `Entities/Enums.cs` | `NewsCategory` (triage labels), `NewsType` (announcement types), etc. |
-
-### 3.9 App bootstrap & config
-
-| File | Purpose |
-|------|---------|
-| `Program.cs` | Registers `HttpClient` for `IWebSpiderService` and `IGeminiService`, Hangfire SQL storage + server, `IScheduleSpiderSyncService`, `IScrapedEntityResolutionService`, `ScheduleSyncJobs`, `UseHangfireDashboard("/hangfire", ...)`. |
-| `appsettings.json` | `Spider:DefaultSchedulePageUrl`, `Spider:Organizations:{guid}:SchedulePageUrl`, `Gemini:ApiKey`, `Gemini:Model`. |
-
-### 3.10 Migrations (schema history)
-
-| Migration (examples) | Purpose |
-|----------------------|---------|
-| `*AddScrapedClassEvents*` | Creates `ScrapedClassEvents` table. |
-| `*EventResolutionAndTeacherFk*` / `*RestoreHostIdColumns*` | FKs for events/ scraped rows; column naming. |
-| `*AddNewsCategoryToNews*` | `News.Category` for news triage. |
-
----
-
-## 4. Dependency injection (Program.cs)
-
-- **`AddHttpClient<IWebSpiderService, WebSpiderService>`** — timeout 45s, custom `User-Agent`.
-- **`AddHttpClient<IGeminiService, GeminiService>`** — timeout 45s.
-- **`AddScoped<IScheduleSpiderSyncService, ScheduleSpiderSyncService>`**
-- **`AddScoped<IScrapedEntityResolutionService, ScrapedEntityResolutionService>`**
-- **`AddSingleton<ScheduleSyncJobs>`**
-- **`AddScoped<IScrapedClassEventRepository, ScrapedClassEventRepository>`** (with other repos)
-- **`AddMemoryCache`** — used by resolution cache.
-- **Hangfire**: `AddHangfire` + SQL Server storage + `AddHangfireServer`; dashboard at `/hangfire`.
-
-Enqueue example:
-
-```csharp
-BackgroundJob.Enqueue<ScheduleSyncJobs>(j => j.SyncScheduleDatabaseAsync(organizationId));
-```
-
----
-
-## 5. `IWebSpiderService` — API summary
-
-| Method | Behavior |
-|--------|----------|
-| `DiscoverLinksAsync(startUrl)` | BFS same-host links, classify each page (`SpiderPageKind`), cap ~250 pages. |
-| `FetchSchedulePageHtmlAsync(url)` | GET HTML for schedule (used by sync). |
-| `ExtractScheduleFromTableAsync(html)` | **Primary:** HtmlAgilityPack finds schedule-like table, builds grid, maps columns → `List<ScrapedEventDto>`. **If** no table / empty grid / zero rows / HAP throws → `HtmlStructureChangedException` → **fallback:** strip HTML to text, `IGeminiService.ExtractScheduleFromRawTextAsync`, deserialize JSON array. Logs **GEMINI AI FALLBACK TRIGGERED** when fallback runs. |
-| `DiscoverNewsLinksAsync(startUrl)` | News-oriented BFS, cap ~200 pages, `NewsPageKind` per URL. |
-| `ExtractNewsArticleAsync(html)` | Title + body extraction; calls Gemini for `NewsCategory` when API key present; `try/catch` so scraper stays up if Gemini fails. |
-
----
-
-## 6. Schedule merge pipeline (`ScheduleSpiderSyncService`)
-
-1. **Resolve URL** — `Spider:Organizations:{organizationId}:SchedulePageUrl` or `Spider:DefaultSchedulePageUrl`.
-2. **Fetch** — `FetchSchedulePageHtmlAsync`.
-3. **Extract** — `ExtractScheduleFromTableAsync` → `IReadOnlyList<ScrapedEventDto>`.
-4. **Hash** — `ScrapedEventHasher.CalculateHash(dto)` per row.
-5. **Natural key** — `ClassName` + `Time` + `GroupNumber` (normalized whitespace, case-insensitive).
-6. **Resolution** — `IScrapedEntityResolutionService.BuildMapsAsync` → assign `HostId` / `RoomId` on `ScrapedClassEvent`.
-7. **Upsert** — new rows → insert; same key + different hash → update fields, `IsChanged = true`; same hash → optionally clear `IsChanged` or refresh FK-only; keys missing from scrape → **delete** row.
-8. **`SaveChanges`** — `IUnitOfWork.CompleteAsync`.
-
-**Tenancy:** Hangfire runs without HTTP user; queries use explicit `OrganizationId` filters.
-
----
-
-## 7. Gemini behavior
-
-### 7.1 News categorization
-
-- Prompt lists all `NewsCategory` values (university + corporate).
-- Response: single label string; parsed with case-insensitive / fuzzy helpers.
-- Missing key → `General`.
-
-### 7.2 Schedule fallback (JSON)
-
-- Prompt requires **only** a JSON **array** of objects with **`ClassName`, `Time`, `Room`, `Professor`, `GroupNumber`** (strings).
-- **No** markdown fences; `NormalizeJsonArrayPayload` strips accidental ``` blocks.
-- Deserializes to `List<ScrapedEventDto>` with case-insensitive property names.
-- Failure → empty list (sync may then remove prior rows or do nothing).
-
-**Configuration:** `Gemini:ApiKey`, `Gemini:Model` (default e.g. `gemini-2.0-flash`).
-
----
-
-## 8. Configuration reference
+Used when the organization has **no** schedule URL in the database:
 
 ```json
 {
@@ -225,23 +103,198 @@ BackgroundJob.Enqueue<ScheduleSyncJobs>(j => j.SyncScheduleDatabaseAsync(organiz
 }
 ```
 
-Use **User Secrets** or environment variables for `Gemini:ApiKey` in development/production.
+**News URLs** are not read from appsettings; they must be saved per organization in the DB (or passed on each preview/discover request where supported).
+
+Set the Gemini API key via **`Gemini:ApiKey`** in `appsettings`, **`Gemini__ApiKey`** or **`GEMINI_API_KEY`** in `src/backend/Omada.Api/.env`, or user secrets. See [Configuration.md](Configuration.md).
 
 ---
 
-## 9. Operational notes
+## 4. Admin HTTP API (`WebSpiderController`)
 
-- **Hangfire dashboard** — `/hangfire` (secure in production).
-- **SQL Server** — Hangfire schema created automatically with storage.
-- **NSwag / mobile** — Regenerate API clients if DTOs or endpoints change.
-- **Rate limits** — Crawl caps and HTTP timeouts limit load on target sites.
+Base route: **`/api/web-spider`**. All endpoints require authentication and **`admin` widget + Admin** permission (`[HasPermission(WidgetKeys.Admin, AccessLevel.Admin)]`).
+
+| Method | Route | Behavior |
+|--------|-------|----------|
+| `GET` | `/config` | Returns `SpiderConfigDto` for the active organization (resolved URLs + flags). |
+| `PUT` | `/config` | Saves `schedulePageUrl` / `newsStartUrl` on `Organization`. |
+| `POST` | `/schedule/preview` | **`ExtractScheduleFromSiteAsync`** with `maxSchedulePages: 80`. Returns `SpiderPreviewScheduleResultDto` (events, per-page summaries, truncation flags). |
+| `POST` | `/schedule/discover` | **`DiscoverLinksAsync`** — link map only, no row extraction. |
+| `POST` | `/schedule/sync` | Enqueues Hangfire `ScheduleSyncJobs.SyncScheduleDatabaseAsync(orgId)`. Optional body URL is saved to config first. |
+| `POST` | `/news/preview` | Fetches one article URL, returns `SpiderPreviewNewsResultDto`. |
+| `POST` | `/news/discover` | **`DiscoverNewsLinksAsync`** from saved or request news URL. |
+| `POST` | `/news/sync` | Enqueues news sync into `NewsItem` (dedup by source URL/hash). |
+| `GET` | `/sync/history` | Paginated **`SpiderSyncRun`** history for the active org. |
+| `GET` | `/schedule/unresolved` | Scraped rows with unresolved host/room matches for admin review. |
+
+Request bodies use **`SpiderUrlRequest`** (`url` optional when a saved org URL exists).
+
+Responses use **`ServiceResponse<T>`** + **`AppError`** like the rest of the API.
 
 ---
 
-## 10. Change log (feature areas)
+## 5. `IWebSpiderService` — crawler API
 
-This subsystem evolved as: **ScrapedClassEvent** storage → **Hangfire** sync → **hash merge** → **HostId/RoomId resolution** + **IMemoryCache** → **Gemini** news triage + **`NewsCategory`** → **Gemini** schedule JSON fallback + **`HtmlStructureChangedException`** → **`ExtractScheduleFromTableAsync`**.
+| Method | Behavior |
+|--------|----------|
+| `DiscoverLinksAsync(startUrl)` | BFS same-host links, classify each page (`SpiderPageKind`), cap ~250 pages. |
+| `ExtractScheduleFromTableAsync(html)` | **Primary:** parse schedule-like table(s) on one HTML document. **Fallback:** Gemini JSON from stripped text if structure changed / zero rows. |
+| `ExtractScheduleFromSiteAsync(startUrl, maxSchedulePages)` | Multi-page crawl: scrape start page; if index/hub, enqueue same-directory `.html` links; aggregate rows. Returns `SiteScheduleExtractionResult` with `HubLinksDiscovered`, `SchedulePagesScraped`, `WasTruncated`, `Pages[]`. Default interface default `maxSchedulePages = 32`; admin preview uses **80**, Hangfire sync uses **120**. HTTP fetch cap **120** per run. |
+| `FetchSchedulePageHtmlAsync(url)` | GET HTML (used by sync and news preview). |
+| `DiscoverNewsLinksAsync(startUrl)` | News-oriented BFS, cap ~200 pages, `NewsPageKind` per URL. |
+| `ExtractNewsArticleAsync(html)` | Title + body; optional Gemini `NewsCategory`; failures do not crash the scraper. |
+
+### 5.1 Hub / index pages (e.g. UBB)
+
+Typical flow for `https://www.cs.ubbcluj.ro/files/orar/2025-1/tabelar/index.html`:
+
+1. Fetch index; if no timetable rows, collect **all same-folder `.html` links** on the same host.
+2. Visit each linked year/specialization page until `maxSchedulePages` or HTTP cap is reached.
+3. Each row includes **`SourcePageUrl`** (e.g. `I1.html`) and **`ActivityType`** (Curs, Laborator, Seminar) when the table has a type column.
+
+If **`WasTruncated`** is true, preview shows a warning — use a **single year URL** for full coverage of that program.
 
 ---
 
-*Generated for the Omada Platform backend (`Omada.Api`). Update this file when adding new spider endpoints, DTOs, or behavior.*
+## 6. DTOs (`DTOs/Scraping/`)
+
+| Type | Purpose |
+|------|---------|
+| `ScrapedEventDto` | `ClassName`, `Time`, `Room`, `Professor`, `GroupNumber`, **`ActivityType`**, **`SourcePageUrl`**. |
+| `SpiderPreviewScheduleResultDto` | Preview response: events + `Pages`, `HubLinksDiscovered`, `SchedulePagesScraped`, `WasTruncated`, `CrawledMultiplePages`. |
+| `ScrapedSchedulePageSummaryDto` | Per-URL summary: `SourceUrl`, `EventCount`, `PageKind`. |
+| `SiteScheduleExtractionResult` | Internal result of `ExtractScheduleFromSiteAsync`. |
+| `SpiderConfigDto` / `SaveSpiderConfigRequest` | Org URL config for admin UI. |
+| `SpiderDiscoveryResult` / `DiscoveredPageDto` / `SpiderPageKind` | Schedule link discovery. |
+| `NewsDiscoveryResult` / `DiscoveredNewsPageDto` / `NewsPageKind` | News link discovery. |
+| `ExtractedNewsArticleDto` | News preview body + category. |
+| `SpiderSyncEnqueueResultDto` | Hangfire `jobId` + message. |
+
+---
+
+## 7. Schedule merge pipeline (`ScheduleSpiderSyncService`)
+
+1. **Resolve URL** — `ISpiderUrlResolver.ResolveSchedulePageUrl(organizationId)` (DB → appsettings).
+2. **Extract** — `ExtractScheduleFromSiteAsync(url, maxSchedulePages: 120)`.
+3. **Hash** — `ScrapedEventHasher.CalculateHash(dto)` per row.
+4. **Natural key** — `ClassName` + `Time` + `GroupNumber` (normalized whitespace, case-insensitive).
+5. **Resolution** — `IScrapedEntityResolutionService.BuildMapsAsync` → `HostId` / `RoomId` on `ScrapedClassEvent`.
+6. **Upsert** — insert / update when hash changes / delete rows missing from latest scrape.
+7. **`SaveChanges`** — `IUnitOfWork.CompleteAsync`.
+
+**Tenancy:** Hangfire runs without HTTP user; queries use explicit `OrganizationId` filters.
+
+Enqueue from API:
+
+```csharp
+BackgroundJob.Enqueue<ScheduleSyncJobs>(j => j.SyncScheduleDatabaseAsync(organizationId));
+```
+
+---
+
+## 8. Gemini behavior
+
+### 8.1 News categorization
+
+- Prompt lists `NewsCategory` values; response parsed to enum; missing key → `General`.
+
+### 8.2 Schedule fallback (JSON)
+
+- Used when HtmlAgilityPack cannot produce rows (`HtmlStructureChangedException` or empty grid).
+- Expects JSON **array** of objects with **`ClassName`, `Time`, `Room`, `Professor`, `GroupNumber`** (strings).
+- Failure → empty list for that page.
+
+**Configuration:** `Gemini:ApiKey` (or `GEMINI_API_KEY` in `.env`), `Gemini:Model` (e.g. `gemini-2.0-flash`). See [Configuration.md](Configuration.md).
+
+---
+
+## 9. Mobile admin UI
+
+| Path | Purpose |
+|------|---------|
+| `src/frontend/mobile/src/app/(app)/(admin)/web-spider-workspace.tsx` | Expo route |
+| `src/frontend/mobile/src/screens/admin/web-spider-workspace/` | Screen, hooks, tabs, preview components |
+| `src/frontend/mobile/src/screens/admin/components/org-dashboard.tsx` | **Web crawling** entry (separate from floorplan extraction) |
+
+### 9.1 Workspace features
+
+- **Schedule tab**: Save URLs, preview, discover, sync to DB (Hangfire), **sync history**, unresolved entity matches.
+- **News tab**: News URL, article preview, discover, **news sync**, sync history.
+- **Schedule preview**: Grouped collapsible sections; **Filters & layout** sheet (organize by group, program/year, subject, session type, teacher, day; searchable “Show only” picker).
+- **Web**: Filter sheets use `Modal` + fixed positioning in `BottomSheet` so overlays stay in the viewport (not at the bottom of a long scroll page).
+
+### 9.2 API client
+
+- Generated: `WebSpiderClient` in `src/frontend/mobile/src/api/generatedClient.ts`.
+- Regenerate when the API is running: `cd src/frontend/mobile && npm run generate-api`.
+- Config/sync helpers may also exist in `src/frontend/mobile/src/api/webSpiderApi.ts` / `webSpiderConfigApi.ts` until NSwag output is fully aligned.
+
+---
+
+## 10. File inventory (backend)
+
+### Core
+
+| File | Purpose |
+|------|---------|
+| `Services/WebSpiderService.cs` | Crawls, table parsing, site extraction, news extraction, Gemini fallback. |
+| `Services/Interfaces/IWebSpiderService.cs` | Crawler contract. |
+| `Services/WebSpiderAdminService.cs` | Admin preview/discover/sync. |
+| `Services/Interfaces/IWebSpiderAdminService.cs` | Admin contract. |
+| `Controllers/WebSpiderController.cs` | HTTP surface (§4). |
+| `Services/SpiderUrlResolver.cs` | DB + appsettings URL resolution. |
+| `Services/Interfaces/ISpiderUrlResolver.cs` | URL resolver contract. |
+
+### Sync, resolution, Gemini
+
+| File | Purpose |
+|------|---------|
+| `Services/ScheduleSpiderSyncService.cs` | Hash merge into `ScrapedClassEvent`. |
+| `Services/ScrapedEntityResolutionService.cs` | Professor → host, room text → room. |
+| `Services/GeminiService.cs` | News + schedule AI fallbacks. |
+| `Infrastructure/Hangfire/ScheduleSyncJobs.cs` | Hangfire entry point. |
+| `Infrastructure/Scraping/ScrapedEventHasher.cs` | SHA-256 change detection. |
+| `Infrastructure/Scraping/HtmlStructureChangedException.cs` | Triggers Gemini schedule fallback. |
+
+### Persistence
+
+| File | Purpose |
+|------|---------|
+| `Entities/ScrapedClassEvent.cs` | Org-scoped scraped rows + `DataHash`, FKs. |
+| `Services/NewsSpiderSyncService.cs` | News crawl → `NewsItem` (source URL/hash dedup). |
+| `Services/SpiderSyncRunService.cs` | Sync run history for admin UI. |
+| `Entities/SpiderSyncRun.cs` | Per-run status, counts, errors. |
+| `Entities/Organization.cs` | `SpiderSchedulePageUrl`, `SpiderNewsStartUrl`. |
+| `Repositories/ScrapedClassEventRepository.cs` | Data access. |
+
+---
+
+## 11. Dependency injection (`Program.cs`)
+
+- `AddHttpClient<IWebSpiderService, WebSpiderService>` — timeout 45s, custom User-Agent.
+- `AddHttpClient<IGeminiService, GeminiService>`
+- `AddScoped<IWebSpiderAdminService, WebSpiderAdminService>`
+- `AddScoped<ISpiderUrlResolver, SpiderUrlResolver>`
+- `AddScoped<IScheduleSpiderSyncService, ScheduleSpiderSyncService>`
+- `AddScoped<IScrapedEntityResolutionService, ScrapedEntityResolutionService>`
+- `AddSingleton<ScheduleSyncJobs>`
+- Hangfire SQL storage + server; dashboard at **`/hangfire`** (secure in production).
+
+---
+
+## 12. Operational notes
+
+- **Hangfire dashboard** — `/hangfire` — monitor `SyncScheduleDatabaseAsync` jobs after **Sync to DB**.
+- **Rate limits & ethics** — Crawl caps and HTTP timeouts limit load; use only for **authorized** institutional pages.
+- **Truncation** — Large indexes may hit page caps; prefer a specific year page for complete preview/sync of one program.
+- **NSwag** — Regenerate the mobile client after DTO or endpoint changes.
+- **Floorplan AI** — Roboflow extraction in `Omada.Api` (`RoboflowFloorplanGeoJsonExtractor`); not part of the web spider. Config: [`Configuration.md`](Configuration.md).
+
+---
+
+## 13. Change log (feature areas)
+
+Evolution: **ScrapedClassEvent** → **Hangfire** → **hash merge** → **host/room resolution** → **Gemini** news + schedule fallback → **admin API + DB URLs** → **`ExtractScheduleFromSiteAsync`** hub crawl → **`ActivityType` / `SourcePageUrl`** → **mobile admin workspace** with grouped preview and filter sheets.
+
+---
+
+*Update this file when adding spider endpoints, DTO fields, crawl behavior, or admin UI flows.*

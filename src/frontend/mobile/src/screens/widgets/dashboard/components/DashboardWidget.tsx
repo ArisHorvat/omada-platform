@@ -16,6 +16,17 @@ import { CARD_MARGIN } from '../styles/dashboard.styles';
 import { WIDGET_REGISTRY } from './WidgetRegistry';
 import { WidgetVariant } from '@/src/constants/widgets.registry';
 
+/** Widgets with a dedicated hero inner layout (dashboard hero shell still wraps these). */
+const HERO_INNER_WIDGETS = new Set([
+  'attendance',
+  'assignments',
+  'grades',
+  'news',
+  'rooms',
+  'tasks',
+  'users',
+]);
+
 
 interface DashboardWidgetProps {
   id: string; 
@@ -136,7 +147,8 @@ export const DashboardWidget = ({
       );
     }
     // Pass the variant and the theme color to the inner widget!
-    const innerVariant = variant === 'hero' ? 'card' : variant;
+    const innerVariant =
+      variant === 'hero' ? (HERO_INNER_WIDGETS.has(id) ? 'hero' : 'card') : variant;
     return (
       <ErrorBoundary FallbackComponent={WidgetErrorFallback}>
         <WidgetComponent variant={innerVariant} color={cardText} size={size} />

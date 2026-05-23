@@ -41,4 +41,19 @@ public class OrganizationDetailsDto
 
     // Optional
     public string? LogoUrl { get; set; }
+
+    [Required]
+    public required string InviteCode { get; set; }
+
+    [Required]
+    public required string InviteLink { get; set; }
+
+    [Required]
+    public required int OnboardingStep { get; set; }
+
+    [Required]
+    public required bool IsActive { get; set; }
+
+    [Required]
+    public required IEnumerable<string> EnabledWidgets { get; set; }
 }
