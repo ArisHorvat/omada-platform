@@ -1,253 +1,314 @@
-# Frontend structure guide
+# 📱 Frontend Structure Guide
 
-Reference for **`src/frontend/`** — the Omada mobile app (Expo) and optional Next.js project.
+> The Omada mobile app (Expo) — routes, Clay UI, widgets, admin workspaces, and how to extend it.
 
-**Configuration:** [Configuration.md](Configuration.md) · **Backend API map:** [Backend.md](Backend.md)
-
----
-
-## Which project to use
-
-| Path | Role |
-|------|------|
-| **`mobile/`** | **Primary product** — iOS, Android, and browser via Expo (`npm run web`) |
-| **`web/`** | Optional Next.js placeholder — **not** the main Omada UI |
-
-For almost all work, use **`src/frontend/mobile`**.
+**Configuration:** [`Configuration.md`](Configuration.md) · **Backend API:** [`Backend.md`](Backend.md) · **Architecture:** [`Architecture.md`](Architecture.md)
 
 ---
 
-## Quick start (mobile)
+## 🎯 Which project to use?
+
+| Path | Role | Use when |
+|------|------|----------|
+| **`mobile/`** ⭐ | Primary product — iOS, Android, Expo web | **Always** for Omada features |
+| **`web/`** | Next.js 16 placeholder | Marketing / future SSR only |
+
+> 💡 **Product browser UI** = `mobile` + `npm run web`. Platform splits live in `*.web.tsx` files **inside** `mobile/src/`.
+
+---
+
+## 🚀 Quick start
 
 ```bash
 cd src/frontend/mobile
 copy .env.example .env
-# Set EXPO_PUBLIC_API_BASE_URL (LAN IP on a physical device)
+# Set EXPO_PUBLIC_API_BASE_URL (LAN IP on physical device)
 npm install
 npm run start
 ```
 
 | Script | Purpose |
 |--------|---------|
-| `npm run start` | Expo dev server |
-| `npm run web` | Run in browser |
-| `npm run generate-api` | Regenerate client from Swagger (API on port 5069) |
-| `npm run android` / `ios` | Native builds |
+| `npm run start` | 🟢 Expo dev server |
+| `npm run web` | 🌐 Run in browser |
+| `npm run android` / `ios` | 📱 Native builds |
+| `npm run generate-api` | 🔄 Regenerate NSwag client (API on port 5069) |
+| `npm run lint` | 🧹 ESLint |
+| `npm run typecheck` | ✅ TypeScript check |
 
-Restart Expo after changing `.env`.
-
----
-
-## `mobile/src/` folder map
-
-| Folder | Purpose |
-|--------|---------|
-| **`app/`** | Expo Router — **thin routes only** (import screens from `screens/`) |
-| **`api/`** | NSwag client, Axios, React Query keys |
-| **`components/`** | Clay design system (UI, motion, TabBar, filters) |
-| **`config/`** | API base URL, permissions / capabilities |
-| **`constants/`** | Widget registry, animations, layout metrics, invite email template previews |
-| **`context/`** | Auth, organization, theme, permissions |
-| **`hooks/`** | Shared hooks (feature logic lives in `screens/**/hooks/`) |
-| **`screens/`** | All feature UI |
-| **`services/`** | `ToolsService` (registration: logo color extract, file upload) |
-| **`styles/`** | Global theme tokens |
-| **`i18n/`** | English and Romanian strings |
-| **`utils/`** | Media URL helpers, misc utilities |
-| **`lib/`** | Secure token storage |
-| **`stores/`** | Zustand preferences |
+> ⚠️ **Restart Expo** after changing `.env` — `EXPO_PUBLIC_*` is inlined at bundle time.
 
 ---
 
-## Routing (`app/`)
+## 📁 `mobile/src/` folder map
 
-Route **groups** use parentheses — they do not appear in the URL.
+```text
+mobile/src/
+├── 🧭 app/                 Expo Router — thin routes only
+├── 🌐 api/                 NSwag client, Axios, React Query keys
+├── 🎨 components/          Clay design system (75 files)
+├── ⚙️ config/              API URL, permissions / capabilities
+├── 📦 constants/           Widget registry, animations, layout
+├── 🔌 context/             Auth, org, theme, permissions
+├── 🪝 hooks/               Shared hooks (24 files)
+├── 🖥️ screens/             All feature UI (~304 files)
+├── 🔧 services/            ToolsService (registration uploads)
+├── 🎨 styles/              Global theme tokens
+├── 🌍 i18n/                English + Romanian
+├── 🛠️ utils/               Media URLs, biometrics, helpers
+├── 🔐 lib/                 Secure token storage
+├── 💾 stores/              Zustand preferences
+└── 📝 types/               i18next typing
+```
+
+---
+
+## 🧭 Routing (`app/`)
+
+Route **groups** use parentheses — they don't appear in the URL.
 
 ```text
 app/
-├── _layout.tsx                 # Providers, fonts, auth gate, persisted React Query
-├── (auth)/                     # Logged out
-│   ├── index                   # Landing
-│   ├── login-flow/             # Login
-│   ├── register-flow/          # Organization wizard
-│   ├── join                    # Join org via invite code / link
-│   └── design-system           # UI showcase
-└── (app)/                      # Logged in
-    ├── index                   # Redirect: dashboard vs org-dashboard
+├── _layout.tsx                 # 🏠 Providers, fonts, auth gate, persisted React Query
+├── +html.tsx                   # Web HTML shell
+│
+├── (auth)/                     # 🔓 Logged out
+│   ├── index                   # Landing page
+│   ├── login-flow/             # Login + org selection
+│   ├── register-flow/          # 7-step org wizard
+│   ├── join                    # Join via invite code
+│   └── design-system           # Clay UI showcase
+│
+└── (app)/                      # 🔐 Logged in
+    ├── index                   # Role redirect
     ├── change-organization
-    ├── (tabs)/                 # dashboard, tasks, chat, schedule, profile
-    ├── (widgets)/              # news, map, rooms, grades, users, …
-    ├── (settings)/             # settings, security
-    ├── (modals)/               # manage-favorites
-    ├── (admin)/                # org-dashboard + admin workspaces (see below)
-    └── (superadmin)/           # platform admin-dashboard
+    ├── (tabs)/                 # 📱 Main tab shell
+    │   ├── dashboard
+    │   ├── tasks
+    │   ├── chat
+    │   ├── schedule
+    │   └── profile
+    ├── (widgets)/              # 📦 Feature screens (pushed)
+    ├── (settings)/             # ⚙️ settings, security
+    ├── (modals)/               # 🔲 manage-favorites, search
+    ├── (admin)/                # 🛡️ org-dashboard + 13 workspaces
+    └── (superadmin)/           # 🌐 platform admin-dashboard
 ```
 
-**Auth routing:** Organization **Admin** / **SuperAdmin** users land on **`org-dashboard`** after login; others go to **`dashboard`**.
+### 🔀 Auth routing logic
+
+| User type | After login → |
+|-----------|---------------|
+| 👤 Regular user | `/dashboard` |
+| 🛡️ Admin / SuperAdmin | `/org-dashboard` |
+| 🌐 SuperAdmin in register-flow | Stay (org creation exception) |
+
+**Tab bar (5 tabs):** dashboard · tasks · chat · schedule · profile
+
+On wide web shell (≥768px): bottom tab bar hidden → `SidebarNav` + `TabShell` instead.
 
 ---
 
-## API layer (`api/`)
+## 🌐 API layer (`api/`)
 
 | File | Role |
 |------|------|
-| `generatedClient.ts` | **Generated by NSwag — do not edit** |
-| `apiClient.ts` | Axios instance, JWT, token refresh on 401 |
-| `index.ts` | `authApi`, `orgAdminApi`, `superAdminApi`, `adminApi`, `scheduleApi`, … + `unwrap()` |
-| `queryKeys.ts` | React Query keys — include **organization id** where data is tenant-scoped |
+| `generatedClient.ts` | 🤖 **NSwag output — never edit** |
+| `apiClient.ts` | Axios + Bearer JWT + 401 refresh queue |
+| `index.ts` | Singleton clients + `unwrap(ServiceResponse)` |
+| `queryKeys.ts` | React Query keys — include **org id** for tenant data |
 
-**Supplement files** (prefer moving logic into Swagger + regen when possible):
+**Exported clients:** `authApi`, `orgApi`, `orgAdminApi`, `superAdminApi`, `adminApi`, `usersApi`, `scheduleApi`, `newsApi`, `tasksApi`, `gradesApi`, `attendanceApi`, `searchApi`, `chatApi`, `roomsApi`, `buildingsApi`, `mapsApi`, `floorplansApi`, `groupsApi`, `filesApi`, `toolsApi`, `webSpiderApi`
 
-- `floorplanGeoJsonApi.ts` — GeoJSON update, publish rooms  
-- `webSpiderConfigApi.ts` — spider admin helpers  
-- `multipartMapEndpoints.ts`, `rnMultipart.ts` — floorplan uploads  
+**Supplement files** (prefer moving into Swagger + regen):
 
-Regenerate after backend changes:
+| File | Purpose |
+|------|---------|
+| `floorplanGeoJsonApi.ts` | GeoJSON update, publish rooms |
+| `webSpiderConfigApi.ts` | Spider admin helpers |
+| `multipartMapEndpoints.ts`, `rnMultipart.ts` | Floorplan multipart uploads |
 
 ```bash
 cd src/frontend/mobile
-npm run generate-api
+npm run generate-api   # API must be running on :5069
 ```
 
 ---
 
-## UI and theming (`components/`)
+## 🎨 Clay design system (`components/`)
 
-Claymorphism primitives — use **`ClayView`**, **`AppText`**, **`AppButton`** instead of raw React Native chrome for product UI.
+Claymorphism primitives — use these instead of raw RN chrome for product UI:
 
-| Area | Examples |
-|------|----------|
-| `ui/` | `ClayView`, `BottomSheet`, `ClayDatePicker`, empty/error states |
-| `animations/` | `AnimatedItem`, `PressClay` — presets in `constants/animations.ts` |
-| `navigation/` | Custom `TabBar`, `ClayBackButton` |
+| Subfolder | Key components |
+|-----------|----------------|
+| `ui/` | `ClayView`, `AppText`, `AppButton`, `BottomSheet`, `BentoGrid`, pickers, empty/error states |
+| `animations/` | `AnimatedItem`, `PressClay`, `FadeInView`, `ScreenTransition`, `ConfettiExplosion` |
+| `navigation/` | `TabBar`, `SidebarNav`, `ClayBackButton` |
+| `layout/` | `TabShell`, `PageContainer`, `WidgetPageShell`, `SplitPane`, `WizardLayout` |
 | `filters/` | `FilterBottomSheet`, option pickers |
-| `layout/` | `WizardLayout` for registration |
+| `system/` | `JailbreakGuard`, i18n/profile sync bridges |
+| `showcase/` | Design-system gallery |
 
-Colors come from **`useThemeColors()`** (organization primary/secondary/tertiary).
-
----
-
-## Permissions (`config/permissions.config.ts`)
-
-- **`WIDGET_KEYS`** must match backend **`WidgetKeys`**.  
-- **`PERMISSION_MAP`** maps `view` / `edit` / `admin` to fine-grained capabilities (`news.view`, `rooms.book`, …).  
-- **`PermissionContext`** exposes `can(capability)` from `GET /api/users/me` → `widgetAccess`.
+Colors from **`useThemeColors()`** — org primary/secondary/tertiary merged into navigation theme.
 
 ---
 
-## Screens (`screens/`)
+## 🔐 Permissions (`config/permissions.config.ts`)
+
+```text
+Backend WidgetKeys  ←→  WIDGET_KEYS (frontend)
+RolePermission      ←→  PERMISSION_MAP (view/edit/admin → capabilities)
+GET /api/users/me   ←→  PermissionContext.can(capability)
+```
+
+- **Bypass:** `Admin`, `SuperAdmin`, `Super Admin` roles → all capabilities return `true`
+- **Examples:** `news.view`, `rooms.book`, `schedule.edit`
+
+---
+
+## 🖥️ Screens (`screens/`)
 
 Convention per feature:
 
 ```text
 screens/<feature>/
-  components/    # presentational
-  hooks/         # React Query, handlers
-  styles/        # stylesheets
-  utils/         # optional pure helpers
+  components/    ← Presentational UI
+  hooks/         ← React Query, handlers, derived state
+  styles/        ← StyleSheets
+  utils/         ← Optional pure helpers
 ```
 
-| Area | Path | API / notes |
-|------|------|-------------|
-| Auth | `screens/auth/` | Login, multi-step registration, **join via invite code** (`screens/auth/join/`) |
-| Dashboard | `screens/widgets/dashboard/` | Widget registry, favorites, highlights, universal search |
-| Schedule | `screens/widgets/schedule/` | University vs corporate layouts |
-| News | `screens/widgets/news/` | Feed, articles, create |
-| Tasks | `screens/widgets/tasks/` | `tasksApi` |
-| Chat | `screens/widgets/chat/` | `chatApi` |
-| Grades | `screens/widgets/grades/` | `gradesApi` |
-| Map | `screens/widgets/map/` | Campus + indoor floorplan viewer |
-| Rooms | `screens/widgets/rooms/` | Search and booking |
-| Users | `screens/widgets/users/` | Directory |
-| Digital ID | `screens/widgets/digital-id/` | QR card |
-| Profile / settings | `profile/`, `settings/`, `security/` | Account |
-| More | `screens/widgets/more/` | All-apps grid |
-| Org admin | `screens/admin/` | Hub, members, roles, branding, widgets, periods, grades, attendance, rooms, audit, floorplan, spider, groups, event types |
-| SuperAdmin | `screens/superadmin/` | Platform org list; enter org → org admin |
+### 📦 Widget screens (`screens/widgets/`)
 
-**Dashboard widgets in registry:** `news`, `schedule`, `tasks`, `map`, `users`, `attendance`, `assignments`, `chat`, `grades`, `rooms`.
+| Folder | Features |
+|--------|----------|
+| `dashboard/` | 🏠 Bento grid, favorites, highlights, search bar |
+| `schedule/` | 📅 University vs corporate layouts (`.web.tsx` splits) |
+| `news/` | 📰 Feed, articles, create/edit |
+| `tasks/` | ✅ Task list + widget |
+| `chat/` | 💬 Channels + widget |
+| `grades/` | 📊 Grades + Skia charts |
+| `map/` | 🗺️ Campus + indoor floorplan viewer |
+| `rooms/` | 🚪 Search and booking |
+| `users/` | 👥 Directory + profiles |
+| `attendance/` | 📋 Records + widget |
+| `assignments/` | 📝 Assignments screen + widget |
+| `digital-id/` | 🪪 QR/barcode ID card |
+| `profile/`, `settings/`, `security/` | 👤 Account |
+| `more/` | 📱 All-apps grid |
 
----
+### 🔓 Auth screens (`screens/auth/`)
 
-## Admin workspaces
+| Area | Contents |
+|------|----------|
+| `landing/` | Welcome screen |
+| `login/` | Login, org selection, change-organization |
+| `register/` | 7-step wizard + `RegistrationContext` |
+| `join/` | Join org via invite code |
+| `design-system/` | Clay UI showcase |
 
-Hub route: **`/org-dashboard`** (`screens/admin/components/org-dashboard.tsx`) with onboarding checklist.
+**Registration wizard steps:** details → admin → branding → roles → users → widgets → success
 
-| Route | Purpose |
-|-------|---------|
-| `/members-workspace` | Directory, invites, invite code |
-| `/roles-workspace` | Roles and widget permissions |
-| `/branding-workspace` | Logo, colors, org type, active/inactive |
-| `/widgets-workspace` | Org-wide widget catalog (intersects with role RBAC) |
-| `/periods-workspace` | Academic/operational periods |
-| `/grades-workspace` | Admin grades (member search picker) |
-| `/attendance-workspace` | Org-wide attendance records |
-| `/rooms-workspace` | Create, search, delete rooms |
-| `/audit-workspace` | Admin action audit log |
-| `/floorplan-workspace` | Map buildings, floorplans, Roboflow GeoJSON, publish rooms |
-| `/web-spider-workspace` | Timetable/news URLs, preview, sync, history, unresolved |
-| `/groups-workspace` | Departments, teams, classes |
-| `/event-types-workspace` | Schedule event types and colors |
+### 🛡️ Admin screens (`screens/admin/` — 66 files)
 
-### Floorplan (`screens/admin/floorplan-workspace/`)
+**Hub:** `org-dashboard.tsx` + onboarding checklist
 
-- Upload floorplan image → backend Roboflow extraction → GeoJSON.
-- Edit polygons / pins; publish bookable rooms.
-- Requires **map Admin** on the API.
+| Workspace | Route | Purpose |
+|-----------|-------|---------|
+| 👥 Members | `/members-workspace` | Directory, invites, invite code |
+| 🔐 Roles | `/roles-workspace` | Roles + widget permissions |
+| 🎨 Branding | `/branding-workspace` | Logo, colors, org type |
+| 🧩 Widgets | `/widgets-workspace` | Org-wide widget catalog |
+| 📅 Periods | `/periods-workspace` | Academic/operational periods |
+| 📊 Grades | `/grades-workspace` | Admin grades |
+| 📋 Attendance | `/attendance-workspace` | Org-wide records |
+| 🚪 Rooms | `/rooms-workspace` | Create, search, delete rooms |
+| 📝 Audit | `/audit-workspace` | Admin action log |
+| 📐 Floorplan | `/floorplan-workspace` | Buildings, GeoJSON, publish rooms |
+| 🕷️ Web spider | `/web-spider-workspace` | Timetable/news URLs, sync |
+| 👥 Groups | `/groups-workspace` | Departments, teams, classes |
+| 🏷️ Event types | `/event-types-workspace` | Schedule event types |
 
-### Web spider (`screens/admin/web-spider-workspace/`)
+### 🌐 SuperAdmin (`screens/superadmin/`)
 
-- Configure timetable and news URLs per organization.
-- Preview scraped data; enqueue sync; view sync history and unresolved matches.
-- See [WebSpider.md](WebSpider.md).
-
-### SuperAdmin (`screens/superadmin/`)
-
-- **`/admin-dashboard`** — search/list organizations, delete org, **enter org** (switches JWT via `authApi.switchOrganization` then opens org admin).
+- **`/admin-dashboard`** — list/search/delete orgs, enter org context
 
 ---
 
-## Cross-cutting patterns
+## 🧩 Widget system & dashboard
 
-1. **Multi-tenant:** Scope React Query keys with active organization; theme and permissions follow org switch.  
-2. **Data fetching:** Prefer **React Query** in hooks — avoid ad-hoc `useEffect` loads.  
-3. **Platform splits:** Use **`*.web.tsx`** next to native files for map, schedule, grades, and `ClayView` when web behavior differs.  
-4. **Responsive web (Expo `npm run web`):** `useBreakpoint()` / `isWideShell` (≥768px) — sidebar tab shell, `PageContainer` (max 1200px), `AuthContentShell` for auth/register (480px / wizard 720px), `SplitPane` for master–detail (news, directory, rooms, schedule, chat, groups admin). `WidgetPageShell` wraps stack-pushed widget/admin screens. Maps/floorplan editor use `fullBleed`. Web Escape closes `BottomSheet` and modals via `useEscapeKey`.  
-5. **Media URLs:** Use `utils/resolveMediaUrl` / `toAbsoluteMediaUrl` with `API_BASE_URL`.  
-6. **Vertical slice:** Backend DTO → Swagger → `generate-api` → hook → UI.
+Three related layers:
 
----
+| Layer | Location | Purpose |
+|-------|----------|---------|
+| Widget metadata | `constants/widgets.ts` | Names, icons, categories, presets |
+| Dashboard registry | `screens/widgets/dashboard/components/WidgetRegistry.tsx` | Key → React component |
+| Variant types | `constants/widgets.registry.ts` | `hero` · `card` · `bento` · `rail` |
 
-## Internationalization
+### Registered dashboard widgets (10)
 
-- Locales: `i18n/locales/en.json`, `ro.json`  
-- Use **`useTranslation()`** from `hooks/`  
-- Add keys to **both** languages when introducing copy
+`news` · `schedule` · `tasks` · `map` · `users` · `attendance` · `assignments` · `chat` · `grades` · `rooms`
 
----
+**Data flow:**
 
-## Optional Next.js (`web/`)
+```text
+useDashboardData     → org enabled widgets ∩ role permissions
+useDashboardConfig   → merge BASE_WIDGETS + org theme colors
+useDashboardLogic    → favorites, highlights, bento sorting
+DashboardScreen      → BentoGrid + SmartHighlightFrame + search
+DashboardWidget      → variant + WIDGET_REGISTRY + navigation
+```
 
-Stock Next.js app at `src/frontend/web` — not connected to Omada APIs today. Use for future marketing or SSR surfaces only. Product browser UI = **`mobile` + `npm run web`**.
-
----
-
-## Adding a frontend feature
-
-1. Ensure backend endpoint exists and run **`npm run generate-api`**.  
-2. Add route under `app/(app)/(widgets)/` or tabs if needed.  
-3. Create `screens/<feature>/` with `hooks/` and `styles/`.  
-4. Register dashboard widget if applicable (`WIDGET_REGISTRY`, org config).  
-5. Extend `permissions.config.ts` for new capabilities.  
-6. Add React Query keys in `queryKeys.ts`.
+Favorites: user preferences → `/manage-favorites` modal
 
 ---
 
-## Related documentation
+## 🔄 Cross-cutting patterns
 
-- [Configuration.md](Configuration.md) — `.env` and API URL  
-- [Backend.md](Backend.md) — API structure  
-- [WebSpider.md](WebSpider.md) — spider admin behavior  
-- [../src/frontend/mobile/README.md](../src/frontend/mobile/README.md) — mobile README  
-- [../src/frontend/mobile/TUTORIAL.md](../src/frontend/mobile/TUTORIAL.md) — end-user flows  
-- [../src/frontend/web/README.md](../src/frontend/web/README.md) — Next.js project  
+| Pattern | Implementation |
+|---------|----------------|
+| 🏢 Multi-tenant | React Query keys include `orgId`; theme + permissions follow org switch |
+| 📡 Data fetching | React Query in hooks — avoid raw `useEffect` loads |
+| 🌐 Platform splits | `*.web.tsx` for map, schedule, grades, `ClayView` |
+| 📐 Responsive web | `useBreakpoint()` / `isWideShell` (≥768px) → sidebar, split panes |
+| 🖼️ Media URLs | `utils/resolveMediaUrl` with `API_BASE_URL` |
+| 📦 Vertical slice | Backend DTO → Swagger → `generate-api` → hook → UI |
+| 💾 Persisted cache | AsyncStorage persister (~24h GC, 5min stale) |
+| ⌨️ Web Escape | Closes `BottomSheet` and modals via `useEscapeKey` |
+
+---
+
+## 🌍 Internationalization
+
+| Locale | File |
+|--------|------|
+| 🇬🇧 English | `i18n/locales/en.json` |
+| 🇷🇴 Romanian | `i18n/locales/ro.json` |
+
+Use **`useTranslation()`** — add keys to **both** languages.
+
+---
+
+## ➕ Adding a frontend feature
+
+```text
+1. ✅ Ensure backend endpoint exists → npm run generate-api
+2. 🧭 Add route under app/(app)/(widgets)/ or tabs
+3. 🖥️ Create screens/<feature>/ with hooks/ and styles/
+4. 🧩 Register dashboard widget if applicable (WIDGET_REGISTRY)
+5. 🔐 Extend permissions.config.ts for new capabilities
+6. 🔑 Add React Query keys in queryKeys.ts
+```
+
+---
+
+## 📚 Related documentation
+
+| Doc | Topic |
+|-----|-------|
+| [`Architecture.md`](Architecture.md) | System design |
+| [`Configuration.md`](Configuration.md) | `.env` and API URL |
+| [`Backend.md`](Backend.md) | API structure |
+| [`WebSpider.md`](WebSpider.md) | Spider admin |
+| [`../src/frontend/mobile/README.md`](../src/frontend/mobile/README.md) | Mobile quick start |
+| [`../src/frontend/mobile/TUTORIAL.md`](../src/frontend/mobile/TUTORIAL.md) | User flows |

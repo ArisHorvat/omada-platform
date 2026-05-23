@@ -1,99 +1,116 @@
-# Omada Platform
+# 🏛️ Omada Platform
 
-Omada is a **multi-tenant platform for universities and organizations** that brings schedules, news, tasks, rooms, map navigation, directory, chat, and digital identity into a single, customizable experience.
+> **One platform. Many organizations. Your colors, your widgets, your world.**
 
-Each user account can belong to **multiple organizations**. Switching organizations behaves like switching “instances”: **theme/branding**, permissions, and data all scope to the active organization.
+Omada is a **multi-tenant SaaS** built for **universities and corporate organizations** — schedules, news, tasks, rooms, campus maps, directory, chat, grades, attendance, digital ID, and more in a single, beautifully themed experience.
 
----
-
-## Key capabilities
-
-- **Organization admin console** — members, roles, branding, academic periods, grades, attendance, widget catalog, rooms, audit log, map/floorplans, web spider, groups
-- **Platform admin (SuperAdmin)** — list/manage organizations, enter any org context, platform-wide audit log
-- **Universal search** — cross-widget search scoped to permissions and org-enabled widgets
-- **Widget-driven dashboard** — org-wide widget catalog plus per-role permissions (news, schedule, rooms, map, grades, tasks, chat, etc.)
-- **Multi-tenant & secure by default** — tenant isolation via `OrganizationId` and role-based widget permissions
-- **Organization invites** — unique invite code + link per org; email invitations at registration; self-service join via `/join`
-- **Real-time** — SignalR where relevant; mobile uses React Query and offline-friendly patterns
-- **Web ingestion** — crawl public timetable and news pages (`WebSpiderService`), with optional Gemini fallbacks
-- **Map & floorplans** — upload floorplan images; **Roboflow** segmentation in the API produces **GeoJSON** room geometry for the map viewer
+Each user account can belong to **multiple organizations**. Switching orgs feels like switching **instances**: theme, branding, permissions, and data all follow the active organization.
 
 ---
 
-## Tech stack
+## ✨ What makes Omada special
 
-| Area | Stack |
-|------|--------|
-| **Backend** | ASP.NET Core (.NET 8), EF Core, NSwag, FluentValidation, SignalR, Hangfire |
-| **Mobile / web app** | React Native (Expo Router), React Query, generated Axios client |
-| **Optional** | Next.js placeholder at `src/frontend/web` (not the main product UI) |
+| Feature | Description |
+|---------|-------------|
+| 🎨 **Org theming** | Primary / secondary / tertiary colors from your logo — Claymorphism UI on mobile |
+| 🧩 **Widget dashboard** | Bento grid home screen — enable features org-wide, control access per role |
+| 🏢 **Multi-tenant** | JWT + EF global filters — data isolation by `OrganizationId` |
+| 🔐 **Widget RBAC** | View → Edit → Admin per widget; SuperAdmin bypass |
+| 🔗 **Invite system** | Unique invite code + link per org; email invites at registration |
+| 🕷️ **Web spider** | Crawl public timetable & news pages into the platform |
+| 🗺️ **Map & floorplans** | Roboflow AI extracts room geometry from floorplan images |
+| ⚡ **Real-time** | SignalR for chat; React Query + offline-friendly patterns on mobile |
+| 🔍 **Universal search** | Cross-widget search scoped to permissions |
 
 ---
 
-## Repository structure
+## 🛠️ Tech stack
+
+| Layer | Technologies |
+|-------|--------------|
+| **Backend** | ASP.NET Core (.NET 8), EF Core, SQL Server, NSwag, FluentValidation, SignalR, Hangfire, Serilog |
+| **Mobile / web app** | React Native (Expo Router), React Query, Zustand, NSwag-generated Axios client |
+| **AI / ingestion** | Roboflow (floorplan segmentation), Google Gemini (spider fallback), HtmlAgilityPack |
+| **Optional** | Next.js 16 placeholder at `src/frontend/web` — **not** the main product UI |
+
+---
+
+## 📁 Repository structure
 
 ```text
-.
-├─ src/
-│  ├─ backend/
-│  │  ├─ Omada.Api/          # Main API (Swagger, SignalR, tenancy, floorplan AI, web spider)
-│  │  ├─ Omada.Web/          # Optional server-rendered pages
-│  │  └─ Omada.sln
-│  └─ frontend/
-│     ├─ mobile/             # Primary client (iOS, Android, Expo web)
-│     └─ web/                # Optional Next.js (marketing / future use)
-├─ docs/
-│  ├─ Configuration.md       # .env, appsettings, EXPO_PUBLIC_* — start here for setup
-│  ├─ Backend.md             # API folder structure and features
-│  ├─ Frontend.md            # Mobile/web folder structure
-│  └─ WebSpider.md           # Web spider architecture and admin API
-└─ README.md
+omada-platform/
+├── 📄 README.md                    ← You are here
+├── 📚 docs/                        ← Full documentation hub
+│   ├── README.md                   ← Start here for docs index
+│   ├── Architecture.md             ← Big-picture system design
+│   ├── Configuration.md            ← .env, appsettings, setup
+│   ├── Backend.md                  ← API structure & features
+│   ├── Frontend.md                 ← Mobile app structure & routes
+│   └── WebSpider.md                ← Crawling & sync deep dive
+│
+├── ⚙️ src/backend/
+│   ├── Omada.sln
+│   └── Omada.Api/                  ← Main REST API (everything lives here)
+│       ├── Controllers/            ← 23 HTTP controllers
+│       ├── Services/               ← Business logic
+│       ├── Entities/ + Data/       ← EF Core + migrations
+│       ├── DTOs/ + Validators/     ← API contracts
+│       ├── Infrastructure/         ← Auth, tenancy, Hangfire, middleware
+│       └── Hubs/                   ← SignalR
+│
+└── 📱 src/frontend/
+    ├── mobile/                     ← ⭐ Primary client (iOS, Android, Expo web)
+    │   ├── src/app/                ← Expo Router (thin routes)
+    │   ├── src/screens/            ← All feature UI
+    │   ├── src/components/         ← Clay design system
+    │   └── src/api/                ← NSwag generated client
+    └── web/                        ← Optional Next.js placeholder
 ```
 
-There is **no separate Python service**; floorplan AI runs inside `Omada.Api`.
+> 💡 **No separate Python service** — floorplan AI runs inside `Omada.Api`.
 
 ---
 
-## Getting started (local development)
+## 🚀 Quick start (local development)
 
-Full details: **[`docs/Configuration.md`](docs/Configuration.md)**
+Full setup guide: **[`docs/Configuration.md`](docs/Configuration.md)**
 
 ### Prerequisites
 
-- .NET 8 SDK  
-- Node.js (LTS)  
-- SQL Server or LocalDB (Development config uses LocalDB by default)  
-- Expo tooling (Android Studio / Xcode as needed)  
-- Roboflow API key (only if you use **floorplan AI extraction** in map admin)
+- ✅ .NET 8 SDK
+- ✅ Node.js (LTS)
+- ✅ SQL Server or LocalDB (Development uses LocalDB by default)
+- ✅ Expo tooling (Android Studio / Xcode as needed)
+- 🔑 Roboflow API key — only if you use **floorplan AI** in map admin
 
-### 1) Backend API
+### 1️⃣ Backend API
 
 ```bash
 cd src/backend/Omada.Api
 copy .env.example .env
-# Edit .env — set ROBOFLOW_API_KEY if using floorplan AI; override SQL connection if needed
+# Edit .env — set ROBOFLOW_API_KEY if using floorplan AI
 dotnet restore
 dotnet run
 ```
 
 | Resource | URL |
 |----------|-----|
-| Swagger | `http://localhost:5069/swagger` |
-| Hangfire dashboard | `http://localhost:5069/hangfire` (when enabled) |
+| 📖 Swagger | `http://localhost:5069/swagger` |
+| ⏰ Hangfire | `http://localhost:5069/hangfire` |
 
-### 2) Mobile app
+### 2️⃣ Mobile app
 
 ```bash
 cd src/frontend/mobile
 copy .env.example .env
-# Set EXPO_PUBLIC_API_BASE_URL (LAN IP when testing on a physical device)
+# Set EXPO_PUBLIC_API_BASE_URL (LAN IP on physical device)
 npm install
 npm run start
 ```
 
-`config.ts` reads `EXPO_PUBLIC_API_BASE_URL` and defaults to `http://localhost:5069`.
+Press **`w`** for Expo web · **`a`** for Android · **`i`** for iOS
 
-### 3) Generate TypeScript API client
+### 3️⃣ Generate TypeScript API client
 
 With the API running:
 
@@ -102,105 +119,99 @@ cd src/frontend/mobile
 npm run generate-api
 ```
 
-Reads `http://localhost:5069/swagger/v1/swagger.json` → `src/api/generatedClient.ts`.
+Reads Swagger → writes `src/api/generatedClient.ts` (never edit by hand).
 
 ---
 
-## Configuration summary
+## 🧠 Product model (high level)
 
-| What | Where |
-|------|--------|
-| Roboflow model ids, Gemini model name, JWT issuer | `appsettings.json` / `appsettings.Development.json` |
-| Roboflow API key, SQL override, Gemini key | `src/backend/Omada.Api/.env` |
-| Mobile API URL | `src/frontend/mobile/.env` → `EXPO_PUBLIC_API_BASE_URL` |
-| Mobile app URL (invite links) | `src/frontend/mobile/.env` → `EXPO_PUBLIC_APP_BASE_URL` |
-| Backend invite link base | `AppConfig:PublicAppUrl` in appsettings or `AppConfig__PublicAppUrl` in `.env` |
-| Spider timetable/news URLs | Organization record (admin UI), not env files |
+### Organizations & tenancy
 
-See **[`docs/Configuration.md`](docs/Configuration.md)** for variable names, priority, and checklists.
+```mermaid
+flowchart LR
+    User["👤 User account"] --> M1["Org A membership"]
+    User --> M2["Org B membership"]
+    M1 --> JWT["JWT with OrganizationId"]
+    JWT --> API["Scoped API + EF filters"]
+    JWT --> UI["Theme + permissions"]
+```
 
----
+- **Organization** — tenant with theme, enabled widgets, invite code
+- **User** — global account; can belong to many orgs
+- **Active org** — drives theme, permissions, and API scoping
+- **Invites** — share link/code or email invites; join via `POST /api/Auth/join`
 
-## Product model (high level)
+### Widgets & permissions (two layers)
 
-### Organizations and tenancy
+1. **Org widget catalog** — which features are enabled org-wide (`Organization.EnabledWidgetKeysJson`)
+2. **Role permissions** — per-role **View → Edit → Admin** on enabled widgets only
 
-- **Organization** — tenant with theme, enabled widgets, and a unique **invite code** for self-service join  
-- **User** — global account; can belong to multiple organizations  
-- **Active organization** — drives theme, permissions, and API scoping  
-- **Invites** — share link/code or email invites at registration; new users join via `POST /api/Auth/join`
+Enforced with `[HasPermission]` on controllers. **SuperAdmin** bypasses widget checks and can enter any active org.
 
-Backend: `OrganizationId` from JWT + EF global filters (`IUserContext` / `ITenantAccessor`).
+Examples: `schedule`, `news`, `map`, `rooms`, `chat`, `grades`, `admin`, `super-admin`
 
-### Widgets and permissions
+### Admin surfaces
 
-Widget keys live in `Omada.Api.Infrastructure.WidgetKeys` and mirror `src/frontend/mobile/src/config/permissions.config.ts`.
-
-**Two layers:**
-
-1. **Organization widget catalog** — which features are enabled org-wide (`Organization.EnabledWidgetKeysJson`; all configurable widgets enabled when unset).
-2. **Role permissions** — per-role **View → Edit → Admin** access on enabled widgets only.
-
-Enforced with `[HasPermission]` on controllers. SuperAdmin bypasses widget checks; SuperAdmins can switch into any active org via `POST /api/Auth/switch-org`.
-
-Examples: `schedule`, `news`, `map`, `rooms`, `chat`, `grades`, `admin`, `super-admin`.
-
-### Organization admin API
-
-Tenant-scoped admin lives under **`/api/Organizations/current`** (`OrganizationAdminController`): settings, members, roles, periods, enabled widgets, audit logs. Widget catalog metadata: **`GET /api/Admin/widgets`**.
-
-Mobile hub: **`/org-dashboard`** with workspaces (members, roles, branding, widgets, periods, grades, attendance, rooms, audit, floorplan, web spider, groups, event types).
-
-### Platform admin (SuperAdmin)
-
-**`/api/super-admin`** — list/detail/delete organizations, platform audit log. Mobile: **`/admin-dashboard`**; entering an org switches JWT context then opens org admin.
+| Role | Mobile route | API prefix |
+|------|--------------|------------|
+| 🏛️ Org admin | `/org-dashboard` + 13 workspaces | `/api/Organizations/current` |
+| 🌐 Platform admin | `/admin-dashboard` | `/api/super-admin` |
 
 ---
 
-## Web spider (schedule & news)
+## 📚 Documentation map
 
-Crawls public HTML for timetables and news; org admins configure URLs in the mobile **Web crawling** workspace.
-
-| Doc | Content |
-|-----|---------|
-| [`docs/WebSpider.md`](docs/WebSpider.md) | Architecture, API endpoints, sync jobs, Gemini fallback |
-| Admin UI | Organization admin → Web crawling (`/web-spider-workspace`) |
-| API | `/api/web-spider/*` (requires **admin** widget + Admin) |
-
-Optional: `Gemini:ApiKey` in `.env` when table parsing fails.
+| Document | What's inside |
+|----------|---------------|
+| 📚 [`docs/README.md`](docs/README.md) | **Documentation hub** — index of all guides |
+| 🏗️ [`docs/Architecture.md`](docs/Architecture.md) | System design, data flow, tenancy, permissions |
+| ⚙️ [`docs/Backend.md`](docs/Backend.md) | API folders, 23 controllers, services, entities |
+| 📱 [`docs/Frontend.md`](docs/Frontend.md) | Mobile routes, Clay UI, widgets, admin workspaces |
+| 🔧 [`docs/Configuration.md`](docs/Configuration.md) | `.env`, appsettings, checklist for new clones |
+| 🕷️ [`docs/WebSpider.md`](docs/WebSpider.md) | Timetable/news crawling, Hangfire, Gemini |
+| 📱 [`src/frontend/mobile/TUTORIAL.md`](src/frontend/mobile/TUTORIAL.md) | End-user flows (registration, invites, daily use) |
 
 ---
 
-## Floorplan processing (map admin)
+## 🗺️ Floorplan processing (map admin)
 
 | Step | Component |
 |------|-----------|
-| Upload image | `FloorplansController` + `FloorplanProcessingService` |
-| AI extraction | `RoboflowFloorplanGeoJsonExtractor` (ImageSharp + Roboflow detect API) |
-| Storage | `wwwroot/images/maps/floorplans/` + `Floorplan.GeoJsonData` |
-| Publish rooms | `PublishRoomsFromGeoJsonAsync` from GeoJSON polygons |
+| 📤 Upload image | `FloorplansController` + `FloorplanProcessingService` |
+| 🤖 AI extraction | `RoboflowFloorplanGeoJsonExtractor` |
+| 💾 Storage | `wwwroot/images/maps/floorplans/` + `Floorplan.GeoJsonData` |
+| 🏠 Publish rooms | GeoJSON polygons → bookable `Room` rows |
 
-Requires **`map` widget + Admin** for upload; **`map` + View** to read. Configure **`ROBOFLOW_API_KEY`** in backend `.env` (see Configuration doc).
-
----
-
-## Further reading
-
-| Document | Purpose |
-|----------|---------|
-| [`docs/Configuration.md`](docs/Configuration.md) | Environment and appsettings for API + mobile |
-| [`docs/Backend.md`](docs/Backend.md) | Backend folders, controllers, services, features |
-| [`docs/Frontend.md`](docs/Frontend.md) | Mobile/web folder structure and conventions |
-| [`src/backend/README.md`](src/backend/README.md) | Backend quick start |
-| [`src/frontend/mobile/README.md`](src/frontend/mobile/README.md) | Mobile quick start and scripts |
-| [`src/frontend/web/README.md`](src/frontend/web/README.md) | Optional Next.js app vs Expo web |
-| [`docs/WebSpider.md`](docs/WebSpider.md) | Web spider deep dive |
+Requires **`map` widget + Admin** for upload. Set **`ROBOFLOW_API_KEY`** in backend `.env`.
 
 ---
 
-## Conventions
+## 🕷️ Web spider (schedule & news)
 
-- **Vertical slices** — backend DTOs → Swagger → `npm run generate-api` → mobile hooks/UI  
-- **API envelopes** — `ServiceResponse<T>` + `AppError`  
-- **Tenancy** — never bypass org filters without an explicit reason  
-- **Secrets** — only in `.env`, user secrets, or host configuration — never committed  
+Crawls public HTML for timetables and news. Org admins configure URLs in the **Web crawling** workspace.
+
+| Resource | Link |
+|----------|------|
+| Deep dive | [`docs/WebSpider.md`](docs/WebSpider.md) |
+| Admin UI | `/web-spider-workspace` |
+| API | `/api/web-spider/*` (admin widget + Admin) |
+
+---
+
+## 📋 Development conventions
+
+| Rule | Why |
+|------|-----|
+| **Vertical slices** | Entity → Service → Controller → DTO → Swagger → `generate-api` → hook → UI |
+| **API envelopes** | Always `ServiceResponse<T>` + `AppError` |
+| **Tenancy** | Never bypass org filters without explicit reason |
+| **Secrets** | Only in `.env` / host config — never committed |
+| **One API process** | Only one `Omada.Api` instance — stop stale processes if build locks |
+
+---
+
+## 🤝 Contributing mindset
+
+Omada favors **clarity over cleverness**. Match existing patterns, keep files small, and regenerate the NSwag client after every API contract change.
+
+**Happy building!** 🎉

@@ -1,283 +1,328 @@
-# Backend structure guide
+# ⚙️ Backend Structure Guide
 
-Reference for **`src/backend/`** — the Omada ASP.NET Core API and related projects.
+> The Omada ASP.NET Core API — folders, features, patterns, and how to extend it.
 
-**Quick start:** [`Configuration.md`](Configuration.md) · **Run:** `cd src/backend/Omada.Api`, copy `.env.example` → `.env`, `dotnet run` → Swagger at `http://localhost:5069/swagger`
+**Quick start:** [`Configuration.md`](Configuration.md) · **Run:** `cd src/backend/Omada.Api` → copy `.env.example` → `.env` → `dotnet run` → Swagger at `http://localhost:5069/swagger`
 
----
-
-## Projects
-
-| Path | Role |
-|------|------|
-| **`Omada.Api/`** | Main REST API (in `Omada.sln`) — product backend |
-| **`Omada.Web/`** | Optional Razor/MVC scaffold — **not** in main solution, not wired to the API |
-
-All feature work happens in **`Omada.Api`**.
+**See also:** [`Architecture.md`](Architecture.md) · [`Frontend.md`](Frontend.md) · [`WebSpider.md`](WebSpider.md)
 
 ---
 
-## Architecture overview
+## 🗂️ Projects
+
+| Path | Role | Status |
+|------|------|--------|
+| **`Omada.Api/`** | Main REST API — all product features | ✅ Active (in `Omada.sln`) |
+| **`Omada.Web/`** | Optional Razor/MVC scaffold | ❌ Not in repo / not in solution |
+
+All feature work happens in **`Omada.Api`** (~444 source files, .NET 8).
+
+---
+
+## 🏗️ Architecture overview
 
 ```text
-Controllers  →  Services  →  Repositories / DbContext  →  SQL Server
-     ↑              ↑
-  DTOs +       IUserContext,
-  FluentValidation   permissions, Hangfire
+┌──────────────┐     ┌──────────────┐     ┌─────────────────┐     ┌────────────┐
+│ Controllers  │ ──▶ │  Services    │ ──▶ │ Repositories /  │ ──▶ │ SQL Server │
+│  (23 total)  │     │  (~31 svcs)  │     │ DbContext       │     │            │
+└──────┬───────┘     └──────┬───────┘     └─────────────────┘     └────────────┘
+       │                    │
+       ▼                    ▼
+   DTOs +              IUserContext,
+   FluentValidation     permissions,
+                        Hangfire jobs
 ```
 
-**Typical feature flow:** Entity → `Data/Configurations` → Service → Controller → DTO/Validator → Swagger → mobile `npm run generate-api`.
+**Typical feature flow:**
 
-**API responses:** `ServiceResponse<T>` with `AppError` on failure — do not invent other envelopes.
+```text
+Entity → Data/Configurations → Service → Controller → DTO/Validator → Swagger → mobile npm run generate-api
+```
+
+**API responses:** Always `ServiceResponse<T>` with `AppError` on failure — never invent other envelopes.
 
 ---
 
-## `Omada.Api` folder map
+## 📁 `Omada.Api` folder map
 
-### `Abstractions/`
+```text
+Omada.Api/
+├── 📄 Program.cs              Composition root, DI, middleware pipeline
+├── 📄 appsettings.json        Shared defaults
+├── 📄 .env.example            Secrets template (gitignored .env)
+│
+├── 🧩 Abstractions/           Cross-cutting contracts (5 files)
+├── 🌐 Controllers/            23 HTTP controllers
+├── ⚙️ Services/               Business logic (~31 services)
+│   ├── Interfaces/
+│   └── Floorplan/             Roboflow AI extractor
+├── 🗄️ Repositories/           Unit of Work + feature repos
+├── 📦 Entities/               34 domain entity files
+├── 💾 Data/
+│   ├── ApplicationDbContext.cs
+│   ├── ApplicationDbContextFactory.cs
+│   ├── DbInitalizer.cs        (note: filename typo)
+│   └── Configurations/        28 EF Fluent API configs
+├── 📋 DTOs/                   122 files in 18 feature subfolders
+├── ✅ Validators/             45 FluentValidation validators
+├── 🔧 Infrastructure/         Security, middleware, Hangfire, options
+├── 📡 Hubs/                   SignalR AppHub
+├── 🔄 Migrations/             24 EF migrations + snapshot
+└── 📂 wwwroot/                Static uploads, floorplan images
+```
+
+---
+
+## 🧩 Abstractions/
 
 | Type | Role |
 |------|------|
-| `ServiceResponse`, `ServiceResponse<T>` | Standard API envelope |
-| `AppError` | Error codes for clients |
-| `IUserContext` | Current user + organization (throws when missing in auth flows) |
+| `ServiceResponse`, `ServiceResponse<T>` | Standard `{ isSuccess, data, error }` envelope |
+| `AppError` | Error codes (`AUTH_001`, `DATA_404`, …) |
+| `IUserContext` | Current user + org — **throws** when missing in auth flows |
 | `ITenantAccessor` | `OrganizationId` from JWT; **null** during seed/migrations |
-| `HasPermissionAttribute` | Widget RBAC → policy `widgetKey:AccessLevel` |
+| `HasPermissionAttribute` | `[HasPermission(widgetKey, nameof(AccessLevel.View))]` → policy `widget:Level` |
 
-### `Controllers/` (27 controllers)
+---
 
-Thin HTTP layer; business logic belongs in services. No broad try/catch — use exception middleware.
+## 🌐 Controllers/ (23 controllers)
 
-| Controller | Route | Primary services | Notes |
-|------------|-------|------------------|--------|
-| `AuthController` | `api/Auth` | `AuthService` | Login, refresh, org switch (incl. SuperAdmin enter), join via invite |
-| `OrganizationsController` | `api/Organizations` | `OrganizationService` | Registration, invite preview, org by id |
-| `OrganizationAdminController` | `api/Organizations/current` | `OrganizationAdminService` | Settings, members, roles, periods, enabled widgets, audit logs |
-| `SuperAdminController` | `api/super-admin` | `OrganizationService`, `AuditLogService` | Platform org list/detail/delete, platform audit log |
-| `AdminController` | `api/Admin` | `OrganizationAdminService` | Widget catalog (`GET widgets`) |
-| `UsersController` | `api/Users` | `UserService` | Profile, directory, GDPR — `users`, `digital-id` |
-| `SearchController` | `api/Search` | `SearchService` | Universal search (permission-scoped) |
-| `GroupsController` | `api/Groups` | `GroupService` | `groups`, `users` |
-| `ScheduleController` | `api/Schedule` | `ScheduleService` | `schedule`, `users` (hosts) |
-| `EventTypesController` | `api/EventTypes` | `EventTypeService` | `schedule` |
-| `NewsController` | `api/News` | `NewsService` | `news` |
-| `TasksController` | `api/Tasks` | `TaskService` | `tasks` |
-| `GradesController` | `api/Grades` | `GradeService` | User grades + **admin** CRUD/list |
-| `AttendanceController` | `api/Attendance` | `AttendanceService` | My attendance + **admin** records |
-| `ChatController` | `api/organizations/{orgId}/chat` | `ChatService` | `chat` |
-| `RoomsController` | `api/Rooms` | `RoomService` | `rooms` |
-| `BuildingsController` | `api/Buildings` | `MapService` | Building CRUD — `map` |
-| `MapsController` | `api` | `MapService` | Floors, pins — `map` |
-| `FloorplansController` | `api/floorplans` | `FloorplanProcessingService` | `map` (Admin upload) |
-| `FilesController` | `api/Files` | File storage | Uploads to `wwwroot` |
-| `DigitalIdController` | `api/DigitalId` | `DigitalIdService` | QR validation |
-| `WebSpiderController` | `api/web-spider` | `WebSpiderAdminService`, `SpiderSyncRunService` | Schedule/news sync, history, unresolved |
-| `ToolsController` | `api/Tools` | `ColorExtractionService` | Logo colors (registration) |
+Thin HTTP layer — business logic lives in services. No broad try/catch (use exception middleware).
 
-### `Services/` and `Services/Interfaces/`
+| Controller | Route | Primary services | Widget(s) |
+|------------|-------|------------------|-----------|
+| 🔑 `AuthController` | `api/Auth` | `AuthService` | — (public + auth) |
+| 🏢 `OrganizationsController` | `api/Organizations` | `OrganizationService` | — |
+| 🛡️ `OrganizationAdminController` | `api/Organizations/current` | `OrganizationAdminService` | `admin` |
+| 🌐 `SuperAdminController` | `api/super-admin` | `OrganizationService`, `AuditLogService` | `super-admin` |
+| 📋 `AdminController` | `api/Admin` | `OrganizationAdminService` | `admin` |
+| 👤 `UsersController` | `api/Users` | `UserService` | `users`, `profile` |
+| 🔍 `SearchController` | `api/Search` | `SearchService` | permission-scoped |
+| 👥 `GroupsController` | `api/Groups` | `GroupService` | `groups` |
+| 📅 `ScheduleController` | `api/Schedule` | `ScheduleService` | `schedule` |
+| 🏷️ `EventTypesController` | `api/EventTypes` | `EventTypeService` | `schedule` |
+| 📰 `NewsController` | `api/News` | `NewsService` | `news` |
+| ✅ `TasksController` | `api/Tasks` | `TaskService` | `tasks` |
+| 📊 `GradesController` | `api/Grades` | `GradeService` | `grades` |
+| 📋 `AttendanceController` | `api/Attendance` | `AttendanceService` | `attendance` |
+| 💬 `ChatController` | `api/organizations/{orgId}/chat` | `ChatService` | `chat` |
+| 🚪 `RoomsController` | `api/Rooms` | `RoomService` | `rooms` |
+| 🏗️ `BuildingsController` | `api/Buildings` | `MapService` | `map` |
+| 🗺️ `MapsController` | `api` | `MapService` | `map` |
+| 📐 `FloorplansController` | `api/floorplans` | `FloorplanProcessingService` | `map` (Admin upload) |
+| 📎 `FilesController` | `api/Files` | File storage | — |
+| 🪪 `DigitalIdController` | `api/DigitalId` | `DigitalIdService` | `digital-id` |
+| 🕷️ `WebSpiderController` | `api/web-spider` | `WebSpiderAdminService`, `SpiderSyncRunService` | `admin` |
+| 🎨 `ToolsController` | `api/Tools` | `ColorExtractionService` | — (registration) |
+
+---
+
+## ⚙️ Services/ (~31 services)
 
 | Service | Responsibility |
 |---------|----------------|
-| `AuthService` | Login, tokens, refresh, organization switch (members + SuperAdmin enter), join via invite |
-| `UserService` | Profile, `WidgetAccess` (filtered by org enabled widgets), directory |
-| `OrganizationService` | Org CRUD, registration, invite preview; SuperAdmin list/delete |
-| `OrganizationAdminService` | Current-org admin: settings, members, roles, periods, enabled widgets |
-| `AuditLogService` | Append/query admin audit entries (org + platform-wide) |
-| `PermissionService` | Role ↔ widget permissions |
-| `SearchService` | Universal search groups (users, news, tasks, …) with widget access checks |
-| `GroupService` | Groups and members |
-| `EmailService` | Invitation / onboarding emails (**mock logger today** — no real SMTP yet) |
-| `ColorExtractionService` | Logo → color palette (ImageSharp) |
-| `ScheduleService` | Calendar events, attendance, busy times |
-| `EventTypeService` | Per-organization event types |
-| `NewsService` | News items and read state |
-| `TaskService` | Task items |
-| `GradeService` | Grades + admin list/CRUD |
-| `AttendanceService` | My attendance + admin records |
-| `ChatService` | Messages + SignalR notify |
-| `RoomService` | Rooms, bookings, search, amenities |
-| `MapService` | Buildings, floors, pins, map CRUD |
-| `FloorplanProcessingService` | Upload floorplan, Roboflow extraction, save GeoJSON |
-| `FloorplanGeoJsonRoomPublishParser` | GeoJSON → room rows |
-| `RoboflowFloorplanGeoJsonExtractor` | In `Services/Floorplan/` (namespace `FloorplanAi`) |
-| `WebSpiderService` | HTML crawl, timetable/news parse |
-| `WebSpiderAdminService` | Admin preview, discover, sync enqueue |
-| `NewsSpiderSyncService` | Persist spider news into `NewsItem` (dedup by source URL/hash) |
-| `ScheduleSpiderSyncService` | Persist spider data to `ScrapedClassEvent` |
-| `SpiderSyncRunService` | Sync run history for admin UI |
-| `SpiderUrlResolver` | Org URLs from DB, appsettings fallback |
-| `ScrapedEntityResolutionService` | Host/room resolution for scraped rows |
-| `GeminiService` | Optional generative fallback for spider |
-| `DigitalIdService` | Short-lived QR JWT |
-| `WidgetRegistry` | Dashboard widget catalog (core vs configurable) |
+| 🔑 `AuthService` | Login, tokens, refresh, org switch, join via invite |
+| 👤 `UserService` | Profile, `WidgetAccess`, directory |
+| 🏢 `OrganizationService` | Org CRUD, registration, SuperAdmin list/delete |
+| 🛡️ `OrganizationAdminService` | Current-org admin: settings, members, roles, periods, widgets |
+| 📝 `AuditLogService` | Admin audit append/query (org + platform) |
+| 🔐 `PermissionService` | Role ↔ widget permissions |
+| 🔍 `SearchService` | Universal search with widget access checks |
+| 👥 `GroupService` | Groups and members |
+| 📧 `EmailService` | Invitation emails (**mock logger today**) |
+| 🎨 `ColorExtractionService` | Logo → color palette (ImageSharp) |
+| 📅 `ScheduleService` | Calendar events, attendance, busy times |
+| 🏷️ `EventTypeService` | Per-org event types |
+| 📰 `NewsService` | News items and read state |
+| ✅ `TaskService` | Task items |
+| 📊 `GradeService` | Grades + admin CRUD |
+| 📋 `AttendanceService` | My attendance + admin records |
+| 💬 `ChatService` | Messages + SignalR notify |
+| 🚪 `RoomService` | Rooms, bookings, search, amenities |
+| 🗺️ `MapService` | Buildings, floors, pins |
+| 📐 `FloorplanProcessingService` | Upload floorplan, Roboflow extraction, GeoJSON |
+| 📐 `FloorplanGeoJsonRoomPublishParser` | GeoJSON → room rows |
+| 🤖 `RoboflowFloorplanGeoJsonExtractor` | In `Services/Floorplan/` — AI room detection |
+| 🕷️ `WebSpiderService` | HTML crawl, timetable/news parse |
+| 🕷️ `WebSpiderAdminService` | Admin preview, discover, sync enqueue |
+| 📰 `NewsSpiderSyncService` | Spider news → `NewsItem` (dedup by URL/hash) |
+| 📅 `ScheduleSpiderSyncService` | Spider data → `ScrapedClassEvent` |
+| 📊 `SpiderSyncRunService` | Sync run history for admin UI |
+| 🔗 `SpiderUrlResolver` | Org URLs from DB, appsettings fallback |
+| 🎯 `ScrapedEntityResolutionService` | Host/room resolution for scraped rows |
+| ✨ `GeminiService` | Optional generative fallback for spider |
+| 🪪 `DigitalIdService` | Short-lived QR JWT |
+| 🧩 `WidgetRegistry` | Dashboard widget catalog (core vs configurable) |
 
-**Infrastructure:** `OrganizationWidgetKeys` — parse/filter org enabled widget keys for DTOs and `UserService`.
+**Infrastructure helper:** `OrganizationWidgetKeys` — parse/filter org enabled widget keys.
 
-Typed `HttpClient` is used for web spider, Gemini, and Roboflow.
+Typed `HttpClient` for web spider, Gemini, and Roboflow.
 
-### `Repositories/`
+---
 
-`UnitOfWork`, `GenericRepository<T>`, and feature repos: `ScheduleRepository`, `NewsRepository`, `TaskRepository`, `GradeRepository`, `RoomRepository`, `ScrapedClassEventRepository`.
+## 🗄️ Repositories/
 
-### `Entities/`
+| Type | Role |
+|------|------|
+| `UnitOfWork` | Per-request; lazy `Repository<T>()` + `CompleteAsync()` |
+| `GenericRepository<T>` | Generic EF CRUD |
+| Feature repos | `ScheduleRepository`, `NewsRepository`, `TaskRepository`, `GradeRepository`, `RoomRepository`, `ScrapedClassEventRepository` |
 
-All inherit **`BaseEntity`** (`Id`, `CreatedAt`, `UpdatedAt`, `IsDeleted`). Mapping lives in **`Data/Configurations/`** — no data annotations on entities.
+Many services use `_uow.Repository<T>()` directly.
+
+---
+
+## 📦 Entities/ (34 files)
+
+All inherit **`BaseEntity`**: `Id`, `CreatedAt`, `UpdatedAt`, `IsDeleted`. Mapping in **`Data/Configurations/`** — no data annotations on entities.
 
 | Area | Entities |
 |------|----------|
-| Tenancy | `Organization`, `User`, `OrganizationMember`, `Role`, `RolePermission`, `RefreshToken` |
-| Admin | `OrganizationPeriod`, `AuditLog` |
-| Groups | `Group`, `GroupMember` |
-| Schedule | `Event`, `EventOverride`, `EventAssociation`, `EventAttendance`, `EventType` |
-| Content | `NewsItem`, `UserNewsRead`, `TaskItem`, `Grade`, `Message` |
-| Map | `Building`, `Floor`, `Room`, `RoomBooking`, `RoomAmenity`, `MapPin`, `Floorplan` |
-| Spider | `ScrapedClassEvent`, `SpiderSyncRun` |
+| 🏢 Tenancy | `Organization`, `User`, `OrganizationMember`, `Role`, `RolePermission`, `RefreshToken` |
+| 🛡️ Admin | `OrganizationPeriod`, `AuditLog` |
+| 👥 Groups | `Group`, `GroupMember` |
+| 📅 Schedule | `Event`, `EventOverride`, `EventAssociation`, `EventAttendance`, `EventType` |
+| 📰 Content | `NewsItem`, `UserNewsRead`, `TaskItem`, `Grade`, `Message` |
+| 🗺️ Map | `Building`, `Floor`, `Room`, `RoomBooking`, `RoomAmenity`, `MapPin`, `Floorplan` |
+| 🕷️ Spider | `ScrapedClassEvent`, `SpiderSyncRun`, `SpiderSyncKind`, `SpiderSyncStatus` |
+| 🔧 Infra | `BaseEntity`, `IOrganizationScoped`, `Enums.cs` |
 
-**Organization fields (admin):** `EnabledWidgetKeysJson` (org widget catalog), `OnboardingStep`, `SpiderSchedulePageUrl`, `SpiderNewsStartUrl`, `IsActive`, `OrganizationType`.
+**Organization admin fields:** `EnabledWidgetKeysJson`, `OnboardingStep`, `SpiderSchedulePageUrl`, `SpiderNewsStartUrl`, `IsActive`, `OrganizationType`, `InviteCode`
 
-**No organization filter on:** `Organization`, `User`, `OrganizationMember`, `RefreshToken`.
+**No org filter on:** `Organization`, `User`, `OrganizationMember`, `RefreshToken`
 
-### `Data/`
+---
 
-- **`ApplicationDbContext`** — global soft-delete + tenant filters when `OrganizationId` is in context  
-- **`DbInitalizer.cs`** — seed data (note filename spelling)  
-- **`ApplicationDbContextFactory`** — EF design-time tooling  
+## 💾 Data/
 
-### `DTOs/` and `Validators/`
+| File | Role |
+|------|------|
+| `ApplicationDbContext` | DbSets, global soft-delete + tenant filters |
+| `DbInitalizer.cs` | Idempotent demo seed when DB is empty |
+| `ApplicationDbContextFactory` | Design-time EF (`dotnet ef`) with null tenant |
 
-Grouped by feature (`Auth`, `Schedule`, `Maps`, `Scraping`, …). Request DTOs use **FluentValidation**; response DTOs use `[Required]` where fields are always present (for OpenAPI / NSwag).
+**Startup:** `MigrateAsync()` + `DbInitializer.SeedAsync()` on boot.
 
-### `Infrastructure/`
+---
+
+## 📋 DTOs/ (18 subfolders)
+
+`Attendance`, `Auth`, `Chat`, `Common`, `DigitalId`, `Files`, `Grades`, `Groups`, `Import`, `Maps`, `News`, `Organizations`, `Rooms`, `Schedule`, `Scraping`, `Search`, `Tasks`, `Users`
+
+- **Requests** → FluentValidation in `Validators/`
+- **Responses** → `[Required]` on always-present fields (OpenAPI / NSwag)
+
+---
+
+## 🔧 Infrastructure/
 
 | Area | Contents |
 |------|----------|
 | `Configuration/` | `.env` loading (`DotEnvBootstrap`) |
-| `Constants/` | `WidgetKeys`, `RoleNames` — keep aligned with mobile `permissions.config.ts` |
+| `Constants/` | `WidgetKeys`, `RoleNames` — align with mobile |
 | `Security/` | Tenant accessor, user context, permission handler |
 | `Middleware/` | `ExceptionHandlingMiddleware` |
 | `Hangfire/` | `ScheduleSyncJobs`, dashboard filter |
 | `Scraping/` | Event hashing, HTML structure exceptions |
-| `Options/` | Roboflow, Digital ID, env fallbacks for `ROBOFLOW_*` / `GEMINI_API_KEY` |
+| `Options/` | Roboflow, Digital ID, env fallbacks |
 | `Grading/` | `GradePointCalculator` |
 | Invite helpers | `OrganizationInviteCodeGenerator`, `InviteLinkBuilder`, `InviteEmailTemplates` |
 
-### `Hubs/AppHub.cs`
+---
 
-SignalR at **`/ws/app`** — clients join organization groups after login.
+## 📡 SignalR — `Hubs/AppHub.cs`
 
-### `Migrations/`
-
-EF Core migration history. Run from `Omada.Api` with design-time factory.
-
-### `wwwroot/`
-
-Uploads and floorplan images under **`wwwroot/`** (served via `UseStaticFiles`). Root **`/`** redirects to **`/swagger`** in Development.
+- Endpoint: **`/ws/app`**
+- Clients call `JoinOrganization(organizationId)` after login
+- Used by `ChatService` for real-time message notifications
 
 ---
 
-## Feature notes
-
-### Authentication and organizations
-
-- JWT includes **`OrganizationId`**; `SwitchOrg` re-issues token. **SuperAdmin** users without membership can switch into any **active** org (role `SuperAdmin` in token).
-- Registration creates org, admin, roles, widgets, and unique **`InviteCode`** in one transaction.
-- **`GET /api/Organizations/invite/{code}`** — public preview before join.
-- **`POST /api/Auth/join`** — register or attach account via invite code.
-- **`GET /api/Organizations`** (list all) — **SuperAdmin** only; tenant admins use **`/api/Organizations/current`**.
-
-### Organization admin (`OrganizationAdminController`)
-
-| Area | Endpoints (under `/api/Organizations/current`) |
-|------|--------------------------------------------------|
-| Settings | `GET` / `PUT` — name, branding, `OrganizationType`, `IsActive`, onboarding step |
-| Members | `GET members`, `POST members/invite`, `PUT members/{userId}` |
-| Roles | CRUD + `PUT roles/{id}/permissions` |
-| Periods | CRUD academic/operational periods |
-| Widgets | `PUT enabled-widgets` — org-wide catalog |
-| Audit | `GET audit-logs` — paginated admin actions |
-| Invite | `POST invite-code/regenerate` |
-
-Widget catalog metadata: **`GET /api/Admin/widgets`**.
-
-### Platform admin (`SuperAdminController`)
-
-- `GET/DELETE /api/super-admin/organizations` — platform org list and hard delete
-- `GET /api/super-admin/organizations/{id}` — org detail
-- `GET /api/super-admin/audit-logs` — cross-tenant audit (optional `organizationId` filter)
-
-### Schedule vs web spider
-
-| Data | Table / API | Purpose |
-|------|-------------|---------|
-| In-app calendar | `Event` | User CRUD via `ScheduleController` |
-| Scraped timetable | `ScrapedClassEvent` | Filled by spider sync (Hangfire) |
-
-These are separate models; do not confuse them.
-
-### Map and floorplans
-
-- Room/pin coordinates: normalized **`[0..1]`** on floorplan images.  
-- Upload: `FloorplanProcessingService` → **`RoboflowFloorplanGeoJsonExtractor`** (in-process; no separate Python service).  
-- Configure **`ROBOFLOW_API_KEY`** in `.env` — see [Configuration.md](Configuration.md).  
-- Entrance pins: `PinType.Exit` with label `"Entrance"`.
-
-### Web spider
-
-- URLs stored on **Organization** (admin UI).  
-- Details: [WebSpider.md](WebSpider.md).  
-- Optional **`Gemini:ApiKey`** for parse fallbacks.
-
-### Digital ID
-
-- Short-lived QR JWT; optional scanner API key on validate endpoint.
-
----
-
-## Configuration
-
-| File | Purpose |
-|------|---------|
-| `appsettings.json` | Shared defaults (model ids, empty secrets) |
-| `appsettings.Development.json` | LocalDB, dev JWT key |
-| `.env` | Gitignored secrets and overrides — see `.env.example` |
-
----
-
-## Database
+## 🔄 Migrations (24 total)
 
 ```bash
 cd src/backend/Omada.Api
 dotnet ef database update
 ```
 
-Uses SQL Server (LocalDB by default in Development). Override connection string in `.env` if needed.
+| Theme | Examples |
+|-------|----------|
+| 🏗️ Foundation | `InitialCreate`, map/rooms/floors |
+| 🕷️ Spider | `AddScrapedClassEvents`, `AddOrganizationSpiderUrls`, `AddSpiderSyncRunsAndNewsSourceUrl` |
+| 📊 Features | `AddGrades`, `ExpandTaskItem`, `AddFloorplans`, `AddOrganizationPeriodsPhase3` |
+| 👤 Users | `UserProfilePreferencesAndGdpr`, `AddUsersDirectoryOrgChart` |
 
 ---
 
-## After API contract changes
+## 🎯 Feature deep dives
 
-1. Run the API and confirm Swagger.  
-2. From mobile: `cd src/frontend/mobile && npm run generate-api`  
-3. Do not hand-edit `generatedClient.ts`.
+### 🔑 Authentication & organizations
+
+- JWT includes **`OrganizationId`**; `SwitchOrg` re-issues token
+- **SuperAdmin** can enter any **active** org without membership
+- Registration creates org + admin + roles + widgets + invite code in one transaction
+- **`GET /api/Organizations/invite/{code}`** — public preview before join
+- **`POST /api/Auth/join`** — register or attach account via invite code
+
+### 🛡️ Organization admin (`/api/Organizations/current`)
+
+| Area | Endpoints |
+|------|-----------|
+| ⚙️ Settings | `GET` / `PUT` — name, branding, type, active, onboarding |
+| 👥 Members | `GET members`, `POST members/invite`, `PUT members/{userId}` |
+| 🔐 Roles | CRUD + `PUT roles/{id}/permissions` |
+| 📅 Periods | CRUD academic/operational periods |
+| 🧩 Widgets | `PUT enabled-widgets` — org-wide catalog |
+| 📝 Audit | `GET audit-logs` — paginated admin actions |
+| 🔗 Invite | `POST invite-code/regenerate` |
+
+Widget catalog metadata: **`GET /api/Admin/widgets`**
+
+### 📅 Schedule vs web spider
+
+| Data | Table | Purpose |
+|------|-------|---------|
+| In-app calendar | `Event` | User CRUD via `ScheduleController` |
+| Scraped timetable | `ScrapedClassEvent` | Filled by spider sync (Hangfire) |
+
+> ⚠️ These are **separate models** — do not confuse them!
+
+### 🗺️ Map & floorplans
+
+- Room/pin coordinates: normalized **`[0..1]`** on floorplan images
+- Upload → `FloorplanProcessingService` → **`RoboflowFloorplanGeoJsonExtractor`**
+- Configure **`ROBOFLOW_API_KEY`** in `.env`
+- Entrance pins: `PinType.Exit` with label `"Entrance"`
+
+### 🕷️ Web spider
+
+- URLs on **Organization** (admin UI)
+- Details: [`WebSpider.md`](WebSpider.md)
+- Optional **`GEMINI_API_KEY`** for parse fallbacks
 
 ---
 
-## Adding a new backend feature
+## ➕ Adding a new backend feature
 
-1. Entity + `Data/Configurations/{Entity}Configuration.cs`  
-2. DTOs + validators  
-3. Service + interface; register in `Program.cs`  
-4. Controller with `[HasPermission]` and org checks in the service  
-5. EF migration if schema changed  
-6. Regenerate mobile client  
-7. Add `WidgetKeys` + mobile `permissions.config.ts` if user-facing  
+```text
+1. 📝 Entity + Data/Configurations/{Entity}Configuration.cs
+2. 📋 DTOs + Validators/
+3. ⚙️ Service + interface → register in Program.cs
+4. 🌐 Controller + [HasPermission] + org checks in service
+5. 🗄️ EF migration if schema changed
+6. 📖 Confirm Swagger
+7. 🔄 npm run generate-api (mobile)
+8. 🧩 Add WidgetKeys + mobile permissions.config.ts if user-facing
+```
 
 ---
 
-## Related documentation
+## 📚 Related documentation
 
-- [Configuration.md](Configuration.md) — environment variables  
-- [WebSpider.md](WebSpider.md) — crawling and sync  
-- [Frontend.md](Frontend.md) — mobile client structure  
-- [../README.md](../README.md) — monorepo overview  
-- [../src/backend/README.md](../src/backend/README.md) — short backend entry point  
+| Doc | Topic |
+|-----|-------|
+| [`Architecture.md`](Architecture.md) | System design & data flow |
+| [`Configuration.md`](Configuration.md) | Environment variables |
+| [`WebSpider.md`](WebSpider.md) | Crawling & sync |
+| [`Frontend.md`](Frontend.md) | Mobile client structure |
+| [`../README.md`](../README.md) | Monorepo overview |

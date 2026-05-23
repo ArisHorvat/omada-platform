@@ -1,19 +1,33 @@
-# Omada — `web` (Next.js)
+# 🌐 Omada — Next.js Web (Placeholder)
 
-This directory is an **optional Next.js 16** app. It is **not** the primary Omada web client.
+> This directory is an **optional Next.js 16** app. It is **not** the primary Omada web client.
 
-**Main docs:** [`../../README.md`](../../README.md) · [`../../docs/Frontend.md`](../../docs/Frontend.md) · [`../../docs/Configuration.md`](../../docs/Configuration.md) · **Mobile (Expo web):** [`../mobile/README.md`](../mobile/README.md)
+---
 
-## What to use for the product
+## ⭐ What to use for the product
 
-The **Expo** app under `src/frontend/mobile` targets iOS, Android, and **web** (`npm run web`). Shared screens and **platform-specific** files (e.g. `Component.web.tsx` / `Component.tsx`) must live **inside that project** so Metro resolves them when bundling for web.
+The **Expo** app under `src/frontend/mobile` is the real Omada client:
 
-## When this folder is useful
+| Platform | Command | Result |
+|----------|---------|--------|
+| 🌐 Browser | `npm run web` | Full Omada app in browser |
+| 📱 iOS / Android | `npm run ios` / `android` | Native mobile app |
 
-- **Marketing site**, **docs**, or **landing pages** that are not part of the Expo bundle.
-- A **future** dedicated web-only admin or dashboard that uses Next.js routing and SSR, with shared code extracted to a workspace package (if you introduce one).
+Platform-specific behavior uses **`*.web.tsx`** files **inside** `mobile/src/` — Metro resolves them when bundling for web.
 
-## Scripts
+---
+
+## 🤔 When is this folder useful?
+
+| Use case | Why Next.js here |
+|----------|------------------|
+| 📣 **Marketing site** | Landing pages separate from the Expo bundle |
+| 📚 **Documentation site** | Static/SSR docs |
+| 🔮 **Future web admin** | Dedicated SSR dashboard (would share a workspace package) |
+
+---
+
+## 🚀 Scripts
 
 ```bash
 npm install
@@ -22,14 +36,44 @@ npm run dev
 
 Opens the placeholder page at [http://localhost:3000](http://localhost:3000).
 
-## Relationship to Expo web
+---
+
+## 📊 Expo web vs Next.js
 
 | Concern | Location |
-|--------|----------|
-| Omada app in the browser | `src/frontend/mobile` → `npm run web` |
-| Web/native split components | `*.web.tsx` next to the shared code in `mobile/src` |
-| Separate Next.js site | this folder |
+|---------|----------|
+| ⭐ Omada app in browser | `src/frontend/mobile` → `npm run web` |
+| 🔀 Web/native split components | `*.web.tsx` in `mobile/src/` |
+| 📣 Separate marketing site | **This folder** |
 
-## Shared code
+---
 
-If you later move API clients, types, or hooks into a shared package, both `mobile` and `web` can depend on it via the workspace root `package.json` (you would add that setup).
+## 📁 What's here
+
+```text
+web/
+├── package.json          Next.js 16
+├── next.config.ts
+└── src/app/
+    ├── layout.tsx
+    └── page.tsx          Placeholder → points to Expo web
+```
+
+**Not connected** to Omada APIs today.
+
+---
+
+## 🔮 Shared code (future)
+
+If you extract API clients, types, or hooks into a shared package, both `mobile` and `web` can depend on it via a workspace root `package.json`.
+
+---
+
+## 📚 Documentation
+
+| Doc | Topic |
+|-----|-------|
+| 📱 [`../mobile/README.md`](../mobile/README.md) | Primary mobile client |
+| 📖 [`../../docs/Frontend.md`](../../docs/Frontend.md) | Full frontend guide |
+| 🏠 [`../../README.md`](../../README.md) | Monorepo overview |
+| 🔧 [`../../docs/Configuration.md`](../../docs/Configuration.md) | Environment setup |
