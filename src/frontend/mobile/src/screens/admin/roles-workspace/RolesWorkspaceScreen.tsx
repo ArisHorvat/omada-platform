@@ -1,15 +1,15 @@
 import React, { useMemo } from 'react';
 import { View, ScrollView, TextInput, Pressable, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
+import { ScreenHeader } from '@/src/components/navigation/ScreenHeader';
 import { PageContainer } from '@/src/components/layout/PageContainer';
 import { AppButton, AppText, ClayView, Icon, IconName } from '@/src/components/ui';
 import { PressClay } from '@/src/components/animations/PressClay';
 import { useThemeColors } from '@/src/hooks';
 import { BASE_WIDGETS } from '@/src/constants/widgets';
 import type { PermissionLevel } from '@/src/constants/permissions';
-import { useRolesWorkspace } from '../hooks/useRolesWorkspace';
+import { useRolesWorkspace } from './hooks/useRolesWorkspace';
 
 const levelMeta = (level: PermissionLevel | undefined, colors: ReturnType<typeof useThemeColors>) => {
   switch (level) {
@@ -26,7 +26,6 @@ const levelMeta = (level: PermissionLevel | undefined, colors: ReturnType<typeof
 
 export default function RolesWorkspaceScreen() {
   const colors = useThemeColors();
-  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const {
@@ -59,16 +58,12 @@ export default function RolesWorkspaceScreen() {
   }, [widgets]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top }}>
-      <PageContainer>
-        <View style={styles.header}>
-          <ClayBackButton />
-          <AppText variant="h3" weight="bold">
-            Roles & permissions
-          </AppText>
-        </View>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+        <PageContainer>
+          <ScreenHeader title="Roles & permissions" />
 
-        <ScrollView contentContainerStyle={styles.scroll}>
+          <ScrollView contentContainerStyle={styles.scroll}>
           <AppText variant="caption" style={styles.sectionLabel}>
             ROLES
           </AppText>
@@ -156,15 +151,15 @@ export default function RolesWorkspaceScreen() {
               </AppText>
             </ClayView>
           )}
-        </ScrollView>
-      </PageContainer>
+          </ScrollView>
+        </PageContainer>
+      </SafeAreaView>
     </View>
   );
 }
 
 const createStyles = (colors: ReturnType<typeof useThemeColors>) =>
   StyleSheet.create({
-    header: { paddingHorizontal: 16, paddingBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 8 },
     scroll: { paddingHorizontal: 16, paddingBottom: 120 },
     sectionLabel: { color: colors.subtle, marginBottom: 8 },
     roleRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },

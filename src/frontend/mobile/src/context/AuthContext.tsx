@@ -77,23 +77,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const metaJson = await AsyncStorage.getItem(KEY_SESSION_META);
       let sessions: Session[] = metaJson ? JSON.parse(metaJson) : [];
-      
+
       const now = Date.now() / 1000;
-      sessions = sessions.filter(s => s.exp > now);
+      sessions = sessions.filter((s) => s.exp > now);
       setAvailableSessions(sessions);
 
       const storedToken = await secureGetItem(KEY_ACTIVE_TOKEN);
       const storedRefresh = await secureGetItem(KEY_REFRESH_TOKEN);
-      
+
       if (storedToken && isTokenValid(storedToken)) {
         await setAsActive(storedToken, storedRefresh || undefined);
       } else if (sessions.length > 0) {
         await switchSession(sessions[0].orgId);
-      } else {
-        setIsLoading(false); // Make sure to stop loading if nothing is found!
       }
     } catch (e) {
       console.error('[Auth] Load failed', e);
+    } finally {
       setIsLoading(false);
     }
   };
@@ -119,7 +118,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const email = decoded.email || decoded.nameid || "unknown";
 
       if (!orgId) {
-        console.error("Token does not contain an organization ID!");
+        console.error('Token does not contain an organization ID!');
+        await secureDeleteItem(KEY_ACTIVE_TOKEN);
+        await secureDeleteItem(KEY_REFRESH_TOKEN);
+        setToken(null);
+        setActiveSession(null);
         return;
       }
 
@@ -197,6 +200,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     } catch (e) {
       console.error('[Auth] Switch failed', e);
+    } finally {
+      setIsLoading(false);
     }
   };
 

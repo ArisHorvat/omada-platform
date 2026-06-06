@@ -1,84 +1,169 @@
 import React from 'react';
-import { View, TouchableOpacity, ScrollView, Modal, StyleSheet } from 'react-native';
-import { useEscapeKey, useThemeColors } from '@/src/hooks';
-import { AppText, ClayView, Icon, AppButton } from '@/src/components/ui';
-import { UserOrganizationDto } from '@/src/api/generatedClient';
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 
-interface SelectOrganizationProps {
+import { AppButton, AppText, ClayView, Icon, ProgressiveImage } from '@/src/components/ui';
+import { AUTH_CONTENT_MAX_WIDTH } from '@/src/constants/layout';
+import { useEscapeKey, useThemeColors } from '@/src/hooks';
+import { UserOrganizationDto } from '@/src/api/generatedClient';
+import { resolveMediaUrl } from '@/src/utils/resolveMediaUrl';
+
+export type OrganizationPickerMode = 'postLogin' | 'switch';
+
+export interface OrganizationPickerModalProps {
   visible: boolean;
   organizations: UserOrganizationDto[];
-  onSelect: (orgId: string) => void;
+  onSelect: (org: UserOrganizationDto) => void;
   onCancel: () => void;
-  isLoading: boolean;
+  onJoinOrganization?: () => void;
+  isLoading?: boolean;
+  title?: string;
+  subtitle?: string;
+  /** postLogin: every org is tappable (JWT default may show a badge). switch: current org is disabled. */
+  mode?: OrganizationPickerMode;
 }
 
-export default function SelectOrganization({
+export default function OrganizationPickerModal({
   visible,
   organizations,
   onSelect,
   onCancel,
-  isLoading,
-}: SelectOrganizationProps) {
+  onJoinOrganization,
+  isLoading = false,
+  title = 'Select organization',
+  subtitle = 'Choose which workspace you want to use.',
+  mode = 'switch',
+}: OrganizationPickerModalProps) {
   const colors = useThemeColors();
+  const isPostLogin = mode === 'postLogin';
 
   useEscapeKey(visible, onCancel);
 
   return (
-    <Modal visible={visible} transparent animationType="fade">
-      <View style={[StyleSheet.absoluteFill, styles.backdrop]}>
-        <View style={styles.container}>
-          <ClayView depth={10} puffy={14} color={colors.card} style={styles.modalContent}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+      <View style={styles.overlay}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onCancel} disabled={isLoading} />
+        <View style={styles.dialogSlot} pointerEvents="box-none">
+          <ClayView depth={14} puffy={18} color={colors.card} style={styles.card}>
             <View style={styles.header}>
-              <View style={[styles.iconContainer, { backgroundColor: colors.primary + '20' }]}>
-                <Icon name="business" size={32} color={colors.primary} />
+              <View style={[styles.headerIcon, { backgroundColor: `${colors.primary}22` }]}>
+                <Icon name="business" size={28} color={colors.primary} />
               </View>
-              <AppText variant="h3" style={{ textAlign: 'center' }}>
-                Select Organization
+              <AppText variant="h3" weight="bold" style={{ textAlign: 'center', color: colors.text }}>
+                {title}
               </AppText>
-              <AppText style={{ color: colors.subtle, textAlign: 'center', marginTop: 8 }}>
-                Choose which workspace you want to sign in to.
+              <AppText
+                variant="body"
+                style={{ color: colors.subtle, textAlign: 'center', marginTop: 8, lineHeight: 20 }}
+              >
+                {subtitle}
               </AppText>
             </View>
 
-            <ScrollView style={styles.list} contentContainerStyle={{ gap: 12 }}>
-              {organizations.map((org) => (
+            <ScrollView
+              style={styles.list}
+              contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={false}
+            >
+              {organizations.map((org) => {
+                const logoUri = resolveMediaUrl(org.logoUrl);
+                const initial = (org.organizationName?.charAt(0) || 'O').toUpperCase();
+
+                return (
+                  <TouchableOpacity
+                    key={org.organizationId}
+                    onPress={() => !isLoading && onSelect(org)}
+                    disabled={isLoading || (!isPostLogin && org.isCurrent)}
+                    activeOpacity={0.75}
+                  >
+                    <ClayView
+                      depth={6}
+                      puffy={12}
+                      color={colors.card}
+                      style={[
+                        styles.orgRow,
+                        org.isCurrent && {
+                          borderWidth: 1.5,
+                          borderColor: colors.primary,
+                          backgroundColor: colors.primaryContainer,
+                        },
+                      ]}
+                    >
+                      <View style={[styles.orgLogo, { borderColor: colors.border }]}>
+                        {logoUri ? (
+                          <ProgressiveImage
+                            source={{ uri: logoUri }}
+                            style={styles.orgLogoImage}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <View style={[styles.orgLogoFallback, { backgroundColor: colors.primaryContainer }]}>
+                            <AppText weight="bold" style={{ color: colors.primary, fontSize: 18 }}>
+                              {initial}
+                            </AppText>
+                          </View>
+                        )}
+                      </View>
+
+                      <View style={styles.orgMeta}>
+                        <AppText variant="body" weight="bold" numberOfLines={1}>
+                          {org.organizationName}
+                        </AppText>
+                        <AppText variant="caption" style={{ color: colors.subtle, marginTop: 4 }} numberOfLines={1}>
+                          {org.role === 'Unknown' || !org.role ? 'Member' : org.role}
+                        </AppText>
+                      </View>
+
+                      {org.isCurrent ? (
+                        isPostLogin ? (
+                          <AppText variant="caption" weight="bold" style={{ color: colors.primary }}>
+                            Default
+                          </AppText>
+                        ) : (
+                          <Icon name="check-circle" size={22} color={colors.primary} />
+                        )
+                      ) : (
+                        <Icon name="chevron-right" size={22} color={colors.subtle} />
+                      )}
+                    </ClayView>
+                  </TouchableOpacity>
+                );
+              })}
+              {onJoinOrganization ? (
                 <TouchableOpacity
-                  key={org.organizationId}
-                  onPress={() => !isLoading && onSelect(org.organizationId)}
+                  onPress={() => !isLoading && onJoinOrganization()}
                   disabled={isLoading}
-                  activeOpacity={0.7}
+                  activeOpacity={0.75}
                 >
                   <ClayView
-                    depth={5}
-                    puffy={10}
+                    depth={6}
+                    puffy={12}
                     color={colors.card}
-                    style={[
-                      styles.orgItem,
-                      { borderColor: org.isCurrent ? colors.primary : 'transparent', borderWidth: 1 },
-                    ]}
+                    style={[styles.orgRow, styles.joinRow, { borderColor: colors.border }]}
                   >
-                    <View style={[styles.orgIcon, { backgroundColor: colors.text }]}>
-                      <AppText style={{ color: colors.background, fontWeight: 'bold' }}>
-                        {org.organizationName.charAt(0).toUpperCase()}
+                    <View style={[styles.orgLogo, styles.joinIconWrap, { borderColor: colors.primary }]}>
+                      <Icon name="add" size={28} color={colors.primary} />
+                    </View>
+                    <View style={styles.orgMeta}>
+                      <AppText variant="body" weight="bold" style={{ color: colors.primary }}>
+                        Join organization
+                      </AppText>
+                      <AppText variant="caption" style={{ color: colors.subtle, marginTop: 4 }}>
+                        Enter an invite code to join another workspace
                       </AppText>
                     </View>
-
-                    <View style={{ flex: 1 }}>
-                      <AppText weight="bold" numberOfLines={1}>
-                        {org.organizationName}
-                      </AppText>
-                      <AppText variant="caption" style={{ color: colors.subtle }}>
-                        {org.role}
-                      </AppText>
-                    </View>
-
-                    <Icon name="chevron-right" size={24} color={colors.subtle} />
+                    <Icon name="chevron-right" size={22} color={colors.primary} />
                   </ClayView>
                 </TouchableOpacity>
-              ))}
+              ) : null}
             </ScrollView>
 
-            <AppButton title="Cancel" variant="outline" onPress={onCancel} disabled={isLoading} style={{ marginTop: 16 }} />
+            <AppButton
+              title="Cancel"
+              variant="outline"
+              onPress={onCancel}
+              disabled={isLoading}
+              style={{ marginTop: 14 }}
+            />
           </ClayView>
         </View>
       </View>
@@ -87,47 +172,106 @@ export default function SelectOrganization({
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    backgroundColor: 'rgba(0,0,0,0.55)',
-  },
-  container: {
+  overlay: {
     flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    ...Platform.select({
+      web: {
+        position: 'fixed' as const,
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100%',
+        height: '100%',
+      },
+      default: {},
+    }),
+  },
+  dialogSlot: {
+    ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+    ...Platform.select({
+      web: {
+        position: 'fixed' as const,
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+      },
+      default: {},
+    }),
   },
-  modalContent: {
+  card: {
     width: '100%',
-    maxHeight: '80%',
+    maxWidth: Math.min(AUTH_CONTENT_MAX_WIDTH + 40, 520),
+    maxHeight: '85%',
     padding: 20,
+    borderRadius: 28,
+    ...Platform.select({
+      web: {
+        marginHorizontal: 'auto' as const,
+      },
+      default: {},
+    }),
   },
   header: {
-    marginBottom: 20,
+    marginBottom: 16,
+    alignItems: 'center',
   },
-  iconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+  headerIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    alignSelf: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   list: {
-    maxHeight: 400,
+    maxHeight: 360,
   },
-  orgItem: {
+  listContent: {
+    gap: 10,
+    paddingBottom: 4,
+  },
+  orgRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    padding: 12,
     borderRadius: 16,
     gap: 12,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
-  orgIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+  orgLogo: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  orgLogoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  orgLogoFallback: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  orgMeta: {
+    flex: 1,
+    minWidth: 0,
+  },
+  joinRow: {
+    borderStyle: 'dashed',
+    borderWidth: 1.5,
+  },
+  joinIconWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
   },
 });

@@ -13,8 +13,9 @@ import { PressClay } from '@/src/components/animations/PressClay';
 import { WidgetPageShell } from '@/src/components/layout';
 import { useThemeColors } from '@/src/hooks';
 import { useSecurityLogic } from '@/src/screens/widgets/security/hooks/useSecurityLogic';
+import { ADMIN_ACCOUNT_HOME } from '@/src/screens/admin/utils/adminAccountRoutes';
 
-export default function SecurityScreen() {
+export default function SecurityScreen({ adminConsole = false }: { adminConsole?: boolean }) {
   const colors = useThemeColors();
   const router = useRouter();
   const {
@@ -57,7 +58,12 @@ export default function SecurityScreen() {
       <WidgetPageShell>
       <ClayView depth={12} puffy={16} style={{ marginHorizontal: 20, marginBottom: 16, paddingHorizontal: 8, paddingVertical: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <PressClay onPress={() => router.back()}>
+          <PressClay
+            onPress={() => {
+              if (adminConsole) router.replace(ADMIN_ACCOUNT_HOME as never);
+              else router.back();
+            }}
+          >
             <View style={{ padding: 8 }}>
               <Icon name="arrow-back" size={24} color={colors.text} />
             </View>

@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Platform, View, StyleSheet, Dimensions } from 'react-native';
+import { useLocalSearchParams, useRootNavigationState, useRouter } from 'expo-router';
 import Svg, { Circle } from 'react-native-svg';
 import { useQueryClient } from '@tanstack/react-query';
 import Animated, { 
@@ -14,16 +14,18 @@ import Animated, {
 } from 'react-native-reanimated';
 
 // UI Imports
-import { AppText, Icon, ProgressiveImage } from '@/src/components/ui';
+import { AppButton, AppText, Icon, ProgressiveImage } from '@/src/components/ui';
 import { ClayView } from '@/src/components/ui/ClayView'; 
 import { ClayAnimations } from '@/src/constants/animations'; 
 import { useThemeColors } from '@/src/hooks';
 import { useAuth } from '@/src/context/AuthContext';
-import { useTheme } from '@react-navigation/native';
 import { authApi, orgApi, unwrap } from '@/src/api';
 import { resolveMediaUrl } from '@/src/utils/resolveMediaUrl';
+import { setCompletingLoginOrgPick } from '@/src/utils/loginOrgPick';
+import { homeHrefForRole } from '@/src/utils/authRoutes';
 import { OrganizationType } from '@/src/api/generatedClient';
 import { SwitchOrgRequest } from '@/src/api/generatedClient';
+import { AUTH_CONTENT_MAX_WIDTH } from '@/src/constants/layout';
 
 const { width } = Dimensions.get('window');
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -35,47 +37,60 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 const VIEW_SIZE = (RADIUS + STROKE_WIDTH) * 2;
 
 // FIXED DIMENSIONS
-const CARD_WIDTH = Math.min(width * 0.85, 360); // Max width 360px
+const CARD_WIDTH = Math.min(width * 0.85, AUTH_CONTENT_MAX_WIDTH + 40, 400);
 const CARD_HEIGHT = 420; // Fixed height to prevent vertical jumping
+
+function normalizeRouteParam(value: string | string[] | undefined): string {
+  if (value == null) return '';
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (raw == null || raw === 'null' || raw === 'undefined') return '';
+  return String(raw).trim();
+}
 
 export default function ChangeOrganizationScreen() {
   const router = useRouter();
+  const navigationState = useRootNavigationState();
+  const navigationReady = Boolean(navigationState?.key);
   const colors = useThemeColors();
-  const colorScheme = useTheme();
   const queryClient = useQueryClient();
+  const sequenceStartedRef = useRef(false);
+  const [paramsSettled, setParamsSettled] = useState(false);
   
-  const {
-    targetOrgId,
-    targetOrgName,
-    targetLogoUrl,
-    currentOrgColor,
-    currentOrgLogo,
-    targetOrgType,
-    targetRole,
-  } = useLocalSearchParams<{
-    targetOrgId: string;
-    targetOrgName: string;
-    targetLogoUrl?: string;
-    currentOrgColor?: string;
-    currentOrgLogo?: string;
-    targetOrgType?: string;
-    targetRole?: string;
+  const params = useLocalSearchParams<{
+    targetOrgId?: string | string[];
+    targetOrgName?: string | string[];
+    targetLogoUrl?: string | string[];
+    currentOrgColor?: string | string[];
+    currentOrgLogo?: string | string[];
+    targetOrgType?: string | string[];
+    targetRole?: string | string[];
+    animate?: string | string[];
   }>();
 
-  const { switchSession, addSession, availableSessions } = useAuth();
+  const targetOrgId = normalizeRouteParam(params.targetOrgId);
+  const targetLogoUrl = normalizeRouteParam(params.targetLogoUrl);
+  const currentOrgColor = normalizeRouteParam(params.currentOrgColor);
+  const currentOrgLogo = normalizeRouteParam(params.currentOrgLogo);
+  const orgTypeParam = normalizeRouteParam(params.targetOrgType);
+  const roleParam = normalizeRouteParam(params.targetRole);
+  const shouldAnimate = normalizeRouteParam(params.animate) === '1';
 
-  const [statusText, setStatusText] = useState("Syncing...");
+  const { switchSession, addSession, availableSessions, activeSession } = useAuth();
+
+  const [statusText, setStatusText] = useState('Syncing...');
+  const [displayName, setDisplayName] = useState(
+    () => normalizeRouteParam(params.targetOrgName) || 'Organization',
+  );
+  const orgInitial = (displayName.charAt(0) || 'O').toUpperCase();
+
   const [finalTargetColor, setFinalTargetColor] = useState<string>(colors.primary);
-  
+
   const [finalTargetLogo, setFinalTargetLogo] = useState<string | null>(() => {
-    if (targetLogoUrl && targetLogoUrl !== 'null' && targetLogoUrl !== 'undefined' && targetLogoUrl !== '') {
-        return resolveMediaUrl(targetLogoUrl) ?? null;
+    if (targetLogoUrl) {
+      return resolveMediaUrl(targetLogoUrl) ?? null;
     }
     return null;
   });
-
-  const orgTypeParam = Array.isArray(targetOrgType) ? targetOrgType[0] : targetOrgType;
-  const roleParam = Array.isArray(targetRole) ? targetRole[0] : targetRole;
 
   const targetTypeLabel =
     orgTypeParam === '0' || orgTypeParam === String(OrganizationType.University)
@@ -97,9 +112,74 @@ export default function ChangeOrganizationScreen() {
   const targetLogoOpacity = useSharedValue(0);
   const scale = useSharedValue(1);
 
+  const exitScreen = useCallback(() => {
+    setCompletingLoginOrgPick(false);
+    if (!navigationReady) return;
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace('/dashboard');
+  }, [navigationReady, router]);
+
   useEffect(() => {
-    runAnimationSequence();
-  }, []);
+    if (!navigationReady) return;
+    const t = setTimeout(() => setParamsSettled(true), 150);
+    return () => clearTimeout(t);
+  }, [navigationReady]);
+
+  const performSwitchAndFetch = useCallback(async () => {
+    if (!targetOrgId) return;
+
+    const existing = availableSessions.find(
+      (s) => s.orgId && s.orgId.toLowerCase() === targetOrgId.toLowerCase(),
+    );
+
+    if (existing) {
+      await switchSession(existing.orgId);
+    } else {
+      const request = new SwitchOrgRequest();
+      request.organizationId = targetOrgId;
+
+      const response = await unwrap(authApi.switchOrganization(request));
+      await addSession(response.accessToken);
+    }
+
+    try {
+      const orgDetails = await unwrap(orgApi.getById(targetOrgId));
+      if (orgDetails?.name?.trim()) setDisplayName(orgDetails.name.trim());
+      if (orgDetails?.primaryColor) setFinalTargetColor(orgDetails.primaryColor);
+      if (orgDetails?.logoUrl) setFinalTargetLogo(resolveMediaUrl(orgDetails.logoUrl) ?? null);
+    } catch (e) {
+      console.log('Failed to fetch details', e);
+    }
+  }, [targetOrgId, availableSessions, switchSession, addSession]);
+
+  const runQuickSwitch = useCallback(async () => {
+    setStatusText('Switching workspace...');
+    try {
+      await performSwitchAndFetch();
+      queryClient.clear();
+      setCompletingLoginOrgPick(false);
+      if (navigationReady) {
+        router.replace(homeHrefForRole(roleParam || activeSession?.role) as never);
+      }
+    } catch (e) {
+      console.error('Quick switch failed', e);
+      setStatusText('Switch failed');
+      setTimeout(() => exitScreen(), 800);
+    }
+  }, [navigationReady, queryClient, router, exitScreen, performSwitchAndFetch, roleParam, activeSession?.role]);
+
+  useEffect(() => {
+    if (!navigationReady || !paramsSettled || !targetOrgId || sequenceStartedRef.current) return;
+    sequenceStartedRef.current = true;
+    if (shouldAnimate) {
+      void runAnimationSequence();
+    } else {
+      void runQuickSwitch();
+    }
+  }, [navigationReady, paramsSettled, targetOrgId, shouldAnimate, runQuickSwitch]);
 
   const runAnimationSequence = async () => {
     setStatusText("Disconnecting...");
@@ -112,15 +192,16 @@ export default function ChangeOrganizationScreen() {
     try {
         await performSwitchAndFetch();
     } catch (e) {
-        console.error("Switch failed", e);
-        router.back();
+        console.error('Switch failed', e);
+        setStatusText('Switch failed');
+        setTimeout(() => exitScreen(), 0);
         return;
     }
 
     await new Promise(r => setTimeout(r, 2000));
 
     // 3. Connect Phase
-    setStatusText(`Joining ${targetOrgName}...`);
+    setStatusText(`Joining ${displayName}...`);
 
     // 4. DRAW NEW RING (Empty -> Full Draw) & FADE IN NEW LOGO
     targetLogoOpacity.value = withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.ease) });
@@ -133,37 +214,14 @@ export default function ChangeOrganizationScreen() {
     });
   };
 
-  const performSwitchAndFetch = async () => {
-      if (!targetOrgId) return;
-
-      const existing = availableSessions.find(s => s.orgId && s.orgId.toLowerCase() === targetOrgId.toLowerCase());
-      
-      if (existing) {
-        await switchSession(existing.orgId);
-      } 
-      else {
-        // FIX: Explicitly assign the property!
-        const request = new SwitchOrgRequest();
-        request.organizationId = targetOrgId;
-
-        const response = await unwrap(authApi.switchOrganization(request));
-        await addSession(response.accessToken);
-      }
-
-      try {
-          const orgDetails = await unwrap(orgApi.getById(targetOrgId));
-          if (orgDetails?.primaryColor) setFinalTargetColor(orgDetails.primaryColor);
-          if (orgDetails?.logoUrl) setFinalTargetLogo(resolveMediaUrl(orgDetails.logoUrl) ?? null);
-      } catch (e) { 
-          console.log("Failed to fetch details", e);
-      }
-  };
-
   const handleSuccess = () => {
     queryClient.clear();
-    setStatusText("Successfully Connected");
+    setStatusText('Successfully Connected');
     scale.value = ClayAnimations.Pulse();
-    setTimeout(() => { router.replace('/dashboard'); }, 1000);
+    setTimeout(() => {
+      setCompletingLoginOrgPick(false);
+      if (navigationReady) router.replace(homeHrefForRole(roleParam || activeSession?.role) as never);
+    }, 1000);
   };
 
   // --- ANIMATED PROPS ---
@@ -179,17 +237,53 @@ export default function ChangeOrganizationScreen() {
   const oldLogoStyle = useAnimatedStyle(() => ({ opacity: currentLogoOpacity.value }));
   const newLogoStyle = useAnimatedStyle(() => ({ opacity: targetLogoOpacity.value }));
 
-  const startColor = currentOrgColor || colors.text; 
+  const startColor = currentOrgColor || colors.text;
+  const backdropTint = finalTargetColor || colors.primary;
+
+  const renderBackdrop = () => (
+    <>
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: `${backdropTint}28` }]} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.primaryContainer, opacity: 0.35 }]} />
+    </>
+  );
+
+  if (!navigationReady || (!paramsSettled && !targetOrgId)) {
+    return (
+      <View style={styles.container}>
+        {renderBackdrop()}
+        <View style={styles.cardWrapper}>
+          <ClayView depth={20} puffy={30} color={colors.card} style={styles.card}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </ClayView>
+        </View>
+      </View>
+    );
+  }
+
+  if (paramsSettled && !targetOrgId) {
+    return (
+      <View style={styles.container}>
+        {renderBackdrop()}
+        <View style={styles.cardWrapper}>
+          <ClayView depth={20} puffy={30} color={colors.card} style={styles.card}>
+            <AppText variant="h3" style={{ textAlign: 'center', marginBottom: 8 }}>
+              Unable to switch
+            </AppText>
+            <AppText style={{ color: colors.subtle, textAlign: 'center', marginBottom: 20 }}>
+              Missing organization details. Open the switcher from your profile and try again.
+            </AppText>
+            <AppButton title="Go back" onPress={exitScreen} style={{ width: '100%' }} />
+          </ClayView>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <View
-        style={[
-          StyleSheet.absoluteFill,
-          { backgroundColor: colorScheme.dark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.25)' },
-        ]}
-      />
-      
+      {renderBackdrop()}
+
       {/* FIXED SIZE CONTAINER */}
       <View style={styles.cardWrapper}>
         <Animated.View entering={ClayAnimations.Hero}>
@@ -227,7 +321,7 @@ export default function ChangeOrganizationScreen() {
                                 />
                             ) : (
                                 <AppText weight="bold" style={{ fontSize: 32, color: finalTargetColor }}>
-                                    {targetOrgName.charAt(0).toUpperCase()}
+                                    {orgInitial}
                                 </AppText>
                             )}
                         </Animated.View>
@@ -263,7 +357,7 @@ export default function ChangeOrganizationScreen() {
                         {statusText}
                     </AppText>
                     <AppText style={{ color: colors.subtle, textAlign: 'center' }} numberOfLines={1}>
-                        {targetOrgName}
+                        {displayName}
                     </AppText>
                     {(targetRoleLabel || targetTypeLabel) ? (
                       <AppText variant="caption" style={{ color: colors.subtle, textAlign: 'center', marginTop: 6 }} numberOfLines={2}>
@@ -280,11 +374,25 @@ export default function ChangeOrganizationScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    backgroundColor: 'transparent' 
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    zIndex: 200,
+    elevation: 200,
+    ...Platform.select({
+      web: {
+        position: 'fixed' as const,
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100%',
+        height: '100%',
+      },
+      default: {},
+    }),
   },
   cardWrapper: {
     // Explicit fixed dimensions wrapper

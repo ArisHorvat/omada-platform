@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@react-navigation/native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
-import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
+import { ScreenHeader } from '@/src/components/navigation/ScreenHeader';
 import {
   AppText,
   Icon,
@@ -18,13 +18,12 @@ import { ScreenTransition, AnimatedItem, PressClay } from '@/src/components/anim
 import { ClayAnimations } from '@/src/constants/animations';
 import { TaskItemDto, type GroupPickerItemDto } from '@/src/api/generatedClient';
 import { PageContainer } from '@/src/components/layout/PageContainer';
-import { useTabContentBottomPadding, useBreakpoint } from '@/src/hooks';
+import { useTabContentBottomPadding } from '@/src/hooks';
 import { CreateTaskBottomSheet } from './CreateTaskBottomSheet';
 
 export default function TasksScreen() {
   const { colors } = useTheme();
   const tabBottomPad = useTabContentBottomPadding(32);
-  const { isWideShell } = useBreakpoint();
 
   const {
     loading,
@@ -163,38 +162,28 @@ export default function TasksScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScreenTransition>
-        <SafeAreaView style={{ flex: 1 }}>
+        <SafeAreaView style={{ flex: 1 }} edges={['top']}>
           <PageContainer>
-          <Animated.View
-            entering={ClayAnimations.Header}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              paddingHorizontal: 20,
-              marginBottom: 16,
-            }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              {!isWideShell ? <ClayBackButton /> : null}
-              <AppText variant="h2" weight="bold" style={{ marginLeft: isWideShell ? 0 : 16 }}>
-                Tasks
-              </AppText>
-            </View>
-            <PressClay onPress={() => setShowCompleted(!showCompleted)}>
-              <ClayView
-                depth={5}
-                puffy={10}
-                color={showCompleted ? colors.primary : colors.card}
-                style={{ padding: 10, borderRadius: 16 }}
-              >
-                <Icon
-                  name={showCompleted ? 'task-alt' : 'format-list-bulleted'}
-                  size={24}
-                  color={showCompleted ? '#FFF' : colors.primary}
-                />
-              </ClayView>
-            </PressClay>
+          <Animated.View entering={ClayAnimations.Header}>
+            <ScreenHeader
+              title="Tasks"
+              right={
+                <PressClay onPress={() => setShowCompleted(!showCompleted)}>
+                  <ClayView
+                    depth={5}
+                    puffy={10}
+                    color={showCompleted ? colors.primary : colors.card}
+                    style={{ padding: 10, borderRadius: 16 }}
+                  >
+                    <Icon
+                      name={showCompleted ? 'task-alt' : 'format-list-bulleted'}
+                      size={24}
+                      color={showCompleted ? '#FFF' : colors.primary}
+                    />
+                  </ClayView>
+                </PressClay>
+              }
+            />
           </Animated.View>
 
           {assignableGroups && assignableGroups.length > 0 ? (

@@ -17,8 +17,9 @@ import { QUERY_KEYS } from '@/src/api/queryKeys';
 import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
 import { useSettingsPreferencesLogic } from '@/src/screens/widgets/settings/hooks/useSettingsPreferencesLogic';
 import type { LanguagePreferenceCode } from '@/src/stores/usePreferencesStore';
+import { ADMIN_ACCOUNT_HOME, adminAccountRoute } from '@/src/screens/admin/utils/adminAccountRoutes';
 
-export default function SettingsScreen() {
+export default function SettingsScreen({ adminConsole = false }: { adminConsole?: boolean }) {
   const colors = useThemeColors();
   const router = useRouter();
   const { organization } = useCurrentOrganization();
@@ -98,11 +99,19 @@ export default function SettingsScreen() {
     );
   };
 
+  const goBack = () => {
+    if (adminConsole) {
+      router.replace(ADMIN_ACCOUNT_HOME as never);
+      return;
+    }
+    router.back();
+  };
+
   const header = useMemo(
     () => (
       <ClayView depth={12} puffy={16} style={{ marginHorizontal: 20, marginBottom: 16, paddingHorizontal: 8, paddingVertical: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <PressClay onPress={() => router.back()}>
+          <PressClay onPress={goBack}>
             <View style={{ padding: 8 }}>
               <Icon name="arrow-back" size={24} color={colors.text} />
             </View>
@@ -116,7 +125,7 @@ export default function SettingsScreen() {
         </View>
       </ClayView>
     ),
-    [colors.primary, colors.text, isSaving, router]
+    [colors.primary, colors.text, isSaving, adminConsole, router]
   );
 
   return (
@@ -166,7 +175,7 @@ export default function SettingsScreen() {
         </ClayGroupedSection>
 
         <ClayGroupedSection title="Security">
-          <PressClay onPress={() => router.push('/security')}>
+          <PressClay onPress={() => router.push((adminConsole ? adminAccountRoute('security') : '/security') as never)}>
             <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16 }}>
               <Icon name="security" size={22} color={colors.primary} />
               <AppText variant="body" weight="medium" style={{ flex: 1, marginLeft: 12 }}>

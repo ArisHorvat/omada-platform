@@ -1,20 +1,23 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import {
   View,
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Platform,
   useWindowDimensions,
   StyleSheet,
   Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { mapsApi, roomsApi, unwrap } from '@/src/api';
 import type { FloorDto, RoomDto, ScheduleItemDto } from '@/src/api/generatedClient';
 import { WidgetPageShell } from '@/src/components/layout';
+import { ScreenHeader } from '@/src/components/navigation/ScreenHeader';
+import type { WebOverlayAnchor } from '@/src/hooks/usePaneOverlayAnchor';
 import { useThemeColors } from '@/src/hooks';
 import { AppButton, AppText, BottomSheet } from '@/src/components/ui';
 import { roomAmenityTags } from '@/src/screens/widgets/rooms/utils/roomAmenityTags';
@@ -22,6 +25,7 @@ import { displayGeoRoomName, displayRoomName } from '@/src/screens/widgets/rooms
 import { createStyles } from '../styles/indoor.styles';
 import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
 import { buildBusyRoomIdSet } from '../utils/roomOccupancy';
+import { useCampusMapWebLayout } from '../hooks/useCampusMapWebLayout';
 import { useMapScheduleForToday } from '../hooks/useMapSchedule';
 import { useFloorplan } from '../hooks/useFloorplan';
 import {
@@ -65,9 +69,23 @@ function resolveRoomFromGeoOverlay(rooms: RoomDto[], geo: { roomName: string; ro
   return undefined;
 }
 
-export default function IndoorMapScreen() {
+const IS_WEB = Platform.OS === 'web';
+const MAX_FLOORPLAN_PX = 1600;
+const WEB_MAX_VECTOR_POLYGONS = 120;
+
+export type IndoorMapScreenProps = {
+  /** Web: limit bottom sheets to the main column (optional override). */
+  webPaneRect?: WebOverlayAnchor | null;
+};
+
+export default function IndoorMapScreen({ webPaneRect: webPaneRectProp = null }: IndoorMapScreenProps = {}) {
   const colors = useThemeColors();
   const router = useRouter();
+  const navigation = useNavigation();
+  const { mapRect } = useCampusMapWebLayout();
+  const sheetWebAnchor =
+    webPaneRectProp ??
+    (IS_WEB && mapRect.width > 0 && mapRect.height > 0 ? mapRect : null);
   const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -82,6 +100,37 @@ export default function IndoorMapScreen() {
   const [activeFloorId, setActiveFloorId] = useState<string | null>(null);
   const [geoRoomSheet, setGeoRoomSheet] = useState<{ roomName: string; roomId: string } | null>(null);
   const [mapViewport, setMapViewport] = useState<{ w: number; h: number } | null>(null);
+  const [mapReady, setMapReady] = useState(!IS_WEB);
+
+  const buildingsQuery = useQuery({
+    queryKey: ['map-buildings', orgId],
+    queryFn: async () => unwrap(mapsApi.getBuildingsForOrganization(orgId!)),
+    enabled: !!orgId,
+  });
+
+  const buildingTitle = useMemo(() => {
+    const buildings = buildingsQuery.data ?? [];
+    const match = buildings.find((b) => b.id === buildingId);
+    return match?.name?.trim() || 'Floor plan';
+  }, [buildingsQuery.data, buildingId]);
+
+  useLayoutEffect(() => {
+    if (IS_WEB) return;
+    navigation.setOptions({ title: buildingTitle });
+  }, [navigation, buildingTitle]);
+
+  useEffect(() => {
+    if (!IS_WEB) return;
+    const id = requestAnimationFrame(() => setMapReady(true));
+    return () => {
+      cancelAnimationFrame(id);
+      setMapReady(false);
+    };
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => () => setGeoRoomSheet(null), []),
+  );
 
   const floorsQuery = useQuery({
     queryKey: ['map-floors', buildingId],
@@ -90,9 +139,26 @@ export default function IndoorMapScreen() {
   });
 
   const roomsQuery = useQuery({
-    queryKey: ['map-rooms', orgId],
-    queryFn: async () => unwrap(roomsApi.getAll()),
-    enabled: !!orgId,
+    queryKey: ['map-rooms-floor', orgId, buildingId, activeFloorId],
+    queryFn: async () => {
+      const page = unwrap(
+        await roomsApi.search(
+          undefined,
+          undefined,
+          buildingId ? [buildingId] : undefined,
+          undefined,
+          undefined,
+          activeFloorId!,
+          undefined,
+          undefined,
+          undefined,
+          1,
+          500,
+        ),
+      );
+      return page.items ?? [];
+    },
+    enabled: !!orgId && !!activeFloorId && !!buildingId,
   });
 
   const scheduleQuery = useMapScheduleForToday();
@@ -162,14 +228,10 @@ export default function IndoorMapScreen() {
 
   const poiBg = (kind: FloorplanPoiKind) => DEFAULT_FLOORPLAN_POI_COLORS[kind];
 
-  const roomsOnFloor: RoomDto[] = useMemo(() => {
-    if (!activeFloor || !buildingId) return [];
-    return (roomsQuery.data ?? []).filter((r) => {
-      if (r.floorId !== activeFloor.id) return false;
-      if (r.buildingId != null && r.buildingId !== buildingId) return false;
-      return true;
-    });
-  }, [roomsQuery.data, activeFloor, buildingId]);
+  const roomsOnFloor: RoomDto[] = useMemo(() => roomsQuery.data ?? [], [roomsQuery.data]);
+
+  const useVectorFloorplan =
+    !IS_WEB || indexedFloorplanPolygons.length <= WEB_MAX_VECTOR_POLYGONS;
 
   /** Bookable-only: opening the room sheet for WC / storage / not-on-Rooms rows is misleading. */
   const isIndoorPolygonBookable = useCallback(
@@ -199,9 +261,21 @@ export default function IndoorMapScreen() {
     return out;
   }, [busyRoomIds, roomsOnFloor]);
 
-  const mapLayoutWidth = mapViewport?.w ?? width;
+  const mapLayoutWidth = Math.min(
+    mapViewport?.w ?? (IS_WEB ? Math.min(width, 960) : width),
+    MAX_FLOORPLAN_PX,
+  );
   const mapHeightRatio =
     mapViewport && mapViewport.w > 0 ? mapViewport.h / mapViewport.w : 0.68;
+  const mapLayoutHeight = Math.min(
+    Math.round(mapLayoutWidth * mapHeightRatio),
+    MAX_FLOORPLAN_PX,
+  );
+  const floorStripReserve = 52;
+  const viewerHeight =
+    mapViewport && mapViewport.h > floorStripReserve
+      ? Math.min(mapLayoutHeight, Math.round(mapViewport.h - floorStripReserve))
+      : mapLayoutHeight;
 
   const sheetRoom = useMemo(
     () => (geoRoomSheet ? resolveRoomFromGeoOverlay(roomsOnFloor, geoRoomSheet) : undefined),
@@ -225,9 +299,11 @@ export default function IndoorMapScreen() {
   );
 
   const floorplanLoading = !!activeFloor?.floorplanId && floorplanQuery.isLoading;
+  const floorStripTop = 6;
 
   return (
     <WidgetPageShell fullBleed>
+    {IS_WEB ? <ScreenHeader title={buildingTitle} borderBottom /> : null}
     <View style={styles.container}>
       {floorsQuery.isLoading && floors.length === 0 ? (
         <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
@@ -250,7 +326,10 @@ export default function IndoorMapScreen() {
           style={{ flex: 1 }}
           onLayout={(e) => {
             const { width: lw, height: lh } = e.nativeEvent.layout;
-            if (lw > 0 && lh > 0) setMapViewport({ w: lw, h: lh });
+            if (lw <= 0 || lh <= 0) return;
+            setMapViewport((prev) =>
+              prev && prev.w === lw && prev.h === lh ? prev : { w: lw, h: lh },
+            );
           }}
         >
           <ScrollView
@@ -262,7 +341,7 @@ export default function IndoorMapScreen() {
                 position: 'absolute',
                 left: 8,
                 right: 8,
-                top: insets.top + 6,
+                top: floorStripTop,
                 zIndex: 8,
                 backgroundColor: colors.card,
                 borderRadius: 12,
@@ -289,11 +368,11 @@ export default function IndoorMapScreen() {
             ))}
           </ScrollView>
 
-          <View style={[styles.floorplanBlock, { position: 'relative' }]}>
-            {displayFloorplanImageUrl ? (
+          <View style={[styles.floorplanBlock, { position: 'relative', overflow: 'hidden' }]}>
+            {displayFloorplanImageUrl && mapReady && (!IS_WEB || mapViewport) ? (
               <>
                 {floorplanLoading && (
-                  <View style={{ position: 'absolute', top: insets.top + 52, right: 10, zIndex: 7 }}>
+                  <View style={{ position: 'absolute', top: floorStripTop + 46, right: 10, zIndex: 7 }}>
                     <ActivityIndicator color={colors.primary} />
                   </View>
                 )}
@@ -302,14 +381,15 @@ export default function IndoorMapScreen() {
                   isDark={colors.isDark}
                   fullBleed
                   layoutWidth={mapLayoutWidth}
+                  layoutHeight={viewerHeight}
                   heightRatio={mapHeightRatio}
-                  vectorMode
+                  vectorMode={useVectorFloorplan}
                 >
-                  {floorplanGeoJson ? (
+                  {floorplanGeoJson && useVectorFloorplan ? (
                     <FloorplanPolygonEditorOverlay
                       geoJsonData={floorplanGeoJson}
                       width={mapLayoutWidth}
-                      height={mapLayoutWidth * mapHeightRatio}
+                      height={viewerHeight}
                       colors={colors}
                       selectedFeatureIndex={null}
                       editMode={false}
@@ -448,7 +528,12 @@ export default function IndoorMapScreen() {
         </View>
       ) : null}
 
-      <BottomSheet isVisible={!!geoRoomSheet} onClose={() => setGeoRoomSheet(null)} height={sheetHeight}>
+      <BottomSheet
+        isVisible={!!geoRoomSheet}
+        onClose={() => setGeoRoomSheet(null)}
+        height={sheetHeight}
+        webAnchor={sheetWebAnchor}
+      >
         {geoRoomSheet ? (
           <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             <AppText variant="h3" weight="bold" style={{ marginBottom: 6, color: colors.text }}>

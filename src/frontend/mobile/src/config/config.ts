@@ -50,7 +50,9 @@ export const API_BASE_URL = resolveApiBaseUrl();
 
 export const APP_BASE_URL = resolveAppBaseUrl();
 
-
+export function isLocalhostApiUrl(url: string = API_BASE_URL): boolean {
+  return /localhost|127\.0\.0\.1/i.test(url);
+}
 
 export const WS_BASE_URL = API_BASE_URL.startsWith('https://')
 

@@ -10,6 +10,7 @@ import { createStyles } from '@/src/screens/superadmin/styles/admin-dashboard.st
 import { useSuperAdminDashboardLogic } from '@/src/screens/superadmin/hooks/useSuperAdminDashboardLogic';
 import { ProgressiveImage } from '@/src/components/ui/ProgressiveImage';
 import type { OrganizationDetailsDto } from '@/src/api/generatedClient';
+import { resolveMediaUrl } from '@/src/utils/resolveMediaUrl';
 
 export default function SuperAdminDashboard() {
   const router = useRouter();
@@ -37,7 +38,7 @@ export default function SuperAdminDashboard() {
       onPress={() => item.id && enterOrganization(item.id).then(() => router.push('/org-dashboard' as never))}
     >
       {item.logoUrl ? (
-        <ProgressiveImage source={{ uri: item.logoUrl }} style={styles.logo} />
+        <ProgressiveImage source={{ uri: resolveMediaUrl(item.logoUrl) }} style={styles.logo} />
       ) : (
         <View style={styles.logoPlaceholder}>
           <MaterialIcons name="business" size={24} color={colors.subtle} />

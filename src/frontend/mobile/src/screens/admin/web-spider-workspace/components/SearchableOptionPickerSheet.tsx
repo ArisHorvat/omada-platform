@@ -4,6 +4,7 @@ import { BottomSheet } from '@/src/components/ui/BottomSheet';
 import { AppFormField, AppText, ClayView, Icon, type IconName } from '@/src/components/ui';
 import { PressClay } from '@/src/components/animations';
 import { useThemeColors } from '@/src/hooks';
+import type { WebOverlayAnchor } from '@/src/hooks/usePaneOverlayAnchor';
 import type { PickerOption } from '@/src/components/filters/OptionPickerSheet';
 
 type Props<T> = {
@@ -18,6 +19,7 @@ type Props<T> = {
   allLabel?: string;
   searchPlaceholder?: string;
   zIndexBase?: number;
+  webAnchor?: WebOverlayAnchor | null;
 };
 
 export function SearchableOptionPickerSheet<T extends string>({
@@ -32,6 +34,7 @@ export function SearchableOptionPickerSheet<T extends string>({
   allLabel = 'All',
   searchPlaceholder = 'Search…',
   zIndexBase = 220,
+  webAnchor = null,
 }: Props<T>) {
   const colors = useThemeColors();
   const [query, setQuery] = useState('');
@@ -61,7 +64,13 @@ export function SearchableOptionPickerSheet<T extends string>({
   });
 
   return (
-    <BottomSheet isVisible={isVisible} onClose={onClose} height={height} zIndexBase={zIndexBase}>
+    <BottomSheet
+      isVisible={isVisible}
+      onClose={onClose}
+      height={height}
+      zIndexBase={zIndexBase}
+      webAnchor={webAnchor}
+    >
       <View style={styles.sheetInner}>
         <View style={styles.header}>
           <AppText variant="h3" weight="bold" style={{ flex: 1 }}>

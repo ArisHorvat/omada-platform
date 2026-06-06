@@ -18,7 +18,9 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
+import { useWebMainPaneAnchor } from '@/src/context/WebMainPaneContext';
 import { useEscapeKey, useThemeColors } from '@/src/hooks';
+import type { WebOverlayAnchor } from '@/src/hooks/usePaneOverlayAnchor';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const IS_WEB = Platform.OS === 'web';
@@ -32,6 +34,10 @@ interface BottomSheetProps {
   zIndexBase?: number;
   /** Extra bottom padding (e.g. floating tab bar) in addition to safe area. */
   contentInsetBottom?: number;
+  /** On web, limit backdrop + sheet to this pane (e.g. schedule main column). */
+  webAnchor?: WebOverlayAnchor | null;
+  /** Inner content padding (default 20). Use a smaller value for dense filter sheets. */
+  contentPadding?: number;
 }
 
 export const BottomSheet = ({
@@ -41,9 +47,13 @@ export const BottomSheet = ({
   height,
   zIndexBase = 100,
   contentInsetBottom = 0,
+  webAnchor = null,
+  contentPadding = 20,
 }: BottomSheetProps) => {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
+  const defaultWebAnchor = useWebMainPaneAnchor();
+  const resolvedWebAnchor = webAnchor ?? defaultWebAnchor;
 
   useEscapeKey(isVisible, onClose);
 
@@ -71,13 +81,13 @@ export const BottomSheet = ({
 
   useEffect(() => {
     if (!IS_WEB || typeof document === 'undefined') return;
-    if (!isVisible) return;
+    if (!isVisible || resolvedWebAnchor) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = prev;
     };
-  }, [isVisible]);
+  }, [isVisible, resolvedWebAnchor]);
 
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -121,15 +131,52 @@ export const BottomSheet = ({
     pointerEvents: isVisible ? 'auto' : 'none',
   }));
 
+  const webPaneHostStyle =
+    IS_WEB && resolvedWebAnchor
+      ? ({
+          position: 'fixed' as const,
+          left: resolvedWebAnchor.left,
+          top: resolvedWebAnchor.top,
+          width: resolvedWebAnchor.width,
+          height: resolvedWebAnchor.height,
+          zIndex: zIndexBase,
+        } satisfies ViewStyle)
+      : undefined;
+
+  const sheetHeight = resolvedWebAnchor
+    ? Math.min(activeHeight, resolvedWebAnchor.height * 0.92)
+    : activeHeight;
+
+  const sheetBody = (
+    <>
+      <View style={styles.handleContainer}>
+        <View style={[styles.handle, { backgroundColor: colors.subtle || '#ccc' }]} />
+      </View>
+      <View
+        style={{
+          flex: 1,
+          minHeight: 0,
+          padding: contentPadding,
+          paddingBottom: contentPadding + insets.bottom + contentInsetBottom,
+        }}
+      >
+        {children}
+      </View>
+    </>
+  );
+
   const overlay = (
-    <View style={IS_WEB ? styles.webHost : undefined} pointerEvents="box-none">
+    <View
+      style={webPaneHostStyle ?? (IS_WEB ? styles.webHost : undefined)}
+      pointerEvents="box-none"
+    >
       <Animated.View
         style={[
           styles.backdrop,
-          IS_WEB && styles.webFixed,
+          webPaneHostStyle ? StyleSheet.absoluteFillObject : IS_WEB && styles.webFixed,
           rBackdropStyle,
           {
-            zIndex: zIndexBase,
+            zIndex: webPaneHostStyle ? 0 : zIndexBase,
             elevation: Platform.OS === 'android' ? 20 : 0,
           },
         ]}
@@ -141,29 +188,17 @@ export const BottomSheet = ({
         <Animated.View
           style={[
             styles.sheet,
-            IS_WEB && styles.webFixedSheet,
+            webPaneHostStyle ? null : IS_WEB && styles.webFixedSheet,
             {
               backgroundColor: colors.card,
-              height: activeHeight,
-              zIndex: zIndexBase + 1,
+              height: sheetHeight,
+              zIndex: webPaneHostStyle ? 1 : zIndexBase + 1,
               elevation: Platform.OS === 'android' ? 28 : 12,
             },
             rBottomSheetStyle,
           ]}
         >
-          <View style={styles.handleContainer}>
-            <View style={[styles.handle, { backgroundColor: colors.subtle || '#ccc' }]} />
-          </View>
-          <View
-            style={{
-              flex: 1,
-              minHeight: 0,
-              padding: 20,
-              paddingBottom: 20 + insets.bottom + contentInsetBottom,
-            }}
-          >
-            {children}
-          </View>
+          {sheetBody}
         </Animated.View>
       </GestureDetector>
     </View>

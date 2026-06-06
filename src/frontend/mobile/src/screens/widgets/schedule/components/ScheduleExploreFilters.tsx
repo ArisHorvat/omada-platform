@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
+import { View, StyleSheet, Dimensions, Platform } from 'react-native';
 import { FilterBottomSheet } from '@/src/components/filters/FilterBottomSheet';
 import { OptionPickerSheet, type PickerOption } from '@/src/components/filters/OptionPickerSheet';
 import { PressClay } from '@/src/components/animations';
@@ -9,12 +9,14 @@ import type { ScheduleDictionary } from '../hooks/useScheduleDictionary';
 import type { ScheduleItemDto, RoomDto, HostDto } from '@/src/api/generatedClient';
 import type { GroupOption } from '@/src/utils/groupOptions';
 import { HostPickerSheet } from './HostPickerSheet';
+import type { WebOverlayAnchor } from '@/src/hooks/usePaneOverlayAnchor';
 
 export type ExploreFilterKind = 'all' | 'host' | 'group' | 'room' | 'subject';
 
 interface Props {
   visible: boolean;
   onClose: () => void;
+  webAnchor?: WebOverlayAnchor | null;
   dictionary: ScheduleDictionary;
   exploreKind: ExploreFilterKind;
   selectedHostLabel: string | null;
@@ -43,6 +45,7 @@ interface Props {
 export function ScheduleExploreFiltersSheet({
   visible,
   onClose,
+  webAnchor = null,
   dictionary,
   exploreKind,
   selectedHostLabel,
@@ -57,6 +60,7 @@ export function ScheduleExploreFiltersSheet({
   const colors = useThemeColors();
   const winH = Dimensions.get('window').height;
   const filterSheetHeight = Math.round(winH * 0.88);
+  const sheetBottomInset = Platform.OS === 'web' ? 0 : TAB_BAR_OVERLAY_CLEARANCE;
   const pickerSheetHeight = Math.round(winH * 0.62);
   const hostSheetHeight = Math.round(winH * 0.65);
   const [draftKind, setDraftKind] = useState<ExploreFilterKind>(exploreKind);
@@ -184,7 +188,8 @@ export function ScheduleExploreFiltersSheet({
         onApply={handleApply}
         onReset={handleReset}
         height={filterSheetHeight}
-        contentInsetBottom={TAB_BAR_OVERLAY_CLEARANCE}
+        contentInsetBottom={sheetBottomInset}
+        webAnchor={webAnchor}
       >
         <View style={styles.gap}>
           <PressClay onPress={() => setPicker('dimension')}>
@@ -321,7 +326,8 @@ export function ScheduleExploreFiltersSheet({
         }}
         zIndexBase={220}
         height={pickerSheetHeight}
-        contentInsetBottom={TAB_BAR_OVERLAY_CLEARANCE}
+        contentInsetBottom={sheetBottomInset}
+        webAnchor={webAnchor}
       />
 
       <OptionPickerSheet<string>
@@ -343,7 +349,8 @@ export function ScheduleExploreFiltersSheet({
         }}
         zIndexBase={220}
         height={pickerSheetHeight}
-        contentInsetBottom={TAB_BAR_OVERLAY_CLEARANCE}
+        contentInsetBottom={sheetBottomInset}
+        webAnchor={webAnchor}
       />
 
       <OptionPickerSheet<string>
@@ -355,7 +362,8 @@ export function ScheduleExploreFiltersSheet({
         onSelect={(id) => setDraftGroupId(id ?? undefined)}
         zIndexBase={220}
         height={pickerSheetHeight}
-        contentInsetBottom={TAB_BAR_OVERLAY_CLEARANCE}
+        contentInsetBottom={sheetBottomInset}
+        webAnchor={webAnchor}
       />
 
       <OptionPickerSheet<string>
@@ -367,7 +375,8 @@ export function ScheduleExploreFiltersSheet({
         onSelect={(id) => setDraftRoomId(id ?? undefined)}
         zIndexBase={220}
         height={pickerSheetHeight}
-        contentInsetBottom={TAB_BAR_OVERLAY_CLEARANCE}
+        contentInsetBottom={sheetBottomInset}
+        webAnchor={webAnchor}
       />
 
       <OptionPickerSheet<string>
@@ -379,7 +388,7 @@ export function ScheduleExploreFiltersSheet({
         onSelect={(t) => setDraftSubject(t ?? undefined)}
         zIndexBase={220}
         height={pickerSheetHeight}
-        contentInsetBottom={TAB_BAR_OVERLAY_CLEARANCE}
+        contentInsetBottom={sheetBottomInset}
       />
 
       <HostPickerSheet
@@ -390,7 +399,8 @@ export function ScheduleExploreFiltersSheet({
         searchHosts={searchHosts}
         zIndexBase={260}
         height={hostSheetHeight}
-        contentInsetBottom={TAB_BAR_OVERLAY_CLEARANCE}
+        contentInsetBottom={sheetBottomInset}
+        webAnchor={webAnchor}
         onSelect={(item) => {
           setDraftHostId(item.id);
           setDraftHostLabel(item.fullName ?? '');

@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SplitPane } from '@/src/components/layout/SplitPane';
 import { WidgetPageShell } from '@/src/components/layout';
-import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
+import { ScreenHeader } from '@/src/components/navigation/ScreenHeader';
 import { useThemeColors, useBreakpoint } from '@/src/hooks';
 import {
   AppText,
@@ -94,14 +94,16 @@ function GradesScreenContent() {
     return (
       <WidgetPageShell>
         <View style={{ flex: 1, backgroundColor: colors.background }}>
-          <ClayBackButton absolute />
-          <View style={{ flex: 1, padding: 24, justifyContent: 'center' }}>
-            <WidgetEmptyState
-              title="Grades unavailable"
-              description="You do not have permission to view grades in this organization."
-              icon="lock"
-            />
-          </View>
+          <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+            <ScreenHeader title="Academic Record" />
+            <View style={{ flex: 1, padding: 24, justifyContent: 'center' }}>
+              <WidgetEmptyState
+                title="Grades unavailable"
+                description="You do not have permission to view grades in this organization."
+                icon="lock"
+              />
+            </View>
+          </SafeAreaView>
         </View>
       </WidgetPageShell>
     );
@@ -111,11 +113,12 @@ function GradesScreenContent() {
     <ScreenTransition style={styles.heroContainer}>
       <ClayView depth={12} puffy={0} color={colors.secondary} style={[styles.heroPanel, { flex: 1 }]}>
         <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1 }}>
-          <View style={[styles.navBar, { paddingLeft: 60, marginTop: 10 }]}>
-            <AppText variant="h3" weight="bold" style={{ color: colors.onSecondary }}>
-              Academic Record
-            </AppText>
-          </View>
+          <ScreenHeader
+            title="Academic Record"
+            tone="inverse"
+            compact
+            style={{ paddingHorizontal: 0, paddingTop: 4, paddingBottom: 4 }}
+          />
 
           <View style={styles.heroContent}>
             <View style={{ flex: 1 }}>
@@ -247,10 +250,12 @@ function GradesScreenContent() {
     return (
       <WidgetPageShell>
         <View style={{ flex: 1, backgroundColor: colors.background }}>
-          <ClayBackButton absolute />
-          <View style={{ flex: 1, padding: 24, justifyContent: 'center' }}>
-            <WidgetErrorState message="Could not load grades." onRetry={() => void refetchGrades()} />
-          </View>
+          <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+            <ScreenHeader title="Academic Record" />
+            <View style={{ flex: 1, padding: 24, justifyContent: 'center' }}>
+              <WidgetErrorState message="Could not load grades." onRetry={() => void refetchGrades()} />
+            </View>
+          </SafeAreaView>
         </View>
       </WidgetPageShell>
     );
@@ -259,16 +264,19 @@ function GradesScreenContent() {
   return (
     <WidgetPageShell>
       <View style={{ flex: 1, backgroundColor: colors.background }}>
-        <ClayBackButton absolute />
-
         {isLoading && grades.length === 0 ? (
-          <View style={{ flex: 1, padding: 20, paddingTop: 120 }}>
+          <View style={{ flex: 1 }}>
+            <SafeAreaView edges={['top']}>
+              <ScreenHeader title="Academic Record" />
+            </SafeAreaView>
+            <View style={{ flex: 1, padding: 20 }}>
             <Skeleton height={200} borderRadius={24} />
             <Skeleton height={72} borderRadius={16} style={{ marginTop: 16 }} />
             <Skeleton height={72} borderRadius={16} style={{ marginTop: 12 }} />
+            </View>
           </View>
         ) : grades.length === 0 ? (
-          <View style={{ flex: 1, paddingTop: 100, paddingHorizontal: 24 }}>
+          <View style={{ flex: 1, paddingHorizontal: 24 }}>
             {listHeader}
             {filterBars}
             <View style={{ flex: 1, justifyContent: 'center', paddingBottom: 40 }}>

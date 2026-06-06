@@ -61,7 +61,7 @@ export const ScheduleWidget: React.FC<BaseWidgetProps> = ({ variant, color }) =>
             variant="h1"
             weight="bold"
             style={[styles.classTitle, { color }]}
-            numberOfLines={3}
+            numberOfLines={2}
             ellipsizeMode="tail"
           >
             {nextEvent.title}

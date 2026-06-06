@@ -3,7 +3,7 @@ import { View, ScrollView, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
-import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
+import { ScreenHeader } from '@/src/components/navigation/ScreenHeader';
 import { WidgetPageShell } from '@/src/components/layout';
 import { ScreenTransition, AnimatedItem, PressClay } from '@/src/components/animations';
 import {
@@ -16,7 +16,7 @@ import {
   WidgetErrorState,
 } from '@/src/components/ui';
 import { ClayAnimations } from '@/src/constants/animations';
-import { useThemeColors, useBreakpoint } from '@/src/hooks';
+import { useThemeColors } from '@/src/hooks';
 import type { GroupPickerItemDto, TaskItemDto } from '@/src/api/generatedClient';
 import { CreateTaskBottomSheet } from '../../tasks/components/CreateTaskBottomSheet';
 import { useAssignmentsScreenLogic, type AssignmentsListFilter } from '../hooks/useAssignmentsScreenLogic';
@@ -32,7 +32,6 @@ const LIST_FILTERS: { id: AssignmentsListFilter; label: string }[] = [
 
 export default function AssignmentsScreen() {
   const colors = useThemeColors();
-  const { isWideShell } = useBreakpoint();
   const styles = createStyles(colors);
 
   const {
@@ -165,22 +164,20 @@ export default function AssignmentsScreen() {
   return (
     <WidgetPageShell>
       <View style={{ flex: 1, backgroundColor: colors.background }}>
-        <ClayBackButton absolute={!isWideShell} />
-
         <ScreenTransition style={{ flex: 1 }}>
-          <SafeAreaView style={styles.container}>
-            <View style={styles.headerRow}>
-              <AppText variant="h2" weight="bold" style={{ color: colors.text, flex: 1 }}>
-                Assignments
-              </AppText>
-              {canManage ? (
-                <PressClay onPress={openCreate}>
-                  <ClayView depth={5} puffy={10} color={colors.primary} style={styles.addBtn}>
-                    <Icon name="add" size={22} color="#FFF" />
-                  </ClayView>
-                </PressClay>
-              ) : null}
-            </View>
+          <SafeAreaView style={styles.container} edges={['top']}>
+            <ScreenHeader
+              title="Assignments"
+              right={
+                canManage ? (
+                  <PressClay onPress={openCreate}>
+                    <ClayView depth={5} puffy={10} color={colors.primary} style={styles.addBtn}>
+                      <Icon name="add" size={22} color="#FFF" />
+                    </ClayView>
+                  </PressClay>
+                ) : null
+              }
+            />
 
             {assignableGroups && assignableGroups.length > 0 ? (
               <ScrollView

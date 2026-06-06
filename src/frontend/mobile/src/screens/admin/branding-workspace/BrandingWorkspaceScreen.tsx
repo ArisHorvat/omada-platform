@@ -1,17 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { View, ScrollView, TouchableOpacity, TextInput, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
+import { ScreenHeader } from '@/src/components/navigation/ScreenHeader';
 import { PageContainer } from '@/src/components/layout/PageContainer';
 import { AppButton, AppText, ClayView, Icon, ProgressiveImage, SegmentedControl } from '@/src/components/ui';
 import { OrganizationType } from '@/src/api/generatedClient';
 import { useThemeColors } from '@/src/hooks';
-import { useBrandingWorkspace } from '../hooks/useBrandingWorkspace';
+import { useBrandingWorkspace } from './hooks/useBrandingWorkspace';
 
 export default function BrandingWorkspaceScreen() {
   const colors = useThemeColors();
-  const insets = useSafeAreaInsets();
   const styles = createStyles(colors);
   const {
     name,
@@ -39,16 +38,12 @@ export default function BrandingWorkspaceScreen() {
   } = useBrandingWorkspace();
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top }}>
-      <PageContainer>
-        <View style={styles.header}>
-          <ClayBackButton />
-          <AppText variant="h3" weight="bold">
-            Branding & appearance
-          </AppText>
-        </View>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+        <PageContainer>
+          <ScreenHeader title="Branding & appearance" />
 
-        <ScrollView contentContainerStyle={styles.scroll}>
+          <ScrollView contentContainerStyle={styles.scroll}>
           <ClayView depth={8} puffy={16} color={primary} style={styles.preview}>
             <AppText weight="bold" style={{ color: '#fff', fontSize: 18 }}>
               {name || 'Organization name'}
@@ -147,8 +142,9 @@ export default function BrandingWorkspaceScreen() {
           </ClayView>
 
           <AppButton title={isSaving ? 'Saving…' : 'Save branding'} onPress={save} disabled={isSaving} />
-        </ScrollView>
-      </PageContainer>
+          </ScrollView>
+        </PageContainer>
+      </SafeAreaView>
     </View>
   );
 }
@@ -186,7 +182,6 @@ function Field({
 
 const createStyles = (colors: ReturnType<typeof useThemeColors>) =>
   StyleSheet.create({
-    header: { paddingHorizontal: 16, paddingBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 8 },
     scroll: { paddingHorizontal: 16, paddingBottom: 120 },
     preview: { borderRadius: 20, marginBottom: 20, minHeight: 120, justifyContent: 'space-between' },
     previewBars: { flexDirection: 'row', gap: 8, marginTop: 16 },

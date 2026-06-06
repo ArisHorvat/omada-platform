@@ -15,6 +15,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText, ClayView, Icon, AppButton } from '@/src/components/ui';
+import { WebAnchoredOverlay } from '@/src/components/layout/WebAnchoredOverlay';
 import { ClayDatePicker } from '@/src/components/ui/ClayDatePicker';
 import { ClayTimeSpinner } from '@/src/components/ui/ClayTimeSpinner';
 import { useThemeColors, useTabContentBottomPadding } from '@/src/hooks';
@@ -613,6 +614,7 @@ export function RoomBookingModal({ visible, onClose, room, form, isSaving, onSav
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <WebAnchoredOverlay>
       <View style={{ flex: 1 }} pointerEvents="box-none">
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -676,6 +678,7 @@ export function RoomBookingModal({ visible, onClose, room, form, isSaving, onSav
           }}
         />
       </View>
+      </WebAnchoredOverlay>
     </Modal>
   );
 }

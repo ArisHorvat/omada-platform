@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Text, TextProps, TextStyle } from 'react-native';
+import { Platform, Text, TextProps, TextStyle } from 'react-native';
 import { useThemeColors } from '@/src/hooks';
 
 export type AppTextVariant = 'h1' | 'h2' | 'h3' | 'body' | 'caption' | 'display' | 'label';
@@ -24,6 +24,13 @@ const VARIANT_STYLES: Record<
   label: { fontSize: 11, lineHeight: 14, letterSpacing: 0.6, textTransform: 'uppercase' },
 };
 
+const WEB_FONT_WEIGHT: Record<NonNullable<AppTextProps['weight']>, TextStyle['fontWeight']> = {
+  regular: '400',
+  medium: '500',
+  bold: '600',
+  extra: '800',
+};
+
 export const AppText = ({
   variant = 'body',
   weight = 'regular',
@@ -33,7 +40,7 @@ export const AppText = ({
 }: AppTextProps) => {
   const colors = useThemeColors();
 
-  const fontFamily = useMemo(() => {
+  const nativeFontFamily = useMemo(() => {
     switch (weight) {
       case 'extra':
         return 'Display';
@@ -55,6 +62,16 @@ export const AppText = ({
     return colors.text;
   }, [colors.subtle, colors.text, variant]);
 
+  const fontStyle = useMemo((): TextStyle => {
+    if (Platform.OS === 'web') {
+      return {
+        fontFamily: 'Outfit, system-ui, -apple-system, sans-serif',
+        fontWeight: WEB_FONT_WEIGHT[weight],
+      };
+    }
+    return { fontFamily: nativeFontFamily };
+  }, [nativeFontFamily, weight]);
+
   return (
     <Text
       numberOfLines={adjustsToFit ? 1 : props.numberOfLines}
@@ -63,7 +80,7 @@ export const AppText = ({
       style={[
         {
           color: defaultColor,
-          fontFamily,
+          ...fontStyle,
           ...variantTypography,
         },
         style,

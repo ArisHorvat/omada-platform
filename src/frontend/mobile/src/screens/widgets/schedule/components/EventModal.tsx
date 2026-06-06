@@ -22,6 +22,8 @@ import { HostPickerSheet } from './HostPickerSheet';
 import { SearchableOptionPickerSheet } from '@/src/screens/admin/web-spider-workspace/components/SearchableOptionPickerSheet';
 import type { GroupOption } from '@/src/utils/groupOptions';
 import { formatRecurrenceLabel } from '../utils/recurrenceLabels';
+import type { WebOverlayAnchor } from '@/src/hooks/usePaneOverlayAnchor';
+import { useWebMainPaneAnchor } from '@/src/context/WebMainPaneContext';
 
 const EVENT_COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6'];
 
@@ -43,8 +45,11 @@ export const EventModal = ({
   rooms,
   searchHosts,
   groupOptions = [],
-}: any) => {
+  webAnchor: webAnchorProp = null,
+}: any & { webAnchor?: WebOverlayAnchor | null }) => {
   const colors = useThemeColors();
+  const defaultWebAnchor = useWebMainPaneAnchor();
+  const webAnchor = webAnchorProp ?? defaultWebAnchor;
   const insets = useSafeAreaInsets();
   const tabBarPad = useTabContentBottomPadding(56);
   const [panel, setPanel] = useState<Panel>('wizard');
@@ -728,9 +733,28 @@ export const EventModal = ({
     </View>
   );
 
+  const IS_WEB = Platform.OS === 'web';
+  const paneHostStyle =
+    IS_WEB && webAnchor
+      ? ({
+          position: 'fixed' as const,
+          left: webAnchor.left,
+          top: webAnchor.top,
+          width: webAnchor.width,
+          height: webAnchor.height,
+        } as const)
+      : { flex: 1 as const };
+
+  const panelHeight = webAnchor ? Math.min(webAnchor.height * 0.85, webAnchor.height) : '85%';
+
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1 }} pointerEvents="box-none">
+    <Modal
+      visible={visible}
+      transparent
+      animationType={IS_WEB && webAnchor ? 'fade' : 'slide'}
+      onRequestClose={onClose}
+    >
+      <View style={paneHostStyle} pointerEvents="box-none">
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={{ flex: 1, justifyContent: 'flex-end' }}
@@ -746,7 +770,7 @@ export const EventModal = ({
           <View
             style={{
               width: '100%',
-              height: '85%',
+              height: panelHeight,
               zIndex: 1,
               backgroundColor: colors.card,
               borderTopLeftRadius: 28,
@@ -790,6 +814,7 @@ export const EventModal = ({
           resultSubtitle="Directory"
           searchHosts={searchHosts}
           zIndexBase={520}
+          webAnchor={webAnchor}
           onSelect={(h) => {
             form.setHostId(h.id);
             form.setHostName(h.fullName);
@@ -812,6 +837,7 @@ export const EventModal = ({
           allLabel="No group"
           height={440}
           zIndexBase={530}
+          webAnchor={webAnchor}
         />
       </View>
     </Modal>

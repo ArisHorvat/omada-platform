@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Alert } from 'react-native';
+import { startOfDay } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import { useScheduleApi, ScheduleFilters } from './useScheduleApi';
 import { AttendanceStatus, ScheduleItemDto } from '@/src/api/generatedClient';
@@ -9,7 +10,7 @@ import { usersApi, unwrap } from '@/src/api';
 import { QUERY_KEYS } from '@/src/api/queryKeys';
 
 export const useScheduleLogic = () => {
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()));
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('day');
   const [editMode, setEditMode] = useState<'series' | 'instance'>('series');
   

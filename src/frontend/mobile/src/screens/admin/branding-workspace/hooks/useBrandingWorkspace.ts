@@ -8,7 +8,7 @@ import { QUERY_KEYS } from '@/src/api/queryKeys';
 import { UpdateCurrentOrganizationRequest, OrganizationType } from '@/src/api/generatedClient';
 import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
 import { ToolsService } from '@/src/services/ToolsService';
-import { bumpOnboardingStep } from '../utils/onboarding';
+import { bumpOnboardingStep } from '../../utils/onboarding';
 
 const DEFAULT_COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'];
 

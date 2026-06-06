@@ -12,7 +12,7 @@ import { BentoBox } from '@/src/components/ui/BentoGrid';
 // Hooks, Styles & Registry
 import { useThemeColors } from '@/src/hooks';
 import { createWidgetStyles } from '../styles/dashboardWidget.styles';
-import { CARD_MARGIN } from '../styles/dashboard.styles';
+import { CARD_MARGIN, type HighlightMetrics } from '../styles/dashboard.styles';
 import { WIDGET_REGISTRY } from './WidgetRegistry';
 import { WidgetVariant } from '@/src/constants/widgets.registry';
 
@@ -43,6 +43,8 @@ interface DashboardWidgetProps {
   onRemove?: (id: string) => void;
   /** Highlights carousel: set 0 when wrapped in an outer frame that supplies horizontal spacing */
   cardTrailingMargin?: number;
+  /** Responsive highlight strip sizing (required for card variant). */
+  cardMetrics?: HighlightMetrics;
 }
 
 // 4. Create the Fallback UI for when a widget crashes
@@ -90,6 +92,7 @@ export const DashboardWidget = ({
   bentoSizing,
   isEditing = false, onLongPress, onRemove,
   cardTrailingMargin = CARD_MARGIN,
+  cardMetrics,
 }: DashboardWidgetProps) => {
   const router = useRouter();
   const colors = useThemeColors();
@@ -106,7 +109,7 @@ export const DashboardWidget = ({
     : undefined;
   
   // Create styles with current theme
-  const styles = useMemo(() => createWidgetStyles(colors), [colors]);
+  const styles = useMemo(() => createWidgetStyles(colors, cardMetrics), [colors, cardMetrics]);
 
   if (!config) return null;
 
@@ -199,7 +202,12 @@ export const DashboardWidget = ({
               depth={10} 
               puffy={25}
               color={cardBg} 
-              style={[styles.cardContainer, { marginRight: cardTrailingMargin }]}
+              style={[
+                styles.cardContainer,
+                cardMetrics
+                  ? { width: '100%', maxWidth: cardMetrics.cardWidth, marginRight: cardTrailingMargin }
+                  : { marginRight: cardTrailingMargin },
+              ]}
             >
                 <View style={styles.cardContent}>
                   

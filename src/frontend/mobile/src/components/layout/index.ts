@@ -1,3 +1,4 @@
+export { AppShell } from './AppShell';
 export { AuthContentShell } from './AuthContentShell';
 export type { AuthContentShellProps } from './AuthContentShell';
 export { PageContainer } from './PageContainer';

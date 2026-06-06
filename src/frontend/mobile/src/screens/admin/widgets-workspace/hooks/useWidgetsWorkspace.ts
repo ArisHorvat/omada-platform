@@ -6,7 +6,7 @@ import { adminApi, orgAdminApi, unwrap } from '@/src/api';
 import { QUERY_KEYS } from '@/src/api/queryKeys';
 import { UpdateOrganizationEnabledWidgetsRequest } from '@/src/api/generatedClient';
 import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
-import { bumpOnboardingStep } from '../utils/onboarding';
+import { bumpOnboardingStep } from '../../utils/onboarding';
 
 export function useWidgetsWorkspace() {
   const queryClient = useQueryClient();

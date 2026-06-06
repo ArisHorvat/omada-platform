@@ -10,7 +10,7 @@ import { UpdateMyProfileRequest } from '@/src/api/generatedClient';
 import { QUERY_KEYS } from '@/src/api/queryKeys';
 import { resolveMediaUrl } from '@/src/utils/resolveMediaUrl';
 
-export const useEditProfileLogic = () => {
+export const useEditProfileLogic = (options?: { afterSave?: () => void }) => {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { activeSession } = useAuth();
@@ -42,7 +42,15 @@ export const useEditProfileLogic = () => {
       setPendingAvatarUri(null);
       setPendingAvatarMime(null);
       setPendingAvatarName(null);
-      Alert.alert('Success', 'Profile updated.', [{ text: 'OK', onPress: () => router.back() }]);
+      Alert.alert('Success', 'Profile updated.', [
+        {
+          text: 'OK',
+          onPress: () => {
+            if (options?.afterSave) options.afterSave();
+            else router.back();
+          },
+        },
+      ]);
     },
     onError: (e: unknown) =>
       Alert.alert('Error', e instanceof Error ? e.message : 'Failed to update profile.'),

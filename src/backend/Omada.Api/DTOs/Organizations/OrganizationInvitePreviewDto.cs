@@ -14,4 +14,14 @@ public class OrganizationInvitePreviewDto
 
     [Required]
     public required string InviteCode { get; set; }
+
+    public bool HasExistingAccount { get; set; }
+    public bool HasPendingInvite { get; set; }
+    public bool IsAlreadyMember { get; set; }
+    public bool RequiresSignIn { get; set; }
+    public bool RequiresRegistration { get; set; }
+    public string? InvitedFirstName { get; set; }
+    public string? InvitedLastName { get; set; }
+    public string? InvitedEmail { get; set; }
+    public bool InviteLinkExpired { get; set; }
 }

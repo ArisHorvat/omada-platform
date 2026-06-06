@@ -1,35 +1,44 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import QRCode from 'react-native-qrcode-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import { format } from 'date-fns';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 import { AppText, ClayView, Icon, ProgressiveImage, SegmentedControl, WidgetErrorState } from '@/src/components/ui';
-import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
+import { ScreenHeader } from '@/src/components/navigation/ScreenHeader';
 import { WidgetPageShell } from '@/src/components/layout';
 import { useThemeColors, useContentWidth } from '@/src/hooks';
 import { useDigitalIdLogic } from '../hooks/useDigitalIdLogic';
 import { useBrightnessWhileFocused } from '../hooks/useBrightnessWhileFocused';
 import { Code128BarcodeSvg } from './Code128BarcodeSvg';
+import { ADMIN_ACCOUNT_HOME } from '@/src/screens/admin/utils/adminAccountRoutes';
 
-export default function DigitalIdScreen() {
+export default function DigitalIdScreen({ adminConsole = false }: { adminConsole?: boolean }) {
   const colors = useThemeColors();
+  const router = useRouter();
   const contentWidth = useContentWidth();
   const { digitalId, isLoading, isError, digitalIdQuery } = useDigitalIdLogic();
   useBrightnessWhileFocused();
   const [codeTab, setCodeTab] = useState(0); // 0 = QR, 1 = Barcode
+
+  const headerBack = useMemo(
+    () =>
+      adminConsole
+        ? { showBack: true as const, onBack: () => router.replace(ADMIN_ACCOUNT_HOME as never) }
+        : {},
+    [adminConsole, router],
+  );
 
   const cardWidth = Math.min(contentWidth - 32, 400);
 
   if (isLoading) {
     return (
       <WidgetPageShell>
-      <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]}>
-        <View style={styles.headerRow}>
-          <ClayBackButton style={{ backgroundColor: colors.card, borderRadius: 22 }} />
-        </View>
+      <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+        <ScreenHeader title="Digital ID" {...headerBack} />
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -41,10 +50,8 @@ export default function DigitalIdScreen() {
   if (isError || !digitalId) {
     return (
       <WidgetPageShell>
-      <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]}>
-        <View style={styles.headerRow}>
-          <ClayBackButton style={{ backgroundColor: colors.card, borderRadius: 22 }} />
-        </View>
+      <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+        <ScreenHeader title="Digital ID" {...headerBack} />
         <View style={[styles.centered, { paddingHorizontal: 24 }]}>
           <WidgetErrorState
             message="Could not load your Digital ID. You may not have access or the network failed."
@@ -66,13 +73,7 @@ export default function DigitalIdScreen() {
   return (
     <WidgetPageShell>
     <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
-      <View style={styles.headerRow}>
-        <ClayBackButton style={{ backgroundColor: colors.card, borderRadius: 22 }} />
-        <AppText variant="h3" weight="bold" style={{ color: colors.text }}>
-          Digital ID
-        </AppText>
-        <View style={{ width: 44 }} />
-      </View>
+      <ScreenHeader title="Digital ID" {...headerBack} />
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <ClayView depth={18} puffy={0} color={colors.card} style={[styles.badgeShell, { width: cardWidth }]}>
@@ -209,13 +210,6 @@ export default function DigitalIdScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-  },
   scroll: {
     paddingHorizontal: 16,
     paddingBottom: 32,

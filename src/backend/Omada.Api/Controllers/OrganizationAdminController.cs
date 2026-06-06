@@ -75,6 +75,14 @@ public class OrganizationAdminController : ControllerBase
         return response.IsSuccess ? Ok(response) : BadRequest(response);
     }
 
+    [HttpDelete("members/{userId:guid}")]
+    [HasPermission(WidgetKeys.Users, nameof(AccessLevel.Admin))]
+    public async Task<ActionResult<ServiceResponse<bool>>> DeleteMember(Guid userId)
+    {
+        var response = await _adminService.DeleteMemberAsync(userId);
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
+    }
+
     [HttpGet("roles")]
     [HasPermission(WidgetKeys.Settings, nameof(AccessLevel.View))]
     public async Task<ActionResult<ServiceResponse<IEnumerable<OrganizationRoleDto>>>> GetRoles()

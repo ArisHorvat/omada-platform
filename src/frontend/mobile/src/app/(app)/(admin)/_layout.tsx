@@ -4,6 +4,11 @@ export default function AdminLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="org-dashboard" />
+      <Stack.Screen name="admin-profile" />
+      <Stack.Screen name="edit-admin-profile" />
+      <Stack.Screen name="admin-settings" />
+      <Stack.Screen name="admin-security" />
+      <Stack.Screen name="admin-digital-id" />
       <Stack.Screen name="branding-workspace" />
       <Stack.Screen name="members-workspace" />
       <Stack.Screen name="roles-workspace" />

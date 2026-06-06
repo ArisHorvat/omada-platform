@@ -3,6 +3,7 @@ using Microsoft.IdentityModel.Tokens;
 using Omada.Api.Abstractions;
 using Omada.Api.Infrastructure;
 using Omada.Api.DTOs.Auth;
+using Omada.Api.DTOs.Organizations;
 using Omada.Api.DTOs.Users;
 using Omada.Api.Entities;
 using Omada.Api.Repositories.Interfaces;
@@ -44,9 +45,21 @@ public class AuthService : IAuthService
         if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
             return new ServiceResponse<LoginResponse>(false, null, new AppError(ErrorCodes.Unauthorized, "Invalid credentials"));
 
-        var memberships = await _uow.Repository<OrganizationMember>().FindAsync(m => m.UserId == user.Id);
+        var memberships = await _uow.Repository<OrganizationMember>().FindAsync(m => m.UserId == user.Id && m.IsActive);
         var primary = memberships.FirstOrDefault();
-        if (primary == null) return new ServiceResponse<LoginResponse>(false, null, new AppError(ErrorCodes.Forbidden, "No organization."));
+        if (primary == null)
+        {
+            var pendingMemberships = (await _uow.Repository<OrganizationMember>()
+                .FindAsync(m => m.UserId == user.Id && !m.IsActive)).ToList();
+            if (pendingMemberships.Any())
+            {
+                primary = pendingMemberships.OrderByDescending(m => m.JoinedAt).First();
+            }
+            else
+            {
+                return new ServiceResponse<LoginResponse>(false, null, new AppError(ErrorCodes.Forbidden, "No organization."));
+            }
+        }
 
         var role = await _uow.Repository<Role>().GetByIdAsync(primary.RoleId);
         var roleName = role?.Name ?? "User";
@@ -187,7 +200,7 @@ public class AuthService : IAuthService
         if (organization == null || !organization.IsActive)
             return new ServiceResponse<LoginResponse>(false, null, new AppError(ErrorCodes.Forbidden, "This organization is currently inactive or suspended."));
 
-        var role = await _uow.Repository<Role>().GetByIdAsync(membership.RoleId);
+        var role = await GetRoleByIdCrossOrgAsync(membership.RoleId);
         var token = GenerateJwtToken(user, membership.OrganizationId, role?.Name ?? "User");
 
         var response = new LoginResponse
@@ -238,60 +251,69 @@ public class AuthService : IAuthService
         return new ServiceResponse<string>(true, "Password has been reset successfully.");
     }
 
-    public async Task<ServiceResponse<LoginResponse>> JoinOrganizationAsync(JoinOrganizationRequest request)
+    public async Task<ServiceResponse<JoinOrganizationResultDto>> JoinOrganizationAsync(JoinOrganizationRequest request)
     {
         var normalizedCode = request.InviteCode.Trim().ToUpperInvariant();
         var org = (await _uow.Repository<Organization>().FindAsync(o =>
             o.InviteCode == normalizedCode && o.IsActive)).FirstOrDefault();
 
         if (org == null)
-            return new ServiceResponse<LoginResponse>(false, null, new AppError(ErrorCodes.NotFound, "Invalid or expired invite code."));
+            return new ServiceResponse<JoinOrganizationResultDto>(false, null, new AppError(ErrorCodes.NotFound, "Invalid or expired invite code."));
 
-        var roles = (await _uow.Repository<Role>().FindAsync(r => r.OrganizationId == org.Id)).ToList();
-        var joinRole = roles.FirstOrDefault(r => r.Name.Equals("Member", StringComparison.OrdinalIgnoreCase))
-            ?? roles.FirstOrDefault(r => !r.Name.Equals("Admin", StringComparison.OrdinalIgnoreCase))
-            ?? roles.FirstOrDefault();
-
+        var roles = await GetRolesForOrganizationAsync(org.Id);
+        var joinRole = ResolveJoinRole(roles);
         if (joinRole == null)
-            return new ServiceResponse<LoginResponse>(false, null, new AppError(ErrorCodes.InvalidInput, "Organization has no roles configured."));
+            return new ServiceResponse<JoinOrganizationResultDto>(false, null, new AppError(ErrorCodes.InvalidInput, "Organization has no roles configured."));
 
         var email = request.Email.Trim();
-        var existingUser = (await _uow.Repository<User>().FindAsync(u => u.Email == email)).FirstOrDefault();
+        var existingUser = (await _uow.Repository<User>().FindAsync(u =>
+            u.Email.ToLower() == email.ToLower())).FirstOrDefault();
 
         if (existingUser != null)
         {
             var existingMembership = (await _uow.Repository<OrganizationMember>().FindAsync(m =>
                 m.UserId == existingUser.Id && m.OrganizationId == org.Id)).FirstOrDefault();
 
-            if (existingMembership != null)
-                return new ServiceResponse<LoginResponse>(false, null, new AppError(ErrorCodes.InvalidInput, "You are already a member of this organization. Sign in instead."));
+            if (existingMembership?.IsActive == true)
+                return new ServiceResponse<JoinOrganizationResultDto>(false, null, new AppError(ErrorCodes.InvalidInput, "You are already a member of this organization. Sign in instead."));
 
-            await _uow.Repository<OrganizationMember>().AddAsync(new OrganizationMember
+            if (existingMembership != null && !existingMembership.IsActive)
             {
-                OrganizationId = org.Id,
-                UserId = existingUser.Id,
-                RoleId = joinRole.Id,
-                IsActive = true
-            });
-            await _uow.CompleteAsync();
-
-            var existingJwt = GenerateJwtToken(existingUser, org.Id, joinRole.Name);
-            var existingRefresh = await CreateRefreshTokenAsync(existingUser.Id);
-
-            return new ServiceResponse<LoginResponse>(true, new LoginResponse
-            {
-                AccessToken = existingJwt,
-                RefreshToken = existingRefresh.Token,
-                OrganizationId = org.Id,
-                Role = joinRole.Name,
-                User = new UserDto
+                var hasIncompleteSetup = !string.IsNullOrEmpty(existingUser.PasswordResetToken);
+                if (hasIncompleteSetup)
                 {
-                    Id = existingUser.Id,
-                    Email = existingUser.Email,
-                    FirstName = existingUser.FirstName,
-                    LastName = existingUser.LastName
+                    if (!string.IsNullOrWhiteSpace(request.SetupToken))
+                    {
+                        var tokenError = ValidateSetupToken(existingUser, request.SetupToken);
+                        if (tokenError != null)
+                            return new ServiceResponse<JoinOrganizationResultDto>(false, null, tokenError);
+                    }
                 }
-            });
+                else
+                {
+                    return new ServiceResponse<JoinOrganizationResultDto>(false, null, new AppError(ErrorCodes.InvalidInput, "An account with this email already exists. Sign in to accept the invite."));
+                }
+
+                existingUser.FirstName = request.FirstName.Trim();
+                existingUser.LastName = request.LastName.Trim();
+                existingUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+                existingUser.PasswordResetToken = null;
+                existingUser.PasswordResetTokenExpires = null;
+                _uow.Repository<User>().Update(existingUser);
+
+                existingMembership.IsActive = true;
+                _uow.Repository<OrganizationMember>().Update(existingMembership);
+                await _uow.CompleteAsync();
+
+                _ = _emailService.SendJoinWelcomeEmailAsync(existingUser.Email, existingUser.FirstName, org.Name);
+                return new ServiceResponse<JoinOrganizationResultDto>(true, new JoinOrganizationResultDto
+                {
+                    OrganizationName = org.Name,
+                    Email = existingUser.Email
+                });
+            }
+
+            return new ServiceResponse<JoinOrganizationResultDto>(false, null, new AppError(ErrorCodes.InvalidInput, "An account with this email already exists. Sign in to accept the invite."));
         }
 
         var user = new User
@@ -314,16 +336,251 @@ public class AuthService : IAuthService
         await _uow.CompleteAsync();
 
         _ = _emailService.SendJoinWelcomeEmailAsync(user.Email, user.FirstName, org.Name);
+        return new ServiceResponse<JoinOrganizationResultDto>(true, new JoinOrganizationResultDto
+        {
+            OrganizationName = org.Name,
+            Email = user.Email
+        });
+    }
 
-        var jwt = GenerateJwtToken(user, org.Id, joinRole.Name);
+    public async Task<ServiceResponse<List<PendingOrganizationInviteDto>>> GetPendingInvitesAsync()
+    {
+        var userId = _userContext.UserId;
+        var pending = await _uow.Repository<OrganizationMember>().GetQueryable()
+            .AsNoTracking()
+            .Where(m => m.UserId == userId && !m.IsActive && !m.RequiresAdminApproval)
+            .Include(m => m.Organization)
+            .Include(m => m.Role)
+            .OrderByDescending(m => m.JoinedAt)
+            .ToListAsync();
+
+        var items = pending.Select(m => new PendingOrganizationInviteDto
+        {
+            OrganizationId = m.OrganizationId,
+            OrganizationName = m.Organization.Name,
+            LogoUrl = _mediaUrls.ToPublicUrl(m.Organization.LogoUrl),
+            InviteCode = m.Organization.InviteCode,
+            RoleName = m.Role.Name,
+            InvitedAt = m.JoinedAt
+        }).ToList();
+
+        return new ServiceResponse<List<PendingOrganizationInviteDto>>(true, items);
+    }
+
+    public async Task<ServiceResponse<LoginResponse>> AcceptInviteAsync(InviteCodeRequest request)
+    {
+        var user = await _uow.Repository<User>().GetByIdAsync(_userContext.UserId);
+        if (user == null)
+            return new ServiceResponse<LoginResponse>(false, null, new AppError(ErrorCodes.Unauthorized, "User not found."));
+
+        var orgResult = await ResolveOrganizationByInviteCodeAsync(request.InviteCode);
+        if (!orgResult.IsSuccess || orgResult.Data == null)
+            return new ServiceResponse<LoginResponse>(false, null, orgResult.Error ?? new AppError(ErrorCodes.NotFound, "Invalid invite."));
+
+        var org = orgResult.Data;
+        var membership = (await _uow.Repository<OrganizationMember>().FindAsync(m =>
+            m.UserId == user.Id && m.OrganizationId == org.Id)).FirstOrDefault();
+
+        if (membership == null)
+            return new ServiceResponse<LoginResponse>(false, null, new AppError(ErrorCodes.NotFound, "No pending invite found for this organization."));
+
+        if (membership.RequiresAdminApproval)
+            return new ServiceResponse<LoginResponse>(false, null, new AppError(ErrorCodes.Forbidden, "Your access request must be approved by an administrator."));
+
+        if (membership.IsActive)
+        {
+            var activeRole = await GetRoleByIdCrossOrgAsync(membership.RoleId);
+            return await IssueLoginResponseAsync(user, org.Id, activeRole?.Name ?? "Member");
+        }
+
+        membership.IsActive = true;
+        _uow.Repository<OrganizationMember>().Update(membership);
+        await _uow.CompleteAsync();
+
+        var role = await GetRoleByIdCrossOrgAsync(membership.RoleId);
+        var roleName = role?.Name ?? "Member";
+
+        _ = _emailService.SendJoinWelcomeEmailAsync(user.Email, user.FirstName, org.Name);
+        return await IssueLoginResponseAsync(user, org.Id, roleName);
+    }
+
+    public async Task<ServiceResponse<bool>> DeclineInviteAsync(InviteCodeRequest request)
+    {
+        var userId = _userContext.UserId;
+        var orgResult = await ResolveOrganizationByInviteCodeAsync(request.InviteCode);
+        if (!orgResult.IsSuccess || orgResult.Data == null)
+            return new ServiceResponse<bool>(false, false, orgResult.Error);
+
+        var org = orgResult.Data;
+        var membership = (await _uow.Repository<OrganizationMember>().FindAsync(m =>
+            m.UserId == userId && m.OrganizationId == org.Id && !m.IsActive)).FirstOrDefault();
+
+        if (membership == null)
+            return new ServiceResponse<bool>(false, false, new AppError(ErrorCodes.NotFound, "No pending invite found for this organization."));
+
+        _uow.Repository<OrganizationMember>().Remove(membership);
+        await _uow.CompleteAsync();
+        return new ServiceResponse<bool>(true, true);
+    }
+
+    public async Task<ServiceResponse<OrganizationInvitePreviewDto>> GetInvitePreviewForCurrentUserAsync(string inviteCode)
+    {
+        var orgResult = await ResolveOrganizationByInviteCodeAsync(inviteCode);
+        if (!orgResult.IsSuccess || orgResult.Data == null)
+            return new ServiceResponse<OrganizationInvitePreviewDto>(false, null, orgResult.Error);
+
+        var org = orgResult.Data;
+        var user = await _uow.Repository<User>().GetByIdAsync(_userContext.UserId);
+        if (user == null)
+            return new ServiceResponse<OrganizationInvitePreviewDto>(false, null, new AppError(ErrorCodes.Unauthorized, "User not found."));
+
+        var dto = new OrganizationInvitePreviewDto
+        {
+            OrganizationId = org.Id,
+            Name = org.Name,
+            LogoUrl = _mediaUrls.ToPublicUrl(string.IsNullOrEmpty(org.LogoUrl) ? null : org.LogoUrl),
+            InviteCode = org.InviteCode,
+            InvitedEmail = user.Email,
+            InvitedFirstName = user.FirstName,
+            InvitedLastName = user.LastName,
+            HasExistingAccount = true,
+        };
+
+        var membership = (await _uow.Repository<OrganizationMember>().FindAsync(m =>
+            m.UserId == user.Id && m.OrganizationId == org.Id)).FirstOrDefault();
+
+        if (membership?.IsActive == true)
+        {
+            dto.IsAlreadyMember = true;
+        }
+        else if (membership != null && !membership.IsActive && !membership.RequiresAdminApproval)
+        {
+            dto.HasPendingInvite = true;
+            dto.RequiresSignIn = true;
+        }
+
+        return new ServiceResponse<OrganizationInvitePreviewDto>(true, dto);
+    }
+
+    public async Task<ServiceResponse<JoinWithCodeResultDto>> JoinWithInviteCodeAsync(JoinWithInviteCodeRequest request)
+    {
+        var user = await _uow.Repository<User>().GetByIdAsync(_userContext.UserId);
+        if (user == null)
+            return new ServiceResponse<JoinWithCodeResultDto>(false, null, new AppError(ErrorCodes.Unauthorized, "User not found."));
+
+        var normalizedCode = request.InviteCode.Trim().ToUpperInvariant();
+        var orgResult = await ResolveOrganizationByInviteCodeAsync(normalizedCode);
+        if (!orgResult.IsSuccess || orgResult.Data == null)
+            return new ServiceResponse<JoinWithCodeResultDto>(false, null, orgResult.Error);
+
+        var org = orgResult.Data;
+        var roles = await GetRolesForOrganizationAsync(org.Id);
+        var joinRole = ResolveJoinRole(roles);
+        if (joinRole == null)
+            return new ServiceResponse<JoinWithCodeResultDto>(false, null, new AppError(ErrorCodes.InvalidInput, "Organization has no roles configured."));
+
+        var existingMembership = (await _uow.Repository<OrganizationMember>().FindAsync(m =>
+            m.UserId == user.Id && m.OrganizationId == org.Id)).FirstOrDefault();
+
+        if (existingMembership != null)
+        {
+            if (existingMembership.IsActive)
+            {
+                var activeRole = await GetRoleByIdCrossOrgAsync(existingMembership.RoleId);
+                var loginResult = await IssueLoginResponseAsync(user, org.Id, activeRole?.Name ?? joinRole.Name);
+                if (!loginResult.IsSuccess)
+                    return new ServiceResponse<JoinWithCodeResultDto>(false, null, loginResult.Error);
+
+                return new ServiceResponse<JoinWithCodeResultDto>(true, new JoinWithCodeResultDto
+                {
+                    OrganizationName = org.Name,
+                    Status = "Joined",
+                    Session = loginResult.Data
+                });
+            }
+
+            return new ServiceResponse<JoinWithCodeResultDto>(true, new JoinWithCodeResultDto
+            {
+                OrganizationName = org.Name,
+                Status = "PendingApproval"
+            });
+        }
+
+        await _uow.Repository<OrganizationMember>().AddAsync(new OrganizationMember
+        {
+            OrganizationId = org.Id,
+            UserId = user.Id,
+            RoleId = joinRole.Id,
+            IsActive = false,
+            RequiresAdminApproval = true
+        });
+        await _uow.CompleteAsync();
+
+        return new ServiceResponse<JoinWithCodeResultDto>(true, new JoinWithCodeResultDto
+        {
+            OrganizationName = org.Name,
+            Status = "PendingApproval"
+        });
+    }
+
+
+    // --- Helper Methods ---
+
+    private static Role? ResolveJoinRole(List<Role> roles) =>
+        roles.FirstOrDefault(r => r.Name.Equals("Member", StringComparison.OrdinalIgnoreCase))
+        ?? roles.FirstOrDefault(r => !r.Name.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+        ?? roles.FirstOrDefault();
+
+    private Task<List<Role>> GetRolesForOrganizationAsync(Guid organizationId) =>
+        _uow.Repository<Role>().GetQueryable()
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(r => r.OrganizationId == organizationId && !r.IsDeleted)
+            .ToListAsync();
+
+    private Task<Role?> GetRoleByIdCrossOrgAsync(Guid roleId) =>
+        _uow.Repository<Role>().GetQueryable()
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(r => r.Id == roleId && !r.IsDeleted);
+
+    private async Task<ServiceResponse<Organization>> ResolveOrganizationByInviteCodeAsync(string inviteCode)
+    {
+        var normalized = inviteCode.Trim().ToUpperInvariant();
+        var org = (await _uow.Repository<Organization>().FindAsync(o =>
+            o.InviteCode == normalized && o.IsActive)).FirstOrDefault();
+
+        return org == null
+            ? new ServiceResponse<Organization>(false, null, new AppError(ErrorCodes.NotFound, "Invalid or expired invite code."))
+            : new ServiceResponse<Organization>(true, org);
+    }
+
+    private static AppError? ValidateSetupToken(User user, string? setupToken)
+    {
+        if (string.IsNullOrWhiteSpace(user.PasswordResetToken))
+            return new AppError(ErrorCodes.InvalidInput, "Sign in to accept this invite.");
+
+        if (string.IsNullOrWhiteSpace(setupToken)
+            || !string.Equals(user.PasswordResetToken, setupToken.Trim(), StringComparison.OrdinalIgnoreCase))
+            return new AppError(ErrorCodes.InvalidInput, "Use the complete link from your invite email to set your password.");
+
+        if (user.PasswordResetTokenExpires.HasValue && user.PasswordResetTokenExpires.Value < DateTime.UtcNow)
+            return new AppError(ErrorCodes.InvalidInput, "This invite link has expired. Ask your admin to resend the invite.");
+
+        return null;
+    }
+
+    private async Task<ServiceResponse<LoginResponse>> IssueLoginResponseAsync(User user, Guid organizationId, string roleName)
+    {
+        var jwt = GenerateJwtToken(user, organizationId, roleName);
         var refresh = await CreateRefreshTokenAsync(user.Id);
 
         return new ServiceResponse<LoginResponse>(true, new LoginResponse
         {
             AccessToken = jwt,
             RefreshToken = refresh.Token,
-            OrganizationId = org.Id,
-            Role = joinRole.Name,
+            OrganizationId = organizationId,
+            Role = roleName,
             User = new UserDto
             {
                 Id = user.Id,
@@ -334,8 +591,6 @@ public class AuthService : IAuthService
         });
     }
 
-
-    // --- Helper Methods ---
     private string GenerateJwtToken(User user, Guid organizationId, string role)
     {
         var tokenHandler = new JwtSecurityTokenHandler();

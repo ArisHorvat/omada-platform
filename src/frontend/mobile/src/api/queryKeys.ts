@@ -52,6 +52,7 @@ export const QUERY_KEYS = {
     current: (orgId: string) => ['orgAdmin', orgId, 'current'] as const,
     members: (orgId: string, q: string, roleId: string | null) =>
       ['orgAdmin', orgId, 'members', q, roleId ?? 'all'] as const,
+    memberCount: (orgId: string) => ['orgAdmin', orgId, 'memberCount'] as const,
     roles: (orgId: string) => ['orgAdmin', orgId, 'roles'] as const,
     roleDetail: (orgId: string, roleId: string) => ['orgAdmin', orgId, 'role', roleId] as const,
     widgets: (orgId: string) => ['orgAdmin', orgId, 'widgets'] as const,

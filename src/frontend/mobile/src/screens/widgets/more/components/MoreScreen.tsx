@@ -1,13 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 import { AppText, ClayView, Icon, IconName } from '@/src/components/ui';
 import { PageContainer } from '@/src/components/layout/PageContainer';
 import { useThemeColors, useDebounce } from '@/src/hooks'; 
-import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
+import { ScreenHeader } from '@/src/components/navigation/ScreenHeader';
 import { SearchBar } from '@/src/screens/widgets/dashboard/components/SearchBar';
 import { PressClay } from '@/src/components/animations/PressClay'; // <--- UPDATED
 import { AnimatedItem } from '@/src/components/animations';
@@ -17,7 +17,6 @@ import { ClayAnimations } from '@/src/constants/animations'; // <--- UPDATED
 export default function AllAppsScreen() {
   const router = useRouter();
   const colors = useThemeColors();
-  const insets = useSafeAreaInsets();
   const { data, config } = useDashboardLogic();
 
   // Search State
@@ -52,24 +51,19 @@ export default function AllAppsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
       <PageContainer>
-      {/* HEADER */}
-      <View style={[styles.header, { paddingTop: insets.top }]}>
-        <View style={styles.headerTop}>
-            <ClayBackButton />
-            <AppText variant="h3" weight="bold">All Apps</AppText>
-            <View style={{ width: 44 }} /> 
-        </View>
-        
-        <View style={{ marginTop: 16 }}>
-             <SearchBar 
-                autoFocus={false} // Better UX not to auto-pop keyboard on nav
-                placeholder="Filter apps..."
-                value={searchInput} 
-                onChangeText={setSearchInput}
-             />
-        </View>
-      </View>
+      <ScreenHeader
+        title="All Apps"
+        footer={
+          <SearchBar
+            autoFocus={false}
+            placeholder="Filter apps..."
+            value={searchInput}
+            onChangeText={setSearchInput}
+          />
+        }
+      />
 
       <ScrollView contentContainerStyle={{ paddingBottom: 100, paddingHorizontal: 20 }}>
         
@@ -132,21 +126,12 @@ export default function AllAppsScreen() {
 
       </ScrollView>
       </PageContainer>
+      </SafeAreaView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    marginBottom: 10,
-  },
-  headerTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
   sectionContainer: {
     marginBottom: 24,
   },

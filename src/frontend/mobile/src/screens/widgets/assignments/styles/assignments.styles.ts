@@ -12,12 +12,6 @@ export const createStyles = (colors: {
     container: {
       flex: 1,
       paddingHorizontal: 20,
-      paddingTop: 56,
-    },
-    headerRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 16,
     },
     addBtn: {
       width: 44,

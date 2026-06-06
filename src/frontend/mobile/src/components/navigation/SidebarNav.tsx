@@ -1,11 +1,12 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { Platform, View, StyleSheet } from 'react-native';
 import { usePathname, useRouter, type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ClayView, Icon, type IconName, ProgressiveImage } from '@/src/components/ui';
 import { PressClay } from '@/src/components/animations/PressClay';
 import { AppText } from '@/src/components/ui/AppText';
+import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
 import { useOrganizationTheme } from '@/src/context/OrganizationThemeContext';
 import { SIDEBAR_WIDTH } from '@/src/constants/layout';
 import { useThemeColors } from '@/src/hooks/useThemeColors';
@@ -30,8 +31,21 @@ export function SidebarNav() {
   const router = useRouter();
   const pathname = usePathname();
   const { primary, logoUrl } = useOrganizationTheme();
+  const { organization } = useCurrentOrganization();
+  const orgName = organization?.name?.trim() || 'Organization';
 
   const onDashboard = isRouteActive(pathname, 'dashboard');
+  const isWeb = Platform.OS === 'web';
+  const logoSize = isWeb ? 168 : 72;
+  const logoIconSize = isWeb ? 56 : 32;
+
+  const goTo = (href: Href) => {
+    if (Platform.OS === 'web') {
+      router.navigate(href);
+      return;
+    }
+    router.push(href);
+  };
 
   return (
     <View
@@ -46,23 +60,39 @@ export function SidebarNav() {
         },
       ]}
     >
-      <PressClay onPress={() => router.push('/dashboard')} style={styles.logoPress}>
+      <PressClay onPress={() => goTo('/dashboard')} style={[styles.logoPress, isWeb && styles.logoPressWeb]}>
         <ClayView
           depth={onDashboard ? 10 : 16}
-          puffy={16}
+          puffy={isWeb ? 20 : 16}
           color={onDashboard ? primary : colors.card}
-          style={styles.logoFrame}
+          style={[
+            styles.logoFrame,
+            {
+              width: logoSize,
+              height: logoSize,
+              borderRadius: logoSize / 2,
+              padding: isWeb ? 5 : 4,
+            },
+          ]}
         >
           <View style={styles.logoInner}>
             {logoUrl ? (
               <ProgressiveImage source={{ uri: logoUrl }} style={styles.logoImage} resizeMode="cover" />
             ) : (
-              <Icon name="grid-view" size={32} color={onDashboard ? '#FFF' : primary} />
+              <Icon name="grid-view" size={logoIconSize} color={onDashboard ? '#FFF' : primary} />
             )}
           </View>
         </ClayView>
-        <AppText variant="caption" weight="bold" style={{ color: colors.subtle, marginTop: 8, textAlign: 'center' }}>
-          Home
+        <AppText
+          variant={isWeb ? 'body' : 'caption'}
+          weight="bold"
+          numberOfLines={2}
+          style={[
+            styles.orgName,
+            { color: isWeb ? colors.text : colors.subtle },
+          ]}
+        >
+          {orgName}
         </AppText>
       </PressClay>
 
@@ -70,7 +100,7 @@ export function SidebarNav() {
         {NAV_ITEMS.map((item) => {
           const active = isRouteActive(pathname, item.name);
           return (
-            <PressClay key={item.name} onPress={() => router.push(item.href)}>
+            <PressClay key={item.name} onPress={() => goTo(item.href)}>
               <View
                 style={[
                   styles.navRow,
@@ -97,19 +127,26 @@ export function SidebarNav() {
 const styles = StyleSheet.create({
   root: {
     borderRightWidth: StyleSheet.hairlineWidth,
+    flexShrink: 0,
+    height: '100%',
+    maxHeight: '100%',
+    overflow: 'hidden',
   },
   logoPress: {
     alignItems: 'center',
+    alignSelf: 'center',
     marginBottom: 28,
     paddingHorizontal: 16,
   },
+  logoPressWeb: {
+    width: '100%',
+    marginBottom: 32,
+    paddingHorizontal: 12,
+  },
   logoFrame: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    padding: 4,
     alignItems: 'center',
     justifyContent: 'center',
+    alignSelf: 'center',
   },
   logoInner: {
     width: '100%',
@@ -123,6 +160,13 @@ const styles = StyleSheet.create({
   logoImage: {
     width: '100%',
     height: '100%',
+  },
+  orgName: {
+    marginTop: 12,
+    textAlign: 'center',
+    width: '100%',
+    paddingHorizontal: 6,
+    lineHeight: 20,
   },
   navList: {
     flex: 1,

@@ -18,7 +18,7 @@ import { uploadPublicFile } from '@/src/api/uploadFile';
 import { prepareNewsImageForUpload } from '@/src/utils/prepareNewsImageForUpload';
 import { NewsCategory, NewsType } from '@/src/api/generatedClient';
 import { PressClay } from '@/src/components/animations';
-import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
+import { ScreenHeader } from '@/src/components/navigation/ScreenHeader';
 import {
   AppButton,
   AppText,
@@ -229,12 +229,7 @@ function CreateArticleScreenContent() {
   if (!canPublish) {
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
-        <View style={styles.header}>
-          <ClayBackButton />
-          <AppText variant="h2" weight="bold" style={styles.headerTitle}>
-            Compose
-          </AppText>
-        </View>
+        <ScreenHeader title="Compose" />
         <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 18 }}>
           <WidgetErrorState message="Not authorized to publish news." />
         </View>
@@ -246,13 +241,10 @@ function CreateArticleScreenContent() {
     <WidgetPageShell>
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
         <View style={{ flex: 1 }}>
-          <View style={styles.header}>
-            <ClayBackButton />
-            <AppText variant="h2" weight="bold" style={styles.headerTitle}>
-              Compose
-            </AppText>
-            <AppButton title="Next" size="sm" onPress={() => setPublishSheetOpen(true)} />
-          </View>
+          <ScreenHeader
+            title="Compose"
+            right={<AppButton title="Next" size="sm" onPress={() => setPublishSheetOpen(true)} />}
+          />
 
           <KeyboardAvoidingView
             style={styles.keyboardAvoid}
@@ -607,18 +599,6 @@ export default function CreateArticleScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingBottom: 12,
-    paddingTop: 6,
-    gap: 8,
-  },
-  headerTitle: {
-    flex: 1,
-    marginLeft: 6,
   },
   keyboardAvoid: {
     flex: 1,

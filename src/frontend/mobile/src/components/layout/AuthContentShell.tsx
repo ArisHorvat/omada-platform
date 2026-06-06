@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AUTH_CONTENT_MAX_WIDTH } from '@/src/constants/layout';
 import { useBreakpoint } from '@/src/hooks/useBreakpoint';
@@ -9,7 +10,7 @@ export interface AuthContentShellProps {
   children: React.ReactNode;
   maxWidth?: number;
   style?: StyleProp<ViewStyle>;
-  /** Vertically center the column (landing, success). */
+  /** Vertically center content (landing only). Wizard/login stay top-aligned. */
   centered?: boolean;
 }
 
@@ -24,36 +25,77 @@ export function AuthContentShell({
 }: AuthContentShellProps) {
   const colors = useThemeColors();
   const { isWideShell } = useBreakpoint();
+  const insets = useSafeAreaInsets();
 
   if (!isWideShell) {
-    return <View style={[{ flex: 1 }, style]}>{children}</View>;
+    return (
+      <SafeAreaView
+        style={[
+          styles.mobileRoot,
+          { backgroundColor: colors.background },
+          style,
+        ]}
+      >
+        {centered ? (
+          <View style={styles.mobileCenteredInner}>{children}</View>
+        ) : (
+          children
+        )}
+      </SafeAreaView>
+    );
   }
 
   return (
     <View
       style={[
         styles.wideRoot,
-        { backgroundColor: colors.background },
-        centered && styles.centered,
+        centered ? styles.wideRootCentered : styles.wideRootTop,
+        { backgroundColor: colors.background, paddingTop: insets.top },
         style,
       ]}
     >
-      <View style={[styles.column, { maxWidth }]}>{children}</View>
+      <View
+        style={[
+          styles.column,
+          centered ? styles.columnCentered : styles.columnFill,
+          { maxWidth },
+        ]}
+      >
+        {children}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  mobileRoot: {
+    flex: 1,
+    width: '100%',
+  },
+  mobileCenteredInner: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center',
+  },
   wideRoot: {
     flex: 1,
     width: '100%',
     alignItems: 'center',
   },
-  centered: {
+  wideRootTop: {
+    justifyContent: 'flex-start',
+  },
+  wideRootCentered: {
     justifyContent: 'center',
   },
   column: {
-    flex: 1,
     width: '100%',
+  },
+  columnFill: {
+    flex: 1,
+  },
+  columnCentered: {
+    flexGrow: 0,
+    flexShrink: 0,
   },
 });

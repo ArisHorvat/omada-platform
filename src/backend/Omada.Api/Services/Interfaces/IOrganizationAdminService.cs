@@ -12,6 +12,7 @@ public interface IOrganizationAdminService
     Task<ServiceResponse<PagedResponse<OrganizationMemberDto>>> GetMembersAsync(PagedRequest request, string? q, Guid? roleId);
     Task<ServiceResponse<int>> InviteMembersAsync(InviteMembersRequest request);
     Task<ServiceResponse<OrganizationMemberDto>> UpdateMemberAsync(Guid userId, UpdateOrganizationMemberRequest request);
+    Task<ServiceResponse<bool>> DeleteMemberAsync(Guid userId);
     Task<ServiceResponse<IEnumerable<OrganizationRoleDto>>> GetRolesAsync();
     Task<ServiceResponse<OrganizationRoleDetailDto>> GetRoleDetailAsync(Guid roleId);
     Task<ServiceResponse<OrganizationRoleDto>> CreateRoleAsync(CreateOrganizationRoleRequest request);

@@ -13,6 +13,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import Animated from 'react-native-reanimated';
 
 import { AppText, AppButton, Icon, ClayView } from '@/src/components/ui';
+import { WebAnchoredOverlay } from '@/src/components/layout/WebAnchoredOverlay';
 import { AnimatedItem, PressClay } from '@/src/components/animations';
 import { ClayAnimations } from '@/src/constants/animations';
 import { useTheme } from '@react-navigation/native';
@@ -81,6 +82,7 @@ export function CreateTaskBottomSheet({
   return (
     <>
       <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+        <WebAnchoredOverlay>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={{ flex: 1, justifyContent: 'flex-end' }}
@@ -222,6 +224,7 @@ export function CreateTaskBottomSheet({
             </ClayView>
           </AnimatedItem>
         </KeyboardAvoidingView>
+        </WebAnchoredOverlay>
       </Modal>
 
       <SearchableOptionPickerSheet

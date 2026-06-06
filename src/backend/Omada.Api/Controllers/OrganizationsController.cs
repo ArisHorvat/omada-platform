@@ -33,9 +33,11 @@ public class OrganizationsController : ControllerBase
     }
 
     [HttpGet("invite/{inviteCode}")]
-    public async Task<ActionResult<ServiceResponse<OrganizationInvitePreviewDto>>> GetInvitePreview(string inviteCode)
+    public async Task<ActionResult<ServiceResponse<OrganizationInvitePreviewDto>>> GetInvitePreview(
+        string inviteCode,
+        [FromQuery] string? email)
     {
-        var response = await _organizationService.GetInvitePreviewAsync(inviteCode);
+        var response = await _organizationService.GetInvitePreviewAsync(inviteCode, email);
         return response.IsSuccess ? Ok(response) : NotFound(response);
     }
 

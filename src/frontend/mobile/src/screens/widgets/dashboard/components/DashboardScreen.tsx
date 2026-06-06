@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { format } from 'date-fns';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,17 +13,16 @@ import * as Haptics from 'expo-haptics';
 
 import { PageContainer } from '@/src/components/layout/PageContainer';
 import { useThemeColors, useTabContentBottomPadding, useBreakpoint, useContentWidth } from '@/src/hooks';
-import type { BentoColumnCount } from '../utils/bentoLayout';
-import { createStyles, getHighlightMetrics } from '@/src/screens/widgets/dashboard/styles/dashboard.styles'; 
+import { createStyles, getHighlightMetrics } from '@/src/screens/widgets/dashboard/styles/dashboard.styles';
+import { getBentoMetrics } from '../utils/bentoMetrics'; 
 import { useDashboardLogic } from '@/src/screens/widgets/dashboard/hooks/useDashboardLogic';
 import { DashboardWidget } from './DashboardWidget';
-import { AppText, ClayView, BentoGrid, Divider, AppButton } from '@/src/components/ui';
+import { AppText, ClayView, BentoGrid, Divider, AppButton, ClayHorizontalScroll } from '@/src/components/ui';
 import { AnimatedItem } from '@/src/components/animations';
 import { SearchBar } from './SearchBar';
 import { SmartHighlightFrame } from './SmartHighlightFrame';
 import { computeBentoLayout } from '../utils/bentoLayout';
 import { ClayAnimations } from '@/src/constants/animations';
-import { CARD_MARGIN } from '../styles/dashboard.styles';
 
 export default function DashboardScreen() {
   const colors = useThemeColors();
@@ -33,18 +32,29 @@ export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const contentWidth = useContentWidth();
   const { isWideShell, breakpoint } = useBreakpoint();
-  const bentoColumns: BentoColumnCount = breakpoint === 'wide' ? 3 : 2;
-  const { snapInterval: highlightSnap } = useMemo(
-    () => getHighlightMetrics(contentWidth),
-    [contentWidth],
+  const highlightMetrics = useMemo(
+    () => getHighlightMetrics(contentWidth, isWideShell),
+    [contentWidth, isWideShell],
   );
 
   const { meta, data, config, user } = useDashboardLogic();
 
+  const BENTO_CONTAINER_PADDING = 20;
+  const bentoMetrics = useMemo(() => {
+    const availableWidth = Math.max(
+      0,
+      contentWidth - BENTO_CONTAINER_PADDING * 2,
+    );
+    return getBentoMetrics(availableWidth, {
+      breakpointWide: breakpoint === 'wide',
+      isWideShell,
+    });
+  }, [contentWidth, breakpoint, isWideShell]);
+
   const bentoItems = useMemo(() => {
     const favorites = user.favorites.filter((id: string) => id !== 'digital-id' && id !== 'groups');
-    return computeBentoLayout(favorites, config.definitions, bentoColumns);
-  }, [user.favorites, config.definitions, bentoColumns]);
+    return computeBentoLayout(favorites, config.definitions, bentoMetrics.columns);
+  }, [user.favorites, config.definitions, bentoMetrics.columns]);
 
   const handleRemoveWidget = (widgetId: string) => {
      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -56,18 +66,6 @@ export default function DashboardScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     user.onLongPressWidget();
   };
-
-  const BENTO_CONTAINER_PADDING = 20;
-  const BENTO_GAP = 12;
-  const availableWidth = Math.max(0, contentWidth - BENTO_CONTAINER_PADDING * 2);
-  const smallWidth =
-    bentoColumns === 3
-      ? (availableWidth - BENTO_GAP * 2) / 3
-      : (availableWidth - BENTO_GAP) / 2;
-  const largeWidth = availableWidth;
-  const smallHeight = Math.round(smallWidth);
-  // Required formula: LARGE_HEIGHT = (SMALL_HEIGHT * 2) + GAP
-  const largeHeight = smallHeight * 2 + BENTO_GAP;
 
   const scrollY = useSharedValue(0);
   const scrollHandler = useAnimatedScrollHandler((event) => {
@@ -85,6 +83,36 @@ export default function DashboardScreen() {
   });
 
   const editBannerBottom = isWideShell ? insets.bottom + 24 : insets.bottom + 100;
+
+  const highlightItems = data.highlights.map((w, i) => (
+    <View key={w} style={{ width: highlightMetrics.snapInterval }}>
+      <AnimatedItem animation={ClayAnimations.SlideInFlow(i)}>
+        <SmartHighlightFrame emphasized={i === 0} width={highlightMetrics.cardWidth}>
+          <DashboardWidget
+            id={w}
+            config={config.definitions[w]}
+            variant="card"
+            cardMetrics={highlightMetrics}
+            cardTrailingMargin={0}
+            isEditing={false}
+            onLongPress={onLongPressWidget}
+            onRemove={handleRemoveWidget}
+          />
+        </SmartHighlightFrame>
+      </AnimatedItem>
+    </View>
+  ));
+
+  const highlightScrollProps = {
+    contentContainerStyle: { paddingHorizontal: 20, paddingBottom: 10 },
+    ...(highlightMetrics.useSnap
+      ? {
+          snapToInterval: highlightMetrics.snapInterval,
+          snapToAlignment: 'start' as const,
+          decelerationRate: 'fast' as const,
+        }
+      : {}),
+  };
 
   return (
     <PageContainer>
@@ -145,27 +173,7 @@ export default function DashboardScreen() {
                 </AppText>
               </View>
             </View>
-            <Animated.ScrollView 
-              horizontal showsHorizontalScrollIndicator={false} snapToInterval={highlightSnap} 
-              decelerationRate="fast" contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 10 }}
-              onScroll={scrollHandler} scrollEventThrottle={16}
-            >
-              {data.highlights.map((w, i) => (
-                <AnimatedItem key={w} animation={ClayAnimations.SlideInFlow(i)}>
-                  <SmartHighlightFrame emphasized={i === 0}>
-                    <DashboardWidget
-                      id={w}
-                      config={config.definitions[w]}
-                      variant="card"
-                      cardTrailingMargin={i === 0 ? 0 : CARD_MARGIN}
-                      isEditing={false}
-                      onLongPress={onLongPressWidget}
-                      onRemove={handleRemoveWidget}
-                    />
-                  </SmartHighlightFrame>
-                </AnimatedItem>
-              ))}
-            </Animated.ScrollView>
+            <ClayHorizontalScroll {...highlightScrollProps}>{highlightItems}</ClayHorizontalScroll>
           </View>
         </AnimatedItem>
 
@@ -178,7 +186,7 @@ export default function DashboardScreen() {
                 <AppText style={styles.sectionTitle}>My Favorites</AppText>
               </View>
 
-              <View style={{ paddingHorizontal: 20 }}>
+              <View style={{ paddingHorizontal: 20, width: '100%' }}>
                   {bentoItems.length === 0 ? (
                     <View style={{ paddingVertical: 6 }}>
                       <ClayView
@@ -206,7 +214,7 @@ export default function DashboardScreen() {
                       </ClayView>
                     </View>
                   ) : null}
-                  <BentoGrid>
+                  <BentoGrid style={{ width: '100%' }}>
                     {bentoItems.map(({ id: w, effectiveSize }, i) => {
                         const widgetConfig = config.definitions[w];
                         if (!widgetConfig) return null;
@@ -218,8 +226,10 @@ export default function DashboardScreen() {
                                 key={w} 
                                 animation={ClayAnimations.SlideInFlow(i)}
                                 style={{
-                                  width: isWide ? largeWidth : smallWidth,
-                                  marginBottom: BENTO_GAP,
+                                  width: isWide ? bentoMetrics.largeWidth : bentoMetrics.smallWidth,
+                                  marginBottom: bentoMetrics.gap,
+                                  flexGrow: 0,
+                                  flexShrink: 0,
                                 }}
                             >
                                 <DashboardWidget 
@@ -227,7 +237,10 @@ export default function DashboardScreen() {
                                     config={widgetConfig} 
                                     variant="bento" 
                                     size={effectiveSize} 
-                                    bentoSizing={{ smallHeight, largeHeight }}
+                                    bentoSizing={{
+                                      smallHeight: bentoMetrics.smallHeight,
+                                      largeHeight: bentoMetrics.largeHeight,
+                                    }}
                                     isEditing={user.isEditing}
                                     onLongPress={onLongPressWidget}
                                     onRemove={handleRemoveWidget}
@@ -272,32 +285,50 @@ export default function DashboardScreen() {
 
       {/* --- 2. FIX THE BANNER! Place it outside the scroll view, at the bottom so it's always on top --- */}
       {user.isEditing && (
-        <Animated.View 
-            entering={ClayAnimations.SlideInFlow(0)} 
-            style={{ 
-                position: 'absolute', 
-                bottom: editBannerBottom,
-                left: 20, right: 20, 
-                zIndex: 999, // Guarantees it's on top
-                elevation: 10 // For Android
-            }}
+        <Animated.View
+          entering={ClayAnimations.SlideInFlow(0)}
+          style={{
+            position: 'absolute',
+            bottom: editBannerBottom,
+            left: 0,
+            right: 0,
+            alignItems: 'center',
+            paddingHorizontal: 20,
+            zIndex: 999,
+            elevation: 10,
+          }}
         >
-          <ClayView color={colors.card} depth={20} puffy={20} style={{ padding: 16, borderRadius: 24, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-             <AppText weight="bold" style={{ marginLeft: 8, flex: 1 }}>Dashboard Edit Mode</AppText>
-             <View style={{ flexDirection: 'row', gap: 8, flexShrink: 0 }}>
-                 <AppButton 
-                    title="Cancel" 
-                    variant="outline" 
-                    size="sm" 
-                    onPress={() => user.setIsEditing(false)} 
-                 />
-                 <AppButton 
-                    title="Customize" 
-                    variant="outline" 
-                    size="sm" 
-                    onPress={() => { router.push('/manage-favorites'); }} 
-                 />
-             </View>
+          <ClayView
+            color={colors.card}
+            depth={20}
+            puffy={20}
+            style={{
+              width: '100%',
+              maxWidth: isWideShell ? 560 : undefined,
+              padding: 16,
+              borderRadius: 24,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 12,
+            }}
+          >
+            <AppText weight="bold" style={{ flex: 1, minWidth: 0 }}>
+              Dashboard Edit Mode
+            </AppText>
+            <View style={{ flexDirection: 'row', gap: 8, flexShrink: 0 }}>
+              <AppButton
+                title="Cancel"
+                variant="outline"
+                size="sm"
+                onPress={() => user.setIsEditing(false)}
+              />
+              <AppButton
+                title="Customize"
+                variant="outline"
+                size="sm"
+                onPress={() => router.push('/manage-favorites')}
+              />
+            </View>
           </ClayView>
         </Animated.View>
       )}

@@ -1,37 +1,59 @@
 import { Stack } from 'expo-router';
+import { Platform } from 'react-native';
+
+import { AppShell } from '@/src/components/layout/AppShell';
+import { useAuthNavigationGuard } from '@/src/hooks/useAuthNavigationGuard';
+import { useOrgAdminNavigationGuard } from '@/src/hooks/useOrgAdminNavigationGuard';
+import { useAppSidebar } from '@/src/hooks/useAppSidebar';
 import { useThemeColors } from '@/src/hooks';
 
 export default function AppLayout() {
   const colors = useThemeColors();
+  const showSidebar = useAppSidebar();
+  useAuthNavigationGuard('app');
+  useOrgAdminNavigationGuard();
+
+  const stackAnimation =
+    Platform.OS === 'web' && showSidebar ? ('none' as const) : ('default' as const);
 
   return (
-    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
-      
-      {/* 1. Main Flows */}
-      <Stack.Screen name="index" />
+    <AppShell>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: colors.background },
+        animation: stackAnimation,
+      }}
+    >
       <Stack.Screen name="(tabs)" />
-      
-      {/* 2. Feature Stacks */}
       <Stack.Screen name="(widgets)" />
       <Stack.Screen name="(admin)" />
       <Stack.Screen name="(superadmin)" />
-
-      <Stack.Screen name="change-organization"/>
-
-      {/* 3. NEW GROUPS */}
-      {/* Settings: Standard navigation behavior */}
-      <Stack.Screen name="(settings)" />
-
-      {/* Modals: The layout file inside (modals) handles the 'presentation: modal' prop, 
-          but you can also enforce it here to be safe. */}
-      <Stack.Screen 
-        name="(modals)" 
-        options={{ 
-          presentation: 'modal',
-          headerShown: false 
-        }} 
+      <Stack.Screen
+        name="change-organization"
+        options={{
+          presentation: 'fullScreenModal',
+          animation: 'fade',
+          contentStyle: { backgroundColor: colors.background },
+        }}
       />
-
+      <Stack.Screen
+        name="join-organization"
+        options={{
+          presentation: Platform.OS === 'web' ? 'card' : 'modal',
+          animation: 'slide_from_bottom',
+          contentStyle: { backgroundColor: colors.background },
+        }}
+      />
+      <Stack.Screen name="(settings)" />
+      <Stack.Screen
+        name="(modals)"
+        options={{
+          presentation: Platform.OS === 'web' ? 'card' : 'modal',
+          headerShown: false,
+        }}
+      />
     </Stack>
+    </AppShell>
   );
 }

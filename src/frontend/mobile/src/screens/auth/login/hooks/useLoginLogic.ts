@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Alert } from 'react-native';
 import { secureDeleteItem, secureGetItem, secureSetItem } from '@/src/lib/secureStorage';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import * as LocalAuthentication from 'expo-local-authentication';
 
 import { useAuth } from '@/src/context/AuthContext';
@@ -14,8 +14,11 @@ import {
   UserOrganizationDto,
 } from '@/src/api/generatedClient';
 import { promptLocalAuthentication } from '@/src/utils/promptLocalAuthentication';
+import { formatApiErrorMessage } from '@/src/utils/formatApiError';
+import { homeHrefForRole } from '@/src/utils/authRoutes';
+import { setCompletingLoginOrgPick } from '@/src/utils/loginOrgPick';
 
-export const useLoginLogic = () => {
+export const useLoginLogic = (pendingJoinCode?: string) => {
   const { login } = useAuth();
   const router = useRouter();
   const { isBiometricEnabled } = useUserPreferences();
@@ -74,6 +77,17 @@ export const useLoginLogic = () => {
     }
   }, [isBiometricEnabled, login, router]);
 
+  const navigateAfterLogin = (role?: string | null) => {
+    if (pendingJoinCode) {
+      router.replace({
+        pathname: '/join-organization',
+        params: { code: pendingJoinCode },
+      } as never);
+      return;
+    }
+    router.replace(homeHrefForRole(role) as Href);
+  };
+
   const handleLogin = async (email: string, password: string) => {
     if (!email || !password) {
       Alert.alert('Error', 'Please enter both email and password.');
@@ -100,6 +114,12 @@ export const useLoginLogic = () => {
 
       const orgs = await unwrap(authApi.getMyOrganizations());
 
+      if (pendingJoinCode) {
+        await finalizeLogin(jwtToken, refreshToken);
+        navigateAfterLogin(response.role);
+        return;
+      }
+
       if (orgs && orgs.length > 1) {
         setUserOrgs(orgs);
         setShowOrgSelector(true);
@@ -109,37 +129,41 @@ export const useLoginLogic = () => {
     } catch (error: unknown) {
       await secureDeleteItem('jwt_token');
       await secureDeleteItem('refresh_token');
-      const msg = error instanceof Error ? error.message : 'Invalid credentials.';
-      Alert.alert('Login Failed', msg);
+      Alert.alert('Login Failed', formatApiErrorMessage(error, 'Invalid credentials.'));
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleOrgSelect = async (orgId: string) => {
-    if (!orgId) {
+  const handleOrgSelect = async (org: UserOrganizationDto) => {
+    if (!org.organizationId) {
       Alert.alert('Error', 'Missing Organization ID.');
       return;
     }
 
+    setShowOrgSelector(false);
     setIsLoading(true);
+    setCompletingLoginOrgPick(true);
+
     try {
       const request = new SwitchOrgRequest();
-      request.organizationId = orgId;
+      request.organizationId = org.organizationId;
 
       const response = await unwrap(authApi.switchOrganization(request));
-
       const jwtToken = response.accessToken;
-      const refreshToken = response.refreshToken || '';
+      const refreshToken = response.refreshToken ?? (await secureGetItem('refresh_token')) ?? '';
 
-      if (!jwtToken) throw new Error('Failed to receive a valid session token.');
+      if (!jwtToken) {
+        throw new Error('Failed to start your workspace session.');
+      }
 
-      setShowOrgSelector(false);
+      await login(jwtToken, refreshToken);
+      setCompletingLoginOrgPick(false);
 
-      await finalizeLogin(jwtToken, refreshToken);
+      navigateAfterLogin(org.role);
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : JSON.stringify(error);
-      Alert.alert('Switch Failed', msg);
+      setCompletingLoginOrgPick(false);
+      Alert.alert('Could not continue', formatApiErrorMessage(error, 'Please try again.'));
     } finally {
       setIsLoading(false);
     }
@@ -152,6 +176,7 @@ export const useLoginLogic = () => {
   return {
     handleLogin,
     tryBiometricSessionRestore,
+    isLoading,
     showOrgSelector,
     userOrgs,
     handleOrgSelect,

@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Text } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -11,6 +11,7 @@ import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
 import { AppText, IconInput, AppButton, ClayView } from '@/src/components/ui';
 import { useLoginLogic } from '../hooks/useLoginLogic';
 import SelectOrganization from './select-organization';
+import { setCompletingLoginOrgPick } from '@/src/utils/loginOrgPick';
 
 // 1. Define the Validation Schema
 const loginSchema = z.object({
@@ -23,15 +24,23 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export default function LoginScreen() {
   const router = useRouter();
   const colors = useThemeColors();
+  const [showPassword, setShowPassword] = useState(false);
+  const params = useLocalSearchParams<{ joinCode?: string | string[] }>();
+  const pendingJoinCode = (() => {
+    const raw = params.joinCode;
+    const value = Array.isArray(raw) ? raw[0] : raw;
+    return value?.trim().toUpperCase() || undefined;
+  })();
   
   const {
     handleLogin,
     tryBiometricSessionRestore,
+    isLoading,
     showOrgSelector,
     userOrgs,
     handleOrgSelect,
     setShowOrgSelector,
-  } = useLoginLogic();
+  } = useLoginLogic(pendingJoinCode);
 
   useEffect(() => {
     void tryBiometricSessionRestore();
@@ -52,13 +61,19 @@ export default function LoginScreen() {
   return (
     <AuthContentShell style={{ flex: 1 }}>
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-      <ClayBackButton absolute onPress={() => router.replace('/')} />
+      <ClayBackButton absolute variant="plain" onPress={() => router.back()} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.container}>
           
           <View style={styles.header}>
-            <AppText variant="h1" style={{ marginBottom: 8 }}>Welcome Back</AppText>
-            <AppText style={{ color: colors.subtle }}>Sign in to continue to Omada</AppText>
+            <AppText variant="h1" style={{ marginBottom: 8 }}>
+              {pendingJoinCode ? 'Sign in to join' : 'Welcome Back'}
+            </AppText>
+            <AppText style={{ color: colors.subtle }}>
+              {pendingJoinCode
+                ? 'Use your existing account, then we will add you to the organization.'
+                : 'Sign in to continue to Omada'}
+            </AppText>
           </View>
 
           <ClayView depth={8} puffy={12} color={colors.card} style={styles.formContainer}>
@@ -100,7 +115,9 @@ export default function LoginScreen() {
                     value={value}
                     onBlur={onBlur}
                     onChangeText={onChange}
-                    secureTextEntry
+                    secureTextEntry={!showPassword}
+                    rightIcon={showPassword ? 'visibility-off' : 'visibility'}
+                    onRightIconPress={() => setShowPassword((v) => !v)}
                     style={errors.password ? { borderColor: colors.error, borderWidth: 1 } : {}}
                   />
                   {errors.password && (
@@ -129,15 +146,12 @@ export default function LoginScreen() {
           </ClayView>
 
           <View style={styles.footer}>
-            <TouchableOpacity onPress={() => router.push('/(auth)/join')}>
-              <AppText weight="bold" style={{ color: colors.primary }}>
-                Have an invite code? Join organization
-              </AppText>
-            </TouchableOpacity>
-            <AppText style={{ color: colors.subtle, marginTop: 16 }}>Don't have an organization?</AppText>
-            <TouchableOpacity onPress={() => router.push('/(auth)/register-flow')}>
-              <AppText weight="bold" style={{ color: colors.primary, marginTop: 4 }}>
-                Create New Organization
+            <AppText style={{ color: colors.subtle, textAlign: 'center' }}>
+              New to Omada?{' '}
+            </AppText>
+            <TouchableOpacity onPress={() => router.push('/register-flow')}>
+              <AppText weight="bold" style={{ color: colors.primary, textAlign: 'center' }}>
+                Create an organization
               </AppText>
             </TouchableOpacity>
           </View>
@@ -145,12 +159,18 @@ export default function LoginScreen() {
         </View>
       </ScrollView>
 
-      <SelectOrganization 
+      <SelectOrganization
         visible={showOrgSelector}
         organizations={userOrgs}
         onSelect={handleOrgSelect}
-        onCancel={() => setShowOrgSelector(false)}
-        isLoading={isSubmitting} // Use RHF submitting state
+        onCancel={() => {
+          setCompletingLoginOrgPick(false);
+          setShowOrgSelector(false);
+        }}
+        isLoading={isSubmitting || isLoading}
+        mode="postLogin"
+        title="Select organization"
+        subtitle="Choose which workspace you want to sign in to."
       />
     </KeyboardAvoidingView>
     </AuthContentShell>

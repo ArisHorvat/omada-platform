@@ -152,7 +152,7 @@ public class OrganizationService : IOrganizationService
         return new ServiceResponse<OrganizationDetailsDto>(true, dto);
     }
 
-    public async Task<ServiceResponse<OrganizationInvitePreviewDto>> GetInvitePreviewAsync(string inviteCode)
+    public async Task<ServiceResponse<OrganizationInvitePreviewDto>> GetInvitePreviewAsync(string inviteCode, string? email = null)
     {
         if (string.IsNullOrWhiteSpace(inviteCode))
             return new ServiceResponse<OrganizationInvitePreviewDto>(false, null, new AppError(ErrorCodes.InvalidInput, "Invite code is required."));
@@ -164,13 +164,53 @@ public class OrganizationService : IOrganizationService
         if (org == null)
             return new ServiceResponse<OrganizationInvitePreviewDto>(false, null, new AppError(ErrorCodes.NotFound, "Invalid or expired invite code."));
 
-        return new ServiceResponse<OrganizationInvitePreviewDto>(true, new OrganizationInvitePreviewDto
+        var dto = new OrganizationInvitePreviewDto
         {
             OrganizationId = org.Id,
             Name = org.Name,
             LogoUrl = _mediaUrls.ToPublicUrl(string.IsNullOrEmpty(org.LogoUrl) ? null : org.LogoUrl),
             InviteCode = org.InviteCode
-        });
+        };
+
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            var normalizedEmail = email.Trim();
+            var user = (await _uow.Repository<User>().FindAsync(u =>
+                u.Email.ToLower() == normalizedEmail.ToLower())).FirstOrDefault();
+            if (user != null)
+            {
+                dto.InvitedEmail = user.Email;
+                dto.InvitedFirstName = user.FirstName;
+                dto.InvitedLastName = user.LastName;
+
+                var membership = (await _uow.Repository<OrganizationMember>().FindAsync(m =>
+                    m.UserId == user.Id && m.OrganizationId == org.Id)).FirstOrDefault();
+
+                if (membership?.IsActive == true)
+                {
+                    dto.IsAlreadyMember = true;
+                    dto.HasExistingAccount = true;
+                }
+                else if (membership != null && !membership.IsActive)
+                {
+                    dto.HasPendingInvite = true;
+                    var hasIncompleteSetup = !string.IsNullOrEmpty(user.PasswordResetToken);
+                    var tokenExpired = user.PasswordResetTokenExpires.HasValue
+                        && user.PasswordResetTokenExpires.Value < DateTime.UtcNow;
+                    dto.RequiresRegistration = hasIncompleteSetup;
+                    dto.RequiresSignIn = !hasIncompleteSetup;
+                    dto.HasExistingAccount = !hasIncompleteSetup;
+                    dto.InviteLinkExpired = hasIncompleteSetup && tokenExpired;
+                }
+                else
+                {
+                    dto.HasExistingAccount = true;
+                    dto.RequiresSignIn = true;
+                }
+            }
+        }
+
+        return new ServiceResponse<OrganizationInvitePreviewDto>(true, dto);
     }
 
     // --- Private Helper Methods ---

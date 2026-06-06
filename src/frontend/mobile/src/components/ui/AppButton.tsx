@@ -63,6 +63,7 @@ export const AppButton = ({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    width: '100%',
   };
 
   const sizeStyles: Record<'sm' | 'md' | 'lg', ViewStyle> = {
@@ -146,23 +147,35 @@ export const AppButton = ({
         <ActivityIndicator color={textColor} />
       ) : (
         <>
-          {icon && (
+          {icon ? (
             <View style={styles.iconLeft}>
               <Icon name={icon} size={20} color={textColor} />
             </View>
-          )}
-          <AppText
-            variant="body"
-            weight="bold"
-            style={[{ color: textColor, fontSize: labelFontSize, lineHeight: labelFontSize + 4 }, textStyle]}
-          >
-            {title}
-          </AppText>
-          {rightIcon && (
+          ) : null}
+          <View style={styles.labelWrap}>
+            <AppText
+              variant="body"
+              weight="bold"
+              numberOfLines={2}
+              style={[
+                {
+                  color: textColor,
+                  fontSize: labelFontSize,
+                  lineHeight: labelFontSize + 6,
+                  textAlign: 'center',
+                  width: '100%',
+                },
+                textStyle,
+              ]}
+            >
+              {title}
+            </AppText>
+          </View>
+          {rightIcon ? (
             <View style={styles.iconRight}>
               <Icon name={rightIcon} size={20} color={textColor} />
             </View>
-          )}
+          ) : null}
         </>
       )}
     </ClayView>
@@ -183,6 +196,13 @@ export const AppButton = ({
 };
 
 const styles = StyleSheet.create({
-  iconLeft: { marginRight: 8 },
-  iconRight: { marginLeft: 8 },
+  iconLeft: { marginRight: 8, flexShrink: 0 },
+  iconRight: { marginLeft: 8, flexShrink: 0 },
+  labelWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 0,
+    paddingHorizontal: 4,
+  },
 });

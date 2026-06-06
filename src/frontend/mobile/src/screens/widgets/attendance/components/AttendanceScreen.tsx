@@ -3,7 +3,7 @@ import { View, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 
-import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
+import { ScreenHeader } from '@/src/components/navigation/ScreenHeader';
 import { WidgetPageShell } from '@/src/components/layout';
 import { AnimatedItem, ScreenTransition, PressClay } from '@/src/components/animations';
 import {
@@ -15,7 +15,7 @@ import {
   WidgetErrorState,
 } from '@/src/components/ui';
 import { ClayAnimations } from '@/src/constants/animations';
-import { useThemeColors, useBreakpoint } from '@/src/hooks';
+import { useThemeColors } from '@/src/hooks';
 import { AttendanceStatus, type GroupPickerItemDto } from '@/src/api/generatedClient';
 import { GradesFilterChips } from '../../grades/components/GradesFilterChips';
 import { useAttendanceScreenLogic } from '../hooks/useAttendanceScreenLogic';
@@ -33,7 +33,6 @@ import { createStyles } from '../styles/attendance.styles';
 export default function AttendanceScreen() {
   const router = useRouter();
   const colors = useThemeColors();
-  const { isWideShell } = useBreakpoint();
   const styles = createStyles(colors);
 
   const {
@@ -70,8 +69,8 @@ export default function AttendanceScreen() {
   if (!permissionsLoading && !canView) {
     return (
       <WidgetPageShell>
-        <View style={{ flex: 1, backgroundColor: colors.background }}>
-          <ClayBackButton absolute />
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
+          <ScreenHeader title={isCorporateKind(kind) ? 'Participation' : 'Attendance'} />
           <View style={{ flex: 1, padding: 24, justifyContent: 'center' }}>
             <WidgetEmptyState
               title="Attendance unavailable"
@@ -79,7 +78,7 @@ export default function AttendanceScreen() {
               icon="lock"
             />
           </View>
-        </View>
+        </SafeAreaView>
       </WidgetPageShell>
     );
   }
@@ -89,26 +88,22 @@ export default function AttendanceScreen() {
   return (
     <WidgetPageShell>
       <View style={{ flex: 1, backgroundColor: colors.background }}>
-        <ClayBackButton absolute={!isWideShell} />
-
         <ScreenTransition style={{ flex: 1 }}>
-          <SafeAreaView style={styles.container}>
-            <View style={styles.headerRow}>
-              <AppText variant="h2" weight="bold" style={{ color: colors.text, flex: 1 }}>
-                {isCorporateKind(kind) ? 'Participation' : 'Attendance'}
-              </AppText>
-              {canSwitchView ? (
-                <PressClay
-                  onPress={() => setViewAsTeacher(isTeacherView ? false : true)}
-                >
-                  <ClayView depth={4} puffy={8} color={colors.card} style={styles.toggle}>
-                    <AppText variant="caption" weight="bold" style={{ color: colors.primary }}>
-                      {isTeacherView ? 'Student view' : 'Teacher view'}
-                    </AppText>
-                  </ClayView>
-                </PressClay>
-              ) : null}
-            </View>
+          <SafeAreaView style={styles.container} edges={['top']}>
+            <ScreenHeader
+              title={isCorporateKind(kind) ? 'Participation' : 'Attendance'}
+              right={
+                canSwitchView ? (
+                  <PressClay onPress={() => setViewAsTeacher(isTeacherView ? false : true)}>
+                    <ClayView depth={4} puffy={8} color={colors.card} style={styles.toggle}>
+                      <AppText variant="caption" weight="bold" style={{ color: colors.primary }}>
+                        {isTeacherView ? 'Student view' : 'Teacher view'}
+                      </AppText>
+                    </ClayView>
+                  </PressClay>
+                ) : null
+              }
+            />
 
             {isLoading && !data ? (
               <View style={{ gap: 12 }}>

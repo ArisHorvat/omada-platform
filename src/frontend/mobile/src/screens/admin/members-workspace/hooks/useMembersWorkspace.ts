@@ -10,15 +10,19 @@ import {
   InviteMembersRequest,
   UpdateOrganizationMemberRequest,
 } from '@/src/api/generatedClient';
+import { useAuth } from '@/src/context/AuthContext';
 import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
 import { useDebounce } from '@/src/hooks';
+import { filterAssignableRoles, isInvitableRoleName } from '../utils/memberRoles';
 
 const PAGE_SIZE = 30;
 
 export const useMembersWorkspace = () => {
   const queryClient = useQueryClient();
+  const { activeSession } = useAuth();
   const { organization, refreshOrganization } = useCurrentOrganization();
-  const orgId = organization?.id ?? '';
+  const orgId = activeSession?.orgId ?? '';
+  const [copyToastVisible, setCopyToastVisible] = useState(false);
 
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
@@ -41,8 +45,8 @@ export const useMembersWorkspace = () => {
 
   const roles = rolesQuery.data ?? [];
   const inviteableRoles = useMemo(
-    () => roles.filter((r) => r.name?.toLowerCase() !== 'admin').map((r) => r.name ?? ''),
-    [roles]
+    () => filterAssignableRoles(roles).map((r) => r.name ?? '').filter(Boolean),
+    [roles],
   );
 
   useEffect(() => {
@@ -109,6 +113,12 @@ export const useMembersWorkspace = () => {
     onError: (e: Error) => Alert.alert('Error', e.message),
   });
 
+  const deleteMemberMutation = useMutation({
+    mutationFn: (userId: string) => unwrap(orgAdminApi.deleteMember(userId)),
+    onSuccess: invalidate,
+    onError: (e: Error) => Alert.alert('Remove failed', e.message),
+  });
+
   const addPendingInvite = () => {
     const email = emailInput.trim().toLowerCase();
     if (!email || !email.includes('@')) {
@@ -116,6 +126,10 @@ export const useMembersWorkspace = () => {
       return;
     }
     const role = inviteRole || inviteableRoles[0] || 'Member';
+    if (!isInvitableRoleName(role)) {
+      Alert.alert('Invalid role', 'The Admin role cannot be assigned via invite.');
+      return;
+    }
     if (pendingInvites.some((p) => p.email?.toLowerCase() === email)) return;
     setPendingInvites((prev) => [
       ...prev,
@@ -135,7 +149,7 @@ export const useMembersWorkspace = () => {
   const copyInviteLink = async () => {
     if (!org?.inviteLink) return;
     await Clipboard.setStringAsync(org.inviteLink);
-    Alert.alert('Copied', 'Invite link copied to clipboard.');
+    setCopyToastVisible(true);
   };
 
   const shareInviteLink = async () => {
@@ -170,8 +184,13 @@ export const useMembersWorkspace = () => {
       updateMemberMutation.mutate({ userId, isActive: false }),
     reactivateMember: (userId: string) =>
       updateMemberMutation.mutate({ userId, isActive: true }),
+    approveMember: (userId: string, roleId: string) =>
+      updateMemberMutation.mutate({ userId, roleId, isActive: true }),
+    deleteMember: (userId: string) => deleteMemberMutation.mutate(userId),
     regenerateInviteCode: () => regenerateMutation.mutate(),
     copyInviteLink,
+    copyToastVisible,
+    setCopyToastVisible,
     shareInviteLink,
     isLoading: membersQuery.isLoading,
     refetch: membersQuery.refetch,

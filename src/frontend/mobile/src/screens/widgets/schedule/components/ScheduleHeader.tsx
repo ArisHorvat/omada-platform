@@ -1,22 +1,24 @@
 import React, { useState } from 'react';
-import { View, TouchableOpacity, LayoutAnimation, Platform, UIManager } from 'react-native';
+import {
+  View,
+  TouchableOpacity,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Platform,
+} from 'react-native';
+import { startOfDay } from 'date-fns';
 import { AppText, ClayView, Icon } from '@/src/components/ui';
 import { ClayDatePicker } from '@/src/components/ui/ClayDatePicker';
 import { DateStrip } from '@/src/components/ui/DateStrip';
-import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
-import { AnimatedItem } from '@/src/components/animations';
-import { ClayAnimations } from '@/src/constants/animations';
-import { useThemeColors } from '@/src/hooks';
-
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
+import { ScreenHeader } from '@/src/components/navigation/ScreenHeader';
+import { useEscapeKey, useThemeColors } from '@/src/hooks';
 
 interface Props {
-    selectedDate: Date;
-    onDateSelect: (date: Date) => void;
-    /** Hidden on wide tab shell (sidebar nav is primary). */
-    showBackButton?: boolean;
+  selectedDate: Date;
+  onDateSelect: (date: Date) => void;
+  /** Hidden on wide tab shell (sidebar nav is primary). */
+  showBackButton?: boolean;
 }
 
 export const ScheduleHeader: React.FC<Props> = ({
@@ -24,67 +26,176 @@ export const ScheduleHeader: React.FC<Props> = ({
   onDateSelect,
   showBackButton = true,
 }) => {
-    const colors = useThemeColors();
-    const [showCalendar, setShowCalendar] = useState(false);
+  const colors = useThemeColors();
+  const [showCalendar, setShowCalendar] = useState(false);
 
-    const toggleCalendar = () => {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        setShowCalendar(!showCalendar);
-    };
+  const closeCalendar = () => setShowCalendar(false);
+  const openCalendar = () => setShowCalendar(true);
 
-    return (
-        <View style={{ backgroundColor: colors.background, zIndex: 10 }}>
-            {/* TOP BAR */}
-            <View style={{ paddingHorizontal: 20, paddingBottom: 8, paddingTop: 8 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        {showBackButton ? <ClayBackButton /> : null}
-                        <AppText variant="h2" weight="bold" style={{ marginLeft: showBackButton ? 16 : 0 }}>Schedule</AppText>
-                    </View>
-                    
-                    {/* 🚀 TODAY BUTTON (Icon Style) */}
-                    <TouchableOpacity 
-                        onPress={() => onDateSelect(new Date())} 
-                        style={{ 
-                            width: 40, height: 40, borderRadius: 20, 
-                            backgroundColor: colors.card, 
-                            alignItems: 'center', justifyContent: 'center',
-                            borderWidth: 1, borderColor: colors.border + '20'
-                        }}
-                    >
-                        <Icon name="calendar-today" size={20} color={colors.primary} />
-                    </TouchableOpacity>
+  useEscapeKey(showCalendar, closeCalendar);
+
+  const handleDatePick = (date: Date) => {
+    onDateSelect(startOfDay(date));
+    closeCalendar();
+  };
+
+  const monthLabel = selectedDate.toLocaleDateString(undefined, {
+    month: 'long',
+    year: 'numeric',
+  });
+
+  return (
+    <View style={{ backgroundColor: colors.background, zIndex: 10 }}>
+      <ScreenHeader
+        title="Schedule"
+        showBack={showBackButton}
+        right={
+          <TouchableOpacity
+            onPress={() => onDateSelect(startOfDay(new Date()))}
+            style={[styles.iconBtn, { backgroundColor: colors.card, borderColor: colors.border + '20' }]}
+            accessibilityLabel="Go to today"
+          >
+            <Icon name="calendar-today" size={20} color={colors.primary} />
+          </TouchableOpacity>
+        }
+      />
+
+      <View style={styles.monthRowWrap}>
+        <TouchableOpacity
+          onPress={openCalendar}
+          style={styles.monthRow}
+          accessibilityLabel="Open calendar"
+          accessibilityState={{ expanded: showCalendar }}
+        >
+          <Icon name="event" size={18} color={colors.primary} />
+          <AppText weight="bold" style={[styles.monthLabel, { color: colors.text }]} numberOfLines={1}>
+            {monthLabel}
+          </AppText>
+          <Icon name="keyboard-arrow-down" size={20} color={colors.subtle} />
+        </TouchableOpacity>
+      </View>
+
+      <DateStrip selectedDate={selectedDate} onSelectDate={onDateSelect} />
+
+      <Modal
+        visible={showCalendar}
+        transparent
+        animationType="fade"
+        onRequestClose={closeCalendar}
+        statusBarTranslucent
+      >
+        <View style={styles.modalOverlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={closeCalendar} accessibilityLabel="Close calendar" />
+          <View style={styles.modalSlot} pointerEvents="box-none">
+            <ClayView depth={10} puffy={14} color={colors.card} style={styles.calendarCard}>
+              <View style={styles.cardInner}>
+                <View style={styles.cardTopRow}>
+                  <AppText variant="caption" weight="bold" style={{ color: colors.subtle }}>
+                    Pick a date
+                  </AppText>
+                  <View style={styles.cardTopSpacer} />
+                  <TouchableOpacity
+                    onPress={closeCalendar}
+                    hitSlop={10}
+                    style={[styles.closeBtn, { backgroundColor: colors.background }]}
+                    accessibilityLabel="Close calendar"
+                  >
+                    <Icon name="close" size={18} color={colors.subtle} />
+                  </TouchableOpacity>
                 </View>
 
-                {/* MONTH TOGGLE */}
-                <TouchableOpacity 
-                    onPress={toggleCalendar} 
-                    style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, marginBottom: 8 }}
-                >
-                    <AppText variant="h3" weight="bold" style={{ color: colors.primary, marginRight: 6 }}>
-                        {selectedDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
-                    </AppText>
-                    <Icon name={showCalendar ? "keyboard-arrow-up" : "keyboard-arrow-down"} size={24} color={colors.primary} />
-                </TouchableOpacity>
-            </View>
-
-            {/* 🚀 IN-FLOW CALENDAR (Pushes content down, no floating) */}
-            {showCalendar && (
-                <View style={{ overflow: 'hidden', paddingBottom: 16 }}>
-                    <ClayView depth={5} color={colors.card} style={{ marginHorizontal: 20, padding: 12, borderRadius: 24 }}>
-                        <ClayDatePicker 
-                            value={selectedDate} 
-                            onChange={(date) => { 
-                                onDateSelect(date); 
-                                toggleCalendar(); 
-                            }} 
-                        />
-                    </ClayView>
-                </View>
-            )}
-
-            {/* DATE STRIP */}
-            <DateStrip selectedDate={selectedDate} onSelectDate={onDateSelect} />
+                <ClayDatePicker compact value={selectedDate} onChange={handleDatePick} />
+              </View>
+            </ClayView>
+          </View>
         </View>
-    );
+      </Modal>
+    </View>
+  );
 };
+
+const styles = StyleSheet.create({
+  iconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  monthRowWrap: {
+    paddingHorizontal: 16,
+    paddingBottom: 4,
+  },
+  monthRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    alignSelf: 'flex-start',
+    paddingVertical: 4,
+    ...(Platform.OS === 'web' ? { cursor: 'pointer' as const } : {}),
+  },
+  monthLabel: {
+    fontSize: 15,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    ...Platform.select({
+      web: {
+        position: 'fixed' as const,
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100%',
+        height: '100%',
+      },
+      default: {},
+    }),
+  },
+  modalSlot: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 28,
+    ...Platform.select({
+      web: {
+        position: 'fixed' as const,
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+      },
+      default: {},
+    }),
+  },
+  calendarCard: {
+    width: '100%',
+    maxWidth: 328,
+    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 16,
+  },
+  cardInner: {
+    width: '100%',
+  },
+  cardTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  cardTopSpacer: {
+    flex: 1,
+    minWidth: 16,
+  },
+  closeBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+});

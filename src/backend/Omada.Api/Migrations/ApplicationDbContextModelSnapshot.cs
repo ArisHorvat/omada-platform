@@ -778,6 +778,11 @@ namespace Omada.Api.Migrations
                     b.Property<DateTime>("JoinedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<bool>("RequiresAdminApproval")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<Guid>("RoleId")
                         .HasColumnType("uniqueidentifier");
 

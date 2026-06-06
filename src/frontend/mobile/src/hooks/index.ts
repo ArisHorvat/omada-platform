@@ -18,6 +18,7 @@ export * from './useSoundDesign';
 export * from './useThemeColors';
 export { TAB_BAR_OVERLAY_CLEARANCE, useTabContentBottomPadding } from './useTabContentBottomPadding';
 export * from './useBreakpoint';
+export * from './useAppSidebar';
 export * from './useEscapeKey';
 export * from './useTimeOfDay';
 export * from './useTranslation';

@@ -7,7 +7,7 @@ import { QUERY_KEYS } from '@/src/api/queryKeys';
 import { CreateGradeRequest, CreateOrganizationPeriodRequest, OrganizationType } from '@/src/api/generatedClient';
 import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
 import { useDebounce } from '@/src/hooks';
-import { bumpOnboardingStep } from '../utils/onboarding';
+import { bumpOnboardingStep } from '../../utils/onboarding';
 
 export function usePeriodsWorkspace() {
   const queryClient = useQueryClient();

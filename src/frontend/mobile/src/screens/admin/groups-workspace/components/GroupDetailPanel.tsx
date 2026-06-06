@@ -1,6 +1,6 @@
 import React from 'react';
-import { ActivityIndicator, Alert, Image, View } from 'react-native';
-import { AppButton, AppFormField, AppText, ClayView, Icon } from '@/src/components/ui';
+import { ActivityIndicator, Alert, View } from 'react-native';
+import { AppButton, AppFormField, AppText, ClayView, Icon, ProgressiveImage } from '@/src/components/ui';
 import { PressClay } from '@/src/components/animations';
 import { WidePanePlaceholder } from '@/src/components/layout';
 import { useBreakpoint } from '@/src/hooks';
@@ -157,7 +157,7 @@ export function GroupDetailPanel({ model }: Props) {
                 ]}
               >
                 {m.avatarUrl ? (
-                  <Image source={{ uri: m.avatarUrl }} style={s.avatar} />
+                  <ProgressiveImage source={{ uri: m.avatarUrl }} style={s.avatar} resizeMode="cover" />
                 ) : (
                   <ClayView depth={2} color={colors.primary + '33'} style={s.avatar}>
                     <AppText variant="caption" weight="bold" style={{ color: colors.primary }}>

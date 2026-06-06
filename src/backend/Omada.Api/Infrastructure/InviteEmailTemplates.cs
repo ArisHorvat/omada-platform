@@ -2,25 +2,44 @@ namespace Omada.Api.Infrastructure;
 
 public static class InviteEmailTemplates
 {
-    public static string MemberInvitation(string firstName, string orgName, string inviteLink, string inviteCode) =>
-        $"""
-        Subject: You're invited to join {orgName} on Omada
+    public static (string Subject, string TextBody, string HtmlBody) MemberInvitation(
+        string firstName,
+        string orgName,
+        string inviteUrl)
+    {
+        var subject = $"You're invited to join {orgName} on Omada";
+        var textBody =
+            $"""
+            Hi {firstName},
 
-        Hi {firstName},
+            {orgName} has invited you to Omada.
 
-        {orgName} has invited you to Omada.
+            Open this link to get started:
+            {inviteUrl}
 
-        Option 1 — Open your invite link:
-        {inviteLink}
+            Welcome aboard,
+            The Omada Team
+            """;
 
-        Option 2 — Enter this organization code in the app:
-        {inviteCode}
+        var htmlBody =
+            $"""
+            <html>
+            <body style="font-family:sans-serif;line-height:1.6;color:#222;">
+              <p>Hi {System.Net.WebUtility.HtmlEncode(firstName)},</p>
+              <p>{System.Net.WebUtility.HtmlEncode(orgName)} has invited you to Omada.</p>
+              <p style="margin:24px 0;">
+                <a href="{System.Net.WebUtility.HtmlEncode(inviteUrl)}"
+                   style="color:#2563eb;font-weight:600;text-decoration:underline;">
+                  Join {System.Net.WebUtility.HtmlEncode(orgName)} on Omada
+                </a>
+              </p>
+              <p>Welcome aboard,<br/>The Omada Team</p>
+            </body>
+            </html>
+            """;
 
-        If you already have an account, sign in and use "Join organization" with the code above.
-
-        Welcome aboard,
-        The Omada Team
-        """;
+        return (subject, textBody, htmlBody);
+    }
 
     public static string AdminOnboarding(string adminFirstName, string orgName, string inviteLink, string inviteCode) =>
         $"""

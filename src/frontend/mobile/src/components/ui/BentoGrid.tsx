@@ -31,7 +31,8 @@ export const BentoBox = ({ children, colSpan = 1, style }: BentoBoxProps) => {
       styles.box, 
       { 
         flexBasis: colSpan === 2 ? '100%' : '47%', // Simple approximation for 2-column grid
-        flexGrow: 1,
+        flexGrow: 0,
+        flexShrink: 0,
       }, 
       style
     ]}>

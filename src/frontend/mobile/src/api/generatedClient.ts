@@ -521,7 +521,7 @@ export class AuthClient {
         return Promise.resolve<ServiceResponseOfString>(null as any);
     }
 
-    joinOrganization(request: JoinOrganizationRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfLoginResponse> {
+    joinOrganization(request: JoinOrganizationRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfJoinOrganizationResultDto> {
         let url_ = this.baseUrl + "/api/Auth/join";
         url_ = url_.replace(/[?&]$/, "");
 
@@ -549,7 +549,210 @@ export class AuthClient {
         });
     }
 
-    protected processJoinOrganization(response: AxiosResponse): Promise<ServiceResponseOfLoginResponse> {
+    protected processJoinOrganization(response: AxiosResponse): Promise<ServiceResponseOfJoinOrganizationResultDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfJoinOrganizationResultDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfJoinOrganizationResultDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfJoinOrganizationResultDto>(null as any);
+    }
+
+    joinWithCurrentUser(request: JoinWithInviteCodeRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfJoinWithCodeResultDto> {
+        let url_ = this.baseUrl + "/api/Auth/join/current-user";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processJoinWithCurrentUser(_response);
+        });
+    }
+
+    protected processJoinWithCurrentUser(response: AxiosResponse): Promise<ServiceResponseOfJoinWithCodeResultDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfJoinWithCodeResultDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfJoinWithCodeResultDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfJoinWithCodeResultDto>(null as any);
+    }
+
+    getInvitePreviewForCurrentUser(inviteCode: string, cancelToken?: CancelToken): Promise<ServiceResponseOfOrganizationInvitePreviewDto> {
+        let url_ = this.baseUrl + "/api/Auth/invite/{inviteCode}/preview";
+        if (inviteCode === undefined || inviteCode === null)
+            throw new globalThis.Error("The parameter 'inviteCode' must be defined.");
+        url_ = url_.replace("{inviteCode}", encodeURIComponent("" + inviteCode));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processGetInvitePreviewForCurrentUser(_response);
+        });
+    }
+
+    protected processGetInvitePreviewForCurrentUser(response: AxiosResponse): Promise<ServiceResponseOfOrganizationInvitePreviewDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfOrganizationInvitePreviewDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfOrganizationInvitePreviewDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfOrganizationInvitePreviewDto>(null as any);
+    }
+
+    getPendingInvites( cancelToken?: CancelToken): Promise<ServiceResponseOfListOfPendingOrganizationInviteDto> {
+        let url_ = this.baseUrl + "/api/Auth/pending-invites";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processGetPendingInvites(_response);
+        });
+    }
+
+    protected processGetPendingInvites(response: AxiosResponse): Promise<ServiceResponseOfListOfPendingOrganizationInviteDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfListOfPendingOrganizationInviteDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfListOfPendingOrganizationInviteDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfListOfPendingOrganizationInviteDto>(null as any);
+    }
+
+    acceptInvite(request: InviteCodeRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfLoginResponse> {
+        let url_ = this.baseUrl + "/api/Auth/invites/accept";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processAcceptInvite(_response);
+        });
+    }
+
+    protected processAcceptInvite(response: AxiosResponse): Promise<ServiceResponseOfLoginResponse> {
         const status = response.status;
         let _headers: any = {};
         if (response.headers && typeof response.headers === "object") {
@@ -571,6 +774,58 @@ export class AuthClient {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
         }
         return Promise.resolve<ServiceResponseOfLoginResponse>(null as any);
+    }
+
+    declineInvite(request: InviteCodeRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfBoolean> {
+        let url_ = this.baseUrl + "/api/Auth/invites/decline";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processDeclineInvite(_response);
+        });
+    }
+
+    protected processDeclineInvite(response: AxiosResponse): Promise<ServiceResponseOfBoolean> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfBoolean.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfBoolean>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfBoolean>(null as any);
     }
 }
 
@@ -3563,6 +3818,57 @@ export class OrganizationAdminClient {
         return Promise.resolve<ServiceResponseOfOrganizationMemberDto>(null as any);
     }
 
+    deleteMember(userId: string, cancelToken?: CancelToken): Promise<ServiceResponseOfBoolean> {
+        let url_ = this.baseUrl + "/api/Organizations/current/members/{userId}";
+        if (userId === undefined || userId === null)
+            throw new globalThis.Error("The parameter 'userId' must be defined.");
+        url_ = url_.replace("{userId}", encodeURIComponent("" + userId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "DELETE",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processDeleteMember(_response);
+        });
+    }
+
+    protected processDeleteMember(response: AxiosResponse): Promise<ServiceResponseOfBoolean> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfBoolean.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfBoolean>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfBoolean>(null as any);
+    }
+
     getRoles( cancelToken?: CancelToken): Promise<ServiceResponseOfIEnumerableOfOrganizationRoleDto> {
         let url_ = this.baseUrl + "/api/Organizations/current/roles";
         url_ = url_.replace(/[?&]$/, "");
@@ -4362,11 +4668,13 @@ export class OrganizationsClient {
         return Promise.resolve<ServiceResponseOfOrganizationDetailsDto>(null as any);
     }
 
-    getInvitePreview(inviteCode: string, cancelToken?: CancelToken): Promise<ServiceResponseOfOrganizationInvitePreviewDto> {
-        let url_ = this.baseUrl + "/api/Organizations/invite/{inviteCode}";
+    getInvitePreview(inviteCode: string, email: string | null | undefined, cancelToken?: CancelToken): Promise<ServiceResponseOfOrganizationInvitePreviewDto> {
+        let url_ = this.baseUrl + "/api/Organizations/invite/{inviteCode}?";
         if (inviteCode === undefined || inviteCode === null)
             throw new globalThis.Error("The parameter 'inviteCode' must be defined.");
         url_ = url_.replace("{inviteCode}", encodeURIComponent("" + inviteCode));
+        if (email !== undefined && email !== null)
+            url_ += "email=" + encodeURIComponent("" + email) + "&";
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: AxiosRequestConfig = {
@@ -8308,12 +8616,190 @@ export interface IResetPasswordRequest {
     newPassword: string;
 }
 
+export class ServiceResponseOfJoinOrganizationResultDto implements IServiceResponseOfJoinOrganizationResultDto {
+    isSuccess?: boolean;
+    data?: JoinOrganizationResultDto | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfJoinOrganizationResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"] ? JoinOrganizationResultDto.fromJS(_data["data"]) : undefined as any;
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfJoinOrganizationResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfJoinOrganizationResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data ? this.data.toJSON() : undefined as any;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfJoinOrganizationResultDto {
+    isSuccess?: boolean;
+    data?: JoinOrganizationResultDto | undefined;
+    error?: AppError | undefined;
+}
+
+export class JoinOrganizationResultDto implements IJoinOrganizationResultDto {
+    organizationName!: string;
+    email!: string;
+
+    constructor(data?: IJoinOrganizationResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.organizationName = _data["organizationName"];
+            this.email = _data["email"];
+        }
+    }
+
+    static fromJS(data: any): JoinOrganizationResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new JoinOrganizationResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["organizationName"] = this.organizationName;
+        data["email"] = this.email;
+        return data;
+    }
+}
+
+export interface IJoinOrganizationResultDto {
+    organizationName: string;
+    email: string;
+}
+
+export interface IJoinOrganizationResultDto {
+    organizationName: string;
+    email: string;
+}
+
+export class JoinWithCodeResultDto implements IJoinWithCodeResultDto {
+    organizationName!: string;
+    status!: string;
+    session?: LoginResponse | undefined;
+
+    constructor(data?: IJoinWithCodeResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.organizationName = _data["organizationName"];
+            this.status = _data["status"];
+            this.session = _data["session"] ? LoginResponse.fromJS(_data["session"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): JoinWithCodeResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new JoinWithCodeResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["organizationName"] = this.organizationName;
+        data["status"] = this.status;
+        data["session"] = this.session ? this.session.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IJoinWithCodeResultDto {
+    organizationName: string;
+    status: string;
+    session?: LoginResponse | undefined;
+}
+
+export class ServiceResponseOfJoinWithCodeResultDto implements IServiceResponseOfJoinWithCodeResultDto {
+    isSuccess?: boolean;
+    data?: JoinWithCodeResultDto | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfJoinWithCodeResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"] ? JoinWithCodeResultDto.fromJS(_data["data"]) : undefined as any;
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfJoinWithCodeResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfJoinWithCodeResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data ? this.data.toJSON() : undefined as any;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfJoinWithCodeResultDto {
+    isSuccess?: boolean;
+    data?: JoinWithCodeResultDto | undefined;
+    error?: AppError | undefined;
+}
+
 export class JoinOrganizationRequest implements IJoinOrganizationRequest {
     inviteCode!: string;
     firstName!: string;
     lastName!: string;
     email!: string;
     password!: string;
+    setupToken?: string | undefined;
 
     constructor(data?: IJoinOrganizationRequest) {
         if (data) {
@@ -8331,6 +8817,7 @@ export class JoinOrganizationRequest implements IJoinOrganizationRequest {
             this.lastName = _data["lastName"];
             this.email = _data["email"];
             this.password = _data["password"];
+            this.setupToken = _data["setupToken"];
         }
     }
 
@@ -8348,6 +8835,7 @@ export class JoinOrganizationRequest implements IJoinOrganizationRequest {
         data["lastName"] = this.lastName;
         data["email"] = this.email;
         data["password"] = this.password;
+        data["setupToken"] = this.setupToken;
         return data;
     }
 }
@@ -8358,6 +8846,231 @@ export interface IJoinOrganizationRequest {
     lastName: string;
     email: string;
     password: string;
+    setupToken?: string | undefined;
+}
+
+export class JoinWithInviteCodeRequest implements IJoinWithInviteCodeRequest {
+    inviteCode!: string;
+
+    constructor(data?: IJoinWithInviteCodeRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.inviteCode = _data["inviteCode"];
+        }
+    }
+
+    static fromJS(data: any): JoinWithInviteCodeRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new JoinWithInviteCodeRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["inviteCode"] = this.inviteCode;
+        return data;
+    }
+}
+
+export interface IJoinWithInviteCodeRequest {
+    inviteCode: string;
+}
+
+export class ServiceResponseOfListOfPendingOrganizationInviteDto implements IServiceResponseOfListOfPendingOrganizationInviteDto {
+    isSuccess?: boolean;
+    data?: PendingOrganizationInviteDto[] | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfListOfPendingOrganizationInviteDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            if (Array.isArray(_data["data"])) {
+                this.data = [] as any;
+                for (let item of _data["data"])
+                    this.data!.push(PendingOrganizationInviteDto.fromJS(item));
+            }
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfListOfPendingOrganizationInviteDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfListOfPendingOrganizationInviteDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        if (Array.isArray(this.data)) {
+            data["data"] = [];
+            for (let item of this.data)
+                data["data"].push(item ? item.toJSON() : undefined as any);
+        }
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfListOfPendingOrganizationInviteDto {
+    isSuccess?: boolean;
+    data?: PendingOrganizationInviteDto[] | undefined;
+    error?: AppError | undefined;
+}
+
+export class PendingOrganizationInviteDto implements IPendingOrganizationInviteDto {
+    organizationId!: string;
+    organizationName!: string;
+    logoUrl?: string | undefined;
+    inviteCode!: string;
+    roleName!: string;
+    invitedAt?: Date;
+
+    constructor(data?: IPendingOrganizationInviteDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.organizationId = _data["organizationId"];
+            this.organizationName = _data["organizationName"];
+            this.logoUrl = _data["logoUrl"];
+            this.inviteCode = _data["inviteCode"];
+            this.roleName = _data["roleName"];
+            this.invitedAt = _data["invitedAt"] ? new Date(_data["invitedAt"].toString()) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): PendingOrganizationInviteDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new PendingOrganizationInviteDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["organizationId"] = this.organizationId;
+        data["organizationName"] = this.organizationName;
+        data["logoUrl"] = this.logoUrl;
+        data["inviteCode"] = this.inviteCode;
+        data["roleName"] = this.roleName;
+        data["invitedAt"] = this.invitedAt ? this.invitedAt.toISOString() : undefined as any;
+        return data;
+    }
+}
+
+export interface IPendingOrganizationInviteDto {
+    organizationId: string;
+    organizationName: string;
+    logoUrl?: string | undefined;
+    inviteCode: string;
+    roleName: string;
+    invitedAt?: Date;
+}
+
+export class InviteCodeRequest implements IInviteCodeRequest {
+    inviteCode!: string;
+
+    constructor(data?: IInviteCodeRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.inviteCode = _data["inviteCode"];
+        }
+    }
+
+    static fromJS(data: any): InviteCodeRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new InviteCodeRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["inviteCode"] = this.inviteCode;
+        return data;
+    }
+}
+
+export interface IInviteCodeRequest {
+    inviteCode: string;
+}
+
+export class ServiceResponseOfBoolean implements IServiceResponseOfBoolean {
+    isSuccess?: boolean;
+    data?: boolean;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfBoolean) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"];
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfBoolean {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfBoolean();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfBoolean {
+    isSuccess?: boolean;
+    data?: boolean;
+    error?: AppError | undefined;
 }
 
 export class ServiceResponseOfIEnumerableOfBuildingDto implements IServiceResponseOfIEnumerableOfBuildingDto {
@@ -9025,50 +9738,6 @@ export class CreateEventTypeRequest implements ICreateEventTypeRequest {
 export interface ICreateEventTypeRequest {
     name: string;
     colorHex: string;
-}
-
-export class ServiceResponseOfBoolean implements IServiceResponseOfBoolean {
-    isSuccess?: boolean;
-    data?: boolean;
-    error?: AppError | undefined;
-
-    constructor(data?: IServiceResponseOfBoolean) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (this as any)[property] = (data as any)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.isSuccess = _data["isSuccess"];
-            this.data = _data["data"];
-            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
-        }
-    }
-
-    static fromJS(data: any): ServiceResponseOfBoolean {
-        data = typeof data === 'object' ? data : {};
-        let result = new ServiceResponseOfBoolean();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["isSuccess"] = this.isSuccess;
-        data["data"] = this.data;
-        data["error"] = this.error ? this.error.toJSON() : undefined as any;
-        return data;
-    }
-}
-
-export interface IServiceResponseOfBoolean {
-    isSuccess?: boolean;
-    data?: boolean;
-    error?: AppError | undefined;
 }
 
 export class ServiceResponseOfFileUploadResponse implements IServiceResponseOfFileUploadResponse {
@@ -12425,7 +13094,9 @@ export class OrganizationMemberDto implements IOrganizationMemberDto {
     roleId!: string;
     roleName!: string;
     isActive!: boolean;
+    requiresAdminApproval!: boolean;
     joinedAt!: Date;
+    avatarUrl?: string | undefined;
 
     constructor(data?: IOrganizationMemberDto) {
         if (data) {
@@ -12445,7 +13116,9 @@ export class OrganizationMemberDto implements IOrganizationMemberDto {
             this.roleId = _data["roleId"];
             this.roleName = _data["roleName"];
             this.isActive = _data["isActive"];
+            this.requiresAdminApproval = _data["requiresAdminApproval"];
             this.joinedAt = _data["joinedAt"] ? new Date(_data["joinedAt"].toString()) : undefined as any;
+            this.avatarUrl = _data["avatarUrl"];
         }
     }
 
@@ -12465,7 +13138,9 @@ export class OrganizationMemberDto implements IOrganizationMemberDto {
         data["roleId"] = this.roleId;
         data["roleName"] = this.roleName;
         data["isActive"] = this.isActive;
+        data["requiresAdminApproval"] = this.requiresAdminApproval;
         data["joinedAt"] = this.joinedAt ? this.joinedAt.toISOString() : undefined as any;
+        data["avatarUrl"] = this.avatarUrl;
         return data;
     }
 }
@@ -12478,7 +13153,9 @@ export interface IOrganizationMemberDto {
     roleId: string;
     roleName: string;
     isActive: boolean;
+    requiresAdminApproval: boolean;
     joinedAt: Date;
+    avatarUrl?: string | undefined;
 }
 
 export class InviteMembersRequest implements IInviteMembersRequest {
@@ -13825,6 +14502,15 @@ export class OrganizationInvitePreviewDto implements IOrganizationInvitePreviewD
     name!: string;
     logoUrl?: string | undefined;
     inviteCode!: string;
+    hasExistingAccount?: boolean;
+    hasPendingInvite?: boolean;
+    isAlreadyMember?: boolean;
+    requiresSignIn?: boolean;
+    requiresRegistration?: boolean;
+    invitedFirstName?: string | undefined;
+    invitedLastName?: string | undefined;
+    invitedEmail?: string | undefined;
+    inviteLinkExpired?: boolean;
 
     constructor(data?: IOrganizationInvitePreviewDto) {
         if (data) {
@@ -13841,6 +14527,15 @@ export class OrganizationInvitePreviewDto implements IOrganizationInvitePreviewD
             this.name = _data["name"];
             this.logoUrl = _data["logoUrl"];
             this.inviteCode = _data["inviteCode"];
+            this.hasExistingAccount = _data["hasExistingAccount"];
+            this.hasPendingInvite = _data["hasPendingInvite"];
+            this.isAlreadyMember = _data["isAlreadyMember"];
+            this.requiresSignIn = _data["requiresSignIn"];
+            this.requiresRegistration = _data["requiresRegistration"];
+            this.invitedFirstName = _data["invitedFirstName"];
+            this.invitedLastName = _data["invitedLastName"];
+            this.invitedEmail = _data["invitedEmail"];
+            this.inviteLinkExpired = _data["inviteLinkExpired"];
         }
     }
 
@@ -13857,6 +14552,15 @@ export class OrganizationInvitePreviewDto implements IOrganizationInvitePreviewD
         data["name"] = this.name;
         data["logoUrl"] = this.logoUrl;
         data["inviteCode"] = this.inviteCode;
+        data["hasExistingAccount"] = this.hasExistingAccount;
+        data["hasPendingInvite"] = this.hasPendingInvite;
+        data["isAlreadyMember"] = this.isAlreadyMember;
+        data["requiresSignIn"] = this.requiresSignIn;
+        data["requiresRegistration"] = this.requiresRegistration;
+        data["invitedFirstName"] = this.invitedFirstName;
+        data["invitedLastName"] = this.invitedLastName;
+        data["invitedEmail"] = this.invitedEmail;
+        data["inviteLinkExpired"] = this.inviteLinkExpired;
         return data;
     }
 }
@@ -13866,6 +14570,15 @@ export interface IOrganizationInvitePreviewDto {
     name: string;
     logoUrl?: string | undefined;
     inviteCode: string;
+    hasExistingAccount?: boolean;
+    hasPendingInvite?: boolean;
+    isAlreadyMember?: boolean;
+    requiresSignIn?: boolean;
+    requiresRegistration?: boolean;
+    invitedFirstName?: string | undefined;
+    invitedLastName?: string | undefined;
+    invitedEmail?: string | undefined;
+    inviteLinkExpired?: boolean;
 }
 
 export class ServiceResponseOfPagedResponseOfOrganizationDetailsDto implements IServiceResponseOfPagedResponseOfOrganizationDetailsDto {

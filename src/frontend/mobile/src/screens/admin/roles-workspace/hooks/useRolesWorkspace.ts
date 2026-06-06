@@ -9,6 +9,7 @@ import {
   UpdateRolePermissionsRequest,
   WidgetPermissionDto,
 } from '@/src/api/generatedClient';
+import { useAuth } from '@/src/context/AuthContext';
 import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
 import type { PermissionLevel } from '@/src/constants/permissions';
 
@@ -16,8 +17,9 @@ const LEVELS: PermissionLevel[] = ['view', 'edit', 'admin'];
 
 export const useRolesWorkspace = () => {
   const queryClient = useQueryClient();
+  const { activeSession } = useAuth();
   const { organization, refreshOrganization } = useCurrentOrganization();
-  const orgId = organization?.id ?? '';
+  const orgId = activeSession?.orgId ?? '';
 
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
   const [newRoleName, setNewRoleName] = useState('');

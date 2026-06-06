@@ -1,109 +1,160 @@
-import React, { useRef, useEffect, useMemo, useState } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
-import { eachDayOfInterval, addDays, format, isSameDay, isToday, subDays, startOfWeek } from 'date-fns';
+import React, { useMemo } from 'react';
+import { View, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import {
+  addWeeks,
+  subWeeks,
+  eachDayOfInterval,
+  endOfWeek,
+  format,
+  isSameDay,
+  isToday,
+  startOfDay,
+  startOfWeek,
+} from 'date-fns';
 import { AppText } from '@/src/components/ui/AppText';
-import { ClayView } from '@/src/components/ui/ClayView';
+import { Icon } from '@/src/components/ui/Icon';
 import { useThemeColors } from '@/src/hooks';
 
 interface DateStripProps {
   selectedDate: Date;
   onSelectDate: (date: Date) => void;
+  /** @deprecated Week row is fixed width; kept for API compatibility. */
+  viewportWidth?: number;
 }
 
-const ITEM_WIDTH = 58; // Slightly smaller for better fit
-const ITEM_MARGIN = 8;
-const TOTAL_ITEM_SIZE = ITEM_WIDTH + ITEM_MARGIN;
-const SCREEN_WIDTH = Dimensions.get('window').width;
+const WEEK_OPTS = { weekStartsOn: 1 as const };
 
 export const DateStrip: React.FC<DateStripProps> = ({ selectedDate, onSelectDate }) => {
   const colors = useThemeColors();
-  const scrollRef = useRef<ScrollView>(null);
-  
-  // Stable Anchor: Only shift the entire list if we move massive distances
-  const [anchorDate, setAnchorDate] = useState(startOfWeek(selectedDate));
+
+  const weekStart = useMemo(
+    () => startOfWeek(startOfDay(selectedDate), WEEK_OPTS),
+    [selectedDate],
+  );
 
   const days = useMemo(() => {
-    // 🚀 STABILITY: Generate a huge buffer (±30 days) so normal swiping never hits the edge
-    const start = subDays(anchorDate, 30);
-    const end = addDays(anchorDate, 30);
-    return eachDayOfInterval({ start, end });
-  }, [anchorDate]);
+    const end = endOfWeek(weekStart, WEEK_OPTS);
+    return eachDayOfInterval({ start: weekStart, end });
+  }, [weekStart]);
 
-  // If we jump very far (e.g. via Calendar), reset the anchor
-  useEffect(() => {
-    const diff = Math.abs((selectedDate.getTime() - anchorDate.getTime()) / (1000 * 60 * 60 * 24));
-    if (diff > 20) {
-      setAnchorDate(selectedDate);
-    }
-  }, [selectedDate]);
-
-  // Smooth scroll to center
-  useEffect(() => {
-    const index = days.findIndex(d => isSameDay(d, selectedDate));
-    if (index !== -1 && scrollRef.current) {
-        const centerOffset = (index * TOTAL_ITEM_SIZE) - (SCREEN_WIDTH / 2) + (ITEM_WIDTH / 2);
-        scrollRef.current.scrollTo({ x: Math.max(0, centerOffset), animated: true });
-    }
-  }, [selectedDate, anchorDate]);
+  const goWeek = (delta: -1 | 1) => {
+    onSelectDate(startOfDay(delta === -1 ? subWeeks(selectedDate, 1) : addWeeks(selectedDate, 1)));
+  };
 
   return (
     <View style={styles.container}>
-      <ScrollView 
-        ref={scrollRef}
-        horizontal 
-        showsHorizontalScrollIndicator={false} 
-        contentContainerStyle={styles.scrollContent}
-        decelerationRate="fast"
-        snapToInterval={TOTAL_ITEM_SIZE} // Optional: Snaps to days
+      <TouchableOpacity
+        onPress={() => goWeek(-1)}
+        style={[styles.navBtn, { borderColor: colors.border + '40' }]}
+        accessibilityLabel="Previous week"
+        hitSlop={8}
       >
+        <Icon name="chevron-left" size={22} color={colors.primary} />
+      </TouchableOpacity>
+
+      <View style={styles.daysRow}>
         {days.map((date) => {
           const isSelected = isSameDay(date, selectedDate);
           const isCurrentDay = isToday(date);
-          
+
           return (
-            <TouchableOpacity 
-              key={date.toISOString()} 
-              onPress={() => onSelectDate(date)}
-              activeOpacity={0.7}
-              style={{ marginRight: ITEM_MARGIN }}
+            <TouchableOpacity
+              key={date.toISOString()}
+              onPress={() => onSelectDate(startOfDay(date))}
+              activeOpacity={0.75}
+              style={styles.dayCell}
+              accessibilityState={{ selected: isSelected }}
             >
-              <ClayView 
-                 depth={isSelected ? 4 : 8} 
-                 puffy={isSelected ? 8 : 12}
-                 color={isSelected ? colors.primary : colors.card}
-                 style={styles.dateItem}
+              <AppText
+                variant="caption"
+                style={[
+                  styles.weekday,
+                  { color: isSelected ? '#FFF' : colors.subtle },
+                ]}
               >
-                <AppText variant="caption" style={{ color: isSelected ? '#FFF' : colors.subtle, fontSize: 11, fontWeight: '600', textTransform: 'uppercase' }}>
-                  {format(date, 'EEE')}
-                </AppText>
-                
-                <AppText variant="h3" weight="bold" style={{ color: isSelected ? '#FFF' : colors.text, marginTop: 2 }}>
+                {format(date, 'EEE')}
+              </AppText>
+              <View
+                style={[
+                  styles.dayBubble,
+                  isSelected && { backgroundColor: colors.primary },
+                  !isSelected && isCurrentDay && {
+                    borderWidth: 2,
+                    borderColor: colors.primary,
+                    backgroundColor: colors.card,
+                  },
+                  !isSelected && !isCurrentDay && { backgroundColor: colors.card },
+                ]}
+              >
+                <AppText
+                  variant="caption"
+                  weight="bold"
+                  style={{
+                    color: isSelected ? '#FFF' : colors.text,
+                    fontSize: 15,
+                  }}
+                >
                   {format(date, 'd')}
                 </AppText>
-                
-                {!isSelected && isCurrentDay && (
-                  <View style={[styles.dot, { backgroundColor: colors.primary }]} />
-                )}
-              </ClayView>
+              </View>
             </TouchableOpacity>
           );
         })}
-      </ScrollView>
+      </View>
+
+      <TouchableOpacity
+        onPress={() => goWeek(1)}
+        style={[styles.navBtn, { borderColor: colors.border + '40' }]}
+        accessibilityLabel="Next week"
+        hitSlop={8}
+      >
+        <Icon name="chevron-right" size={22} color={colors.primary} />
+      </TouchableOpacity>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { marginBottom: 8, height: 85 }, // Fixed height prevents jumping
-  scrollContent: { paddingHorizontal: 20, paddingBottom: 15, paddingTop: 5 },
-  dateItem: {
-    width: ITEM_WIDTH,
-    height: 65,
-    justifyContent: 'center',
+  container: {
+    flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 16
+    paddingHorizontal: 12,
+    paddingBottom: 10,
+    gap: 6,
   },
-  dot: {
-    width: 4, height: 4, borderRadius: 2, position: 'absolute', bottom: 6
-  }
+  navBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...(Platform.OS === 'web' ? { cursor: 'pointer' as const } : {}),
+  },
+  daysRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 4,
+  },
+  dayCell: {
+    flex: 1,
+    alignItems: 'center',
+    minWidth: 0,
+  },
+  weekday: {
+    fontSize: 10,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    marginBottom: 4,
+    letterSpacing: 0.3,
+  },
+  dayBubble: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

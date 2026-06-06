@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo } from 'react';
 import { View, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { PageContainer } from '@/src/components/layout/PageContainer';
 import { SplitPane } from '@/src/components/layout/SplitPane';
 import { SPLIT_PANE_LIST_WIDTH } from '@/src/constants/layout';
 import { useThemeColors, useBreakpoint } from '@/src/hooks';
 import { AppText, ClayView, Icon, AppButton } from '@/src/components/ui';
-import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
+import { ScreenHeader } from '@/src/components/navigation/ScreenHeader';
 import { ClayDatePicker } from '@/src/components/ui/ClayDatePicker';
 import { AnimatedItem, PressClay } from '@/src/components/animations';
 import { ClayAnimations } from '@/src/constants/animations';
@@ -38,7 +38,6 @@ function filtersActiveCount(f: {
 export default function RoomsScreen() {
   const colors = useThemeColors();
   const { isWideShell } = useBreakpoint();
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams<{ roomId?: string }>();
   const focusRoomFromMap = typeof params.roomId === 'string' ? params.roomId : params.roomId?.[0];
@@ -82,49 +81,48 @@ export default function RoomsScreen() {
   }, [isWideShell, rooms, selectedRoomId, selectRoom]);
 
   const roomsHeader = (
-      <View style={{ paddingHorizontal: 20, paddingBottom: 12, paddingTop: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-          {!isWideShell ? <ClayBackButton /> : null}
-          <View style={{ marginLeft: isWideShell ? 0 : 16, flex: 1 }}>
-            <AppText variant="h2" weight="bold">
-              Rooms
-            </AppText>
-            <AppText style={{ color: colors.subtle, fontSize: 12 }}>Find and book a space</AppText>
-            {activeFilterCount > 0 ? (
-              <AppText variant="caption" style={{ color: colors.primary, marginTop: 4 }}>
-                {activeFilterCount} filter{activeFilterCount === 1 ? '' : 's'} active · list updates when you tap Done in filters
-              </AppText>
-            ) : (
-              <AppText variant="caption" style={{ color: colors.subtle, marginTop: 4 }}>
-                Tap the filter button to search and narrow by building, amenities, and time.
-              </AppText>
-            )}
-          </View>
-        </View>
-        <TouchableOpacity onPress={() => setShowFilterModal(true)} style={{ marginLeft: 8 }}>
-          <ClayView depth={5} color={colors.card} style={{ width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' }}>
-            <Icon name="tune" size={24} color={colors.primary} />
-            {activeFilterCount > 0 ? (
-              <View
-                style={{
-                  position: 'absolute',
-                  top: 6,
-                  right: 6,
-                  minWidth: 16,
-                  height: 16,
-                  borderRadius: 8,
-                  backgroundColor: colors.primary,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  paddingHorizontal: 4,
-                }}
-              >
-                <AppText style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>{activeFilterCount}</AppText>
-              </View>
-            ) : null}
-          </ClayView>
-        </TouchableOpacity>
+    <>
+      <ScreenHeader
+        title="Rooms"
+        subtitle="Find and book a space"
+        right={
+          <TouchableOpacity onPress={() => setShowFilterModal(true)} style={{ marginLeft: 8 }}>
+            <ClayView depth={5} color={colors.card} style={{ width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name="tune" size={24} color={colors.primary} />
+              {activeFilterCount > 0 ? (
+                <View
+                  style={{
+                    position: 'absolute',
+                    top: 6,
+                    right: 6,
+                    minWidth: 16,
+                    height: 16,
+                    borderRadius: 8,
+                    backgroundColor: colors.primary,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    paddingHorizontal: 4,
+                  }}
+                >
+                  <AppText style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>{activeFilterCount}</AppText>
+                </View>
+              ) : null}
+            </ClayView>
+          </TouchableOpacity>
+        }
+      />
+      <View style={{ paddingHorizontal: 20, paddingBottom: 8 }}>
+        {activeFilterCount > 0 ? (
+          <AppText variant="caption" style={{ color: colors.primary }}>
+            {activeFilterCount} filter{activeFilterCount === 1 ? '' : 's'} active · list updates when you tap Done in filters
+          </AppText>
+        ) : (
+          <AppText variant="caption" style={{ color: colors.subtle }}>
+            Tap the filter button to search and narrow by building, amenities, and time.
+          </AppText>
+        )}
       </View>
+    </>
   );
 
   const roomsListBody = (
@@ -337,7 +335,7 @@ export default function RoomsScreen() {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
       <PageContainer>
         {isWideShell ? (
           <SplitPane sidebar={roomsListColumn} sidebarWidth={SPLIT_PANE_LIST_WIDTH}>
@@ -378,6 +376,6 @@ export default function RoomsScreen() {
         eventTypes={eventTypes}
         searchHosts={searchHosts}
       />
-    </View>
+    </SafeAreaView>
   );
 }

@@ -7,7 +7,7 @@ export default function WidgetsLayout() {
   return (
     <Stack 
       screenOptions={{ 
-        headerShown: false, // We use custom headers with ClayBackButton
+        headerShown: false, // ScreenHeader / ScreenScaffold
         contentStyle: { backgroundColor: colors.background },
         animation: 'default'
       }} 
