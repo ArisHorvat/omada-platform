@@ -199,34 +199,35 @@ public class MapService : IMapService
             return new ServiceResponse<FloorDto>(false, null,
                 new AppError(ErrorCodes.NotFound, "Building not found."));
 
-        if (request.FloorplanFile == null || request.FloorplanFile.Length == 0)
-            return new ServiceResponse<FloorDto>(false, null,
-                new AppError(ErrorCodes.InvalidInput, "No floorplan file uploaded."));
-
-        if (!request.FloorplanFile.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
-            return new ServiceResponse<FloorDto>(false, null,
-                new AppError(ErrorCodes.InvalidInput, "Only image files are allowed for floorplans."));
-
-        var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
-        var mapsPath = Path.Combine(webRoot, "images", "maps");
-        if (!Directory.Exists(mapsPath))
-            Directory.CreateDirectory(mapsPath);
-
-        var fileName = $"{Guid.NewGuid()}{Path.GetExtension(request.FloorplanFile.FileName)}";
-        var filePath = Path.Combine(mapsPath, fileName);
-        await using (var stream = new FileStream(filePath, FileMode.Create))
+        string? floorplanImageUrl = null;
+        if (request.FloorplanFile is { Length: > 0 })
         {
-            await request.FloorplanFile.CopyToAsync(stream);
-        }
+            if (!request.FloorplanFile.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+                return new ServiceResponse<FloorDto>(false, null,
+                    new AppError(ErrorCodes.InvalidInput, "Only image files are allowed for floorplans."));
 
-        var relativePath = $"/images/maps/{fileName}";
+            var webRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
+            var mapsPath = Path.Combine(webRoot, "images", "maps");
+            if (!Directory.Exists(mapsPath))
+                Directory.CreateDirectory(mapsPath);
+
+            var fileName = $"{Guid.NewGuid()}{Path.GetExtension(request.FloorplanFile.FileName)}";
+            var filePath = Path.Combine(mapsPath, fileName);
+            await using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await request.FloorplanFile.CopyToAsync(stream);
+            }
+
+            var relativePath = $"/images/maps/{fileName}";
+            floorplanImageUrl = _mediaUrls.ToPublicUrl(relativePath);
+        }
 
         var floor = new Floor
         {
             Id = Guid.NewGuid(),
             BuildingId = buildingId,
             LevelNumber = request.LevelNumber,
-            FloorplanImageUrl = _mediaUrls.ToPublicUrl(relativePath),
+            FloorplanImageUrl = floorplanImageUrl,
             CreatedAt = DateTime.UtcNow
         };
 

@@ -42,6 +42,37 @@ export type AccessLevel = 'view' | 'edit' | 'admin';
 /** Alias used by presets and dashboard (`PermissionLevel` in UI code). */
 export type PermissionLevel = AccessLevel;
 
+const ACCESS_RANK: Record<AccessLevel, number> = { view: 1, edit: 2, admin: 3 };
+
+/**
+ * Coursework capabilities are stored on `tasks` in the roles UI.
+ * Legacy `assignments` role rows still resolve (aligned with backend PermissionHandler).
+ */
+export const WIDGET_PERMISSION_ALIASES: Record<string, readonly string[]> = {
+  tasks: ['tasks', 'assignments'],
+  assignments: ['assignments', 'tasks'],
+};
+
+/** Highest access level across aliased widget keys (e.g. tasks + assignments). */
+export function getEffectiveWidgetAccessLevel(
+  widgetKey: string,
+  widgetAccess: Record<string, string> | undefined | null,
+): AccessLevel | undefined {
+  const aliases = WIDGET_PERMISSION_ALIASES[widgetKey] ?? [widgetKey];
+  let best: AccessLevel | undefined;
+  let bestRank = 0;
+  for (const key of aliases) {
+    const raw = widgetAccess?.[key]?.trim().toLowerCase();
+    if (raw !== 'view' && raw !== 'edit' && raw !== 'admin') continue;
+    const rank = ACCESS_RANK[raw];
+    if (rank > bestRank) {
+      bestRank = rank;
+      best = raw;
+    }
+  }
+  return best;
+}
+
 /** Fine-grained UI capabilities (optional future API surface). First segment before `.` must match a widget key. */
 export type Capability =
   // news
@@ -146,9 +177,22 @@ export const PERMISSION_MAP: Record<string, Record<AccessLevel, Capability[]>> =
     admin: ['documents.view', 'documents.upload', 'documents.manage'],
   },
   tasks: {
-    view: ['tasks.view'],
-    edit: ['tasks.view', 'tasks.create'],
-    admin: ['tasks.view', 'tasks.create', 'tasks.assign'],
+    view: ['tasks.view', 'assignments.view', 'assignments.submit'],
+    edit: [
+      'tasks.view',
+      'tasks.create',
+      'assignments.view',
+      'assignments.submit',
+      'assignments.grade',
+    ],
+    admin: [
+      'tasks.view',
+      'tasks.create',
+      'tasks.assign',
+      'assignments.view',
+      'assignments.submit',
+      'assignments.grade',
+    ],
   },
   rooms: {
     view: ['rooms.view', 'rooms.book'],
@@ -205,7 +249,7 @@ export const WIDGET_PERMISSIONS: Record<string, WidgetPermissionDef> = {
   tasks: {
     key: 'tasks',
     label: 'Tasks',
-    description: 'To-do and assignments',
+    description: 'View: submit coursework · Edit: post & grade (teachers) · Admin: delegate work tasks',
     levels: PERMISSION_MAP.tasks!,
   },
   chat: {

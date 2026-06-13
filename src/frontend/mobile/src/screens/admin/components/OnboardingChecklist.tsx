@@ -10,33 +10,45 @@ import {
   isOnboardingItemDone,
   ONBOARDING_ITEMS,
 } from '../config/onboarding.config';
-import { isOrgWidgetEnabled } from '../utils/orgEnabledWidgets';
+import { OrganizationType } from '@/src/api/generatedClient';
+import { createOrgWidgetEnabledChecker } from '../utils/orgEnabledWidgets';
 import { createOrgDashboardStyles } from '../styles/org-dashboard.styles';
 
 type Props = {
-  onboardingStep: number;
+  completedOnboardingSteps?: string[] | null;
   memberCount?: number;
   enabledWidgets?: string[] | null;
+  organizationType?: OrganizationType;
 };
 
-export function OnboardingChecklist({ onboardingStep, memberCount = 0, enabledWidgets }: Props) {
+export function OnboardingChecklist({
+  completedOnboardingSteps,
+  memberCount = 0,
+  enabledWidgets,
+  organizationType,
+}: Props) {
   const colors = useThemeColors();
   const router = useRouter();
   const { isWideShell } = useBreakpoint();
   const styles = useMemo(() => createOrgDashboardStyles(colors), [colors]);
 
+  const isWidgetEnabled = useMemo(
+    () => createOrgWidgetEnabledChecker(organizationType),
+    [organizationType],
+  );
+
   const applicableItems = useMemo(
-    () => filterOnboardingItems(ONBOARDING_ITEMS, enabledWidgets, isOrgWidgetEnabled),
-    [enabledWidgets],
+    () => filterOnboardingItems(ONBOARDING_ITEMS, enabledWidgets, isWidgetEnabled),
+    [enabledWidgets, isWidgetEnabled],
   );
 
   const completedCount = applicableItems.filter((item) =>
-    isOnboardingItemDone(item, onboardingStep, memberCount),
+    isOnboardingItemDone(item, completedOnboardingSteps, memberCount),
   ).length;
   const progress = applicableItems.length ? completedCount / applicableItems.length : 1;
 
   const steps = applicableItems.map((item, index) => {
-    const done = isOnboardingItemDone(item, onboardingStep, memberCount);
+    const done = isOnboardingItemDone(item, completedOnboardingSteps, memberCount);
     const isLast = index === applicableItems.length - 1;
     return (
       <PressClay key={item.id} onPress={() => router.push(item.route as never)}>

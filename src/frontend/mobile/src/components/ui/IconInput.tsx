@@ -26,6 +26,8 @@ export const IconInput = ({
   onRightIconPress,
   error,
   style,
+  onFocus,
+  onBlur,
   ...props
 }: IconInputProps) => {
   const colors = useThemeColors();
@@ -38,6 +40,7 @@ export const IconInput = ({
         {
           backgroundColor: colors.card,
           borderColor: error ? colors.error : isFocused ? colors.primary : colors.border,
+          borderWidth: isFocused || error ? 2 : 1,
         },
         style,
       ]}
@@ -51,8 +54,14 @@ export const IconInput = ({
       <TextInput
         style={[styles.input, inputTextStyle(), { color: colors.text }]}
         placeholderTextColor={colors.subtle || '#999'}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
+        onFocus={(event) => {
+          setIsFocused(true);
+          onFocus?.(event);
+        }}
+        onBlur={(event) => {
+          setIsFocused(false);
+          onBlur?.(event);
+        }}
         {...props}
       />
 
@@ -76,7 +85,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     minHeight: 50,
     borderRadius: 12,
-    borderWidth: 1,
     paddingHorizontal: 12,
   },
   input: {

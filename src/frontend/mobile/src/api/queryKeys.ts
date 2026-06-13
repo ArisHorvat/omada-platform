@@ -9,9 +9,16 @@ export const QUERY_KEYS = {
   // Widgets (All strictly scoped by orgId to prevent data leaks!)
   tasks: {
     all: (orgId: string) => ['tasks', orgId],
-    paginated: (orgId: string, page: number, pageSize: number, groupId?: string | null) =>
-      ['tasks', orgId, page, pageSize, groupId ?? 'all'],
+    paginated: (
+      orgId: string,
+      page: number,
+      pageSize: number,
+      groupId?: string | null,
+      offeringId?: string | null,
+    ) => ['tasks', orgId, page, pageSize, groupId ?? 'all', offeringId ?? 'all'],
     detail: (orgId: string, taskId: string) => ['tasks', orgId, 'detail', taskId],
+    batches: (orgId: string, page: number, pageSize: number) =>
+      ['tasks', orgId, 'batches', page, pageSize] as const,
   },
   news: {
     all: (orgId: string) => ['news', orgId],
@@ -32,10 +39,26 @@ export const QUERY_KEYS = {
   attendance: {
     me: (orgId: string, groupId?: string | null) =>
       ['attendance', orgId, 'me', groupId ?? 'all'] as const,
+    myOfferings: (orgId: string, periodId?: string | null) =>
+      ['attendance', orgId, 'my-offerings', periodId ?? 'current'] as const,
+    roster: (orgId: string, eventId: string, instanceDate: string) =>
+      ['attendance', orgId, 'roster', eventId, instanceDate] as const,
+    workTime: (orgId: string) => ['attendance', orgId, 'work-time'] as const,
   },
   digitalId: {
     /** Digital ID card payload for the active org (JWT). */
     me: (orgId: string) => ['digital-id', orgId, 'me'] as const,
+  },
+  offerings: {
+    assignable: (orgId: string, periodId?: string | null) =>
+      ['offerings', orgId, 'assignable', periodId ?? 'current'] as const,
+    my: (orgId: string, periodId?: string | null) =>
+      ['offerings', orgId, 'my', periodId ?? 'current'] as const,
+    periods: (orgId: string) => ['offerings', orgId, 'periods'] as const,
+    gradebook: (orgId: string, periodId: string, offeringId: string, cohortGroupId?: string | null) =>
+      ['offerings', orgId, 'gradebook', periodId, offeringId, cohortGroupId ?? 'all'] as const,
+    studentBreakdown: (orgId: string, periodId: string, offeringId: string, userId: string) =>
+      ['offerings', orgId, 'gradebook', periodId, offeringId, 'student', userId] as const,
   },
   groups: {
     assignable: (orgId: string, context: string) => ['groups', orgId, 'assignable', context] as const,
@@ -60,6 +83,11 @@ export const QUERY_KEYS = {
     spiderSyncHistory: (orgId: string) => ['orgAdmin', orgId, 'spiderSyncHistory'] as const,
     spiderUnresolved: (orgId: string) => ['orgAdmin', orgId, 'spiderUnresolved'] as const,
     periods: (orgId: string) => ['orgAdmin', orgId, 'periods'] as const,
+    offerings: (orgId: string, periodId: string) =>
+      ['orgAdmin', orgId, 'periods', periodId, 'offerings'] as const,
+    offeringPackages: (orgId: string) => ['orgAdmin', orgId, 'offering-packages'] as const,
+    gradePlan: (orgId: string, periodId: string, offeringId: string) =>
+      ['orgAdmin', orgId, 'grade-plan', periodId, offeringId] as const,
     gradesAdmin: (orgId: string, page: number, semester: string) =>
       ['orgAdmin', orgId, 'grades', page, semester || 'all'] as const,
     attendanceAdmin: (orgId: string, page: number, groupId?: string | null) =>

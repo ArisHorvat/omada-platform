@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Omada.Api.Data;
 using Omada.Api.Entities;
+using Omada.Api.Infrastructure;
 using System.Security.Claims;
 
 namespace Omada.Api.Infrastructure.Security;
@@ -29,8 +30,10 @@ public class PermissionHandler : AuthorizationHandler<PermissionRequirement>
             return;
         }
 
-        // JWT and DB may use "SuperAdmin" (bootstrap) or seeded role name "Super Admin".
-        if (context.User.IsInRole("SuperAdmin") || context.User.IsInRole("Super Admin"))
+        // Platform super-admin and organization Admin role bypass widget checks.
+        if (context.User.IsInRole("SuperAdmin") ||
+            context.User.IsInRole("Super Admin") ||
+            context.User.IsInRole("Admin"))
         {
             context.Succeed(requirement);
             return;
@@ -86,7 +89,25 @@ public class PermissionHandler : AuthorizationHandler<PermissionRequirement>
         return effective >= needed;
     }
 
+    /// <summary>
+    /// University coursework is merged into <c>tasks</c>. Legacy <c>assignments</c> role rows still satisfy checks.
+    /// </summary>
+    private static readonly Dictionary<string, string[]> WidgetPermissionAliases =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            [WidgetKeys.Tasks] = new[] { WidgetKeys.Tasks, WidgetKeys.Assignments },
+            [WidgetKeys.Assignments] = new[] { WidgetKeys.Assignments, WidgetKeys.Tasks },
+        };
+
     private static int GetEffectiveRank(List<string> userPermissions, string widget)
+    {
+        if (WidgetPermissionAliases.TryGetValue(widget, out var aliases))
+            return aliases.Max(alias => GetSingleWidgetRank(userPermissions, alias));
+
+        return GetSingleWidgetRank(userPermissions, widget);
+    }
+
+    private static int GetSingleWidgetRank(List<string> userPermissions, string widget)
     {
         if (userPermissions.Contains($"{widget}:admin")) return 3;
         if (userPermissions.Contains($"{widget}:edit")) return 2;

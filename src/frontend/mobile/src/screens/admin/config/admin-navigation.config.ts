@@ -8,6 +8,8 @@ export type AdminNavItem = {
   route: string;
   widgetKey?: string;
   anyWidgetKeys?: string[];
+  /** Periods, offerings — organization Admin role only (not the settings widget). */
+  requiresOrgAdmin?: boolean;
 };
 
 export type AdminNavSection = {
@@ -38,7 +40,7 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
     id: 'structure',
     title: 'Structure',
     items: [
-      { id: 'groups', icon: 'group', label: 'Groups', route: '/groups-workspace', widgetKey: WIDGET_KEYS.groups },
+      { id: 'groups', icon: 'group', label: 'Groups', route: '/groups-workspace' },
       { id: 'floorplan', icon: 'map', label: 'Floorplans', route: '/floorplan-workspace', widgetKey: WIDGET_KEYS.map },
       {
         id: 'event-types',
@@ -52,7 +54,20 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
         icon: 'date-range',
         label: 'Periods',
         route: '/periods-workspace',
-        widgetKey: WIDGET_KEYS.grades,
+        requiresOrgAdmin: true,
+      },
+      {
+        id: 'offerings',
+        icon: 'school',
+        label: 'Offerings',
+        route: '/offerings-workspace',
+        requiresOrgAdmin: true,
+      },
+      {
+        id: 'coursework',
+        icon: 'assignment',
+        label: 'Coursework',
+        route: '/assignments-workspace',
       },
     ],
   },
@@ -70,31 +85,10 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
     ],
   },
   {
-    id: 'academic',
-    title: 'Academic',
-    items: [
-      {
-        id: 'grades',
-        icon: 'school',
-        label: 'Grades',
-        route: '/grades-workspace',
-        widgetKey: WIDGET_KEYS.grades,
-      },
-      {
-        id: 'attendance',
-        icon: 'fact-check',
-        label: 'Attendance',
-        route: '/attendance-workspace',
-        widgetKey: WIDGET_KEYS.attendance,
-      },
-    ],
-  },
-  {
     id: 'platform',
     title: 'Platform',
     items: [
       { id: 'widgets', icon: 'widgets', label: 'Widget catalog', route: '/widgets-workspace' },
-      { id: 'rooms', icon: 'meeting-room', label: 'Rooms', route: '/rooms-workspace', widgetKey: WIDGET_KEYS.rooms },
       { id: 'audit', icon: 'history', label: 'Audit log', route: '/audit-workspace' },
     ],
   },
@@ -104,11 +98,13 @@ export function filterAdminNavSections(
   sections: AdminNavSection[],
   enabledWidgets: string[] | undefined | null,
   isWidgetEnabled: (key: string | undefined, enabled: string[] | undefined | null) => boolean,
+  canAccessOrgStructure: boolean,
 ): AdminNavSection[] {
   return sections
     .map((section) => ({
       ...section,
       items: section.items.filter((item) => {
+        if (item.requiresOrgAdmin && !canAccessOrgStructure) return false;
         if (item.anyWidgetKeys?.length) {
           return item.anyWidgetKeys.some((k) => isWidgetEnabled(k, enabledWidgets));
         }

@@ -124,6 +124,10 @@ export const DashboardWidget = ({
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           return; 
       }
+      if (id === 'assignments') {
+        router.push('/tasks' as never);
+        return;
+      }
       router.push(`/${id}` as any);
   };
   

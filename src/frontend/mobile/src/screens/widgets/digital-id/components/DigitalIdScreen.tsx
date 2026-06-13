@@ -2,27 +2,31 @@ import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import QRCode from 'react-native-qrcode-svg';
-import { LinearGradient } from 'expo-linear-gradient';
-import { format } from 'date-fns';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
-import { AppText, ClayView, Icon, ProgressiveImage, SegmentedControl, WidgetErrorState } from '@/src/components/ui';
+import { AppButton, AppText, BottomSheet, WidgetErrorState } from '@/src/components/ui';
 import { ScreenHeader } from '@/src/components/navigation/ScreenHeader';
 import { WidgetPageShell } from '@/src/components/layout';
-import { useThemeColors, useContentWidth } from '@/src/hooks';
+import { useBreakpoint, useContentWidth, useScreenshotWarning, useThemeColors } from '@/src/hooks';
+import { usePermission } from '@/src/context/PermissionContext';
 import { useDigitalIdLogic } from '../hooks/useDigitalIdLogic';
 import { useBrightnessWhileFocused } from '../hooks/useBrightnessWhileFocused';
 import { Code128BarcodeSvg } from './Code128BarcodeSvg';
+import { DigitalIdBarcodeDetails, DigitalIdPassCard } from './DigitalIdPassCard';
+import { DigitalIdHowToUseCard } from './DigitalIdHowToUseCard';
 import { ADMIN_ACCOUNT_HOME } from '@/src/screens/admin/utils/adminAccountRoutes';
 
 export default function DigitalIdScreen({ adminConsole = false }: { adminConsole?: boolean }) {
   const colors = useThemeColors();
   const router = useRouter();
   const contentWidth = useContentWidth();
+  const { isWideShell } = useBreakpoint();
+  const { can } = usePermission();
   const { digitalId, isLoading, isError, digitalIdQuery } = useDigitalIdLogic();
   useBrightnessWhileFocused();
-  const [codeTab, setCodeTab] = useState(0); // 0 = QR, 1 = Barcode
+  useScreenshotWarning();
+  const [barcodeOpen, setBarcodeOpen] = useState(false);
+
+  const canScan = can('attendance.take') || can('digital-id.manage');
 
   const headerBack = useMemo(
     () =>
@@ -32,178 +36,85 @@ export default function DigitalIdScreen({ adminConsole = false }: { adminConsole
     [adminConsole, router],
   );
 
-  const cardWidth = Math.min(contentWidth - 32, 400);
+  const scannerRoute = adminConsole ? '/admin-digital-id-scanner' : '/digital-id-scanner';
+  const cardWidth = Math.min(contentWidth - 32, 420);
+  const qrSize = Math.min(cardWidth - 96, isWideShell ? 240 : 210);
 
   if (isLoading) {
     return (
-      <WidgetPageShell>
-      <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
-        <ScreenHeader title="Digital ID" {...headerBack} />
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      </SafeAreaView>
+      <WidgetPageShell fullBleed={adminConsole}>
+        <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+          <ScreenHeader title="Digital ID" {...headerBack} />
+          <View style={styles.centered}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        </SafeAreaView>
       </WidgetPageShell>
     );
   }
 
   if (isError || !digitalId) {
     return (
-      <WidgetPageShell>
-      <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
-        <ScreenHeader title="Digital ID" {...headerBack} />
-        <View style={[styles.centered, { paddingHorizontal: 24 }]}>
-          <WidgetErrorState
-            message="Could not load your Digital ID. You may not have access or the network failed."
-            onRetry={() => void digitalIdQuery.refetch()}
-          />
-        </View>
-      </SafeAreaView>
+      <WidgetPageShell fullBleed={adminConsole}>
+        <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+          <ScreenHeader title="Digital ID" {...headerBack} />
+          <View style={[styles.centered, { paddingHorizontal: 24 }]}>
+            <WidgetErrorState
+              message="Could not load your Digital ID. You may not have access or the network failed."
+              onRetry={() => void digitalIdQuery.refetch()}
+            />
+          </View>
+        </SafeAreaView>
       </WidgetPageShell>
     );
   }
 
-  const accent = colors.primary;
-  const expiresLabel = format(new Date(digitalId.qrExpiresAtUtc), "MMM d, yyyy '·' h:mm a");
-  const scanPanelSurface = colors.isDark ? colors.card : 'rgba(255,255,255,0.96)';
-  const codeIslandBorder = colors.isDark ? 'rgba(255,255,255,0.14)' : 'rgba(15,23,42,0.08)';
-  const kickerColor = colors.isDark ? colors.subtle : '#64748b';
-  const qrSize = Math.min(cardWidth - 80, 220);
+  const scanHelp = (
+    <DigitalIdHowToUseCard
+      organizationName={digitalId.organizationName}
+      canScan={canScan}
+      onOpenScanner={() => router.push(scannerRoute as never)}
+      inline={isWideShell}
+    />
+  );
 
   return (
-    <WidgetPageShell>
-    <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
-      <ScreenHeader title="Digital ID" {...headerBack} />
+    <WidgetPageShell fullBleed={adminConsole}>
+      <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+        <ScreenHeader title="Digital ID" {...headerBack} />
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <ClayView depth={18} puffy={0} color={colors.card} style={[styles.badgeShell, { width: cardWidth }]}>
-          <LinearGradient
-            colors={[`${accent}22`, `${accent}08`]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.gradientPad}
-          >
-            <View style={styles.orgRow}>
-              <AppText variant="caption" weight="bold" style={[styles.orgKicker, { color: accent }]}>
-                {digitalId.organizationName.toUpperCase()}
-              </AppText>
-              <Icon name="verified" size={18} color={accent} />
-            </View>
-
-            <View style={styles.identityRow}>
-              <ClayView depth={10} puffy={4} color={colors.card} style={styles.avatarRing}>
-                {digitalId.avatarUrl ? (
-                  <ProgressiveImage source={{ uri: digitalId.avatarUrl }} style={styles.avatarImg} />
-                ) : (
-                  <View style={[styles.avatarPlaceholder, { backgroundColor: `${accent}18` }]}>
-                    <Icon name="person" size={40} color={accent} />
-                  </View>
-                )}
-              </ClayView>
-              <View style={styles.identityText}>
-                <AppText variant="h2" weight="bold" numberOfLines={2} style={{ color: colors.text }}>
-                  {digitalId.fullName}
-                </AppText>
-                <AppText variant="body" numberOfLines={2} style={{ color: colors.subtle, marginTop: 4 }}>
-                  {digitalId.roleName}
-                </AppText>
-              </View>
-            </View>
-          </LinearGradient>
-
-          <ClayView
-            depth={6}
-            puffy={16}
-            color={scanPanelSurface}
-            style={[
-              styles.scanPanel,
-              colors.isDark && {
-                borderTopWidth: StyleSheet.hairlineWidth,
-                borderTopColor: colors.border,
-              },
-            ]}
-          >
-            <View style={styles.segmentWrap}>
-              <SegmentedControl
-                options={['QR Code', 'Barcode']}
-                selectedIndex={codeTab}
-                onChange={setCodeTab}
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          <View style={[styles.contentRow, isWideShell && styles.contentRowWide]}>
+            <View style={[styles.passColumn, { width: isWideShell ? cardWidth : '100%' }]}>
+              <DigitalIdPassCard digitalId={digitalId} qrSize={qrSize} />
+              <AppButton
+                title="Show member barcode"
+                variant="secondary"
+                icon="confirmation-number"
+                onPress={() => setBarcodeOpen(true)}
+                style={{ marginTop: 16 }}
               />
             </View>
+            {isWideShell ? <View style={styles.sideColumn}>{scanHelp}</View> : null}
+          </View>
 
-            <View style={styles.codeSwitchArea}>
-              {codeTab === 0 ? (
-                <Animated.View
-                  key="qr"
-                  entering={FadeIn.duration(220)}
-                  exiting={FadeOut.duration(160)}
-                  style={styles.codeTabInner}
-                >
-                  <AppText variant="caption" weight="bold" style={[styles.scanKicker, { color: kickerColor }]}>
-                    SCAN AT ENTRY
-                  </AppText>
-                  <View
-                    style={[
-                      styles.codeIsland,
-                      {
-                        borderColor: codeIslandBorder,
-                        shadowOpacity: colors.isDark ? 0 : 0.08,
-                        elevation: colors.isDark ? 0 : 3,
-                      },
-                    ]}
-                  >
-                    <QRCode value={digitalId.qrToken} size={qrSize} color="#0f172a" backgroundColor="#ffffff" />
-                  </View>
-                  <AppText variant="caption" style={{ color: colors.subtle, textAlign: 'center', marginTop: 10 }}>
-                    QR refreshes · {expiresLabel}
-                  </AppText>
-                </Animated.View>
-              ) : (
-                <Animated.View
-                  key="barcode"
-                  entering={FadeIn.duration(220)}
-                  exiting={FadeOut.duration(160)}
-                  style={styles.codeTabInner}
-                >
-                  <AppText variant="caption" weight="bold" style={[styles.scanKicker, { color: kickerColor }]}>
-                    MEMBER BARCODE
-                  </AppText>
-                  <View
-                    style={[
-                      styles.barcodeIsland,
-                      {
-                        borderColor: codeIslandBorder,
-                        shadowOpacity: colors.isDark ? 0 : 0.08,
-                        elevation: colors.isDark ? 0 : 3,
-                      },
-                    ]}
-                  >
-                    <Code128BarcodeSvg value={digitalId.barcodeValue} height={52} barWidth={1.2} />
-                    <AppText
-                      variant="caption"
-                      style={{
-                        marginTop: 8,
-                        letterSpacing: 1.1,
-                        color: '#0f172a',
-                        fontFamily: 'monospace',
-                        fontSize: 13,
-                      }}
-                    >
-                      {digitalId.barcodeValue}
-                    </AppText>
-                  </View>
-                </Animated.View>
-              )}
-            </View>
-          </ClayView>
-        </ClayView>
+          {!isWideShell ? scanHelp : null}
 
-        <AppText variant="caption" style={[styles.disclaimer, { color: colors.subtle }]}>
-          Present this pass for verification. Brightness is raised while this screen is open to help scanners read the
-          code.
-        </AppText>
-      </ScrollView>
-    </SafeAreaView>
+          <AppText variant="caption" style={[styles.disclaimer, { color: colors.subtle }]}>
+            Brightness is raised on mobile while this screen is open to help scanners read the code.
+          </AppText>
+        </ScrollView>
+
+        <BottomSheet isVisible={barcodeOpen} onClose={() => setBarcodeOpen(false)}>
+          <AppText variant="h3" weight="bold" style={{ color: colors.text, marginBottom: 12 }}>
+            Member barcode
+          </AppText>
+          <DigitalIdBarcodeDetails digitalId={digitalId} />
+          <View style={[styles.barcodeIsland, { borderColor: colors.border, marginTop: 16 }]}>
+            <Code128BarcodeSvg value={digitalId.barcodeValue} height={52} barWidth={1.2} />
+          </View>
+        </BottomSheet>
+      </SafeAreaView>
     </WidgetPageShell>
   );
 }
@@ -213,107 +124,40 @@ const styles = StyleSheet.create({
   scroll: {
     paddingHorizontal: 16,
     paddingBottom: 32,
-    alignItems: 'center',
   },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  badgeShell: {
-    borderRadius: 28,
-    overflow: 'hidden',
+  contentRow: {
+    alignItems: 'center',
   },
-  gradientPad: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
-  },
-  orgRow: {
+  contentRowWide: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  orgKicker: {
-    letterSpacing: 1.2,
-    flex: 1,
-    paddingRight: 8,
-  },
-  identityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
-  avatarRing: {
-    borderRadius: 999,
-    overflow: 'hidden',
-  },
-  avatarImg: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-  },
-  avatarPlaceholder: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'center',
+    gap: 24,
   },
-  identityText: {
+  passColumn: {
+    alignItems: 'center',
+  },
+  sideColumn: {
     flex: 1,
-    minWidth: 0,
-  },
-  scanPanel: {
-    marginTop: 4,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-    alignItems: 'stretch',
-  },
-  segmentWrap: {
-    width: '100%',
-    marginBottom: 4,
-  },
-  codeSwitchArea: {
-    minHeight: 320,
-    width: '100%',
-  },
-  codeTabInner: {
-    width: '100%',
-    alignItems: 'center',
-    paddingTop: 8,
-  },
-  scanKicker: {
-    letterSpacing: 0.8,
-    marginBottom: 10,
-  },
-  codeIsland: {
-    padding: 14,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    marginTop: 4,
-    shadowColor: '#000',
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
-  },
-  barcodeIsland: {
-    width: '100%',
-    maxWidth: '100%',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    marginTop: 4,
-    shadowColor: '#000',
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
+    maxWidth: 360,
+    minWidth: 280,
+    paddingTop: 0,
   },
   disclaimer: {
     marginTop: 20,
     textAlign: 'center',
     lineHeight: 18,
     paddingHorizontal: 12,
+    maxWidth: 420,
+    alignSelf: 'center',
+  },
+  barcodeIsland: {
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
   },
 });

@@ -304,10 +304,42 @@ public class UserService : IUserService
 
         user.IsTwoFactorEnabled = request.IsTwoFactorEnabled;
 
+        if (!request.IsTwoFactorEnabled)
+            ClearTwoFactorPendingFields(user);
+
         _uow.Repository<User>().Update(user);
         await _uow.CompleteAsync();
 
         return new ServiceResponse<string>(true, "Security settings updated");
+    }
+
+    public async Task<ServiceResponse<string>> ChangePasswordAsync(ChangePasswordRequest request)
+    {
+        var userId = _userContext.UserId;
+        var user = await _uow.Repository<User>().GetByIdAsync(userId);
+        if (user == null)
+            return new ServiceResponse<string>(false, null, new AppError(ErrorCodes.NotFound, "User not found"));
+
+        if (!BCrypt.Net.BCrypt.Verify(request.OldPassword, user.PasswordHash))
+            return new ServiceResponse<string>(false, null, new AppError(ErrorCodes.InvalidInput, "Current password is incorrect."));
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        user.PasswordResetToken = null;
+        user.PasswordResetTokenExpires = null;
+        user.PasswordResetTokenPurpose = null;
+        user.PasswordResetTokenPurpose = null;
+
+        var refreshTokens = await _uow.Repository<RefreshToken>()
+            .GetQueryable()
+            .Where(t => t.UserId == userId)
+            .ToListAsync();
+        foreach (var token in refreshTokens)
+            token.IsRevoked = true;
+
+        _uow.Repository<User>().Update(user);
+        await _uow.CompleteAsync();
+
+        return new ServiceResponse<string>(true, "Password updated successfully.");
     }
 
     public async Task<ServiceResponse<string>> SoftDeleteMyAccountAsync()
@@ -339,6 +371,10 @@ public class UserService : IUserService
         user.CNP = null;
         user.PasswordResetToken = null;
         user.PasswordResetTokenExpires = null;
+        user.PasswordResetTokenPurpose = null;
+        user.TwoFactorPendingSessionToken = null;
+        user.TwoFactorCode = null;
+        user.TwoFactorCodeExpires = null;
         user.PreferencesJson = null;
         user.ThemePreference = "system";
         user.LanguagePreference = "en";
@@ -467,5 +503,12 @@ public class UserService : IUserService
         {
             return empty;
         }
+    }
+
+    private static void ClearTwoFactorPendingFields(User user)
+    {
+        user.TwoFactorPendingSessionToken = null;
+        user.TwoFactorCode = null;
+        user.TwoFactorCodeExpires = null;
     }
 }

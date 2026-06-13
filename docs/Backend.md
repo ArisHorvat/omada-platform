@@ -4,7 +4,7 @@
 
 **Quick start:** [`Configuration.md`](Configuration.md) · **Run:** `cd src/backend/Omada.Api` → copy `.env.example` → `.env` → `dotnet run` → Swagger at `http://localhost:5069/swagger`
 
-**See also:** [`Architecture.md`](Architecture.md) · [`Frontend.md`](Frontend.md) · [`WebSpider.md`](WebSpider.md)
+**See also:** [`Architecture.md`](Architecture.md) · [`Frontend.md`](Frontend.md) · [`WebSpider.md`](WebSpider.md) · [`AccountSecurity.md`](AccountSecurity.md) · [`CurriculumOfferings.md`](CurriculumOfferings.md) · [`Coursework.md`](Coursework.md) · [`Grades.md`](Grades.md)
 
 ---
 
@@ -24,7 +24,7 @@ All feature work happens in **`Omada.Api`** (~444 source files, .NET 8).
 ```text
 ┌──────────────┐     ┌──────────────┐     ┌─────────────────┐     ┌────────────┐
 │ Controllers  │ ──▶ │  Services    │ ──▶ │ Repositories /  │ ──▶ │ SQL Server │
-│  (23 total)  │     │  (~31 svcs)  │     │ DbContext       │     │            │
+│  (25 total)  │     │  (~33 svcs)  │     │ DbContext       │     │            │
 └──────┬───────┘     └──────┬───────┘     └─────────────────┘     └────────────┘
        │                    │
        ▼                    ▼
@@ -41,6 +41,8 @@ Entity → Data/Configurations → Service → Controller → DTO/Validator → 
 
 **API responses:** Always `ServiceResponse<T>` with `AppError` on failure — never invent other envelopes.
 
+**EF Core concurrency:** A scoped **`ApplicationDbContext`** is not thread-safe. Do not run parallel queries on the same instance (`Task.WhenAll` over one injected `_context`). For parallel per-domain work, use **`IServiceScopeFactory.CreateAsyncScope()`** and resolve a fresh context per task — see **Universal search** below and **`SearchService`**.
+
 ---
 
 ## 📁 `Omada.Api` folder map
@@ -52,7 +54,7 @@ Omada.Api/
 ├── 📄 .env.example            Secrets template (gitignored .env)
 │
 ├── 🧩 Abstractions/           Cross-cutting contracts (5 files)
-├── 🌐 Controllers/            23 HTTP controllers
+├── 🌐 Controllers/            25 HTTP controllers
 ├── ⚙️ Services/               Business logic (~31 services)
 │   ├── Interfaces/
 │   └── Floorplan/             Roboflow AI extractor
@@ -85,25 +87,25 @@ Omada.Api/
 
 ---
 
-## 🌐 Controllers/ (23 controllers)
+## 🌐 Controllers/ (25 controllers)
 
 Thin HTTP layer — business logic lives in services. No broad try/catch (use exception middleware).
 
 | Controller | Route | Primary services | Widget(s) |
 |------------|-------|------------------|-----------|
-| 🔑 `AuthController` | `api/Auth` | `AuthService` | — (public + auth) |
+| 🔑 `AuthController` | `api/Auth` | `AuthService` | — (public + auth: login, refresh, join, **forgot/reset password**, **verify/resend 2FA**) |
 | 🏢 `OrganizationsController` | `api/Organizations` | `OrganizationService` | — |
 | 🛡️ `OrganizationAdminController` | `api/Organizations/current` | `OrganizationAdminService` | `admin` |
 | 🌐 `SuperAdminController` | `api/super-admin` | `OrganizationService`, `AuditLogService` | `super-admin` |
 | 📋 `AdminController` | `api/Admin` | `OrganizationAdminService` | `admin` |
-| 👤 `UsersController` | `api/Users` | `UserService` | `users`, `profile` |
+| 👤 `UsersController` | `api/Users` | `UserService` | `users`, `profile` — **change password**, **security (2FA toggle)**, export, delete |
 | 🔍 `SearchController` | `api/Search` | `SearchService` | permission-scoped |
 | 👥 `GroupsController` | `api/Groups` | `GroupService` | `groups` |
 | 📅 `ScheduleController` | `api/Schedule` | `ScheduleService` | `schedule` |
 | 🏷️ `EventTypesController` | `api/EventTypes` | `EventTypeService` | `schedule` |
 | 📰 `NewsController` | `api/News` | `NewsService` | `news` |
-| ✅ `TasksController` | `api/Tasks` | `TaskService` | `tasks` |
-| 📊 `GradesController` | `api/Grades` | `GradeService` | `grades` |
+| ✅ `TasksController` | `api/Tasks` | `TaskService` | `tasks` — personal tasks + **coursework batches**, `PATCH /submission` (View), batch grade (Edit) |
+| 📊 `GradesController` | `api/Grades` | `GradeService` | Formal transcript — `grades` widget (`/me`, admin CRUD) |
 | 📋 `AttendanceController` | `api/Attendance` | `AttendanceService` | `attendance` |
 | 💬 `ChatController` | `api/organizations/{orgId}/chat` | `ChatService` | `chat` |
 | 🚪 `RoomsController` | `api/Rooms` | `RoomService` | `rooms` |
@@ -113,7 +115,10 @@ Thin HTTP layer — business logic lives in services. No broad try/catch (use ex
 | 📎 `FilesController` | `api/Files` | File storage | — |
 | 🪪 `DigitalIdController` | `api/DigitalId` | `DigitalIdService` | `digital-id` |
 | 🕷️ `WebSpiderController` | `api/web-spider` | `WebSpiderAdminService`, `SpiderSyncRunService` | `admin` |
-| 🎨 `ToolsController` | `api/Tools` | `ColorExtractionService` | — (registration) |
+| 🎨 `ToolsController` | `api/Tools` | `ColorExtractionService` | `POST extract-colors` — multipart `file`; used by register + branding workspace |
+| 📚 `OfferingPackagesAdminController` | `api/Organizations/current/offering-packages` | `CourseOfferingPackageService` | **Org Admin** — curriculum packages, apply/revert |
+| 🎓 `CourseOfferingsAdminController` | `api/Organizations/current/periods/{periodId}/offerings` | `CourseOfferingService` | **Org Admin** for CRUD; **`tasks`** View/Edit for **grade-plan** on teaching team |
+| 🎓 `OfferingsController` | `api/Offerings` | `CourseOfferingService`, **`GradebookService`** | `tasks` View — periods, assignable, my enrollments; **`tasks` Edit** — gradebook + student breakdown |
 
 ---
 
@@ -121,22 +126,27 @@ Thin HTTP layer — business logic lives in services. No broad try/catch (use ex
 
 | Service | Responsibility |
 |---------|----------------|
-| 🔑 `AuthService` | Login, tokens, refresh, org switch, join via invite |
-| 👤 `UserService` | Profile, `WidgetAccess`, directory |
+| 🔑 `AuthService` | Login, tokens, refresh, org switch, join via invite, **forgot/reset password**, **email OTP 2FA** (login challenge + verify/resend) |
+| 👤 `UserService` | Profile, `WidgetAccess`, directory, **change password**, **security settings (2FA toggle)**, export, delete |
 | 🏢 `OrganizationService` | Org CRUD, registration, SuperAdmin list/delete |
 | 🛡️ `OrganizationAdminService` | Current-org admin: settings, members, roles, periods, widgets |
+| 📚 `CourseOfferingPackageService` | Curriculum packages: CRUD, save items, apply/revert to period |
+| 🎓 `CourseOfferingService` | Term offerings, enrollments, cohort/program enroll, rollover |
+| 📊 `GradebookService` | Teacher roster + per-student coursework breakdown (1–10 scale) |
 | 📝 `AuditLogService` | Admin audit append/query (org + platform) |
 | 🔐 `PermissionService` | Role ↔ widget permissions |
-| 🔍 `SearchService` | Universal search with widget access checks |
-| 👥 `GroupService` | Groups and members |
-| 📧 `EmailService` | Invitation emails (**mock logger today**) |
+| 🔍 `SearchService` | Universal search with widget access checks; **`IServiceScopeFactory`** — separate scoped **`ApplicationDbContext`** per result bucket |
+| 👥 `GroupService` | Hierarchical groups, type catalog, membership, assignable picker, departments |
+| 📧 `EmailService` | Brevo transactional email — invites, **password reset**, **2FA sign-in codes** (console log when Brevo unset) |
 | 🎨 `ColorExtractionService` | Logo → color palette (ImageSharp) |
 | 📅 `ScheduleService` | Calendar events, attendance, busy times |
 | 🏷️ `EventTypeService` | Per-org event types |
 | 📰 `NewsService` | News items and read state |
-| ✅ `TaskService` | Task items |
+| ✅ `TaskService` | Task items, assignment batches, submissions list, student **`PATCH` submission**, teaching-team grade updates |
+| 📐 `OfferingGradePlanService` | Per-offering grade categories — **host-only** save |
+| 🔐 `OfferingTeachingAuthorization` | Host / instructor / org-admin checks for coursework |
 | 📊 `GradeService` | Grades + admin CRUD |
-| 📋 `AttendanceService` | My attendance + admin records |
+| 📋 `AttendanceService` | My attendance + admin records; **`RecordMemberAttendanceAsync`** (staff scan follow-up / manual roll) |
 | 💬 `ChatService` | Messages + SignalR notify |
 | 🚪 `RoomService` | Rooms, bookings, search, amenities |
 | 🗺️ `MapService` | Buildings, floors, pins |
@@ -151,10 +161,21 @@ Thin HTTP layer — business logic lives in services. No broad try/catch (use ex
 | 🔗 `SpiderUrlResolver` | Org URLs from DB, appsettings fallback |
 | 🎯 `ScrapedEntityResolutionService` | Host/room resolution for scraped rows |
 | ✨ `GeminiService` | Optional generative fallback for spider |
-| 🪪 `DigitalIdService` | Short-lived QR JWT |
-| 🧩 `WidgetRegistry` | Dashboard widget catalog (core vs configurable) |
+| 🪪 `DigitalIdService` | Member pass (`DigitalIdDto`), external `validate`, in-app staff `scan` |
+| 🧩 `WidgetRegistry` | Widget metadata: core shell, always-on (schedule/tasks/digital-id), org-catalog toggles, org-type audience |
 
-**Infrastructure helper:** `OrganizationWidgetKeys` — parse/filter org enabled widget keys.
+**Infrastructure helper:** `OrganizationWidgetKeys` — parse/filter catalog keys, merge always-on widgets, org-type audience (`MatchesAudience`), role permission eligibility (`IsPermissionAllowedForOrg`).
+
+**Catalog tiers (`WidgetRegistry`):**
+
+| Flag | Meaning | Examples |
+|------|---------|----------|
+| `IsCoreFeature` | Platform shell; hidden from catalog/role toggles | profile, settings, admin |
+| `IsAlwaysEnabled` | Always in effective enabled set; not in catalog toggles | schedule, tasks, digital-id |
+| `IsInOrgCatalog` | Admin can enable/disable org-wide | chat, news, map, rooms, … |
+| `Audience` | University / corporate / all | grades · documents · shared (coursework = always-on **`tasks`**) |
+
+Removed from registry (not member widgets): **events**, **transport**, **finance**. **Groups**: role permissions + admin API only (`IsInOrgCatalog: false`).
 
 Typed `HttpClient` for web spider, Gemini, and Roboflow.
 
@@ -180,6 +201,7 @@ All inherit **`BaseEntity`**: `Id`, `CreatedAt`, `UpdatedAt`, `IsDeleted`. Mappi
 |------|----------|
 | 🏢 Tenancy | `Organization`, `User`, `OrganizationMember`, `Role`, `RolePermission`, `RefreshToken` |
 | 🛡️ Admin | `OrganizationPeriod`, `AuditLog` |
+| 📚 Offerings | `CourseOfferingPackage`, `CourseOfferingPackageProgram`, `CourseOfferingPackageItem`, `CourseOfferingPackageItemProgram`, `CourseOffering`, `OfferingEnrollment` |
 | 👥 Groups | `Group`, `GroupMember` |
 | 📅 Schedule | `Event`, `EventOverride`, `EventAssociation`, `EventAttendance`, `EventType` |
 | 📰 Content | `NewsItem`, `UserNewsRead`, `TaskItem`, `Grade`, `Message` |
@@ -187,7 +209,7 @@ All inherit **`BaseEntity`**: `Id`, `CreatedAt`, `UpdatedAt`, `IsDeleted`. Mappi
 | 🕷️ Spider | `ScrapedClassEvent`, `SpiderSyncRun`, `SpiderSyncKind`, `SpiderSyncStatus` |
 | 🔧 Infra | `BaseEntity`, `IOrganizationScoped`, `Enums.cs` |
 
-**Organization admin fields:** `EnabledWidgetKeysJson`, `OnboardingStep`, `SpiderSchedulePageUrl`, `SpiderNewsStartUrl`, `IsActive`, `OrganizationType`, `InviteCode`
+**Organization admin fields:** `EnabledWidgetKeysJson`, `OnboardingStep`, **`OnboardingCompletedStepsJson`**, `SpiderSchedulePageUrl`, `SpiderNewsStartUrl`, `IsActive`, `OrganizationType`, `InviteCode`
 
 **No org filter on:** `Organization`, `User`, `OrganizationMember`, `RefreshToken`
 
@@ -207,7 +229,7 @@ All inherit **`BaseEntity`**: `Id`, `CreatedAt`, `UpdatedAt`, `IsDeleted`. Mappi
 
 ## 📋 DTOs/ (18 subfolders)
 
-`Attendance`, `Auth`, `Chat`, `Common`, `DigitalId`, `Files`, `Grades`, `Groups`, `Import`, `Maps`, `News`, `Organizations`, `Rooms`, `Schedule`, `Scraping`, `Search`, `Tasks`, `Users`
+`Attendance`, `Auth`, `Chat`, `Common`, `DigitalId`, `Files`, `Grades`, `Groups`, `Import`, `Maps`, `News`, `Offerings`, `Organizations`, `Rooms`, `Schedule`, `Scraping`, `Search`, `Tasks`, `Users`
 
 - **Requests** → FluentValidation in `Validators/`
 - **Responses** → `[Required]` on always-present fields (OpenAPI / NSwag)
@@ -219,7 +241,7 @@ All inherit **`BaseEntity`**: `Id`, `CreatedAt`, `UpdatedAt`, `IsDeleted`. Mappi
 | Area | Contents |
 |------|----------|
 | `Configuration/` | `.env` loading (`DotEnvBootstrap`) |
-| `Constants/` | `WidgetKeys`, `RoleNames` — align with mobile |
+| `Constants/` | `WidgetKeys`, `RoleNames` (`Admin`, `Member`, `Unassigned`), `RoleResolution` — align with mobile |
 | `Security/` | Tenant accessor, user context, permission handler |
 | `Middleware/` | `ExceptionHandlingMiddleware` |
 | `Hangfire/` | `ScheduleSyncJobs`, dashboard filter |
@@ -227,6 +249,8 @@ All inherit **`BaseEntity`**: `Id`, `CreatedAt`, `UpdatedAt`, `IsDeleted`. Mappi
 | `Options/` | Roboflow, Digital ID, env fallbacks |
 | `Grading/` | `GradePointCalculator` |
 | Invite helpers | `OrganizationInviteCodeGenerator`, `InviteLinkBuilder`, `InviteEmailTemplates` |
+| Onboarding | **`OrganizationOnboardingProgress.cs`** — step ids in **`OnboardingCompletedStepsJson`** |
+| Widget catalog | **`OrganizationWidgetKeys.cs`** — **`null` JSON** = legacy all catalog enabled; **`"[]"`** = no optional widgets (new registrations) |
 
 ---
 
@@ -261,22 +285,62 @@ dotnet ef database update
 - JWT includes **`OrganizationId`**; `SwitchOrg` re-issues token
 - **SuperAdmin** can enter any **active** org without membership
 - Registration creates org + admin + roles + widgets + invite code in one transaction
-- **`GET /api/Organizations/invite/{code}`** — public preview before join
-- **`POST /api/Auth/join`** — register or attach account via invite code
+
+**Invite preview & join**
+
+| Endpoint | Auth | Purpose |
+|----------|------|---------|
+| `GET /api/Organizations/invite/{code}` | Public | Preview org (+ email-specific hints when `email` query provided) |
+| `GET /api/Auth/invite/{code}/preview` | Bearer | Preview for logged-in user (pending invite, already member) |
+| `POST /api/Auth/join` | Public | Register new user for email invite (returns org name + email, no tokens) |
+| `POST /api/Auth/join/current-user` | Bearer | Open code join → `JoinWithCodeResultDto` (`PendingApproval` \| `Joined` + optional session) |
+| `GET /api/Auth/invite/pending` | Bearer | Email invites awaiting accept (excludes code-approval requests) |
+| `POST /api/Auth/invite/accept` | Bearer | Activate email invite membership |
+| `POST /api/Auth/invite/decline` | Bearer | Remove pending email invite |
+
+**`OrganizationMember` flags**
+
+| `IsActive` | `RequiresAdminApproval` | Meaning |
+|------------|-------------------------|---------|
+| false | false | Email invite sent — waiting for user accept |
+| false | true | User submitted org code — waiting for admin approve + role |
+| true | false | Active member |
+
+Migration: **`RequiresAdminApproval`** on `OrganizationMembers`.
+
+**Account security** — full reference: [`AccountSecurity.md`](AccountSecurity.md)
+
+| Flow | Endpoint | Notes |
+|------|----------|-------|
+| Change password (logged in) | `POST /api/Users/me/change-password` | Verifies current password; revokes refresh tokens |
+| Forgot password | `POST /api/Auth/forgot-password` | Generic response (no enumeration); emails reset link |
+| Reset password | `POST /api/Auth/reset-password` | Token purpose must not be `invite`; revokes refresh tokens |
+| 2FA at sign-in | `POST /api/Auth/login` → `verify-2fa` / `resend-2fa` | When `IsTwoFactorEnabled`: 6-digit email code, 10 min |
+| 2FA toggle | `PUT /api/Users/security` | Sets `IsTwoFactorEnabled`; clears pending challenge when off |
+
+**User fields:** `PasswordResetTokenPurpose` (`invite` \| `reset`), `TwoFactorPendingSessionToken`, `TwoFactorCode`, `TwoFactorCodeExpires`. **Migrations:** `AddPasswordResetTokenPurpose`, `AddTwoFactorLoginChallenge` (applied on API startup).
+
+**Reset links:** `{AppConfig:PublicAppUrl}/reset-password?email=&token=` — set LAN Expo URL on device testing.
 
 ### 🛡️ Organization admin (`/api/Organizations/current`)
 
 | Area | Endpoints |
 |------|-----------|
-| ⚙️ Settings | `GET` / `PUT` — name, branding, type, active, onboarding |
-| 👥 Members | `GET members`, `POST members/invite`, `PUT members/{userId}` |
-| 🔐 Roles | CRUD + `PUT roles/{id}/permissions` |
+| ⚙️ Settings | `GET` / `PUT` — name, short name, branding colors/logo, type, active, onboarding (admin UI: no email-domain editor) |
+| 👥 Members | `GET members` (`?roleId=`), `POST members/invite`, `PUT members/{userId}`, `DELETE members/{userId}` |
+| 🔐 Roles | CRUD + `PUT roles/{id}/permissions`; **`DELETE`** reassigns members to holding role (see below) |
 | 📅 Periods | CRUD academic/operational periods |
-| 🧩 Widgets | `PUT enabled-widgets` — org-wide catalog |
+| 🧩 Widgets | `PUT enabled-widgets` — org-wide catalog (toggleable keys only; always-on widgets merged server-side) |
 | 📝 Audit | `GET audit-logs` — paginated admin actions |
 | 🔗 Invite | `POST invite-code/regenerate` |
 
-Widget catalog metadata: **`GET /api/Admin/widgets`**
+Widget catalog metadata: **`GET /api/Admin/widgets`** — returns assignable widgets for the current org type; DTO includes `isAlwaysEnabled`, `isInOrgCatalog`, `isEnabledForOrganization`.
+
+**Role delete & holding roles**
+
+- **`RoleResolution`** (`Infrastructure/RoleResolution.cs`) — shared join/default logic and holding-role selection.
+- **`RoleNames`** — `Admin` (protected), `Member`, `Unassigned` (holding bucket when custom roles are removed).
+- On **`DELETE .../roles/{id}`**: if members are assigned, move them to existing **Unassigned** → else **Member** → else **create Unassigned** (or **Member** when deleting Unassigned). Uses **`ExecuteUpdateAsync`** on `OrganizationMembers`. Does **not** reassign to other custom roles. **Admin** role cannot be deleted. Audit action: `role.delete`.
 
 ### 📅 Schedule vs web spider
 
@@ -287,12 +351,114 @@ Widget catalog metadata: **`GET /api/Admin/widgets`**
 
 > ⚠️ These are **separate models** — do not confuse them!
 
-### 🗺️ Map & floorplans
+### 📅 Organization periods (`GET/POST/PUT/DELETE .../periods`)
 
-- Room/pin coordinates: normalized **`[0..1]`** on floorplan images
-- Upload → `FloorplanProcessingService` → **`RoboflowFloorplanGeoJsonExtractor`**
-- Configure **`ROBOFLOW_API_KEY`** in `.env`
-- Entrance pins: `PinType.Exit` with label `"Entrance"`
+Per-org **reporting windows** (`OrganizationPeriod`: name, start/end, optional `IsCurrent`). Same model for universities and corporates — UI copy differs on mobile (`getPeriodCopy`), not the schema.
+
+| Usage today | How |
+|-------------|-----|
+| Org admin **`/periods-workspace`** | CRUD + **set current** via **`updatePeriod`**; onboarding step 7 |
+| Member Grades widget | May group/filter by **`Grade.semester`** string (free text, not FK to period) |
+| Schedule / attendance | Not wired to periods yet |
+
+Only one period may be **`IsCurrent`** per org (`OrganizationAdminService.ClearCurrentPeriodFlagAsync`). Grades/attendance **admin workspaces** are not routed in mobile org admin — periods are standalone org config.
+
+### 👥 Groups (`/api/Groups`)
+
+Hierarchical org structure for universities (faculty → … → class) and corporates (division → … → squad). **`Group`**: `Name`, `Type` (lowercase key), `ParentGroupId`, optional `ManagerId`, `ScheduleConfig`. **`GroupMember`**: user ↔ group link with optional `RoleInGroup`.
+
+| Endpoint | Permission | Notes |
+|----------|------------|-------|
+| `GET tree` | groups **View** | Nested **`GroupTreeNodeDto`** for admin tree |
+| `GET types` | groups **View** | Org-type catalog from **`GroupTypes.GetCatalog`** |
+| `GET {id}` | groups **View** | Detail + direct child summaries |
+| `POST` / `PUT {id}` | groups **Edit** | Validate parent (no cycles); normalize type |
+| `DELETE {id}` | groups **Admin** | Recursive soft-delete of group + descendants |
+| `GET {id}/members` | groups **View** | Paged + optional `q` search |
+| `POST {id}/members` | groups **Edit** | Bulk add |
+| `DELETE {id}/members/{userId}` | groups **Edit** | Remove one |
+| `POST members/move` | groups **Edit** | Bulk move between groups |
+| `GET assignable` | authenticated | Membership-scoped picker (schedule, grades, …) |
+| `GET departments` | users **View** | Top-level department-like groups for directory |
+
+**Constants:** **`Infrastructure/Constants/GroupTypes.cs`** — `UniversityCatalog` vs `CorporateCatalog`; hierarchy is always **`ParentGroupId`**, not type alone.
+
+**Service:** `GroupService` — tenant-scoped via **`IUserContext`**; invalidate-friendly reads for admin UI.
+
+### 🏷️ Event types (`/api/EventTypes`)
+
+Per-org categories (Lecture, Lab, Meeting, …) with **`Name`** + **`ColorHex`**. Used by schedule events and room booking filters.
+
+| Method | Permission | Notes |
+|--------|------------|-------|
+| `GET` | schedule **View** | List for org |
+| `POST` / `PUT` | schedule **Edit** | `CreateEventTypeRequest` — name max 50, valid hex |
+| `DELETE` | schedule **Admin** | Fails with **`IN_USE`** if referenced |
+
+**References (delete blocked via `OnDelete(Restrict)`):**
+
+- **`Event.EventTypeId`** — agenda color falls back: event `ColorHex` → type color → default blue
+- **`RoomAllowedEventTypes`** — M2M; rooms only appear for compatible types in **`EventModal`** / **`RoomBookingModal`**
+
+**Service:** `EventTypeService` — duplicate name check per org on create.
+
+### 🗺️ Map, locations, floorplans & rooms
+
+**Hierarchy:** `Building` (location) → `Floor` (level) → `Room`; optional **`Floorplan`** (1:1 per floor) with image + GeoJSON.
+
+| Layer | Storage | Consumer |
+|-------|---------|----------|
+| **Campus / outdoor** | `Building.Latitude`, `Building.Longitude` (WGS84) | Member campus map — markers only when both coords set |
+| **Indoor floorplan** | `Room.CoordinateX/Y`, `MapPin` — normalized **`[0..1]`** | Floorplan viewer, room overlays, entrance pins |
+
+**Admin API**
+
+- Building CRUD: **`BuildingsController`** / **`MapsController`** — name, address, short code, lat/lng.
+- Create floor: **`POST /api/buildings/{id}/floors`** — multipart **`LevelNumber`** + optional **`FloorplanFile`** (level without image allowed). **`MapService.CreateFloorForBuildingAsync`**.
+- Create room: **`POST /api/Rooms`** returns **`Ok(ServiceResponse)`** (HTTP **200**, not 201) — NSwag client expects 200.
+- Floorplan upload / GeoJSON: **`FloorplansController`** → **`FloorplanProcessingService`** → **`RoboflowFloorplanGeoJsonExtractor`** (requires **`ROBOFLOW_API_KEY`**).
+- Publish polygons: **`FloorplanGeoJsonRoomPublishParser`** → bookable **`Room`** rows; **`RoomAllowedEventTypes`** on floorplan Rooms tab.
+
+**Permissions:** building/floor → **`map`** widget; room list CRUD → **`rooms` Edit**; floorplan AI upload → **`map` Admin**.
+
+**Room admin (mobile/web):** **`/floorplan-workspace`** only — list rooms on levels without floorplan; floorplan editor for GeoJSON, pins, publish, and event types. No separate rooms admin route.
+
+Details: **`.cursor/rules/domain-map-rooms-admin.mdc`**
+
+### 🔍 Universal search
+
+Cross-widget org search for members — permission-scoped, grouped by domain.
+
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `GET /api/Search` — `[Authorize]` |
+| **Query** | `Q` (required), optional `Types[]`, `LimitPerType` (default 8, max 20), `Page`, `PageSize` |
+| **Buckets** | `users`, `rooms`, `news`, `tasks`, `schedule`, `groups`, `grades` (`DTOs/Search/SearchTypes.cs`) |
+| **Response** | `UniversalSearchResponse` → `SearchResultGroupDto[]` with `SearchHitDto` (`title`, `subtitle`, `imageUrl`, `route`) |
+| **Permissions** | Current org role widget access — only types with **view+** are searched; SuperAdmin bypass |
+| **Implementation** | **`SearchService`** — **`IServiceScopeFactory.CreateAsyncScope()`** per bucket so parallel domain queries never share one **`ApplicationDbContext`** (EF Core is not thread-safe) |
+
+**Mobile:** `searchApi.search` · hook **`useUniversalSearch`** · route **`/(app)/(modals)/search`** · dashboard **`SearchBar`** opens search modal.
+
+### 🪪 Digital ID
+
+- **Pass:** `GET /api/Users/me/digital-id` — `digital-id` View; `DigitalIdDto` with org branding + rotating `QrToken` (~60s JWT) + `barcodeValue`
+- **External validate:** `POST /api/DigitalId/validate` — anonymous; optional `X-Scanner-Key` when `DigitalIdOptions.ScannerApiKey` is set
+- **In-app staff scan:** `POST /api/DigitalId/scan` — `attendance` Edit or `digital-id` Edit → `DigitalIdScanResultDto`
+- **Attendance:** `POST /api/Attendance/record` — `RecordMemberAttendanceRequest`; staff marks another member present
+- **Options:** `DigitalIdOptions` — `TokenLifetimeSeconds`, `QrAudience`, `ScannerApiKey`
+- Details: [`DigitalId.md`](DigitalId.md) · rules **`domain-digital-id.mdc`**
+
+### 📚 Curriculum & course offerings (university)
+
+- **Packages:** `OfferingPackagesAdminController` at `/api/Organizations/current/offering-packages` — CRUD, `PUT .../items`, `POST .../apply/{periodId}`, `POST .../revert/{periodId}`
+- **Term offerings:** `CourseOfferingsAdminController` at `/api/Organizations/current/periods/{periodId}/offerings` — CRUD, enrollments, rollover, **`Credits`** on update
+- **Member gradebook:** `OfferingsController` — `GET .../gradebook`, `GET .../students/{userId}/grade-breakdown` (**`GradebookService`**, `tasks` Edit + teaching team)
+- **Services:** `CourseOfferingPackageService`, `CourseOfferingService`, **`GradebookService`**
+- **Permission:** Org **Admin** for offering CRUD; gradebook uses **`tasks` Edit** (not `grades` Edit)
+- **Apply:** creates offerings from package items; uses package program when item has none; `skipExistingNames` + `enrollLinkedPrograms`
+- **Revert:** soft-deletes term offerings matching package course names + enrollments
+- Full product + API reference: [`CurriculumOfferings.md`](CurriculumOfferings.md)
 
 ### 🕷️ Web spider
 
@@ -325,4 +491,8 @@ Widget catalog metadata: **`GET /api/Admin/widgets`**
 | [`Configuration.md`](Configuration.md) | Environment variables |
 | [`WebSpider.md`](WebSpider.md) | Crawling & sync |
 | [`Frontend.md`](Frontend.md) | Mobile client structure |
+| [`DigitalId.md`](DigitalId.md) | Pass, scanner, attendance |
+| [`CurriculumOfferings.md`](CurriculumOfferings.md) | Periods, curriculum packages, apply/revert |
+| [`Coursework.md`](Coursework.md) | Batches, turn-in, grading, grade plan, teaching authorization |
+| [`Grades.md`](Grades.md) | Coursework standing, transcript, credits, teacher gradebook |
 | [`../README.md`](../README.md) | Monorepo overview |

@@ -8,6 +8,7 @@ import { AppButton, AppText, ClayView, Icon, type IconName } from '@/src/compone
 import { PressClay } from '@/src/components/animations/PressClay';
 import { useThemeColors } from '@/src/hooks';
 import { BASE_WIDGETS } from '@/src/constants/widgets';
+import { adminWorkspaceScrollContent } from '@/src/screens/admin/styles/adminWorkspaceLayout';
 import { useWidgetsWorkspace } from './hooks/useWidgetsWorkspace';
 
 export default function WidgetsWorkspaceScreen() {
@@ -33,16 +34,16 @@ export default function WidgetsWorkspaceScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-        <PageContainer>
+        <PageContainer fullBleed>
           <ScreenHeader
             title="Widget catalog"
-            subtitle="Choose which features are available organization-wide. Role permissions still control who can access each enabled widget."
+            subtitle="Choose which optional features are available organization-wide. Schedule, tasks, and digital ID are always on. Role permissions still control who can access each feature."
           />
 
           {loading ? (
             <ActivityIndicator color={colors.primary} />
           ) : (
-            <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
+            <ScrollView contentContainerStyle={[adminWorkspaceScrollContent, { paddingBottom: insets.bottom + 24 }]}>
               {rows.map((row) => (
                 <PressClay key={row.key} onPress={() => toggleWidget(row.key)}>
                   <ClayView

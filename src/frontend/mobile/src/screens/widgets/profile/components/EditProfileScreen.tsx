@@ -75,7 +75,7 @@ export default function EditProfileScreen({ adminConsole = false }: { adminConso
   };
 
   return (
-    <WidgetPageShell>
+    <WidgetPageShell fullBleed={adminConsole}>
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <ScreenHeader
         title="Edit profile"

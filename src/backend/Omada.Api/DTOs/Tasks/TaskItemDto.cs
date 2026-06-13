@@ -31,18 +31,40 @@ public class TaskItemDto
 
     public Guid? ProjectId { get; set; }
 
-    /// <summary>Linked org group (typically subject, class, or project).</summary>
+    /// <summary>Linked org group (typically subject, class, or project) — legacy; prefer <see cref="OfferingId"/>.</summary>
     public Guid? SubjectId { get; set; }
 
+    public Guid? PeriodId { get; set; }
+
+    public Guid? OfferingId { get; set; }
+
+    public Guid? AssignmentBatchId { get; set; }
+
     public string? GroupName { get; set; }
+
+    public string? OfferingName { get; set; }
 
     public int? MaxScore { get; set; }
 
     public decimal? Weight { get; set; }
 
+    public Guid? GradeCategoryId { get; set; }
+
+    public string? GradeCategoryName { get; set; }
+
+    /// <summary>Parent category share of final grade.</summary>
+    public decimal? CategoryWeight { get; set; }
+
+    /// <summary>Effective share of final grade.</summary>
+    public decimal? EffectiveWeight { get; set; }
+
     public string? ReferenceUrl { get; set; }
 
+    public IReadOnlyList<TaskAttachmentDto> Materials { get; set; } = Array.Empty<TaskAttachmentDto>();
+
     public string? SubmissionUrl { get; set; }
+
+    public IReadOnlyList<TaskAttachmentDto> SubmissionAttachments { get; set; } = Array.Empty<TaskAttachmentDto>();
 
     public string? TeacherFeedback { get; set; }
 

@@ -40,5 +40,20 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
             .WithMany()
             .HasForeignKey(e => e.GroupId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne(e => e.Period)
+            .WithMany()
+            .HasForeignKey(e => e.PeriodId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne(e => e.Offering)
+            .WithMany()
+            .HasForeignKey(e => e.OfferingId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne(e => e.CohortGroup)
+            .WithMany()
+            .HasForeignKey(e => e.CohortGroupId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

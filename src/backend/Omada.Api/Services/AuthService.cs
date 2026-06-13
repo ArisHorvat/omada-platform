@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Omada.Api.Abstractions;
 using Omada.Api.Infrastructure;
+using Omada.Api.Infrastructure.Constants;
 using Omada.Api.DTOs.Auth;
 using Omada.Api.DTOs.Organizations;
 using Omada.Api.DTOs.Users;
@@ -10,6 +11,7 @@ using Omada.Api.Repositories.Interfaces;
 using Omada.Api.Services.Interfaces;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace Omada.Api.Services;
@@ -21,6 +23,7 @@ public class AuthService : IAuthService
     private readonly IConfiguration _configuration;
     private readonly IPublicMediaUrlResolver _mediaUrls;
     private readonly IEmailService _emailService;
+    private readonly IInviteLinkBuilder _inviteLinks;
     private readonly IHttpContextAccessor _httpContextAccessor;
 
     public AuthService(
@@ -29,6 +32,7 @@ public class AuthService : IAuthService
         IConfiguration configuration,
         IPublicMediaUrlResolver mediaUrls,
         IEmailService emailService,
+        IInviteLinkBuilder inviteLinks,
         IHttpContextAccessor httpContextAccessor)
     {
         _uow = uow;
@@ -36,47 +40,69 @@ public class AuthService : IAuthService
         _configuration = configuration;
         _mediaUrls = mediaUrls;
         _emailService = emailService;
+        _inviteLinks = inviteLinks;
         _httpContextAccessor = httpContextAccessor;
     }
 
     public async Task<ServiceResponse<LoginResponse>> LoginAsync(LoginRequest request)
     {
-        var user = (await _uow.Repository<User>().FindAsync(u => u.Email == request.Email)).FirstOrDefault();
+        var user = await FindUserByEmailAsync(request.Email);
         if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
-            return new ServiceResponse<LoginResponse>(false, null, new AppError(ErrorCodes.Unauthorized, "Invalid credentials"));
+            return new ServiceResponse<LoginResponse>(false, null, new AppError(ErrorCodes.Unauthorized, "Invalid email or password."));
 
-        var memberships = await _uow.Repository<OrganizationMember>().FindAsync(m => m.UserId == user.Id && m.IsActive);
-        var primary = memberships.FirstOrDefault();
-        if (primary == null)
-        {
-            var pendingMemberships = (await _uow.Repository<OrganizationMember>()
-                .FindAsync(m => m.UserId == user.Id && !m.IsActive)).ToList();
-            if (pendingMemberships.Any())
-            {
-                primary = pendingMemberships.OrderByDescending(m => m.JoinedAt).First();
-            }
-            else
-            {
-                return new ServiceResponse<LoginResponse>(false, null, new AppError(ErrorCodes.Forbidden, "No organization."));
-            }
-        }
+        var membership = await ResolvePrimaryMembershipAsync(user);
+        if (!membership.IsSuccess || membership.Data == null)
+            return new ServiceResponse<LoginResponse>(false, null, membership.Error ?? new AppError(ErrorCodes.Forbidden, "No organization."));
 
-        var role = await _uow.Repository<Role>().GetByIdAsync(primary.RoleId);
-        var roleName = role?.Name ?? "User";
+        if (user.IsTwoFactorEnabled)
+            return await BeginTwoFactorLoginAsync(user);
 
-        var jwtToken = GenerateJwtToken(user, primary.OrganizationId, roleName);
-        var refreshToken = await CreateRefreshTokenAsync(user.Id);
+        return await IssueLoginResponseAsync(user, membership.Data.OrganizationId, membership.Data.RoleName);
+    }
 
-        var response = new LoginResponse
-        {
-            AccessToken = jwtToken,
-            RefreshToken = refreshToken.Token, // Send it to frontend
-            User = new UserDto { Id = user.Id, Email = user.Email, FirstName = user.FirstName, LastName = user.LastName },
-            OrganizationId = primary.OrganizationId,
-            Role = roleName
-        };
+    public async Task<ServiceResponse<LoginResponse>> VerifyTwoFactorAsync(VerifyTwoFactorRequest request)
+    {
+        var sessionToken = request.TwoFactorSessionToken.Trim();
+        var user = (await _uow.Repository<User>().FindAsync(u => u.TwoFactorPendingSessionToken == sessionToken)).FirstOrDefault();
 
-        return new ServiceResponse<LoginResponse>(true, response);
+        if (user == null || !user.IsTwoFactorEnabled)
+            return new ServiceResponse<LoginResponse>(false, null, new AppError(ErrorCodes.InvalidInput, "This sign-in session expired. Sign in again."));
+
+        if (user.TwoFactorCodeExpires == null || user.TwoFactorCodeExpires < DateTime.UtcNow)
+            return new ServiceResponse<LoginResponse>(false, null, new AppError(ErrorCodes.InvalidInput, "This code expired. Request a new one."));
+
+        if (!IsValidTwoFactorCode(user.TwoFactorCode, request.Code))
+            return new ServiceResponse<LoginResponse>(false, null, new AppError(ErrorCodes.InvalidInput, "Invalid verification code."));
+
+        ClearTwoFactorPendingFields(user);
+        _uow.Repository<User>().Update(user);
+        await _uow.CompleteAsync();
+
+        var membership = await ResolvePrimaryMembershipAsync(user);
+        if (!membership.IsSuccess || membership.Data == null)
+            return new ServiceResponse<LoginResponse>(false, null, membership.Error ?? new AppError(ErrorCodes.Forbidden, "No organization."));
+
+        return await IssueLoginResponseAsync(user, membership.Data.OrganizationId, membership.Data.RoleName);
+    }
+
+    public async Task<ServiceResponse<string>> ResendTwoFactorCodeAsync(ResendTwoFactorRequest request)
+    {
+        var sessionToken = request.TwoFactorSessionToken.Trim();
+        var user = (await _uow.Repository<User>().FindAsync(u => u.TwoFactorPendingSessionToken == sessionToken)).FirstOrDefault();
+
+        if (user == null || !user.IsTwoFactorEnabled)
+            return new ServiceResponse<string>(false, null, new AppError(ErrorCodes.InvalidInput, "This sign-in session expired. Sign in again."));
+
+        var code = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
+        user.TwoFactorCode = code;
+        user.TwoFactorCodeExpires = DateTime.UtcNow.AddMinutes(TwoFactorConstants.CodeLifetimeMinutes);
+
+        _uow.Repository<User>().Update(user);
+        await _uow.CompleteAsync();
+
+        _ = _emailService.SendTwoFactorCodeEmailAsync(user.Email, user.FirstName, code);
+
+        return new ServiceResponse<string>(true, "A new verification code was sent to your email.");
     }
 
     public async Task<ServiceResponse<LoginResponse>> RefreshTokenAsync(RefreshTokenRequest request)
@@ -105,6 +131,7 @@ public class AuthService : IAuthService
 
         return new ServiceResponse<LoginResponse>(true, new LoginResponse
         {
+            RequiresTwoFactor = false,
             AccessToken = newJwt,
             RefreshToken = newRefreshToken.Token,
             OrganizationId = orgId,
@@ -177,6 +204,7 @@ public class AuthService : IAuthService
             var superAdminToken = GenerateJwtToken(user, request.OrganizationId, "SuperAdmin");
             return new ServiceResponse<LoginResponse>(true, new LoginResponse
             {
+                RequiresTwoFactor = false,
                 AccessToken = superAdminToken,
                 User = new UserDto
                 {
@@ -205,6 +233,7 @@ public class AuthService : IAuthService
 
         var response = new LoginResponse
         {
+            RequiresTwoFactor = false,
             AccessToken = token,
             User = new UserDto 
             { 
@@ -222,33 +251,71 @@ public class AuthService : IAuthService
 
     public async Task<ServiceResponse<string>> ForgotPasswordAsync(ForgotPasswordRequest request)
     {
-        var user = (await _uow.Repository<User>().FindAsync(u => u.Email == request.Email)).FirstOrDefault();
-        if (user == null) return new ServiceResponse<string>(true, "If the email exists, a reset link has been sent.");
+        var user = await FindUserByEmailAsync(request.Email);
+        if (user == null)
+            return new ServiceResponse<string>(true, "If the email exists, a reset link has been sent.");
 
-        user.PasswordResetToken = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+        var token = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+        user.PasswordResetToken = token;
         user.PasswordResetTokenExpires = DateTime.UtcNow.AddHours(1);
-        
+        user.PasswordResetTokenPurpose = PasswordResetTokenPurposes.PasswordReset;
+
         _uow.Repository<User>().Update(user);
         await _uow.CompleteAsync();
+
+        var resetLink = _inviteLinks.BuildPasswordResetLink(user.Email, token);
+        _ = _emailService.SendPasswordResetEmailAsync(user.Email, user.FirstName, resetLink);
 
         return new ServiceResponse<string>(true, "If the email exists, a reset link has been sent.");
     }
 
     public async Task<ServiceResponse<string>> ResetPasswordAsync(ResetPasswordRequest request)
     {
-        var user = (await _uow.Repository<User>().FindAsync(u => u.Email == request.Email)).FirstOrDefault();
-        
-        if (user == null || user.PasswordResetToken != request.Token || user.PasswordResetTokenExpires < DateTime.UtcNow)
-            return new ServiceResponse<string>(false, null, new AppError(ErrorCodes.InvalidInput, "Invalid or expired token."));
+        var user = await FindUserByEmailAsync(request.Email);
+        var token = request.Token.Trim();
+
+        if (user == null || !IsValidPasswordResetToken(user, token))
+            return new ServiceResponse<string>(false, null, new AppError(ErrorCodes.InvalidInput, "Invalid or expired reset link. Request a new one from the sign-in screen."));
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
         user.PasswordResetToken = null;
         user.PasswordResetTokenExpires = null;
-        
+        user.PasswordResetTokenPurpose = null;
+
+        var refreshTokens = await _uow.Repository<RefreshToken>()
+            .GetQueryable()
+            .Where(t => t.UserId == user.Id)
+            .ToListAsync();
+        foreach (var refreshToken in refreshTokens)
+            refreshToken.IsRevoked = true;
+
         _uow.Repository<User>().Update(user);
         await _uow.CompleteAsync();
 
         return new ServiceResponse<string>(true, "Password has been reset successfully.");
+    }
+
+    private async Task<User?> FindUserByEmailAsync(string email)
+    {
+        var normalized = email.Trim().ToLowerInvariant();
+        return (await _uow.Repository<User>().FindAsync(u => u.Email.ToLower() == normalized)).FirstOrDefault();
+    }
+
+    private static bool IsValidPasswordResetToken(User user, string token)
+    {
+        if (string.IsNullOrWhiteSpace(user.PasswordResetToken)
+            || user.PasswordResetTokenExpires == null
+            || user.PasswordResetTokenExpires < DateTime.UtcNow)
+            return false;
+
+        if (string.Equals(user.PasswordResetTokenPurpose, PasswordResetTokenPurposes.InviteSetup, StringComparison.Ordinal))
+            return false;
+
+        if (!string.IsNullOrEmpty(user.PasswordResetTokenPurpose)
+            && !string.Equals(user.PasswordResetTokenPurpose, PasswordResetTokenPurposes.PasswordReset, StringComparison.Ordinal))
+            return false;
+
+        return string.Equals(user.PasswordResetToken.Trim(), token, StringComparison.OrdinalIgnoreCase);
     }
 
     public async Task<ServiceResponse<JoinOrganizationResultDto>> JoinOrganizationAsync(JoinOrganizationRequest request)
@@ -279,7 +346,8 @@ public class AuthService : IAuthService
 
             if (existingMembership != null && !existingMembership.IsActive)
             {
-                var hasIncompleteSetup = !string.IsNullOrEmpty(existingUser.PasswordResetToken);
+                var hasIncompleteSetup = !string.IsNullOrEmpty(existingUser.PasswordResetToken)
+                    && !string.Equals(existingUser.PasswordResetTokenPurpose, PasswordResetTokenPurposes.PasswordReset, StringComparison.Ordinal);
                 if (hasIncompleteSetup)
                 {
                     if (!string.IsNullOrWhiteSpace(request.SetupToken))
@@ -299,6 +367,7 @@ public class AuthService : IAuthService
                 existingUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
                 existingUser.PasswordResetToken = null;
                 existingUser.PasswordResetTokenExpires = null;
+                existingUser.PasswordResetTokenPurpose = null;
                 _uow.Repository<User>().Update(existingUser);
 
                 existingMembership.IsActive = true;
@@ -526,10 +595,7 @@ public class AuthService : IAuthService
 
     // --- Helper Methods ---
 
-    private static Role? ResolveJoinRole(List<Role> roles) =>
-        roles.FirstOrDefault(r => r.Name.Equals("Member", StringComparison.OrdinalIgnoreCase))
-        ?? roles.FirstOrDefault(r => !r.Name.Equals("Admin", StringComparison.OrdinalIgnoreCase))
-        ?? roles.FirstOrDefault();
+    private static Role? ResolveJoinRole(List<Role> roles) => RoleResolution.ResolveJoinRole(roles);
 
     private Task<List<Role>> GetRolesForOrganizationAsync(Guid organizationId) =>
         _uow.Repository<Role>().GetQueryable()
@@ -560,6 +626,9 @@ public class AuthService : IAuthService
         if (string.IsNullOrWhiteSpace(user.PasswordResetToken))
             return new AppError(ErrorCodes.InvalidInput, "Sign in to accept this invite.");
 
+        if (string.Equals(user.PasswordResetTokenPurpose, PasswordResetTokenPurposes.PasswordReset, StringComparison.Ordinal))
+            return new AppError(ErrorCodes.InvalidInput, "Use the complete link from your invite email to set your password.");
+
         if (string.IsNullOrWhiteSpace(setupToken)
             || !string.Equals(user.PasswordResetToken, setupToken.Trim(), StringComparison.OrdinalIgnoreCase))
             return new AppError(ErrorCodes.InvalidInput, "Use the complete link from your invite email to set your password.");
@@ -577,6 +646,7 @@ public class AuthService : IAuthService
 
         return new ServiceResponse<LoginResponse>(true, new LoginResponse
         {
+            RequiresTwoFactor = false,
             AccessToken = jwt,
             RefreshToken = refresh.Token,
             OrganizationId = organizationId,
@@ -589,6 +659,85 @@ public class AuthService : IAuthService
                 LastName = user.LastName
             }
         });
+    }
+
+    private sealed class PrimaryMembership
+    {
+        public required Guid OrganizationId { get; init; }
+        public required string RoleName { get; init; }
+    }
+
+    private async Task<ServiceResponse<PrimaryMembership>> ResolvePrimaryMembershipAsync(User user)
+    {
+        var memberships = await _uow.Repository<OrganizationMember>().FindAsync(m => m.UserId == user.Id && m.IsActive);
+        var primary = memberships.FirstOrDefault();
+        if (primary == null)
+        {
+            var pendingMemberships = (await _uow.Repository<OrganizationMember>()
+                .FindAsync(m => m.UserId == user.Id && !m.IsActive)).ToList();
+            if (pendingMemberships.Any())
+                primary = pendingMemberships.OrderByDescending(m => m.JoinedAt).First();
+            else
+                return new ServiceResponse<PrimaryMembership>(false, null, new AppError(ErrorCodes.Forbidden, "No organization."));
+        }
+
+        var role = await _uow.Repository<Role>().GetByIdAsync(primary.RoleId);
+        var roleName = role?.Name ?? "User";
+
+        return new ServiceResponse<PrimaryMembership>(true, new PrimaryMembership
+        {
+            OrganizationId = primary.OrganizationId,
+            RoleName = roleName
+        });
+    }
+
+    private async Task<ServiceResponse<LoginResponse>> BeginTwoFactorLoginAsync(User user)
+    {
+        var sessionToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+        var code = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
+
+        user.TwoFactorPendingSessionToken = sessionToken;
+        user.TwoFactorCode = code;
+        user.TwoFactorCodeExpires = DateTime.UtcNow.AddMinutes(TwoFactorConstants.CodeLifetimeMinutes);
+
+        _uow.Repository<User>().Update(user);
+        await _uow.CompleteAsync();
+
+        _ = _emailService.SendTwoFactorCodeEmailAsync(user.Email, user.FirstName, code);
+
+        return new ServiceResponse<LoginResponse>(true, new LoginResponse
+        {
+            RequiresTwoFactor = true,
+            TwoFactorSessionToken = sessionToken,
+            User = new UserDto
+            {
+                Id = user.Id,
+                Email = user.Email,
+                FirstName = user.FirstName,
+                LastName = user.LastName
+            }
+        });
+    }
+
+    private static void ClearTwoFactorPendingFields(User user)
+    {
+        user.TwoFactorPendingSessionToken = null;
+        user.TwoFactorCode = null;
+        user.TwoFactorCodeExpires = null;
+    }
+
+    private static bool IsValidTwoFactorCode(string? storedCode, string submittedCode)
+    {
+        if (string.IsNullOrWhiteSpace(storedCode))
+            return false;
+
+        var normalized = submittedCode.Trim();
+        if (normalized.Length != TwoFactorConstants.CodeLength || !normalized.All(char.IsDigit))
+            return false;
+
+        return CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(storedCode),
+            Encoding.UTF8.GetBytes(normalized));
     }
 
     private string GenerateJwtToken(User user, Guid organizationId, string role)

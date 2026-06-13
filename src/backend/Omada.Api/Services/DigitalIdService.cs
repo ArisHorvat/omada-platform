@@ -9,7 +9,9 @@ using Omada.Api.Abstractions;
 using Omada.Api.Data;
 using Omada.Api.DTOs.DigitalId;
 using Omada.Api.DTOs.Users;
+using Omada.Api.Entities;
 using Omada.Api.Infrastructure;
+using Omada.Api.Infrastructure.Constants;
 using Omada.Api.Infrastructure.Options;
 using Omada.Api.Services.Interfaces;
 
@@ -65,12 +67,18 @@ public class DigitalIdService : IDigitalIdService
 
         var qrToken = CreateQrJwt(userId, orgId, now, expires);
 
+        var org = member.Organization;
         var dto = new DigitalIdDto
         {
             FullName = $"{user.FirstName} {user.LastName}".Trim(),
             RoleName = member.Role?.Name ?? "Member",
-            OrganizationName = member.Organization?.Name ?? string.Empty,
+            OrganizationName = org?.Name ?? string.Empty,
+            OrganizationShortName = org?.ShortName,
+            OrganizationLogoUrl = _mediaUrls.ToPublicUrl(string.IsNullOrEmpty(org?.LogoUrl) ? null : org.LogoUrl),
             OrganizationId = orgId,
+            PrimaryColor = org?.PrimaryColor ?? "#3b82f6",
+            SecondaryColor = org?.SecondaryColor ?? "#64748b",
+            TertiaryColor = org?.TertiaryColor ?? "#eab308",
             AvatarUrl = _mediaUrls.ToPublicUrl(string.IsNullOrEmpty(user.AvatarUrl) ? null : user.AvatarUrl),
             QrExpiresAtUtc = expires,
             QrToken = qrToken,
@@ -148,6 +156,77 @@ public class DigitalIdService : IDigitalIdService
         }
     }
 
+    public async Task<ServiceResponse<DigitalIdScanResultDto>> ScanQrTokenAsync(
+        string token,
+        CancellationToken cancellationToken = default)
+    {
+        var actorId = _userContext.UserId;
+        var orgId = _userContext.OrganizationId;
+
+        if (!await ActorCanScanDigitalIdAsync(actorId, orgId, cancellationToken))
+        {
+            return new ServiceResponse<DigitalIdScanResultDto>(false, null,
+                new AppError(ErrorCodes.Forbidden, "You do not have permission to scan Digital IDs."));
+        }
+        var validation = await ValidateQrTokenAsync(token, cancellationToken);
+        if (!validation.IsSuccess || validation.Data == null)
+            return new ServiceResponse<DigitalIdScanResultDto>(false, null, validation.Error);
+
+        if (!validation.Data.Valid || validation.Data.UserId == null || validation.Data.OrganizationId == null)
+        {
+            return new ServiceResponse<DigitalIdScanResultDto>(true, new DigitalIdScanResultDto
+            {
+                Valid = false,
+                Message = validation.Data.Message ?? "Invalid or expired code.",
+            });
+        }
+
+        if (validation.Data.OrganizationId != orgId)
+        {
+            return new ServiceResponse<DigitalIdScanResultDto>(true, new DigitalIdScanResultDto
+            {
+                Valid = false,
+                Message = "This pass belongs to a different organization.",
+            });
+        }
+
+        var userId = validation.Data.UserId.Value;
+        var user = await _db.Users.AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted, cancellationToken);
+        if (user == null)
+        {
+            return new ServiceResponse<DigitalIdScanResultDto>(true, new DigitalIdScanResultDto
+            {
+                Valid = false,
+                Message = "Member not found.",
+            });
+        }
+
+        var member = await _db.OrganizationMembers.AsNoTracking()
+            .Include(m => m.Role)
+            .FirstOrDefaultAsync(m => m.UserId == userId && m.OrganizationId == orgId && m.IsActive, cancellationToken);
+
+        if (member == null)
+        {
+            return new ServiceResponse<DigitalIdScanResultDto>(true, new DigitalIdScanResultDto
+            {
+                Valid = false,
+                Message = "Member is not active in this organization.",
+            });
+        }
+
+        return new ServiceResponse<DigitalIdScanResultDto>(true, new DigitalIdScanResultDto
+        {
+            Valid = true,
+            UserId = userId,
+            OrganizationId = orgId,
+            FullName = $"{user.FirstName} {user.LastName}".Trim(),
+            RoleName = member.Role?.Name ?? "Member",
+            AvatarUrl = _mediaUrls.ToPublicUrl(string.IsNullOrEmpty(user.AvatarUrl) ? null : user.AvatarUrl),
+            Message = "Verified",
+        });
+    }
+
     private string CreateQrJwt(Guid userId, Guid organizationId, DateTime notBefore, DateTime expires)
     {
         var key = Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!);
@@ -209,6 +288,24 @@ public class DigitalIdService : IDigitalIdService
             return null;
 
         return principal;
+    }
+
+    private async Task<bool> ActorCanScanDigitalIdAsync(Guid actorId, Guid orgId, CancellationToken cancellationToken)
+    {
+        var member = await _db.OrganizationMembers.AsNoTracking()
+            .Include(m => m.Role!)
+                .ThenInclude(r => r.Permissions)
+            .FirstOrDefaultAsync(m => m.UserId == actorId && m.OrganizationId == orgId && m.IsActive, cancellationToken);
+
+        if (member?.Role == null)
+            return false;
+
+        if (string.Equals(member.Role.Name, RoleNames.Admin, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return member.Role.Permissions.Any(p =>
+            (p.WidgetKey == WidgetKeys.Attendance && p.AccessLevel >= AccessLevel.Edit) ||
+            (p.WidgetKey == WidgetKeys.DigitalId && p.AccessLevel >= AccessLevel.Edit));
     }
 
     private static string BuildBarcodeValue(Guid userId, Guid organizationId)

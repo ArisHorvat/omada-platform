@@ -5,7 +5,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ClayView, Icon, ProgressiveImage, AppText } from '@/src/components/ui';
 import { PressClay } from '@/src/components/animations/PressClay';
+import { useQuery } from '@tanstack/react-query';
+
+import { usersApi, unwrap } from '@/src/api';
+import { QUERY_KEYS } from '@/src/api/queryKeys';
+import { useAuth } from '@/src/context/AuthContext';
 import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
+import { canAccessOrgStructure } from '@/src/utils/orgAdminAccess';
 import { useOrganizationTheme } from '@/src/context/OrganizationThemeContext';
 import { SIDEBAR_WIDTH } from '@/src/constants/layout';
 import { useThemeColors } from '@/src/hooks/useThemeColors';
@@ -13,7 +19,7 @@ import {
   ADMIN_NAV_SECTIONS,
   filterAdminNavSections,
 } from '@/src/screens/admin/config/admin-navigation.config';
-import { isOrgWidgetEnabled } from '@/src/screens/admin/utils/orgEnabledWidgets';
+import { createOrgWidgetEnabledChecker } from '@/src/screens/admin/utils/orgEnabledWidgets';
 import { useOrgAdminDashboardLogic } from '@/src/screens/admin/hooks/useOrgAdminDashboardLogic';
 
 function isAdminRouteActive(pathname: string, route: string): boolean {
@@ -34,18 +40,31 @@ export function AdminSidebarNav() {
   const pathname = usePathname();
   const { primary, logoUrl } = useOrganizationTheme();
   const { organization } = useCurrentOrganization();
+  const { activeSession, token } = useAuth();
   const { org } = useOrgAdminDashboardLogic();
+  const { data: user } = useQuery({
+    queryKey: QUERY_KEYS.userProfile,
+    queryFn: () => unwrap(usersApi.getMe()),
+    enabled: !!token,
+    staleTime: 1000 * 60 * 5,
+  });
 
   const orgName = org?.name?.trim() || organization?.name?.trim() || 'Organization';
   const enabledWidgets = org?.enabledWidgets;
+  const isWidgetEnabled = useMemo(
+    () => createOrgWidgetEnabledChecker(org?.organizationType ?? organization?.organizationType),
+    [org?.organizationType, organization?.organizationType],
+  );
   const isWeb = Platform.OS === 'web';
   const logoSize = isWeb ? 168 : 72;
   const logoIconSize = isWeb ? 56 : 32;
   const onOverview = pathname.includes('org-dashboard');
 
+  const canStructure = canAccessOrgStructure(activeSession?.role, user?.widgetAccess);
+
   const sections = useMemo(
-    () => filterAdminNavSections(ADMIN_NAV_SECTIONS, enabledWidgets, isOrgWidgetEnabled),
-    [enabledWidgets],
+    () => filterAdminNavSections(ADMIN_NAV_SECTIONS, enabledWidgets, isWidgetEnabled, canStructure),
+    [enabledWidgets, isWidgetEnabled, canStructure],
   );
 
   const goTo = (href: Href) => {

@@ -17,6 +17,8 @@ export default function AuthGroupLayout() {
     >
       <Stack.Screen name="index" options={{ animation: 'fade' }} />
       <Stack.Screen name="login-flow" />
+      <Stack.Screen name="forgot-password" />
+      <Stack.Screen name="reset-password" />
       <Stack.Screen name="register-flow" />
       <Stack.Screen name="join" />
     </Stack>

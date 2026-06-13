@@ -23,6 +23,7 @@ export const useMembersWorkspace = () => {
   const { organization, refreshOrganization } = useCurrentOrganization();
   const orgId = activeSession?.orgId ?? '';
   const [copyToastVisible, setCopyToastVisible] = useState(false);
+  const [copyToastMessage, setCopyToastMessage] = useState('Copied to clipboard');
 
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
@@ -146,10 +147,21 @@ export const useMembersWorkspace = () => {
     inviteMutation.mutate(pendingInvites);
   };
 
+  const showCopyToast = (message: string) => {
+    setCopyToastMessage(message);
+    setCopyToastVisible(true);
+  };
+
   const copyInviteLink = async () => {
     if (!org?.inviteLink) return;
     await Clipboard.setStringAsync(org.inviteLink);
-    setCopyToastVisible(true);
+    showCopyToast('Invite link copied to clipboard');
+  };
+
+  const copyInviteCode = async () => {
+    if (!org?.inviteCode) return;
+    await Clipboard.setStringAsync(org.inviteCode);
+    showCopyToast('Invite code copied to clipboard');
   };
 
   const shareInviteLink = async () => {
@@ -189,7 +201,9 @@ export const useMembersWorkspace = () => {
     deleteMember: (userId: string) => deleteMemberMutation.mutate(userId),
     regenerateInviteCode: () => regenerateMutation.mutate(),
     copyInviteLink,
+    copyInviteCode,
     copyToastVisible,
+    copyToastMessage,
     setCopyToastVisible,
     shareInviteLink,
     isLoading: membersQuery.isLoading,

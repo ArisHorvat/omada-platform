@@ -16,9 +16,14 @@ import {
 } from '@/src/components/ui';
 import { ClayAnimations } from '@/src/constants/animations';
 import { useThemeColors } from '@/src/hooks';
+import { usePermission } from '@/src/context/PermissionContext';
 import { AttendanceStatus, type GroupPickerItemDto } from '@/src/api/generatedClient';
+import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
+import { isUniversityOrg } from '@/src/screens/widgets/tasks/utils/taskLabels';
 import { GradesFilterChips } from '../../grades/components/GradesFilterChips';
 import { useAttendanceScreenLogic } from '../hooks/useAttendanceScreenLogic';
+import { AttendanceOfferingsPanel } from './AttendanceOfferingsPanel';
+import { WorkTimeClockPanel } from './WorkTimeClockPanel';
 import {
   absentNoun,
   formatSessionTime,
@@ -34,6 +39,10 @@ export default function AttendanceScreen() {
   const router = useRouter();
   const colors = useThemeColors();
   const styles = createStyles(colors);
+  const { can } = usePermission();
+  const { organization } = useCurrentOrganization();
+  const isUniversity = isUniversityOrg(organization?.organizationType);
+  const canScanIds = can('attendance.take') || can('digital-id.manage');
 
   const {
     data,
@@ -155,19 +164,44 @@ export default function AttendanceScreen() {
 
                 {isTeacherView ? (
                   <>
+                    {canScanIds ? (
+                      <AppButton
+                        title="Scan Digital ID"
+                        icon="qr-code"
+                        variant="secondary"
+                        onPress={() => router.push('/digital-id-scanner' as never)}
+                        style={{ marginBottom: 16 }}
+                      />
+                    ) : null}
                     <AppText variant="h3" weight="bold" style={[styles.sectionTitle, { color: colors.text }]}>
-                      Sessions to monitor
+                      Sessions to take roll
                     </AppText>
                     {teacherSessions.length === 0 ? (
                       <WidgetEmptyState
                         title="No upcoming sessions"
-                        description="Classes or meetings you manage will appear here."
+                        description="Offering-linked classes or meetings you manage will appear here."
                         icon="event"
                       />
                     ) : (
-                      teacherSessions.map((session, index) => (
+                      teacherSessions.map((session, index) => {
+                        const instanceDate =
+                          session.instanceDate ??
+                          session.startTime?.toString?.() ??
+                          new Date(session.startTime).toISOString();
+                        const instanceParam =
+                          typeof instanceDate === 'string'
+                            ? instanceDate.slice(0, 10)
+                            : new Date(session.startTime).toISOString().slice(0, 10);
+
+                        return (
                         <AnimatedItem key={session.eventId} animation={ClayAnimations.SlideInFlow(index)}>
-                          <PressClay onPress={() => router.push('/schedule' as never)}>
+                          <PressClay
+                            onPress={() =>
+                              router.push(
+                                `/attendance-session/${session.eventId}?instanceDate=${instanceParam}` as never,
+                              )
+                            }
+                          >
                             <ClayView depth={4} puffy={10} color={colors.card} style={styles.row}>
                               <View style={{ flex: 1 }}>
                                 <AppText variant="body" weight="bold" style={{ color: colors.text }}>
@@ -175,6 +209,8 @@ export default function AttendanceScreen() {
                                 </AppText>
                                 <AppText variant="caption" style={{ color: colors.subtle }}>
                                   {formatSessionTime(session)}
+                                  {session.offeringName ? ` · ${session.offeringName}` : ''}
+                                  {session.eventTypeName ? ` · ${session.eventTypeName}` : ''}
                                   {session.groupName ? ` · ${session.groupName}` : ''}
                                 </AppText>
                                 <AppText variant="caption" weight="bold" style={{ color: colors.secondary, marginTop: 4 }}>
@@ -182,17 +218,20 @@ export default function AttendanceScreen() {
                                   {session.maxCapacity != null ? ` / ${session.maxCapacity}` : ''} enrolled
                                 </AppText>
                                 <AppText variant="caption" style={{ color: colors.primary, marginTop: 6 }}>
-                                  Open in schedule
+                                  Open roster
                                 </AppText>
                               </View>
                             </ClayView>
                           </PressClay>
                         </AnimatedItem>
-                      ))
+                        );
+                      })
                     )}
                   </>
                 ) : (
                   <>
+                    {isCorporateKind(kind) ? <WorkTimeClockPanel /> : null}
+
                     {next ? (
                       <ClayView depth={6} puffy={14} color={colors.card} style={[styles.row, { marginBottom: 16 }]}>
                         <AppText variant="caption" weight="bold" style={{ color: colors.secondary }}>
@@ -233,6 +272,8 @@ export default function AttendanceScreen() {
                         </View>
                       </ClayView>
                     ) : null}
+
+                    {isUniversity ? <AttendanceOfferingsPanel enabled={canView} /> : null}
 
                     <AppText variant="h3" weight="bold" style={[styles.sectionTitle, { color: colors.text }]}>
                       Recent history

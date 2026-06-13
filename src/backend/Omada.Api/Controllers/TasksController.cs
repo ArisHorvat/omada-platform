@@ -25,9 +25,10 @@ public class TasksController : ControllerBase
     [HasPermission(WidgetKeys.Tasks, nameof(AccessLevel.View))]
     public async Task<ActionResult<ServiceResponse<PagedResponse<TaskItemDto>>>> GetAll(
         [FromQuery] PagedRequest request,
-        [FromQuery] Guid? groupId)
+        [FromQuery] Guid? groupId,
+        [FromQuery] Guid? offeringId)
     {
-        var response = await _taskService.GetUserTasksAsync(request, groupId);
+        var response = await _taskService.GetUserTasksAsync(request, groupId, offeringId);
         return response.IsSuccess ? Ok(response) : StatusCode(500, response);
     }
 
@@ -56,6 +57,22 @@ public class TasksController : ControllerBase
         var response = await _taskService.UpdateTaskAsync(id, request);
         if (!response.IsSuccess && response.Error?.Code == ErrorCodes.NotFound)
             return NotFound(response);
+        if (!response.IsSuccess && response.Error?.Code == ErrorCodes.Forbidden)
+            return StatusCode(403, response);
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
+    }
+
+    [HttpPatch("{id:guid}/submission")]
+    [HasPermission(WidgetKeys.Tasks, nameof(AccessLevel.View))]
+    public async Task<ActionResult<ServiceResponse<TaskItemDto>>> SubmitSubmission(
+        Guid id,
+        [FromBody] SubmitTaskSubmissionRequest request)
+    {
+        var response = await _taskService.SubmitTaskSubmissionAsync(id, request);
+        if (!response.IsSuccess && response.Error?.Code == ErrorCodes.NotFound)
+            return NotFound(response);
+        if (!response.IsSuccess && response.Error?.Code == ErrorCodes.Forbidden)
+            return StatusCode(403, response);
         return response.IsSuccess ? Ok(response) : BadRequest(response);
     }
 
@@ -64,6 +81,45 @@ public class TasksController : ControllerBase
     public async Task<ActionResult<ServiceResponse<bool>>> Delete(Guid id)
     {
         var response = await _taskService.DeleteTaskAsync(id);
+        if (!response.IsSuccess && response.Error?.Code == ErrorCodes.NotFound)
+            return NotFound(response);
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
+    }
+
+    [HttpGet("batches")]
+    [HasPermission(WidgetKeys.Tasks, nameof(AccessLevel.Edit))]
+    public async Task<ActionResult<ServiceResponse<PagedResponse<AssignmentBatchSummaryDto>>>> GetBatches(
+        [FromQuery] PagedRequest request)
+    {
+        var response = await _taskService.GetAssignmentBatchesAsync(request);
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
+    }
+
+    [HttpGet("batches/{batchId:guid}/submissions")]
+    [HasPermission(WidgetKeys.Tasks, nameof(AccessLevel.Edit))]
+    public async Task<ActionResult<ServiceResponse<IEnumerable<AssignmentBatchSubmissionDto>>>> GetBatchSubmissions(
+        Guid batchId)
+    {
+        var response = await _taskService.GetAssignmentBatchSubmissionsAsync(batchId);
+        if (!response.IsSuccess && response.Error?.Code == ErrorCodes.NotFound)
+            return NotFound(response);
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
+    }
+
+    [HttpPost("batches")]
+    [HasPermission(WidgetKeys.Tasks, nameof(AccessLevel.Edit))]
+    public async Task<ActionResult<ServiceResponse<CreateAssignmentBatchResultDto>>> CreateBatch(
+        [FromBody] CreateAssignmentBatchRequest request)
+    {
+        var response = await _taskService.CreateAssignmentBatchAsync(request);
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
+    }
+
+    [HttpDelete("batches/{batchId:guid}")]
+    [HasPermission(WidgetKeys.Tasks, nameof(AccessLevel.Edit))]
+    public async Task<ActionResult<ServiceResponse<bool>>> DeleteBatch(Guid batchId)
+    {
+        var response = await _taskService.DeleteAssignmentBatchAsync(batchId);
         if (!response.IsSuccess && response.Error?.Code == ErrorCodes.NotFound)
             return NotFound(response);
         return response.IsSuccess ? Ok(response) : BadRequest(response);

@@ -6,6 +6,7 @@ import { ScreenHeader } from '@/src/components/navigation/ScreenHeader';
 import { PageContainer } from '@/src/components/layout/PageContainer';
 import { AppButton, AppText, ClayView } from '@/src/components/ui';
 import { useThemeColors } from '@/src/hooks';
+import { adminWorkspaceScrollContent } from '@/src/screens/admin/styles/adminWorkspaceLayout';
 import { useRoomsAdminWorkspace } from './hooks/useRoomsAdminWorkspace';
 
 export default function RoomsWorkspaceScreen() {
@@ -45,10 +46,10 @@ export default function RoomsWorkspaceScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-        <PageContainer>
+        <PageContainer fullBleed>
           <ScreenHeader title="Rooms management" />
 
-          <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
+          <ScrollView contentContainerStyle={[adminWorkspaceScrollContent, { paddingBottom: insets.bottom + 24 }]}>
             <ClayView depth={3} color={colors.card} style={{ borderRadius: 14, padding: 14, marginBottom: 14 }}>
               <AppText variant="label" style={{ color: colors.subtle, marginBottom: 8 }}>
                 ADD ROOM

@@ -52,7 +52,7 @@ export default function AttendanceWorkspaceScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-          <PageContainer>
+          <PageContainer fullBleed>
             <ScreenHeader title={title} />
             <View style={{ flex: 1, justifyContent: 'center', paddingVertical: 24 }}>
               <WidgetEmptyState
@@ -70,7 +70,7 @@ export default function AttendanceWorkspaceScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-        <PageContainer>
+        <PageContainer fullBleed>
           <ScreenHeader title={title} subtitle={subtitle} />
 
           <GradesFilterChips

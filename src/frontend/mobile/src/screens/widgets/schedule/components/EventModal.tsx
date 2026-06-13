@@ -25,7 +25,9 @@ import { formatRecurrenceLabel } from '../utils/recurrenceLabels';
 import type { WebOverlayAnchor } from '@/src/hooks/usePaneOverlayAnchor';
 import { useWebMainPaneAnchor } from '@/src/context/WebMainPaneContext';
 
-const EVENT_COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6'];
+import { EVENT_TYPE_COLOR_PRESETS } from '@/src/constants/eventTypeColors';
+
+const EVENT_COLORS = EVENT_TYPE_COLOR_PRESETS;
 
 const TOTAL_STEPS = 4;
 
@@ -45,6 +47,7 @@ export const EventModal = ({
   rooms,
   searchHosts,
   groupOptions = [],
+  offeringOptions = [],
   webAnchor: webAnchorProp = null,
 }: any & { webAnchor?: WebOverlayAnchor | null }) => {
   const colors = useThemeColors();
@@ -58,6 +61,7 @@ export const EventModal = ({
   const [activePicker, setActivePicker] = useState<'none' | 'date' | 'start' | 'end'>('none');
   const [hostPickerOpen, setHostPickerOpen] = useState(false);
   const [groupPickerOpen, setGroupPickerOpen] = useState(false);
+  const [offeringPickerOpen, setOfferingPickerOpen] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -67,8 +71,19 @@ export const EventModal = ({
       setActivePicker('none');
       setHostPickerOpen(false);
       setGroupPickerOpen(false);
+      setOfferingPickerOpen(false);
     }
   }, [visible]);
+
+  const offeringPickerOptions = useMemo(
+    () =>
+      (offeringOptions as { id: string; name: string; subtitle?: string }[]).map((o) => ({
+        value: o.id,
+        label: o.name,
+        subtitle: o.subtitle,
+      })),
+    [offeringOptions],
+  );
 
   const groupPickerOptions = useMemo(
     () =>
@@ -345,7 +360,7 @@ export const EventModal = ({
         </TouchableOpacity>
         {activePicker === 'date' ? (
           <View style={{ paddingBottom: 16 }}>
-            <ClayDatePicker value={form.startDate} onChange={form.setStartDate} />
+            <ClayDatePicker value={form.startDate} onChange={form.setStartDatePreservingSpan} />
           </View>
         ) : null}
 
@@ -524,8 +539,31 @@ export const EventModal = ({
         Who & settings
       </AppText>
       <AppText variant="caption" style={{ color: colors.subtle, marginBottom: 16 }}>
-        Host defaults to you; tap to pick someone else. Tune visibility below.
+        Host defaults to you; tap to pick someone else. Link a course offering for this term when relevant.
       </AppText>
+
+      {offeringPickerOptions.length > 0 ? (
+        <>
+          <AppText weight="bold" style={{ color: colors.subtle, marginBottom: 8 }}>
+            Course offering (optional)
+          </AppText>
+          <TouchableOpacity
+            onPress={() => setOfferingPickerOpen(true)}
+            activeOpacity={0.85}
+            style={{ marginBottom: 16 }}
+          >
+            <ClayView depth={3} color={colors.card} style={{ padding: 18, borderRadius: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <AppText style={{ color: form.offeringName || form.offeringId ? colors.text : colors.subtle, flex: 1 }} numberOfLines={2}>
+                {form.offeringName ||
+                  (form.offeringId
+                    ? offeringPickerOptions.find((o) => o.value === form.offeringId)?.label ?? 'Selected course'
+                    : 'None — tap to link a course this term')}
+              </AppText>
+              <Icon name="chevron-right" size={22} color={colors.subtle} />
+            </ClayView>
+          </TouchableOpacity>
+        </>
+      ) : null}
 
       <AppText weight="bold" style={{ color: colors.subtle, marginBottom: 8 }}>
         Group / class (optional)
@@ -723,7 +761,7 @@ export const EventModal = ({
               </TouchableOpacity>
               {form.recEndMode === 'date' ? (
                 <View style={{ borderTopWidth: 1, borderTopColor: colors.border + '10', padding: 8 }}>
-                  <ClayDatePicker value={form.recEndDate} onChange={form.setRecEndDate} />
+                  <ClayDatePicker value={form.recEndDate} onChange={form.setRecEndCalendarDay} />
                 </View>
               ) : null}
             </ClayView>
@@ -819,6 +857,25 @@ export const EventModal = ({
             form.setHostId(h.id);
             form.setHostName(h.fullName);
           }}
+        />
+
+        <SearchableOptionPickerSheet
+          isVisible={offeringPickerOpen && visible}
+          onClose={() => setOfferingPickerOpen(false)}
+          title="Link to course offering"
+          searchPlaceholder="Search courses…"
+          options={offeringPickerOptions}
+          selected={form.offeringId}
+          onSelect={(id) => {
+            form.setOfferingId(id);
+            const match = offeringPickerOptions.find((o) => o.value === id);
+            form.setOfferingName(match?.label ?? null);
+          }}
+          includeAllOption
+          allLabel="No course"
+          height={440}
+          zIndexBase={525}
+          webAnchor={webAnchor}
         />
 
         <SearchableOptionPickerSheet

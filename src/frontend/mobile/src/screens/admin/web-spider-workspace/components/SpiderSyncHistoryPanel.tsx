@@ -1,7 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import { AppText, ClayView } from '@/src/components/ui';
-import type { SpiderSyncRunDto } from '@/src/api/webSpiderConfigApi';
+import type { SpiderSyncRunDto } from '@/src/api/generatedClient';
 
 type Props = {
   colors: { card: string; text: string; subtle: string; border: string; primary: string; error: string; success: string };

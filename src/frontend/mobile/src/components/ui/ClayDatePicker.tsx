@@ -1,6 +1,18 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { View, TouchableOpacity, StyleSheet, LayoutAnimation, Platform, UIManager } from 'react-native';
-import { startOfMonth, endOfMonth, format, addMonths, subMonths, isSameDay, isToday, startOfWeek, endOfWeek, eachDayOfInterval, setMonth, setYear, addYears, subYears } from 'date-fns';
+import {
+  startOfMonth,
+  endOfMonth,
+  format,
+  addMonths,
+  subMonths,
+  isSameDay,
+  isToday,
+  startOfWeek,
+  endOfWeek,
+  eachDayOfInterval,
+  isWithinInterval,
+} from 'date-fns';
 import { AppText } from './AppText';
 import { Icon } from './Icon';
 import { useThemeColors } from '@/src/hooks';
@@ -22,6 +34,11 @@ interface ClayDatePickerProps {
   compact?: boolean;
   /** Renders a close control in the month toolbar (schedule popover). */
   onDismiss?: () => void;
+  /** Single day (default) or Airbnb-style start/end range on one calendar. */
+  mode?: 'single' | 'range';
+  /** End of range when `mode` is `range`. Defaults to `value`. */
+  endValue?: Date;
+  onRangeChange?: (start: Date, end: Date) => void;
 }
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -31,10 +48,37 @@ export const ClayDatePicker: React.FC<ClayDatePickerProps> = ({
   onChange,
   compact = false,
   onDismiss,
+  mode = 'single',
+  endValue,
+  onRangeChange,
 }) => {
   const colors = useThemeColors();
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(value));
   const cellStyles = compact ? compactStyles : styles;
+  const rangeEnd = endValue ?? value;
+  const isRangeMode = mode === 'range' && !!onRangeChange;
+
+  const handleDayPress = (date: Date) => {
+    if (!isRangeMode) {
+      onChange(date);
+      return;
+    }
+
+    const start = value;
+    const end = rangeEnd;
+    const pickingEnd = isSameDay(start, end);
+
+    if (pickingEnd) {
+      if (date < start) {
+        onRangeChange(date, date);
+      } else {
+        onRangeChange(start, date);
+      }
+      return;
+    }
+
+    onRangeChange(date, date);
+  };
 
   useEffect(() => {
     setCurrentMonth(startOfMonth(value));
@@ -113,9 +157,25 @@ export const ClayDatePicker: React.FC<ClayDatePickerProps> = ({
         ))}
       </View>
 
+      {isRangeMode ? (
+        <AppText variant="caption" style={{ color: colors.subtle, textAlign: 'center', marginBottom: 8 }}>
+          {format(value, 'MMM d, yyyy')}
+          {!isSameDay(value, rangeEnd) ? ` – ${format(rangeEnd, 'MMM d, yyyy')}` : ' – pick end date'}
+        </AppText>
+      ) : null}
+
       <View style={cellStyles.grid}>
         {calendarDays.map((date) => {
-          const isSelected = isSameDay(date, value);
+          const isStart = isSameDay(date, value);
+          const isEnd = isSameDay(date, rangeEnd);
+          const isSelected = isRangeMode ? isStart || isEnd : isStart;
+          const inRange =
+            isRangeMode &&
+            !isSameDay(value, rangeEnd) &&
+            isWithinInterval(date, {
+              start: value < rangeEnd ? value : rangeEnd,
+              end: value < rangeEnd ? rangeEnd : value,
+            });
           const isTodayDate = isToday(date);
           const isCurrentMonth = date.getMonth() === currentMonth.getMonth();
 
@@ -123,14 +183,15 @@ export const ClayDatePicker: React.FC<ClayDatePickerProps> = ({
             <TouchableOpacity
               key={date.toString()}
               style={cellStyles.dayCell}
-              onPress={() => onChange(date)}
+              onPress={() => handleDayPress(date)}
               activeOpacity={0.7}
             >
               <View
                 style={[
                   cellStyles.dayCircle,
+                  inRange && !isSelected && { backgroundColor: colors.primary + '18' },
                   isSelected && { backgroundColor: colors.primary },
-                  !isSelected && isTodayDate && { backgroundColor: colors.primary + '15' },
+                  !isSelected && !inRange && isTodayDate && { backgroundColor: colors.primary + '15' },
                 ]}
               >
                 <AppText

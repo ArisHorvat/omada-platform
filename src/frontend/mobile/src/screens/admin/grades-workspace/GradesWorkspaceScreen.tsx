@@ -7,6 +7,7 @@ import { PageContainer } from '@/src/components/layout/PageContainer';
 import { AppButton, AppText, ClayView } from '@/src/components/ui';
 import { PressClay } from '@/src/components/animations/PressClay';
 import { useThemeColors } from '@/src/hooks';
+import { adminWorkspaceScrollContent } from '@/src/screens/admin/styles/adminWorkspaceLayout';
 import { useGradesWorkspace } from './hooks/useGradesAdminWorkspaces';
 
 export default function GradesWorkspaceScreen() {
@@ -51,6 +52,7 @@ export default function GradesWorkspaceScreen() {
     setLetterGrade,
     semester,
     setSemester,
+    periodCopy,
     createGrade,
     deleteGrade,
     isSaving,
@@ -59,10 +61,10 @@ export default function GradesWorkspaceScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-        <PageContainer>
+        <PageContainer fullBleed>
           <ScreenHeader title="Grades management" />
 
-          <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
+          <ScrollView contentContainerStyle={[adminWorkspaceScrollContent, { paddingBottom: insets.bottom + 24 }]}>
             <ClayView depth={3} color={colors.card} style={{ borderRadius: 14, padding: 14, marginBottom: 14 }}>
               <AppText variant="label" style={{ color: colors.subtle, marginBottom: 8 }}>
                 ADD GRADE
@@ -95,7 +97,13 @@ export default function GradesWorkspaceScreen() {
               <TextInput value={score} onChangeText={setScore} placeholder="Score" placeholderTextColor={colors.subtle} keyboardType="decimal-pad" style={inputStyle} />
               <TextInput value={credits} onChangeText={setCredits} placeholder="Credits" placeholderTextColor={colors.subtle} keyboardType="decimal-pad" style={inputStyle} />
               <TextInput value={letterGrade} onChangeText={setLetterGrade} placeholder="Letter grade (optional)" placeholderTextColor={colors.subtle} style={inputStyle} />
-              <TextInput value={semester} onChangeText={setSemester} placeholder="Semester label" placeholderTextColor={colors.subtle} style={inputStyle} />
+              <TextInput
+                value={semester}
+                onChangeText={setSemester}
+                placeholder={periodCopy.gradesFieldLabel}
+                placeholderTextColor={colors.subtle}
+                style={inputStyle}
+              />
               {periods.length ? (
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
                   {periods.map((p) => (
@@ -106,7 +114,13 @@ export default function GradesWorkspaceScreen() {
               <AppButton title={isSaving ? 'Saving…' : 'Add grade'} onPress={createGrade} disabled={isSaving || !studentUserId.trim() || !courseName.trim()} />
             </ClayView>
 
-            <TextInput value={semesterFilter} onChangeText={setSemesterFilter} placeholder="Filter by semester" placeholderTextColor={colors.subtle} style={inputStyle} />
+            <TextInput
+              value={semesterFilter}
+              onChangeText={setSemesterFilter}
+              placeholder={periodCopy.gradesFilterPlaceholder}
+              placeholderTextColor={colors.subtle}
+              style={inputStyle}
+            />
 
             <AppText variant="caption" style={{ color: colors.subtle, marginBottom: 10 }}>
               {totalCount} grade record{totalCount === 1 ? '' : 's'}

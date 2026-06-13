@@ -16,7 +16,7 @@ import { useScheduleLogic } from '../hooks/useScheduleLogic';
 import { createStyles } from '../styles/schedule.styles';
 import { PageContainer } from '@/src/components/layout/PageContainer';
 import { SplitPane } from '@/src/components/layout/SplitPane';
-import { useThemeColors, useTabContentBottomPadding, useBreakpoint, useAssignableGroups } from '@/src/hooks';
+import { useThemeColors, useTabContentBottomPadding, useBreakpoint, useAssignableGroups, useAssignableOfferings } from '@/src/hooks';
 import { mergeGroupOptions } from '@/src/utils/groupOptions';
 import { AnimatedItem, PressClay } from '@/src/components/animations';
 import { ClayView, Icon, AppText } from '@/src/components/ui';
@@ -315,6 +315,16 @@ export default function ScheduleScreenContent({
   );
 
   const assignableGroupsQuery = useAssignableGroups('schedule');
+  const assignableOfferingsQuery = useAssignableOfferings();
+  const offeringOptions = useMemo(
+    () =>
+      (assignableOfferingsQuery.data ?? []).map((o) => ({
+        id: o.id,
+        name: o.name,
+        subtitle: o.periodName ?? o.code ?? 'Course offering',
+      })),
+    [assignableOfferingsQuery.data],
+  );
 
   const groupOptionsFromEvents = useMemo(() => {
     const m = new Map<string, string>();
@@ -927,6 +937,7 @@ export default function ScheduleScreenContent({
         rooms={rooms}
         searchHosts={searchHosts}
         groupOptions={groupOptions}
+        offeringOptions={offeringOptions}
         webAnchor={webOverlayAnchor}
       />
 

@@ -6,6 +6,7 @@ import {
   isAllowedOrgAdminPath,
   shouldLockOrgAdminToConsole,
 } from '@/src/utils/orgAdminRoutes';
+import { useOrgAdminExperience } from '@/src/context/OrgAdminExperienceContext';
 
 /**
  * Keeps organization admins in the admin console — not the member dashboard/widgets.
@@ -15,6 +16,7 @@ export function useOrgAdminNavigationGuard() {
   const pathname = usePathname();
   const navigationState = useRootNavigationState();
   const { activeSession, isLoading } = useAuth();
+  const { isConsoleLocked } = useOrgAdminExperience();
   const lastRedirectRef = useRef<string | null>(null);
 
   const navigationReady = Boolean(navigationState?.key);
@@ -23,6 +25,7 @@ export function useOrgAdminNavigationGuard() {
   useEffect(() => {
     if (!navigationReady || isLoading || !activeSession) return;
     if (!shouldLockOrgAdminToConsole(role)) return;
+    if (!isConsoleLocked) return;
     if (isAllowedOrgAdminPath(pathname, role)) return;
 
     const target = '/org-dashboard';
@@ -30,7 +33,7 @@ export function useOrgAdminNavigationGuard() {
       lastRedirectRef.current = target;
       router.replace(target as never);
     }
-  }, [navigationReady, isLoading, activeSession, role, pathname, router]);
+  }, [navigationReady, isLoading, activeSession, role, pathname, router, isConsoleLocked]);
 
   useEffect(() => {
     if (!isLoading) {

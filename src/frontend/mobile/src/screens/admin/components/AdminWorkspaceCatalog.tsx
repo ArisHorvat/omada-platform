@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
 
 import { AppText, ClayView, Icon } from '@/src/components/ui';
 import { PressClay } from '@/src/components/animations/PressClay';
@@ -9,23 +10,47 @@ import {
   ADMIN_WORKSPACE_SECTIONS,
   filterAdminWorkspaceSections,
 } from '../config/org-admin-workspaces';
-import { isOrgWidgetEnabled } from '../utils/orgEnabledWidgets';
+import { OrganizationType } from '@/src/api/generatedClient';
+import { createOrgWidgetEnabledChecker } from '../utils/orgEnabledWidgets';
 import { createOrgDashboardStyles } from '../styles/org-dashboard.styles';
+import { usersApi, unwrap } from '@/src/api';
+import { QUERY_KEYS } from '@/src/api/queryKeys';
+import { useAuth } from '@/src/context/AuthContext';
+import { canAccessOrgStructure } from '@/src/utils/orgAdminAccess';
 
 type Props = {
   enabledWidgets?: string[] | null;
+  organizationType?: OrganizationType;
   bottomInset?: number;
 };
 
-export function AdminWorkspaceCatalog({ enabledWidgets, bottomInset = 24 }: Props) {
+export function AdminWorkspaceCatalog({
+  enabledWidgets,
+  organizationType,
+  bottomInset = 24,
+}: Props) {
   const colors = useThemeColors();
   const router = useRouter();
+  const { activeSession, token } = useAuth();
+  const { data: user } = useQuery({
+    queryKey: QUERY_KEYS.userProfile,
+    queryFn: () => unwrap(usersApi.getMe()),
+    enabled: !!token,
+    staleTime: 1000 * 60 * 5,
+  });
   const { isWide } = useBreakpoint();
   const styles = useMemo(() => createOrgDashboardStyles(colors), [colors]);
 
+  const isWidgetEnabled = useMemo(
+    () => createOrgWidgetEnabledChecker(organizationType),
+    [organizationType],
+  );
+
+  const canStructure = canAccessOrgStructure(activeSession?.role, user?.widgetAccess);
+
   const sections = useMemo(
-    () => filterAdminWorkspaceSections(ADMIN_WORKSPACE_SECTIONS, enabledWidgets, isOrgWidgetEnabled),
-    [enabledWidgets],
+    () => filterAdminWorkspaceSections(ADMIN_WORKSPACE_SECTIONS, enabledWidgets, isWidgetEnabled, canStructure),
+    [enabledWidgets, isWidgetEnabled, canStructure],
   );
 
   const tileWidth = isWide ? '31%' : '47%';

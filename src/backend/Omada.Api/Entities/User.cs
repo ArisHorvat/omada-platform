@@ -23,6 +23,11 @@ public class User : BaseEntity
     public string PasswordHash { get; set; } = string.Empty;
     public string? PasswordResetToken { get; set; }
     public DateTime? PasswordResetTokenExpires { get; set; }
+    /// <summary>"invite" for email invite setup; "reset" for forgot-password flow.</summary>
+    public string? PasswordResetTokenPurpose { get; set; }
+    public string? TwoFactorPendingSessionToken { get; set; }
+    public string? TwoFactorCode { get; set; }
+    public DateTime? TwoFactorCodeExpires { get; set; }
     public string? PhoneNumber { get; set; }
     /// <summary>Relative path to avatar image (e.g. /images/avatars/{id}.jpg). Never store absolute URLs.</summary>
     public string? AvatarUrl { get; set; }

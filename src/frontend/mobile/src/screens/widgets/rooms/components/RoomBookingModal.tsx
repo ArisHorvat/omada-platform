@@ -26,7 +26,9 @@ import { HostPickerSheet } from '@/src/screens/widgets/schedule/components/HostP
 import { formatRecurrenceLabel } from '@/src/screens/widgets/schedule/utils/recurrenceLabels';
 import { eventsToBusyIntervals, selectionOverlapsBusy } from '@/src/screens/widgets/schedule/utils/roomDayTimeline';
 
-const EVENT_COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6'];
+import { EVENT_TYPE_COLOR_PRESETS } from '@/src/constants/eventTypeColors';
+
+const EVENT_COLORS = EVENT_TYPE_COLOR_PRESETS;
 
 const TOTAL_STEPS = 3;
 

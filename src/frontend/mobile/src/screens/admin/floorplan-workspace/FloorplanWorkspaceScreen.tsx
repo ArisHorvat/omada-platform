@@ -1,18 +1,24 @@
 import React from 'react';
-import { ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
+import { AppButton, AppText, Icon } from '@/src/components/ui';
+import { SplitPane, WidgetPageShell } from '@/src/components/layout';
+import { SPLIT_PANE_LIST_WIDTH } from '@/src/constants/layout';
+import { useBreakpoint } from '@/src/hooks';
 import { FloorplanMapPanel } from '@/src/screens/admin/floorplan-workspace/components/FloorplanMapPanel';
 import { FloorplanPinsTab } from '@/src/screens/admin/floorplan-workspace/components/FloorplanPinsTab';
 import { FloorplanRoomsTab } from '@/src/screens/admin/floorplan-workspace/components/FloorplanRoomsTab';
 import { FloorplanSegmentedTabs } from '@/src/screens/admin/floorplan-workspace/components/FloorplanSegmentedTabs';
 import { FloorplanSetupTab } from '@/src/screens/admin/floorplan-workspace/components/FloorplanSetupTab';
-import { FloorplanWorkspaceGate } from '@/src/screens/admin/floorplan-workspace/components/FloorplanWorkspaceGate';
 import { FloorplanWorkspaceHeader } from '@/src/screens/admin/floorplan-workspace/components/FloorplanWorkspaceHeader';
+import { LocationDetailPanel } from '@/src/screens/admin/floorplan-workspace/components/LocationDetailPanel';
+import { LocationTreeList } from '@/src/screens/admin/floorplan-workspace/components/LocationTreeList';
 import {
   type FloorplanWorkspaceModel,
   useFloorplanWorkspace,
 } from '@/src/screens/admin/floorplan-workspace/hooks/useFloorplanWorkspace';
-import { WidgetPageShell } from '@/src/components/layout';
 import { createFloorplanWorkspaceStyles } from '@/src/screens/admin/floorplan-workspace/styles/floorplanWorkspaceScreen.styles';
+import { LOCATION_WORKSPACE_COPY } from '@/src/screens/admin/floorplan-workspace/utils/locationLabels';
+import { locationsWorkspaceStyles as locStyles } from '@/src/screens/admin/floorplan-workspace/styles/locationsWorkspace.styles';
 
 function FloorplanTabContent({ model }: { model: FloorplanWorkspaceModel }) {
   if (model.activeTab === 'setup') return <FloorplanSetupTab model={model} />;
@@ -20,20 +26,74 @@ function FloorplanTabContent({ model }: { model: FloorplanWorkspaceModel }) {
   return <FloorplanPinsTab model={model} />;
 }
 
-export default function FloorplanWorkspaceScreen() {
-  const model = useFloorplanWorkspace();
-  const styles = createFloorplanWorkspaceStyles(model.colors);
+function LocationsBrowseView({ model }: { model: FloorplanWorkspaceModel }) {
+  const { colors, insets, goBackToLocations, startNewLocationForm } = model;
+  const { isWideShell } = useBreakpoint();
 
-  if (model.workspaceIntent === 'unset') {
-    return (
-      <WidgetPageShell>
-        <FloorplanWorkspaceGate model={model} />
-      </WidgetPageShell>
-    );
-  }
+  const treeSection = (
+    <View style={locStyles.treeSection}>
+      <AppText variant="label" style={{ color: colors.subtle, marginBottom: 8 }}>
+        {LOCATION_WORKSPACE_COPY.treeLabel}
+      </AppText>
+      <LocationTreeList model={model} />
+    </View>
+  );
 
   return (
-    <WidgetPageShell fullBleed>
+    <View style={[locStyles.root, { paddingTop: insets.top }]}>
+      <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+          <Pressable
+            onPress={goBackToLocations}
+            hitSlop={12}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}
+          >
+            <Icon name="arrow-back" size={22} color={colors.text} />
+            <AppText variant="h2" weight="bold" numberOfLines={1}>
+              {LOCATION_WORKSPACE_COPY.screenTitle}
+            </AppText>
+          </Pressable>
+          <AppButton
+            title={LOCATION_WORKSPACE_COPY.newLocationButton}
+            onPress={startNewLocationForm}
+            style={{ paddingHorizontal: 12, minWidth: 0 }}
+          />
+        </View>
+        <AppText variant="caption" style={{ color: colors.subtle, lineHeight: 20 }}>
+          {LOCATION_WORKSPACE_COPY.heroHint}
+        </AppText>
+      </View>
+
+      {isWideShell ? (
+        <SplitPane sidebarWidth={SPLIT_PANE_LIST_WIDTH} sidebar={treeSection} style={{ flex: 1 }}>
+          <ScrollView
+            contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 24 }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <LocationDetailPanel model={model} />
+          </ScrollView>
+        </SplitPane>
+      ) : (
+        <ScrollView
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 24 }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {treeSection}
+          <View style={{ marginTop: 16 }}>
+            <LocationDetailPanel model={model} />
+          </View>
+        </ScrollView>
+      )}
+    </View>
+  );
+}
+
+function FloorplanEditorView({ model }: { model: FloorplanWorkspaceModel }) {
+  const styles = createFloorplanWorkspaceStyles(model.colors);
+
+  return (
     <View style={[styles.root, { paddingTop: model.insets.top }]}>
       <FloorplanWorkspaceHeader model={model} />
       <View style={{ flex: 1, minHeight: 0 }}>
@@ -83,6 +143,19 @@ export default function FloorplanWorkspaceScreen() {
         )}
       </View>
     </View>
+  );
+}
+
+export default function FloorplanWorkspaceScreen() {
+  const model = useFloorplanWorkspace();
+
+  return (
+    <WidgetPageShell fullBleed>
+      {model.workspaceIntent === 'browse' ? (
+        <LocationsBrowseView model={model} />
+      ) : (
+        <FloorplanEditorView model={model} />
+      )}
     </WidgetPageShell>
   );
 }

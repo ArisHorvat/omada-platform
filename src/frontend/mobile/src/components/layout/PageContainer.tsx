@@ -8,12 +8,13 @@ import { useThemeColors } from '@/src/hooks/useThemeColors';
 export interface PageContainerProps {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
-  /** Skip max-width centering (maps, editors). */
+  /** Skip max-width centering (maps, editors, org admin workspaces on web). */
   fullBleed?: boolean;
 }
 
 /**
- * Centers and caps main content width on wide layouts.
+ * Centers and caps main content width on wide layouts (`CONTENT_MAX_WIDTH`).
+ * **`fullBleed`:** skip centering cap — use for org admin workspaces on web (full column beside sidebar).
  * On compact/mobile, passes through at full width (screens keep their own padding).
  */
 export function PageContainer({ children, style, fullBleed = false }: PageContainerProps) {

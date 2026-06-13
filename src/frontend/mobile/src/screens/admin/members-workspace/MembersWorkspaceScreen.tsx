@@ -21,6 +21,7 @@ export default function MembersWorkspaceScreen() {
   const styles = useMemo(() => createMembersWorkspaceStyles(colors), [colors]);
   const [tab, setTab] = useState<'members' | 'invite'>('members');
   const [inviteRolePickerOpen, setInviteRolePickerOpen] = useState(false);
+  const [memberRoleFilterOpen, setMemberRoleFilterOpen] = useState(false);
 
   const {
     org,
@@ -30,6 +31,8 @@ export default function MembersWorkspaceScreen() {
     totalMembers,
     search,
     setSearch,
+    roleFilter,
+    setRoleFilter,
     emailInput,
     setEmailInput,
     inviteRole,
@@ -45,7 +48,9 @@ export default function MembersWorkspaceScreen() {
     deleteMember,
     regenerateInviteCode,
     copyInviteLink,
+    copyInviteCode,
     copyToastVisible,
+    copyToastMessage,
     setCopyToastVisible,
     shareInviteLink,
     isLoading,
@@ -53,16 +58,34 @@ export default function MembersWorkspaceScreen() {
   } = useMembersWorkspace();
 
   const assignableRoles = useMemo(() => filterAssignableRoles(roles), [roles]);
+  const memberFilterRoles = useMemo(
+    () => roles.filter((r) => r.id && r.name && r.name.toLowerCase() !== 'admin'),
+    [roles],
+  );
+  const memberRoleFilterOptions = useMemo(
+    () =>
+      memberFilterRoles.map((r) => ({
+        value: r.id!,
+        label: r.name!,
+        subtitle: `${r.memberCount ?? 0} member${r.memberCount === 1 ? '' : 's'}`,
+      })),
+    [memberFilterRoles],
+  );
+  const selectedMemberRoleFilterLabel = useMemo(() => {
+    if (!roleFilter) return 'All roles';
+    return memberFilterRoles.find((r) => r.id === roleFilter)?.name ?? 'All roles';
+  }, [memberFilterRoles, roleFilter]);
   const inviteRoleOptions = useMemo(
     () => inviteableRoles.map((name) => ({ value: name, label: name })),
     [inviteableRoles],
   );
   const hasSearch = search.trim().length > 0;
+  const hasRoleFilter = !!roleFilter;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-        <PageContainer>
+        <PageContainer fullBleed>
           <ScreenHeader
             title="People & invites"
             subtitle={`${totalMembers} member${totalMembers === 1 ? '' : 's'}`}
@@ -85,19 +108,69 @@ export default function MembersWorkspaceScreen() {
                 <View style={styles.clayShell}>
                   <ClayView depth={4} puffy={10} color={colors.card} contentOverflow="hidden" style={styles.clayInner}>
                     <AppText weight="bold">Organization invite</AppText>
-                    <AppText variant="caption" style={{ color: colors.subtle, marginTop: 6 }}>
-                      Code: {org?.inviteCode ?? '—'}
+                    <AppText variant="caption" style={{ color: colors.subtle, marginTop: 6, lineHeight: 18 }}>
+                      Share the code or link so people can join {org?.name ?? 'your organization'}.
                     </AppText>
-                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-                      <AppButton title="Copy link" variant="outline" onPress={copyInviteLink} style={{ flex: 1 }} />
-                      <AppButton title="Share" onPress={shareInviteLink} style={{ flex: 1 }} />
+
+                    <View style={styles.inviteHero}>
+                      <ClayView
+                        depth={3}
+                        puffy={0}
+                        color={colors.primaryContainer}
+                        contentOverflow="hidden"
+                        style={styles.inviteHeroInner}
+                      >
+                        <AppText variant="caption" weight="bold" style={{ color: colors.subtle, letterSpacing: 1 }}>
+                          INVITE CODE
+                        </AppText>
+                        <Pressable
+                          onPress={copyInviteCode}
+                          disabled={!org?.inviteCode}
+                          style={({ pressed }) => [styles.inviteCodeRow, pressed && { opacity: 0.85 }]}
+                        >
+                          <AppText weight="bold" style={[styles.inviteCodeText, { color: colors.primary }]}>
+                            {org?.inviteCode ?? '— — — —'}
+                          </AppText>
+                          <View
+                            style={[
+                              styles.inviteCodeCopyBtn,
+                              !org?.inviteCode && { opacity: 0.4 },
+                            ]}
+                          >
+                            <Icon name="content-copy" size={22} color={colors.primary} />
+                          </View>
+                        </Pressable>
+                        <AppText variant="caption" style={{ color: colors.subtle, marginTop: 8 }}>
+                          Tap the code or copy icon to copy
+                        </AppText>
+                      </ClayView>
                     </View>
-                    <AppButton
-                      title="Regenerate code"
-                      variant="outline"
+
+                    <View style={styles.inviteActionRow}>
+                      <AppButton
+                        title="Copy link"
+                        variant="outline"
+                        onPress={copyInviteLink}
+                        style={styles.inviteActionBtn}
+                        disabled={!org?.inviteLink}
+                      />
+                      <AppButton
+                        title="Share"
+                        onPress={shareInviteLink}
+                        style={styles.inviteActionBtn}
+                        disabled={!org?.inviteLink}
+                      />
+                    </View>
+
+                    <Pressable
                       onPress={regenerateInviteCode}
-                      style={{ marginTop: 8 }}
-                    />
+                      style={({ pressed }) => [styles.inviteRegenerateRow, pressed && { opacity: 0.7 }]}
+                    >
+                      <Icon name="refresh" size={18} color={colors.subtle} />
+                      <AppText variant="caption" weight="bold" style={{ color: colors.subtle }}>
+                        Regenerate code
+                      </AppText>
+                    </Pressable>
                   </ClayView>
                 </View>
 
@@ -113,17 +186,13 @@ export default function MembersWorkspaceScreen() {
                       keyboardType="email-address"
                       style={[styles.input, { color: colors.text }]}
                     />
-                    <AppText variant="caption" style={{ color: colors.subtle, marginBottom: 8 }}>
-                      ROLE
-                    </AppText>
-                    <PressClay onPress={() => setInviteRolePickerOpen(true)}>
-                      <ClayView depth={3} puffy={8} color={colors.background} contentOverflow="hidden" style={styles.input}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <AppText>{inviteRole || inviteableRoles[0] || 'Select role'}</AppText>
-                          <Icon name="expand-more" size={22} color={colors.subtle} />
-                        </View>
-                      </ClayView>
-                    </PressClay>
+                    <RoleSelectField
+                      label="Role"
+                      value={inviteRole || inviteableRoles[0] || 'Select role'}
+                      onPress={() => setInviteRolePickerOpen(true)}
+                      colors={colors}
+                      styles={styles}
+                    />
                     <AppButton title="Add to list" variant="outline" onPress={addPendingInvite} style={{ marginTop: 12 }} />
                   </ClayView>
                 </View>
@@ -167,24 +236,35 @@ export default function MembersWorkspaceScreen() {
                   </ClayView>
                 </View>
 
+                <RoleSelectField
+                  label="Role"
+                  value={selectedMemberRoleFilterLabel}
+                  onPress={() => setMemberRoleFilterOpen(true)}
+                  colors={colors}
+                  styles={styles}
+                />
+
                 {isLoading ? (
                   <ActivityIndicator color={colors.primary} style={{ marginVertical: 24 }} />
                 ) : null}
 
                 {!isLoading && members.length > 0 ? (
                   <AppText variant="caption" style={[styles.resultsHint, { color: colors.subtle }]}>
-                    {hasSearch
+                    {hasSearch || hasRoleFilter
                       ? `${members.length} result${members.length === 1 ? '' : 's'}`
                       : `Showing ${members.length} of ${totalMembers}`}
+                    {hasRoleFilter ? ` · ${selectedMemberRoleFilterLabel}` : ''}
                   </AppText>
                 ) : null}
 
                 {!isLoading && members.length === 0 ? (
                   <WidgetEmptyState
-                    title={hasSearch ? 'No matching members' : 'No members yet'}
+                    title={
+                      hasSearch || hasRoleFilter ? 'No matching members' : 'No members yet'
+                    }
                     description={
-                      hasSearch
-                        ? 'Try a different name or email.'
+                      hasSearch || hasRoleFilter
+                        ? 'Try a different search or role filter.'
                         : 'Invite people from the Invite tab to grow your organization.'
                     }
                     icon="group"
@@ -210,7 +290,7 @@ export default function MembersWorkspaceScreen() {
         </PageContainer>
         <Toast
           visible={copyToastVisible}
-          message="Invite link copied to clipboard"
+          message={copyToastMessage}
           type="success"
           onHide={() => setCopyToastVisible(false)}
         />
@@ -223,6 +303,17 @@ export default function MembersWorkspaceScreen() {
           onSelect={(value) => value && setInviteRole(value)}
           includeAllOption={false}
           height={Math.min(420, 120 + inviteRoleOptions.length * 62)}
+        />
+        <OptionPickerSheet
+          isVisible={memberRoleFilterOpen}
+          onClose={() => setMemberRoleFilterOpen(false)}
+          title="Filter by role"
+          options={memberRoleFilterOptions}
+          selected={roleFilter}
+          onSelect={setRoleFilter}
+          includeAllOption
+          allLabel="All roles"
+          height={Math.min(520, 120 + memberRoleFilterOptions.length * 62)}
         />
       </SafeAreaView>
     </View>
@@ -346,17 +437,13 @@ function MemberRow({
 
                 {member.isActive ? (
                   <>
-                    <AppText variant="caption" style={{ color: colors.subtle }}>
-                      Role
-                    </AppText>
-                    <PressClay onPress={() => setRolePickerOpen(true)}>
-                      <ClayView depth={3} puffy={8} color={colors.background} contentOverflow="hidden">
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <AppText>{currentRoleLabel}</AppText>
-                          <Icon name="expand-more" size={22} color={colors.subtle} />
-                        </View>
-                      </ClayView>
-                    </PressClay>
+                    <RoleSelectField
+                      label="Role"
+                      value={currentRoleLabel}
+                      onPress={() => setRolePickerOpen(true)}
+                      colors={colors}
+                      styles={styles}
+                    />
                     <AppButton
                       title="Deactivate"
                       variant="outline"
@@ -436,5 +523,45 @@ function MemberRow({
         height={Math.min(480, 120 + roleOptions.length * 62)}
       />
     </>
+  );
+}
+
+function RoleSelectField({
+  label,
+  value,
+  onPress,
+  colors,
+  styles,
+}: {
+  label: string;
+  value: string;
+  onPress: () => void;
+  colors: ReturnType<typeof useThemeColors>;
+  styles: ReturnType<typeof createMembersWorkspaceStyles>;
+}) {
+  return (
+    <View style={{ marginTop: 4 }}>
+      <AppText variant="caption" weight="bold" style={{ color: colors.subtle, marginBottom: 8, letterSpacing: 0.5 }}>
+        {label.toUpperCase()}
+      </AppText>
+      <PressClay onPress={onPress}>
+        <View style={styles.selectField}>
+          <ClayView
+            depth={4}
+            puffy={0}
+            color={colors.background}
+            contentOverflow="hidden"
+            style={styles.selectFieldInner}
+          >
+            <View style={styles.selectFieldRow}>
+              <AppText weight="bold" style={styles.selectFieldLabel} numberOfLines={1}>
+                {value}
+              </AppText>
+              <Icon name="expand-more" size={24} color={colors.subtle} />
+            </View>
+          </ClayView>
+        </View>
+      </PressClay>
+    </View>
   );
 }

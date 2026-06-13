@@ -7,6 +7,9 @@ public class Group : BaseEntity, IOrganizationScoped
     public string Name { get; set; } = string.Empty;
     public string Type { get; set; } = string.Empty;
     public Guid? ManagerId { get; set; }
+
+    /// <summary>Academic year label for stable cohort groups (e.g. 2025/26). Not used for term-scoped data.</summary>
+    public string? AcademicYear { get; set; }
     
     // Can be mapped to a JSON column or owned entity later
     public string? ScheduleConfig { get; set; } 

@@ -1,19 +1,28 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { Alert, BackHandler, Platform, useWindowDimensions } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createFloorForBuildingMultipart,
+  createFloorLevelOnly,
   fileParameterFromPickedImage,
+  floorplansApi,
   mapsApi,
-  publishFloorplanRoomsToDb,
   unwrap,
   uploadFloorplanMultipart,
-  updateFloorplanGeoJson,
 } from '@/src/api';
-import type { BuildingDto, CreateBuildingRequest, FloorDto } from '@/src/api/generatedClient';
+import {
+  CreateBuildingRequest,
+  UpdateBuildingRequest,
+  type BuildingDto,
+  type FloorDto,
+  type UpdateFloorplanGeoJsonRequest,
+} from '@/src/api/generatedClient';
+import { useAuth } from '@/src/context/AuthContext';
 import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
 import { useThemeColors } from '@/src/hooks';
+import { alertAction } from '@/src/utils/confirmAction';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFloorplan } from '@/src/screens/widgets/map/hooks/useFloorplan';
 import {
@@ -40,6 +49,13 @@ function clamp01(v: number): number {
   return Math.max(0, Math.min(1, v));
 }
 
+function parseOptionalCoordinate(raw: string): number | undefined {
+  const trimmed = raw.trim();
+  if (!trimmed) return undefined;
+  const n = Number(trimmed);
+  return Number.isFinite(n) ? n : undefined;
+}
+
 const MAX_UNDO = 40;
 
 function stableGeoJsonSnapshot(d: FloorplanGeoDoc): string {
@@ -54,10 +70,12 @@ export type DoorPlacementSession =
 export function useFloorplanWorkspace() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { width, height: windowHeight } = useWindowDimensions();
   const queryClient = useQueryClient();
+  const { activeSession } = useAuth();
   const { organization } = useCurrentOrganization();
-  const orgId = organization?.id;
+  const orgId = activeSession?.orgId ?? organization?.id ?? '';
 
   const [selectedBuildingId, setSelectedBuildingId] = useState('');
   const [selectedFloorId, setSelectedFloorId] = useState('');
@@ -79,10 +97,20 @@ export function useFloorplanWorkspace() {
   const [activeTab, setActiveTab] = useState<'setup' | 'rooms' | 'pins'>('setup');
   /** Digital twin / “map view”: hide raster, solid semantic fills, dark wall background. */
   const [isVectorMode, setIsVectorMode] = useState(false);
-  const [workspaceIntent, setWorkspaceIntent] = useState<'unset' | 'create' | 'edit'>('unset');
+  const [workspaceIntent, setWorkspaceIntent] = useState<'browse' | 'create' | 'edit'>('browse');
   const [createLevelChoiceLocked, setCreateLevelChoiceLocked] = useState(false);
   const [newBuildingName, setNewBuildingName] = useState('');
+  const [newBuildingLatitude, setNewBuildingLatitude] = useState('');
+  const [newBuildingLongitude, setNewBuildingLongitude] = useState('');
   const [creatingBuilding, setCreatingBuilding] = useState(false);
+  const [expandedBuildingIds, setExpandedBuildingIds] = useState<Set<string>>(new Set());
+  const [editBuildingName, setEditBuildingName] = useState('');
+  const [editBuildingShortCode, setEditBuildingShortCode] = useState('');
+  const [editBuildingAddress, setEditBuildingAddress] = useState('');
+  const [editBuildingLatitude, setEditBuildingLatitude] = useState('');
+  const [editBuildingLongitude, setEditBuildingLongitude] = useState('');
+  const [savingBuilding, setSavingBuilding] = useState(false);
+  const [showNewLocationForm, setShowNewLocationForm] = useState(false);
   const prevSelectedFloorIdRef = useRef<string | null>(null);
 
   /** `null` = not tracing; `[]` … `[[x,y],…]` while tracing building shell perimeter. */
@@ -157,6 +185,11 @@ export function useFloorplanWorkspace() {
 
   const floors = (floorsQuery.data ?? []) as FloorDto[];
   const buildings = (buildingsQuery.data ?? []) as BuildingDto[];
+
+  const activeBuilding = useMemo(
+    () => buildings.find((b) => b.id === selectedBuildingId) ?? null,
+    [buildings, selectedBuildingId],
+  );
 
   const activeFloor = useMemo(
     () => floors.find((f) => f.id === selectedFloorId) ?? null,
@@ -372,7 +405,12 @@ export function useFloorplanWorkspace() {
     try {
       setSavingGeo(true);
       const body = buildFloorplanFeatureCollectionString(geoDoc);
-      await unwrap(updateFloorplanGeoJson(activeFloor.floorplanId, body));
+      await unwrap(
+        floorplansApi.updateGeoJson(
+          activeFloor.floorplanId,
+          UpdateFloorplanGeoJsonRequest.fromJS({ geoJsonData: body }),
+        ),
+      );
       await queryClient.invalidateQueries({ queryKey: ['map', 'floorplan', activeFloor.floorplanId] });
       await queryClient.invalidateQueries({ queryKey: ['admin-map-floors', selectedBuildingId] });
       Alert.alert('Saved', 'Floorplan GeoJSON (rooms and map pins) was updated for this floor.');
@@ -397,7 +435,7 @@ export function useFloorplanWorkspace() {
     setEditMode(false);
     try {
       setPublishingRooms(true);
-      const res = await unwrap(publishFloorplanRoomsToDb(activeFloor.floorplanId));
+      const res = await unwrap(floorplansApi.publishRooms(activeFloor.floorplanId));
       await queryClient.invalidateQueries({ queryKey: ['map-floors'] });
       await queryClient.invalidateQueries({ queryKey: ['admin-map-floors', selectedBuildingId] });
       Alert.alert(
@@ -422,13 +460,18 @@ export function useFloorplanWorkspace() {
       if (hadUnsaved) {
         setSavingGeo(true);
         const body = buildFloorplanFeatureCollectionString(geoDoc);
-        await unwrap(updateFloorplanGeoJson(activeFloor.floorplanId, body));
+        await unwrap(
+        floorplansApi.updateGeoJson(
+          activeFloor.floorplanId,
+          UpdateFloorplanGeoJsonRequest.fromJS({ geoJsonData: body }),
+        ),
+      );
         await queryClient.invalidateQueries({ queryKey: ['map', 'floorplan', activeFloor.floorplanId] });
         await queryClient.invalidateQueries({ queryKey: ['admin-map-floors', selectedBuildingId] });
         setSavingGeo(false);
       }
       setPublishingRooms(true);
-      const res = await unwrap(publishFloorplanRoomsToDb(activeFloor.floorplanId));
+      const res = await unwrap(floorplansApi.publishRooms(activeFloor.floorplanId));
       await queryClient.invalidateQueries({ queryKey: ['map-floors'] });
       await queryClient.invalidateQueries({ queryKey: ['admin-map-floors', selectedBuildingId] });
       await queryClient.invalidateQueries({ queryKey: ['admin-floorplan-linked-room'] });
@@ -460,35 +503,108 @@ export function useFloorplanWorkspace() {
 
   const goToWorkflowChoice = () => {
     if (hasUnsavedChanges) {
-      Alert.alert('Unsaved changes', 'Discard edits and return to the workflow choice?', [
+      Alert.alert('Unsaved changes', 'Discard edits and return to locations?', [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Discard',
           style: 'destructive',
           onPress: () => {
             handleDiscard();
-            setWorkspaceIntent('unset');
+            setWorkspaceIntent('browse');
             setActiveTab('setup');
           },
         },
       ]);
       return;
     }
-    setWorkspaceIntent('unset');
+    setWorkspaceIntent('browse');
     setActiveTab('setup');
   };
+
+  const goBackToLocations = () => {
+    if (workspaceIntent === 'browse') {
+      router.back();
+      return;
+    }
+    goToWorkflowChoice();
+  };
+
+  const toggleBuildingExpanded = useCallback((buildingId: string) => {
+    setExpandedBuildingIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(buildingId)) next.delete(buildingId);
+      else next.add(buildingId);
+      return next;
+    });
+    setSelectedBuildingId(buildingId);
+  }, []);
+
+  const selectBuildingInTree = useCallback((buildingId: string) => {
+    setSelectedBuildingId(buildingId);
+    setSelectedFloorId('');
+    setShowNewLocationForm(false);
+    setExpandedBuildingIds((prev) => new Set(prev).add(buildingId));
+  }, []);
+
+  const selectFloorInTree = useCallback((buildingId: string, floorId: string) => {
+    setSelectedBuildingId(buildingId);
+    setSelectedFloorId(floorId);
+    setShowNewLocationForm(false);
+    setExpandedBuildingIds((prev) => new Set(prev).add(buildingId));
+  }, []);
+
+  const enterMapEditor = useCallback(
+    (_intent: 'create' | 'edit') => {
+      if (!selectedFloorId) {
+        Alert.alert('Select a level', 'Choose a floor level in the tree first.');
+        return;
+      }
+      setWorkspaceIntent('edit');
+      setActiveTab(activeFloor?.floorplanId ? 'rooms' : 'setup');
+    },
+    [activeFloor?.floorplanId, selectedFloorId],
+  );
+
+  const openCreateFloorWithImage = useCallback(() => {
+    if (!selectedBuildingId) {
+      Alert.alert('Select a location', 'Choose or create a location first.');
+      return;
+    }
+    if (selectedFloorId) {
+      enterMapEditor('edit');
+      return;
+    }
+    setWorkspaceIntent('create');
+    setCreateLevelChoiceLocked(false);
+    setActiveTab('setup');
+  }, [enterMapEditor, selectedBuildingId, selectedFloorId]);
+
+  const startNewLocationForm = useCallback(() => {
+    setShowNewLocationForm(true);
+    setSelectedBuildingId('');
+    setSelectedFloorId('');
+    setNewBuildingName('');
+    setNewBuildingLatitude('');
+    setNewBuildingLongitude('');
+  }, []);
 
   const goToWorkflowChoiceRef = useRef(goToWorkflowChoice);
   goToWorkflowChoiceRef.current = goToWorkflowChoice;
 
   useEffect(() => {
-    if (workspaceIntent === 'unset' || Platform.OS !== 'android') return;
+    if (workspaceIntent === 'browse' || Platform.OS !== 'android') return;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       goToWorkflowChoiceRef.current();
       return true;
     });
     return () => sub.remove();
   }, [workspaceIntent]);
+
+  useEffect(() => {
+    if (!isWideLayout || selectedBuildingId || !buildings.length || showNewLocationForm) return;
+    const first = buildings[0]?.id;
+    if (first) selectBuildingInTree(first);
+  }, [isWideLayout, selectedBuildingId, buildings, selectBuildingInTree, showNewLocationForm]);
 
   const onMoveVertex = useCallback(
     (featureIndex: number, vertexIndex: number, nx: number, ny: number) => {
@@ -690,25 +806,106 @@ export function useFloorplanWorkspace() {
     setCreateLevelChoiceLocked(true);
   };
 
-  const handleCreateBuilding = async () => {
+  const handleCreateBuilding = async (): Promise<boolean> => {
     const name = newBuildingName.trim();
-    if (!orgId) return;
+    if (!orgId) {
+      alertAction({ title: 'Organization missing', message: 'Switch to an organization and try again.' });
+      return false;
+    }
     if (!name) {
-      Alert.alert('Building name required', 'Enter a name for the new building.');
-      return;
+      alertAction({ title: 'Location name required', message: 'Enter a name for the new location.' });
+      return false;
     }
     setCreatingBuilding(true);
     try {
-      const request = CreateBuildingRequest.fromJS({ name });
+      const request = CreateBuildingRequest.fromJS({
+        name,
+        latitude: parseOptionalCoordinate(newBuildingLatitude),
+        longitude: parseOptionalCoordinate(newBuildingLongitude),
+      });
       const created = await unwrap(mapsApi.createBuildingForOrganization(orgId, request));
       setNewBuildingName('');
+      setNewBuildingLatitude('');
+      setNewBuildingLongitude('');
+      queryClient.setQueryData<BuildingDto[]>(['admin-map-buildings', orgId], (prev) => [
+        ...(prev ?? []),
+        created,
+      ]);
       await queryClient.invalidateQueries({ queryKey: ['admin-map-buildings', orgId] });
-      if (created.id) setSelectedBuildingId(created.id);
-      Alert.alert('Building created', `"${created.name}" is ready. Add a floor level next.`);
+      await queryClient.invalidateQueries({ queryKey: ['map-buildings', orgId] });
+      if (created.id) {
+        selectBuildingInTree(created.id);
+        setShowNewLocationForm(false);
+      }
+      return true;
     } catch (e: unknown) {
-      Alert.alert('Could not create building', e instanceof Error ? e.message : 'Request failed.');
+      alertAction({
+        title: 'Could not create location',
+        message: e instanceof Error ? e.message : 'Request failed.',
+      });
+      return false;
     } finally {
       setCreatingBuilding(false);
+    }
+  };
+
+  const handleSaveBuilding = async () => {
+    if (!selectedBuildingId) return;
+    const name = editBuildingName.trim();
+    if (!name) {
+      alertAction({ title: 'Name required', message: 'Enter a name for this location.' });
+      return;
+    }
+    setSavingBuilding(true);
+    try {
+      const request = UpdateBuildingRequest.fromJS({
+        name,
+        shortCode: editBuildingShortCode.trim() || undefined,
+        address: editBuildingAddress.trim() || undefined,
+        latitude: parseOptionalCoordinate(editBuildingLatitude),
+        longitude: parseOptionalCoordinate(editBuildingLongitude),
+      });
+      await unwrap(mapsApi.updateBuilding(selectedBuildingId, request));
+      await queryClient.invalidateQueries({ queryKey: ['admin-map-buildings', orgId] });
+      await queryClient.invalidateQueries({ queryKey: ['map-buildings', orgId] });
+    } catch (e: unknown) {
+      alertAction({
+        title: 'Could not save location',
+        message: e instanceof Error ? e.message : 'Request failed.',
+      });
+    } finally {
+      setSavingBuilding(false);
+    }
+  };
+
+  const handleCreateFloorWithoutImage = async () => {
+    if (!selectedBuildingId) {
+      Alert.alert('Select location', 'Choose a location first.');
+      return;
+    }
+    const level = Number(newFloorLevel);
+    if (!Number.isFinite(level) || level <= 0) {
+      Alert.alert('Invalid level', 'Floor level must be a positive number.');
+      return;
+    }
+    if (floors.some((f) => f.levelNumber === level)) {
+      Alert.alert(
+        'Level already exists',
+        `This location already has level ${level}. Enter a different level number.`,
+      );
+      return;
+    }
+    try {
+      setSavingNewFloor(true);
+      const created = await unwrap(createFloorLevelOnly(selectedBuildingId, level));
+      if (created.id) selectFloorInTree(selectedBuildingId, created.id);
+      setNewFloorLevel(String(level + 1));
+      await queryClient.invalidateQueries({ queryKey: ['admin-map-floors', selectedBuildingId] });
+      await queryClient.invalidateQueries({ queryKey: ['map-floors'] });
+    } catch (e: unknown) {
+      Alert.alert('Could not add level', e instanceof Error ? e.message : 'Request failed.');
+    } finally {
+      setSavingNewFloor(false);
     }
   };
 
@@ -743,9 +940,14 @@ export function useFloorplanWorkspace() {
     try {
       setSavingNewFloor(true);
       const created = await unwrap(
-        createFloorForBuildingMultipart(selectedBuildingId, level, fileParameterFromPickedImage(pendingFloorAsset)),
+        createFloorForBuildingMultipart(
+          selectedBuildingId,
+          level,
+          pendingFloorAsset ? fileParameterFromPickedImage(pendingFloorAsset) : null,
+        ),
       );
       setSelectedFloorId(created.id!);
+      selectFloorInTree(selectedBuildingId, created.id!);
       setNewFloorLevel(String(level + 1));
       setCreateLevelChoiceLocked(false);
       await queryClient.invalidateQueries({ queryKey: ['admin-map-floors', selectedBuildingId] });
@@ -775,6 +977,7 @@ export function useFloorplanWorkspace() {
     floorsQuery,
     buildings,
     floors,
+    activeBuilding,
     activeFloor,
     floorplanQuery,
     geoJsonRaw,
@@ -841,8 +1044,35 @@ export function useFloorplanWorkspace() {
     handleCreateBuilding,
     newBuildingName,
     setNewBuildingName,
+    newBuildingLatitude,
+    setNewBuildingLatitude,
+    newBuildingLongitude,
+    setNewBuildingLongitude,
     creatingBuilding,
     handleCreateFloor,
+    expandedBuildingIds,
+    toggleBuildingExpanded,
+    selectBuildingInTree,
+    selectFloorInTree,
+    editBuildingName,
+    setEditBuildingName,
+    editBuildingShortCode,
+    setEditBuildingShortCode,
+    editBuildingAddress,
+    setEditBuildingAddress,
+    editBuildingLatitude,
+    setEditBuildingLatitude,
+    editBuildingLongitude,
+    setEditBuildingLongitude,
+    savingBuilding,
+    handleSaveBuilding,
+    handleCreateFloorWithoutImage,
+    enterMapEditor,
+    openCreateFloorWithImage,
+    goBackToLocations,
+    showNewLocationForm,
+    setShowNewLocationForm,
+    startNewLocationForm,
     shellTraceDraft,
     roomTraceDraft,
     doorPlacement,

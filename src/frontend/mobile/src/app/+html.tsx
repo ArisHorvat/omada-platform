@@ -51,6 +51,78 @@ export default function Root({ children }: PropsWithChildren) {
               input, textarea {
                 font-size: 16px;
                 font-weight: 400;
+                outline: none !important;
+                background-color: transparent;
+                border: none !important;
+                box-shadow: none !important;
+              }
+              input:focus,
+              input:focus-visible,
+              textarea:focus,
+              textarea:focus-visible {
+                outline: none !important;
+                border: none !important;
+                box-shadow: none !important;
+                background-color: transparent !important;
+              }
+              .omada-icon-input__field,
+              .omada-icon-input__field:focus,
+              .omada-icon-input__field:focus-visible,
+              .omada-icon-input input,
+              .omada-icon-input input:focus,
+              .omada-icon-input input:focus-visible {
+                outline: none !important;
+                border: none !important;
+                box-shadow: none !important;
+                background: transparent !important;
+                -webkit-appearance: none;
+                appearance: none;
+              }
+              input:-webkit-autofill,
+              input:-webkit-autofill:hover,
+              input:-webkit-autofill:focus,
+              textarea:-webkit-autofill {
+                -webkit-box-shadow: 0 0 0 1000px transparent inset !important;
+                box-shadow: 0 0 0 1000px transparent inset !important;
+                -webkit-text-fill-color: inherit;
+                transition: background-color 9999s ease-out 0s;
+              }
+              /* Theme-aware scrollbars (see WebDocumentThemeSync) */
+              html[data-omada-theme="light"] {
+                color-scheme: light;
+              }
+              html[data-omada-theme="dark"] {
+                color-scheme: dark;
+              }
+              html[data-omada-theme="light"] * {
+                scrollbar-color: rgba(100, 116, 139, 0.55) rgba(241, 245, 249, 0.9);
+              }
+              html[data-omada-theme="dark"] * {
+                scrollbar-color: rgba(148, 163, 184, 0.45) rgba(15, 23, 42, 0.85);
+              }
+              html[data-omada-theme="light"] ::-webkit-scrollbar {
+                width: 10px;
+                height: 10px;
+              }
+              html[data-omada-theme="light"] ::-webkit-scrollbar-track {
+                background: rgba(241, 245, 249, 0.9);
+              }
+              html[data-omada-theme="light"] ::-webkit-scrollbar-thumb {
+                background: rgba(100, 116, 139, 0.55);
+                border-radius: 999px;
+                border: 2px solid rgba(241, 245, 249, 0.9);
+              }
+              html[data-omada-theme="dark"] ::-webkit-scrollbar {
+                width: 10px;
+                height: 10px;
+              }
+              html[data-omada-theme="dark"] ::-webkit-scrollbar-track {
+                background: rgba(15, 23, 42, 0.85);
+              }
+              html[data-omada-theme="dark"] ::-webkit-scrollbar-thumb {
+                background: rgba(148, 163, 184, 0.45);
+                border-radius: 999px;
+                border: 2px solid rgba(15, 23, 42, 0.85);
               }
               ::selection {
                 background: rgba(99, 102, 241, 0.35);

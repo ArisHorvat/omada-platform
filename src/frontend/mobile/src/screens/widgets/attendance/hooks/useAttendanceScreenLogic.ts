@@ -33,7 +33,7 @@ export function useAttendanceScreenLogic() {
     viewMode,
     isTeacherView: viewMode === 'teacher',
     setViewAsTeacher,
-    canSwitchView: canTakeRoll && (remote.data?.teacherSessions.length ?? 0) > 0,
+    canSwitchView: canTakeRoll,
   };
 }
 

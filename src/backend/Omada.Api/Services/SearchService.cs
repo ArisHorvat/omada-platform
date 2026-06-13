@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Omada.Api.Abstractions;
 using Omada.Api.Data;
 using Omada.Api.DTOs.Search;
@@ -32,16 +33,16 @@ public class SearchService : ISearchService
         [SearchTypes.Grades] = WidgetKeys.Grades,
     };
 
-    private readonly ApplicationDbContext _context;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly IUserContext _userContext;
     private readonly IPublicMediaUrlResolver _mediaUrls;
 
     public SearchService(
-        ApplicationDbContext context,
+        IServiceScopeFactory scopeFactory,
         IUserContext userContext,
         IPublicMediaUrlResolver mediaUrls)
     {
-        _context = context;
+        _scopeFactory = scopeFactory;
         _userContext = userContext;
         _mediaUrls = mediaUrls;
     }
@@ -72,17 +73,10 @@ public class SearchService : ISearchService
             });
         }
 
-        var searchTasks = permittedTypes.Select(type => type switch
-        {
-            SearchTypes.Users => SearchUsersAsync(orgId, lowered, limit),
-            SearchTypes.Rooms => SearchRoomsAsync(orgId, lowered, limit),
-            SearchTypes.News => SearchNewsAsync(orgId, lowered, limit),
-            SearchTypes.Tasks => SearchTasksAsync(orgId, userId, lowered, limit),
-            SearchTypes.Schedule => SearchScheduleAsync(orgId, userId, lowered, limit),
-            SearchTypes.Groups => SearchGroupsAsync(orgId, lowered, limit),
-            SearchTypes.Grades => SearchGradesAsync(orgId, userId, lowered, limit),
-            _ => Task.FromResult<SearchResultGroupDto?>(null)
-        }).ToArray();
+        // Each domain search gets its own scoped DbContext so parallel queries stay safe.
+        var searchTasks = permittedTypes
+            .Select(type => RunSearchForTypeAsync(type, orgId, userId, lowered, limit))
+            .ToArray();
 
         var results = await Task.WhenAll(searchTasks);
         var groups = results
@@ -95,6 +89,29 @@ public class SearchService : ISearchService
             Query = query,
             Groups = groups
         });
+    }
+
+    private async Task<SearchResultGroupDto?> RunSearchForTypeAsync(
+        string type,
+        Guid orgId,
+        Guid userId,
+        string lowered,
+        int limit)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+        return type switch
+        {
+            SearchTypes.Users => await SearchUsersAsync(context, orgId, lowered, limit),
+            SearchTypes.Rooms => await SearchRoomsAsync(context, orgId, lowered, limit),
+            SearchTypes.News => await SearchNewsAsync(context, orgId, lowered, limit),
+            SearchTypes.Tasks => await SearchTasksAsync(context, orgId, userId, lowered, limit),
+            SearchTypes.Schedule => await SearchScheduleAsync(context, orgId, userId, lowered, limit),
+            SearchTypes.Groups => await SearchGroupsAsync(context, orgId, lowered, limit),
+            SearchTypes.Grades => await SearchGradesAsync(context, orgId, userId, lowered, limit),
+            _ => null
+        };
     }
 
     private static List<string> ResolveRequestedTypes(List<string>? types)
@@ -124,10 +141,14 @@ public class SearchService : ISearchService
         Guid userId,
         Guid orgId)
     {
-        var member = await _context.OrganizationMembers
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+        var member = await context.OrganizationMembers
             .AsNoTracking()
             .Where(m => m.UserId == userId && m.OrganizationId == orgId && m.IsActive)
             .Select(m => new { m.Role.Name, Permissions = m.Role.Permissions })
+            .AsSingleQuery()
             .FirstOrDefaultAsync();
 
         if (member == null)
@@ -142,12 +163,16 @@ public class SearchService : ISearchService
         return (widgetAccess, isSuperAdmin);
     }
 
-    private async Task<SearchResultGroupDto?> SearchUsersAsync(Guid orgId, string lowered, int limit)
+    private async Task<SearchResultGroupDto?> SearchUsersAsync(
+        ApplicationDbContext context,
+        Guid orgId,
+        string lowered,
+        int limit)
     {
         var baseQuery = (
-            from m in _context.OrganizationMembers.AsNoTracking()
-            join u in _context.Users.AsNoTracking() on m.UserId equals u.Id
-            join r in _context.Roles.AsNoTracking() on m.RoleId equals r.Id
+            from m in context.OrganizationMembers.AsNoTracking()
+            join u in context.Users.AsNoTracking() on m.UserId equals u.Id
+            join r in context.Roles.AsNoTracking() on m.RoleId equals r.Id
             where m.OrganizationId == orgId && m.IsActive && !u.IsDeleted
             select new
             {
@@ -184,9 +209,13 @@ public class SearchService : ISearchService
         }).ToList());
     }
 
-    private async Task<SearchResultGroupDto?> SearchRoomsAsync(Guid orgId, string lowered, int limit)
+    private async Task<SearchResultGroupDto?> SearchRoomsAsync(
+        ApplicationDbContext context,
+        Guid orgId,
+        string lowered,
+        int limit)
     {
-        var baseQuery = _context.Rooms
+        var baseQuery = context.Rooms
             .AsNoTracking()
             .Where(r => r.OrganizationId == orgId && !r.IsDeleted)
             .Where(r =>
@@ -214,9 +243,13 @@ public class SearchService : ISearchService
         }).ToList());
     }
 
-    private async Task<SearchResultGroupDto?> SearchNewsAsync(Guid orgId, string lowered, int limit)
+    private async Task<SearchResultGroupDto?> SearchNewsAsync(
+        ApplicationDbContext context,
+        Guid orgId,
+        string lowered,
+        int limit)
     {
-        var baseQuery = _context.News
+        var baseQuery = context.News
             .AsNoTracking()
             .Where(n => n.OrganizationId == orgId && !n.IsDeleted)
             .Where(n =>
@@ -243,9 +276,14 @@ public class SearchService : ISearchService
         }).ToList());
     }
 
-    private async Task<SearchResultGroupDto?> SearchTasksAsync(Guid orgId, Guid userId, string lowered, int limit)
+    private async Task<SearchResultGroupDto?> SearchTasksAsync(
+        ApplicationDbContext context,
+        Guid orgId,
+        Guid userId,
+        string lowered,
+        int limit)
     {
-        var baseQuery = _context.Tasks
+        var baseQuery = context.Tasks
             .AsNoTracking()
             .Where(t => t.OrganizationId == orgId && !t.IsDeleted)
             .Where(t => t.AssigneeId == userId || t.CreatedByUserId == userId)
@@ -276,15 +314,20 @@ public class SearchService : ISearchService
         }).ToList());
     }
 
-    private async Task<SearchResultGroupDto?> SearchScheduleAsync(Guid orgId, Guid userId, string lowered, int limit)
+    private async Task<SearchResultGroupDto?> SearchScheduleAsync(
+        ApplicationDbContext context,
+        Guid orgId,
+        Guid userId,
+        string lowered,
+        int limit)
     {
-        var userGroupIds = await _context.Set<GroupMember>()
+        var userGroupIds = await context.Set<GroupMember>()
             .AsNoTracking()
             .Where(gm => gm.UserId == userId)
             .Select(gm => gm.GroupId)
             .ToListAsync();
 
-        var baseQuery = _context.Events
+        var baseQuery = context.Events
             .AsNoTracking()
             .Where(e => e.OrganizationId == orgId && !e.IsDeleted)
             .Where(e =>
@@ -318,9 +361,13 @@ public class SearchService : ISearchService
         }).ToList());
     }
 
-    private async Task<SearchResultGroupDto?> SearchGroupsAsync(Guid orgId, string lowered, int limit)
+    private async Task<SearchResultGroupDto?> SearchGroupsAsync(
+        ApplicationDbContext context,
+        Guid orgId,
+        string lowered,
+        int limit)
     {
-        var baseQuery = _context.Groups
+        var baseQuery = context.Groups
             .AsNoTracking()
             .Where(g => g.OrganizationId == orgId && !g.IsDeleted)
             .Where(g =>
@@ -346,9 +393,14 @@ public class SearchService : ISearchService
         }).ToList());
     }
 
-    private async Task<SearchResultGroupDto?> SearchGradesAsync(Guid orgId, Guid userId, string lowered, int limit)
+    private async Task<SearchResultGroupDto?> SearchGradesAsync(
+        ApplicationDbContext context,
+        Guid orgId,
+        Guid userId,
+        string lowered,
+        int limit)
     {
-        var baseQuery = _context.Grades
+        var baseQuery = context.Grades
             .AsNoTracking()
             .Where(g => g.OrganizationId == orgId && !g.IsDeleted && g.UserId == userId)
             .Where(g =>

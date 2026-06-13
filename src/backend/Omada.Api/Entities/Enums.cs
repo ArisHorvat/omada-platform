@@ -3,6 +3,13 @@ namespace Omada.Api.Entities;
 public enum AccessLevel : byte { View = 0, Edit = 1, Admin = 2 }
 
 /// <summary>Corporate task urgency (see tasks roadmap).</summary>
+public enum TaskDistributionScope : byte
+{
+    Personal = 0,
+    OfferingEnrolled = 1,
+    GroupMembers = 2
+}
+
 public enum TaskPriority : byte
 {
     Low = 0,

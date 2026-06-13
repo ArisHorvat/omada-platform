@@ -10,6 +10,11 @@ public interface IScheduleService
     Task<ServiceResponse<ScheduleItemDto>> CreateEventAsync(CreateEventRequest request);
     Task<ServiceResponse<ScheduleItemDto>> UpdateEventAsync(Guid id, CreateEventRequest request);
     Task<ServiceResponse<bool>> UpdateAttendanceAsync(Guid eventId, UpdateAttendanceRequest request);
+
+    /// <summary>
+    /// Applies attendance for a specific user (staff roll call). Caller must authorize separately.
+    /// </summary>
+    Task<ServiceResponse<bool>> ApplyAttendanceForUserAsync(Guid eventId, Guid userId, UpdateAttendanceRequest request);
     Task<ServiceResponse<bool>> DeleteEventAsync(Guid id);
     Task<ServiceResponse<bool>> CancelEventInstanceAsync(Guid eventId, DateTime originalDate);
     Task<ServiceResponse<IEnumerable<HostDto>>> SearchHostsAsync(string query);

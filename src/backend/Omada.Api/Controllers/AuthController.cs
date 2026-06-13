@@ -64,6 +64,20 @@ public class AuthController : ControllerBase
         return response.IsSuccess ? Ok(response) : BadRequest(response);
     }
 
+    [HttpPost("verify-2fa")]
+    public async Task<ActionResult<ServiceResponse<LoginResponse>>> VerifyTwoFactor([FromBody] VerifyTwoFactorRequest request)
+    {
+        var response = await _authService.VerifyTwoFactorAsync(request);
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
+    }
+
+    [HttpPost("resend-2fa")]
+    public async Task<ActionResult<ServiceResponse<string>>> ResendTwoFactor([FromBody] ResendTwoFactorRequest request)
+    {
+        var response = await _authService.ResendTwoFactorCodeAsync(request);
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
+    }
+
     [HttpPost("join")]
     public async Task<ActionResult<ServiceResponse<JoinOrganizationResultDto>>> JoinOrganization([FromBody] JoinOrganizationRequest request)
     {

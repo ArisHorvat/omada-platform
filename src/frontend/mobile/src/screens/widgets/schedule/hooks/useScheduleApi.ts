@@ -2,6 +2,7 @@ import { Alert } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AttendanceStatus, CreateEventRequest, UpdateAttendanceRequest, ScheduleItemDto } from '@/src/api/generatedClient';
 import { scheduleApi, roomsApi, unwrap } from '@/src/api';
+import apiClient from '@/src/api/apiClient';
 import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
 import { attendanceInstanceDate } from '../utils/scheduleInstanceDate';
 
@@ -55,14 +56,35 @@ export const useScheduleApi = (date: Date, viewMode: string, filters: ScheduleFi
       queryClient.invalidateQueries({ queryKey: ['schedule-alternatives'] });
       scheduleQuery.refetch(); 
   };
+  const postEventBody = (request: CreateEventRequest) => {
+    const body = request.toJSON() as Record<string, unknown>;
+    const extra = request as CreateEventRequest & { offeringId?: string; cohortGroupId?: string };
+    if (extra.offeringId) body.offeringId = extra.offeringId;
+    if (extra.cohortGroupId) body.cohortGroupId = extra.cohortGroupId;
+    return body;
+  };
+
   const createEvent = useMutation({
-    mutationFn: async (request: CreateEventRequest) => await unwrap(scheduleApi.createEvent(request)),
+    mutationFn: async (request: CreateEventRequest) => {
+      const extra = request as CreateEventRequest & { offeringId?: string; cohortGroupId?: string };
+      if (extra.offeringId || extra.cohortGroupId) {
+        const res = await apiClient.post('/Schedule', postEventBody(request));
+        return unwrap(Promise.resolve(res.data));
+      }
+      return unwrap(scheduleApi.createEvent(request));
+    },
     onSuccess: invalidateSchedule,
     onError: (err: any) => Alert.alert('Error', err.message),
   });
   const updateEvent = useMutation({
-    mutationFn: async ({ id, request }: { id: string, request: CreateEventRequest }) => 
-      await unwrap(scheduleApi.updateEvent(id, request)),
+    mutationFn: async ({ id, request }: { id: string; request: CreateEventRequest }) => {
+      const extra = request as CreateEventRequest & { offeringId?: string; cohortGroupId?: string };
+      if (extra.offeringId || extra.cohortGroupId) {
+        const res = await apiClient.put(`/Schedule/${id}`, postEventBody(request));
+        return unwrap(Promise.resolve(res.data));
+      }
+      return unwrap(scheduleApi.updateEvent(id, request));
+    },
     onSuccess: invalidateSchedule,
     onError: (err: any) => Alert.alert('Error', err.message),
   });

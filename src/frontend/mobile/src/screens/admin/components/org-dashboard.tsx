@@ -30,7 +30,7 @@ export default function OrgAdminDashboard() {
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'left', 'right']}>
-      <WidgetPageShell>
+      <WidgetPageShell fullBleed>
         <PageContainer>
           <View style={{ flex: 1, minHeight: 0 }}>
             <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 }}>
@@ -45,14 +45,19 @@ export default function OrgAdminDashboard() {
 
             <View style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
               <OnboardingChecklist
-                onboardingStep={org?.onboardingStep ?? 0}
+                completedOnboardingSteps={org?.completedOnboardingSteps}
                 memberCount={memberCount}
                 enabledWidgets={enabledWidgets}
+                organizationType={org?.organizationType}
               />
             </View>
 
             {!showAdminSidebar ? (
-              <AdminWorkspaceCatalog enabledWidgets={enabledWidgets} bottomInset={insets.bottom + 24} />
+              <AdminWorkspaceCatalog
+                enabledWidgets={enabledWidgets}
+                organizationType={org?.organizationType}
+                bottomInset={insets.bottom + 24}
+              />
             ) : null}
           </View>
         </PageContainer>

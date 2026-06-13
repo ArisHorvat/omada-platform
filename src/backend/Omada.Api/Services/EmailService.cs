@@ -57,6 +57,18 @@ public class EmailService : IEmailService
         return SendAsync(email, body);
     }
 
+    public Task<ServiceResponse<bool>> SendPasswordResetEmailAsync(string email, string firstName, string resetLink)
+    {
+        var (subject, textBody, htmlBody) = InviteEmailTemplates.PasswordReset(firstName, resetLink);
+        return SendAsync(email, subject, textBody, htmlBody);
+    }
+
+    public Task<ServiceResponse<bool>> SendTwoFactorCodeEmailAsync(string email, string firstName, string code)
+    {
+        var (subject, textBody, htmlBody) = InviteEmailTemplates.TwoFactorSignInCode(firstName, code);
+        return SendAsync(email, subject, textBody, htmlBody);
+    }
+
     private static string BuildInviteUrl(string inviteLink, string email, string? setupToken)
     {
         var url = inviteLink;

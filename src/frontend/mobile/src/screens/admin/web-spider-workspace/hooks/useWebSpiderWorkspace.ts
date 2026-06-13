@@ -3,16 +3,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useThemeColors } from '@/src/hooks';
-import {
-  enqueueSpiderNewsSync,
-  enqueueSpiderScheduleSync,
-  fetchSpiderConfig,
-  fetchSpiderSyncHistory,
-  fetchUnresolvedScheduleEvents,
-  saveSpiderConfig,
-  unwrap,
-  webSpiderApi,
-} from '@/src/api';
+import { unwrap, webSpiderApi } from '@/src/api';
 import { QUERY_KEYS } from '@/src/api/queryKeys';
 import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
 import type {
@@ -24,7 +15,7 @@ import type {
   SpiderPreviewNewsResultDto,
   SpiderPreviewScheduleResultDto,
 } from '@/src/api/generatedClient';
-import { SpiderUrlRequest } from '@/src/api/generatedClient';
+import { SaveSpiderConfigRequest, SpiderUrlRequest } from '@/src/api/generatedClient';
 
 export type WebSpiderTab = 'schedule' | 'news';
 
@@ -53,14 +44,14 @@ export function useWebSpiderWorkspace() {
 
   const syncHistoryQuery = useQuery({
     queryKey: QUERY_KEYS.orgAdmin.spiderSyncHistory(orgId),
-    queryFn: () => unwrap(fetchSpiderSyncHistory(20)),
+    queryFn: () => unwrap(webSpiderApi.getSyncHistory(20)),
     enabled: !!orgId,
     refetchInterval: 15000,
   });
 
   const unresolvedQuery = useQuery({
     queryKey: QUERY_KEYS.orgAdmin.spiderUnresolved(orgId),
-    queryFn: () => unwrap(fetchUnresolvedScheduleEvents()),
+    queryFn: () => unwrap(webSpiderApi.getUnresolvedScheduleEvents()),
     enabled: !!orgId,
   });
 
@@ -76,7 +67,7 @@ export function useWebSpiderWorkspace() {
     let cancelled = false;
     (async () => {
       try {
-        const config = await unwrap(fetchSpiderConfig());
+        const config = await unwrap(webSpiderApi.getConfig());
         if (cancelled) return;
         setUrlsSavedInDb(config.isSavedInDatabase ?? false);
         if (config.schedulePageUrl) setScheduleUrl(config.schedulePageUrl);
@@ -134,10 +125,12 @@ export function useWebSpiderWorkspace() {
   const saveUrls = useCallback(() => {
     return runAction('save-config', async () => {
       const config = await unwrap(
-        saveSpiderConfig({
-          schedulePageUrl: scheduleUrl.trim() || undefined,
-          newsStartUrl: newsUrl.trim() || undefined,
-        }),
+        webSpiderApi.saveConfig(
+          SaveSpiderConfigRequest.fromJS({
+            schedulePageUrl: scheduleUrl.trim() || undefined,
+            newsStartUrl: newsUrl.trim() || undefined,
+          }),
+        ),
       );
       setUrlsSavedInDb(config.isSavedInDatabase ?? false);
       if (config.schedulePageUrl) setScheduleUrl(config.schedulePageUrl);
@@ -148,7 +141,10 @@ export function useWebSpiderWorkspace() {
 
   const enqueueScheduleSync = useCallback(() => {
     return runAction('schedule-sync', async () => {
-      const result = await unwrap(enqueueSpiderScheduleSync(scheduleUrl.trim() || undefined));
+      const url = scheduleUrl.trim();
+      const result = await unwrap(
+        webSpiderApi.enqueueScheduleSync(url ? SpiderUrlRequest.fromJS({ url }) : undefined),
+      );
       setUrlsSavedInDb(true);
       setStatusMessage(result.message);
       await refreshSyncMeta();
@@ -157,7 +153,10 @@ export function useWebSpiderWorkspace() {
 
   const enqueueNewsSync = useCallback(() => {
     return runAction('news-sync', async () => {
-      const result = await unwrap(enqueueSpiderNewsSync(newsUrl.trim() || undefined));
+      const url = newsUrl.trim();
+      const result = await unwrap(
+        webSpiderApi.enqueueNewsSync(url ? SpiderUrlRequest.fromJS({ url }) : undefined),
+      );
       setUrlsSavedInDb(true);
       setStatusMessage(result.message);
       await refreshSyncMeta();

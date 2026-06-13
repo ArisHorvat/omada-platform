@@ -130,7 +130,7 @@ export default function SettingsScreen({ adminConsole = false }: { adminConsole?
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
-      <WidgetPageShell>
+      <WidgetPageShell fullBleed={adminConsole}>
       {header}
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
         <ClayGroupedSection title="Appearance">

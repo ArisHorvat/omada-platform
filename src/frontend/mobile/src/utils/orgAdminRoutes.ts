@@ -16,6 +16,7 @@ export function isAllowedOrgAdminPath(pathname: string, role: string | undefined
   if (path.includes('admin-settings')) return true;
   if (path.includes('admin-security')) return true;
   if (path.includes('admin-digital-id')) return true;
+  if (path.includes('coursework-teaching')) return true;
 
   if (role === 'SuperAdmin' && path.includes('admin-dashboard')) return true;
 

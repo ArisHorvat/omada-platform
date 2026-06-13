@@ -17,10 +17,14 @@ Each user account can belong to **multiple organizations**. Switching orgs feels
 | 🏢 **Multi-tenant** | JWT + EF global filters — data isolation by `OrganizationId` |
 | 🔐 **Widget RBAC** | View → Edit → Admin per widget; SuperAdmin bypass |
 | 🔗 **Invite system** | Unique invite code + link per org; email invites at registration |
+| 🔐 **Account security** | Change password, forgot/reset email links, optional **email OTP 2FA** at sign-in |
 | 🕷️ **Web spider** | Crawl public timetable & news pages into the platform |
-| 🗺️ **Map & floorplans** | Roboflow AI extracts room geometry from floorplan images |
+| 🗺️ **Map & floorplans** | Locations → levels → rooms; optional floorplan AI (Roboflow); campus GPS + indoor coords |
 | ⚡ **Real-time** | SignalR for chat; React Query + offline-friendly patterns on mobile |
-| 🔍 **Universal search** | Cross-widget search scoped to permissions |
+| 🔍 **Universal search** | Cross-widget search scoped to permissions — [`Backend.md`](Backend.md#-universal-search) · [`Frontend.md`](Frontend.md#-universal-search) |
+| 📚 **Curriculum offerings** | Reusable course packages, apply to academic terms, instructor assignment — [`docs/CurriculumOfferings.md`](docs/CurriculumOfferings.md) |
+| 📝 **Coursework & grading** | Batched assignments, student turn-in, teaching workspace, batch grading — [`docs/Coursework.md`](docs/Coursework.md) |
+| 📊 **Grades & transcript** | Coursework standing (1–10), credits, teacher gradebook — [`docs/Grades.md`](docs/Grades.md) |
 
 ---
 
@@ -46,6 +50,10 @@ omada-platform/
 │   ├── Configuration.md            ← .env, appsettings, setup
 │   ├── Backend.md                  ← API structure & features
 │   ├── Frontend.md                 ← Mobile app structure & routes
+│   ├── AccountSecurity.md          ← Password, reset links, email OTP 2FA
+│   ├── CurriculumOfferings.md      ← Periods, packages, apply/revert
+│   ├── Coursework.md               ← Post, turn-in, grade, teach workspace
+│   ├── Grades.md                   ← Standing, transcript, credits, teacher gradebook
 │   └── WebSpider.md                ← Crawling & sync deep dive
 │
 ├── ⚙️ src/backend/
@@ -143,18 +151,27 @@ flowchart LR
 
 ### Widgets & permissions (two layers)
 
-1. **Org widget catalog** — which features are enabled org-wide (`Organization.EnabledWidgetKeysJson`)
-2. **Role permissions** — per-role **View → Edit → Admin** on enabled widgets only
+1. **Org widget catalog** — which **optional** features are enabled org-wide (`Organization.EnabledWidgetKeysJson`). **New orgs start with `"[]"`** (no optional widgets until toggled in **`/widgets-workspace`**). **Legacy `null`** = all catalog widgets for org type enabled. Filtered by **organization type** (university vs corporate). **Always on** (not stored/toggled): **schedule**, **tasks**, **digital ID**. **Not product widgets:** events, transport, finance. **Groups** is admin RBAC only (not a member catalog toggle).
+2. **Role permissions** — per-role **View → Edit → Admin** on widgets allowed for the org (catalog + always-on + groups for admin roles)
+
+| Catalog (toggleable) | University | Corporate | Both |
+|------------------------|------------|-----------|------|
+| Type-specific | grades, assignments | documents | — |
+| Shared | — | — | chat, news, attendance, users, map, rooms |
+
+When an org admin **deletes a custom role**, members move to a **holding role** (`Unassigned` or `Member`) until reassigned in the Members workspace — not onto another custom role.
+
+**Organization registration (mobile):** 3-step wizard at **`/register-flow`** (Org → Admin → Branding) → success screen → admin console. Widget catalog, roles, and invites are configured via the **org admin onboarding checklist** (`/org-dashboard`), not during registration.
 
 Enforced with `[HasPermission]` on controllers. **SuperAdmin** bypasses widget checks and can enter any active org.
 
-Examples: `schedule`, `news`, `map`, `rooms`, `chat`, `grades`, `admin`, `super-admin`
+Examples: `schedule`, `tasks`, `digital-id`, `news`, `map`, `rooms`, `chat`, `grades`, `assignments`, `documents`, `admin`, `super-admin`
 
 ### Admin surfaces
 
 | Role | Mobile route | API prefix |
 |------|--------------|------------|
-| 🏛️ Org admin | `/org-dashboard` + 13 workspaces | `/api/Organizations/current` |
+| 🏛️ Org admin | `/org-dashboard` + workspaces (members, roles, branding, groups, **locations & maps**, event types, periods, spider, widgets, audit — **fullBleed** on web). Toggle **Member app** ↔ **Admin console** on profile screens when user is org admin. | `/api/Organizations/current`, `/api/Maps`, `/api/Rooms`, `/api/floorplans` |
 | 🌐 Platform admin | `/admin-dashboard` | `/api/super-admin` |
 
 ---
@@ -166,23 +183,32 @@ Examples: `schedule`, `news`, `map`, `rooms`, `chat`, `grades`, `admin`, `super-
 | 📚 [`docs/README.md`](docs/README.md) | **Documentation hub** — index of all guides |
 | 🏗️ [`docs/Architecture.md`](docs/Architecture.md) | System design, data flow, tenancy, permissions |
 | ⚙️ [`docs/Backend.md`](docs/Backend.md) | API folders, 23 controllers, services, entities |
-| 📱 [`docs/Frontend.md`](docs/Frontend.md) | Mobile routes, Clay UI, widgets, admin workspaces |
+| 📱 [`docs/Frontend.md`](docs/Frontend.md) | Mobile routes, Clay UI, widgets, org admin layout & workspaces |
 | 🔧 [`docs/Configuration.md`](docs/Configuration.md) | `.env`, appsettings, checklist for new clones |
+| 🔐 [`docs/AccountSecurity.md`](docs/AccountSecurity.md) | Change password, forgot/reset, email OTP 2FA |
+| 🪪 [`docs/DigitalId.md`](docs/DigitalId.md) | Member pass (QR), staff scanner, attendance integration |
 | 🕷️ [`docs/WebSpider.md`](docs/WebSpider.md) | Timetable/news crawling, Hangfire, Gemini |
 | 📱 [`src/frontend/mobile/TUTORIAL.md`](src/frontend/mobile/TUTORIAL.md) | End-user flows (registration, invites, daily use) |
 
 ---
 
-## 🗺️ Floorplan processing (map admin)
+## 🗺️ Locations, maps & floorplans (org admin)
 
-| Step | Component |
-|------|-----------|
-| 📤 Upload image | `FloorplansController` + `FloorplanProcessingService` |
-| 🤖 AI extraction | `RoboflowFloorplanGeoJsonExtractor` |
-| 💾 Storage | `wwwroot/images/maps/floorplans/` + `Floorplan.GeoJsonData` |
-| 🏠 Publish rooms | GeoJSON polygons → bookable `Room` rows |
+**Workspace:** **`/floorplan-workspace`** (nav: **Locations & maps**). Sole admin path for sites, levels, rooms, and optional floorplans.
 
-Requires **`map` widget + Admin** for upload. Set **`ROBOFLOW_API_KEY`** in backend `.env`.
+| Step | What | API / UI |
+|------|------|----------|
+| 📍 **Location** | Name, address, **campus map pin** (lat/lng) | `POST/PUT .../buildings` · **`LocationPinPicker`** on map |
+| 🏢 **Level** | Floor number — image optional | `POST .../floors` (multipart; **`FloorplanFile` optional**) |
+| 🚪 **Rooms (no image)** | List: add, **edit**, remove | `roomsApi` + **`LocationFloorRoomsPanel`** |
+| 📐 **Floorplan (optional)** | Image, AI, polygons, pins, publish | `FloorplansController` · editor mode in same workspace |
+| 🗺️ **Campus widget** | Outdoor markers | Only buildings with **latitude + longitude** |
+
+**Two coordinate systems:** GPS on **`Building`** (campus map) vs normalized **`[0..1]`** on floorplan images (indoor).
+
+**Floorplan AI (optional):** Roboflow → GeoJSON · requires **`map` Admin** + **`ROBOFLOW_API_KEY`**.
+
+Details: [`docs/Frontend.md`](docs/Frontend.md) · [`docs/Backend.md`](docs/Backend.md) · rules **`domain-map-rooms-admin.mdc`**
 
 ---
 

@@ -10,7 +10,8 @@ public interface ITaskRepository : IGenericRepository<TaskItem>
         Guid userId,
         int page,
         int pageSize,
-        Guid? groupId = null);
+        Guid? groupId = null,
+        Guid? offeringId = null);
 
     Task<TaskItem?> GetByIdForUserReadAsync(Guid id, Guid organizationId, Guid userId);
 

@@ -25,6 +25,9 @@ public class UpdateCurrentOrganizationRequest
 
     public int? OnboardingStep { get; set; }
 
+    /// <summary>Checklist step ids to mark complete (merged with existing).</summary>
+    public List<string>? CompletedOnboardingSteps { get; set; }
+
     public OrganizationType? OrganizationType { get; set; }
 
     public bool? IsActive { get; set; }

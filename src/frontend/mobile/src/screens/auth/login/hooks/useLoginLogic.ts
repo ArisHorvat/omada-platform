@@ -10,13 +10,21 @@ import { authApi, unwrap } from '@/src/api';
 import {
   LoginRequest,
   RefreshTokenRequest,
+  ResendTwoFactorRequest,
   SwitchOrgRequest,
-  UserOrganizationDto,
+  VerifyTwoFactorRequest,
+  type LoginResponse,
+  type UserOrganizationDto,
 } from '@/src/api/generatedClient';
 import { promptLocalAuthentication } from '@/src/utils/promptLocalAuthentication';
 import { formatApiErrorMessage } from '@/src/utils/formatApiError';
 import { homeHrefForRole } from '@/src/utils/authRoutes';
 import { setCompletingLoginOrgPick } from '@/src/utils/loginOrgPick';
+
+export type TwoFactorChallenge = {
+  sessionToken: string;
+  email: string;
+};
 
 export const useLoginLogic = (pendingJoinCode?: string) => {
   const { login } = useAuth();
@@ -24,8 +32,14 @@ export const useLoginLogic = (pendingJoinCode?: string) => {
   const { isBiometricEnabled } = useUserPreferences();
 
   const [isLoading, setIsLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
   const [showOrgSelector, setShowOrgSelector] = useState(false);
   const [userOrgs, setUserOrgs] = useState<UserOrganizationDto[]>([]);
+  const [twoFactorChallenge, setTwoFactorChallenge] = useState<TwoFactorChallenge | null>(null);
+  const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [twoFactorError, setTwoFactorError] = useState<string | null>(null);
+  const [twoFactorInfo, setTwoFactorInfo] = useState<string | null>(null);
+  const [resendBusy, setResendBusy] = useState(false);
 
   const requireBiometricGateIfEnabled = async (): Promise<boolean> => {
     if (!isBiometricEnabled) return true;
@@ -88,6 +102,39 @@ export const useLoginLogic = (pendingJoinCode?: string) => {
     router.replace(homeHrefForRole(role) as Href);
   };
 
+  const finalizeLogin = async (finalToken: string, refreshToken: string) => {
+    await login(finalToken, refreshToken);
+  };
+
+  const completeAuthenticatedLogin = async (response: LoginResponse) => {
+    const jwtToken = response.accessToken;
+    const refreshToken = response.refreshToken || '';
+
+    if (!jwtToken) {
+      throw new Error('The server did not return a valid authentication token.');
+    }
+
+    await secureSetItem('jwt_token', jwtToken);
+    await secureSetItem('refresh_token', refreshToken);
+
+    const orgs = await unwrap(authApi.getMyOrganizations());
+
+    if (pendingJoinCode) {
+      await finalizeLogin(jwtToken, refreshToken);
+      navigateAfterLogin(response.role);
+      return;
+    }
+
+    if (orgs && orgs.length > 1) {
+      setUserOrgs(orgs);
+      setShowOrgSelector(true);
+      return;
+    }
+
+    await finalizeLogin(jwtToken, refreshToken);
+    navigateAfterLogin(response.role);
+  };
+
   const handleLogin = async (email: string, password: string) => {
     if (!email || !password) {
       Alert.alert('Error', 'Please enter both email and password.');
@@ -96,6 +143,9 @@ export const useLoginLogic = (pendingJoinCode?: string) => {
 
     if (!(await requireBiometricGateIfEnabled())) return;
 
+    setLoginError(null);
+    setTwoFactorError(null);
+    setTwoFactorInfo(null);
     setIsLoading(true);
     try {
       const request = new LoginRequest();
@@ -104,35 +154,99 @@ export const useLoginLogic = (pendingJoinCode?: string) => {
 
       const response = await unwrap(authApi.login(request));
 
-      const jwtToken = response.accessToken;
-      const refreshToken = response.refreshToken || '';
-
-      if (!jwtToken) throw new Error('The server did not return a valid authentication token.');
-
-      await secureSetItem('jwt_token', jwtToken);
-      await secureSetItem('refresh_token', refreshToken);
-
-      const orgs = await unwrap(authApi.getMyOrganizations());
-
-      if (pendingJoinCode) {
-        await finalizeLogin(jwtToken, refreshToken);
-        navigateAfterLogin(response.role);
+      if (response.requiresTwoFactor) {
+        if (!response.twoFactorSessionToken) {
+          throw new Error('Two-factor verification is required but the session token is missing.');
+        }
+        setTwoFactorChallenge({
+          sessionToken: response.twoFactorSessionToken,
+          email: response.user?.email ?? email.trim(),
+        });
+        setTwoFactorCode('');
+        setTwoFactorInfo('We sent a 6-digit code to your email. Enter it below to finish signing in.');
         return;
       }
 
-      if (orgs && orgs.length > 1) {
-        setUserOrgs(orgs);
-        setShowOrgSelector(true);
-      } else {
-        await finalizeLogin(jwtToken, refreshToken);
-      }
+      await completeAuthenticatedLogin(response);
     } catch (error: unknown) {
       await secureDeleteItem('jwt_token');
       await secureDeleteItem('refresh_token');
-      Alert.alert('Login Failed', formatApiErrorMessage(error, 'Invalid credentials.'));
+      const message = formatApiErrorMessage(error, 'Invalid email or password.');
+      setLoginError(message);
+      Alert.alert('Login Failed', message);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleVerifyTwoFactor = async () => {
+    if (!twoFactorChallenge) return;
+
+    const code = twoFactorCode.trim();
+    if (!/^\d{6}$/.test(code)) {
+      const message = 'Enter the 6-digit code from your email.';
+      setTwoFactorError(message);
+      Alert.alert('Error', message);
+      return;
+    }
+
+    setTwoFactorError(null);
+    setTwoFactorInfo(null);
+    setIsLoading(true);
+    try {
+      const response = await unwrap(
+        authApi.verifyTwoFactor(
+          new VerifyTwoFactorRequest({
+            twoFactorSessionToken: twoFactorChallenge.sessionToken,
+            code,
+          })
+        )
+      );
+
+      if (response.requiresTwoFactor) {
+        throw new Error('Verification did not complete. Try again or request a new code.');
+      }
+
+      setTwoFactorChallenge(null);
+      setTwoFactorCode('');
+      await completeAuthenticatedLogin(response);
+    } catch (error: unknown) {
+      const message = formatApiErrorMessage(error, 'Invalid or expired code.');
+      setTwoFactorError(message);
+      Alert.alert('Verification failed', message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendTwoFactor = async () => {
+    if (!twoFactorChallenge) return;
+
+    setResendBusy(true);
+    setTwoFactorError(null);
+    try {
+      await unwrap(
+        authApi.resendTwoFactor(
+          new ResendTwoFactorRequest({
+            twoFactorSessionToken: twoFactorChallenge.sessionToken,
+          })
+        )
+      );
+      setTwoFactorInfo('A new code was sent to your email.');
+    } catch (error: unknown) {
+      const message = formatApiErrorMessage(error, 'Could not resend the code.');
+      setTwoFactorError(message);
+      Alert.alert('Could not resend', message);
+    } finally {
+      setResendBusy(false);
+    }
+  };
+
+  const cancelTwoFactor = () => {
+    setTwoFactorChallenge(null);
+    setTwoFactorCode('');
+    setTwoFactorError(null);
+    setTwoFactorInfo(null);
   };
 
   const handleOrgSelect = async (org: UserOrganizationDto) => {
@@ -169,10 +283,6 @@ export const useLoginLogic = (pendingJoinCode?: string) => {
     }
   };
 
-  const finalizeLogin = async (finalToken: string, refreshToken: string) => {
-    await login(finalToken, refreshToken);
-  };
-
   return {
     handleLogin,
     tryBiometricSessionRestore,
@@ -181,5 +291,16 @@ export const useLoginLogic = (pendingJoinCode?: string) => {
     userOrgs,
     handleOrgSelect,
     setShowOrgSelector,
+    loginError,
+    setLoginError,
+    twoFactorChallenge,
+    twoFactorCode,
+    setTwoFactorCode,
+    twoFactorError,
+    twoFactorInfo,
+    handleVerifyTwoFactor,
+    handleResendTwoFactor,
+    cancelTwoFactor,
+    resendBusy,
   };
 };

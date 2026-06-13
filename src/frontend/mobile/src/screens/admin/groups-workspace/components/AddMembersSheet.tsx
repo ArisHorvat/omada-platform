@@ -22,6 +22,8 @@ type DirectoryRow = {
 export function AddMembersSheet({ model }: Props) {
   const {
     colors,
+    copy,
+    detail,
     addMembersSheetOpen,
     setAddMembersSheetOpen,
     selectedGroupId,
@@ -100,6 +102,11 @@ export function AddMembersSheet({ model }: Props) {
         <AppText variant="h3" weight="bold" style={{ marginBottom: 10 }}>
           Add members
         </AppText>
+        {detail && detail.children.length > 0 ? (
+          <AppText variant="caption" style={{ color: colors.subtle, marginBottom: 12, lineHeight: 18 }}>
+            {copy.addMembersLeafHint}
+          </AppText>
+        ) : null}
         <AppFormField
           value={query}
           onChangeText={setQuery}

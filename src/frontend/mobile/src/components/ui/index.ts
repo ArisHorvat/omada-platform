@@ -18,6 +18,7 @@ export * from './RadioButton';
 export * from './StarRating';
 export * from './ChipGroup';
 export * from './AppFormField';
+export * from './AdminTextField';
 export * from './ClayDatePicker';
 
 // Data Display

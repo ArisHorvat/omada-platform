@@ -23,3 +23,8 @@ export * from './useEscapeKey';
 export * from './useTimeOfDay';
 export * from './useTranslation';
 export * from './useAssignableGroups';
+export {
+  useAssignableOfferings,
+  useMyOfferings,
+  type AssignableOffering,
+} from './useAssignableOfferings';

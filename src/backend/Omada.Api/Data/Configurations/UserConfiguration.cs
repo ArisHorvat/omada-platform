@@ -20,6 +20,9 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.DepartmentId);
         builder.Property(u => u.Bio).HasMaxLength(2000);
         builder.Property(u => u.PreferencesJson).HasColumnType("nvarchar(max)");
+        builder.Property(u => u.PasswordResetTokenPurpose).HasMaxLength(16);
+        builder.Property(u => u.TwoFactorPendingSessionToken).HasMaxLength(128);
+        builder.Property(u => u.TwoFactorCode).HasMaxLength(6);
 
         // Org chart: self-referencing manager relationship.
         builder.HasOne(u => u.Manager)

@@ -52,6 +52,9 @@ public class OrganizationDetailsDto
     public required int OnboardingStep { get; set; }
 
     [Required]
+    public required IEnumerable<string> CompletedOnboardingSteps { get; set; }
+
+    [Required]
     public required bool IsActive { get; set; }
 
     [Required]

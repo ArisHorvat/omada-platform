@@ -50,6 +50,24 @@ export function formatCountdown(due: Date): string {
 /**
  * Tasks with a due date in the current ISO week (Mon–Sun).
  */
+/** Short label for cards and list kickers: DUE TODAY, OVERDUE, etc. */
+export function formatDueKicker(task: TaskItemDto): string {
+  if (!task.dueDate) return 'NO DUE DATE';
+  const due = new Date(task.dueDate);
+  const now = new Date();
+  const startToday = new Date(now);
+  startToday.setHours(0, 0, 0, 0);
+  const startDue = new Date(due);
+  startDue.setHours(0, 0, 0, 0);
+  const dayDiff = Math.round((startDue.getTime() - startToday.getTime()) / MS_DAY);
+
+  if (dayDiff < 0) return dayDiff === -1 ? 'OVERDUE • YESTERDAY' : 'OVERDUE';
+  if (dayDiff === 0) return 'DUE TODAY';
+  if (dayDiff === 1) return 'DUE TOMORROW';
+  if (dayDiff <= 7) return `DUE IN ${dayDiff} DAYS`;
+  return `DUE ${due.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+}
+
 export function getWeeklyCompletionStats(tasks: TaskItemDto[]): { done: number; total: number; percent: number } {
   const start = startOfWeek(new Date(), { weekStartsOn: 1 });
   const end = endOfWeek(new Date(), { weekStartsOn: 1 });

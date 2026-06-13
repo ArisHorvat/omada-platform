@@ -77,6 +77,12 @@ public class WidgetCatalogItemDto
     public required bool IsCoreFeature { get; set; }
 
     [Required]
+    public required bool IsAlwaysEnabled { get; set; }
+
+    [Required]
+    public required bool IsInOrgCatalog { get; set; }
+
+    [Required]
     public required bool IsEnabledForOrganization { get; set; }
 }
 

@@ -4,6 +4,7 @@ import { useGlobalSearchParams, usePathname, useRootNavigationState, useRouter, 
 import { useAuth } from '@/src/context/AuthContext';
 import { homeHrefForRole } from '@/src/utils/authRoutes';
 import { isCompletingLoginOrgPick } from '@/src/utils/loginOrgPick';
+import { isCompletingRegistrationSuccess } from '@/src/utils/registrationSuccessFlow';
 
 type GuardMode = 'app' | 'auth';
 
@@ -35,6 +36,10 @@ export function useAuthNavigationGuard(mode: GuardMode) {
     pathname.startsWith('/register-flow') ||
     pathname === '/join';
   const isRegistrationFlow = segments[1] === 'register-flow';
+  const isRegistrationSuccess =
+    pathname.includes('registration-success') || segments.includes('registration-success');
+  const isPasswordRecoveryFlow =
+    pathname.includes('forgot-password') || pathname.includes('reset-password');
   const superAdminRegistering =
     activeSession?.role === 'SuperAdmin' && isRegistrationFlow;
   const joinCode = normalizeParam(searchParams.code);
@@ -70,7 +75,15 @@ export function useAuthNavigationGuard(mode: GuardMode) {
       return;
     }
 
-    if (activeSession && inAuthGroup && !superAdminRegistering && !isCompletingLoginOrgPick()) {
+    if (
+      activeSession &&
+      inAuthGroup &&
+      !isPasswordRecoveryFlow &&
+      !superAdminRegistering &&
+      !isRegistrationSuccess &&
+      !isCompletingRegistrationSuccess() &&
+      !isCompletingLoginOrgPick()
+    ) {
       const target = homeHrefForRole(activeSession.role);
       if (lastRedirectRef.current !== target) {
         lastRedirectRef.current = target;
@@ -90,6 +103,8 @@ export function useAuthNavigationGuard(mode: GuardMode) {
     joinCode,
     joinToken,
     joinEmail,
+    isRegistrationSuccess,
+    isPasswordRecoveryFlow,
   ]);
 
   useEffect(() => {

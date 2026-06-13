@@ -6,12 +6,13 @@ import { adminApi, orgAdminApi, unwrap } from '@/src/api';
 import { QUERY_KEYS } from '@/src/api/queryKeys';
 import { UpdateOrganizationEnabledWidgetsRequest } from '@/src/api/generatedClient';
 import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
-import { bumpOnboardingStep } from '../../utils/onboarding';
+import { getConfigurableWidgetKeys } from '../../utils/orgEnabledWidgets';
 
 export function useWidgetsWorkspace() {
   const queryClient = useQueryClient();
   const { organization, refreshOrganization } = useCurrentOrganization();
   const orgId = organization?.id ?? '';
+  const orgType = organization?.organizationType;
 
   const catalogQuery = useQuery({
     queryKey: QUERY_KEYS.orgAdmin.widgets(orgId),
@@ -25,10 +26,23 @@ export function useWidgetsWorkspace() {
     enabled: !!orgId,
   });
 
+  const catalogWidgets = useMemo(
+    () =>
+      (catalogQuery.data ?? []).filter(
+        (w) => w.isInOrgCatalog !== false && !w.isAlwaysEnabled,
+      ),
+    [catalogQuery.data],
+  );
+
   const enabledSet = useMemo(() => {
     const keys = orgQuery.data?.enabledWidgets ?? organization?.enabledWidgets ?? [];
     return new Set(keys.map((k) => k.toLowerCase()));
   }, [orgQuery.data?.enabledWidgets, organization?.enabledWidgets]);
+
+  const configurableKeys = useMemo(
+    () => new Set(getConfigurableWidgetKeys(orgType).map((k) => k.toLowerCase())),
+    [orgType],
+  );
 
   const [localEnabled, setLocalEnabled] = useState<Set<string> | null>(null);
 
@@ -37,26 +51,28 @@ export function useWidgetsWorkspace() {
     return enabledSet;
   }, [enabledSet, localEnabled]);
 
-  const toggleWidget = useCallback((key: string) => {
-    const normalized = key.toLowerCase();
-    setLocalEnabled((prev) => {
-      const base = prev ? new Set(prev) : new Set(enabledSet);
-      if (base.has(normalized)) {
-        if (base.size <= 1) {
-          Alert.alert('At least one widget', 'Your organization must keep at least one feature enabled.');
-          return prev ?? base;
+  const toggleWidget = useCallback(
+    (key: string) => {
+      const normalized = key.toLowerCase();
+      if (!configurableKeys.has(normalized)) return;
+
+      setLocalEnabled((prev) => {
+        const base = prev ? new Set(prev) : new Set(enabledSet);
+
+        if (base.has(normalized)) {
+          base.delete(normalized);
+        } else {
+          base.add(normalized);
         }
-        base.delete(normalized);
-      } else {
-        base.add(normalized);
-      }
-      return base;
-    });
-  }, [enabledSet]);
+        return base;
+      });
+    },
+    [configurableKeys, enabledSet],
+  );
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const keys = Array.from(activeEnabled);
+      const keys = Array.from(activeEnabled).filter((k) => configurableKeys.has(k));
       const payload = UpdateOrganizationEnabledWidgetsRequest.fromJS({ enabledWidgetKeys: keys });
       return unwrap(orgAdminApi.updateEnabledWidgets(payload));
     },
@@ -64,6 +80,7 @@ export function useWidgetsWorkspace() {
       setLocalEnabled(null);
       await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.orgAdmin.current(orgId) });
       await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.organization(orgId) });
+      await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.orgAdmin.widgets(orgId) });
       await refreshOrganization();
       Alert.alert('Saved', 'Organization widget catalog updated.');
     },
@@ -71,7 +88,7 @@ export function useWidgetsWorkspace() {
   });
 
   return {
-    widgets: catalogQuery.data ?? [],
+    widgets: catalogWidgets,
     loading: catalogQuery.isLoading || orgQuery.isLoading,
     enabledSet: activeEnabled,
     toggleWidget,

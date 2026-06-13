@@ -42,7 +42,7 @@ export default function WebSpiderWorkspaceScreen() {
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
-      <WidgetPageShell>
+      <WidgetPageShell fullBleed>
       <WebSpiderWorkspaceHeader model={model} />
       <ScrollView
         contentContainerStyle={[styles.scrollContent, { paddingHorizontal: horizontalPad }]}

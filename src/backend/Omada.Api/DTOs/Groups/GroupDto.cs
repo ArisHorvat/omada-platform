@@ -17,6 +17,8 @@ public class GroupDto
 
     public Guid? ManagerId { get; set; }
 
+    public string? AcademicYear { get; set; }
+
     [Required]
     public required int MemberCount { get; set; }
 

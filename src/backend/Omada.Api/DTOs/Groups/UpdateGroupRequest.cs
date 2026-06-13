@@ -7,4 +7,6 @@ public class UpdateGroupRequest
     public Guid? ManagerId { get; set; }
     public Guid? ParentGroupId { get; set; }
     public string? ScheduleConfig { get; set; }
+
+    public string? AcademicYear { get; set; }
 }

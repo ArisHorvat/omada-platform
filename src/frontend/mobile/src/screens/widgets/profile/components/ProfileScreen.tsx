@@ -36,6 +36,9 @@ export default function ProfileScreen() {
     handleLogout,
     email,
     role,
+    canAccessAdminConsole,
+    goToAdminConsole,
+    goToMemberApp,
   } = useProfileLogic();
 
   if (isLoading) {
@@ -136,6 +139,17 @@ export default function ProfileScreen() {
             icon="edit"
             style={{ alignSelf: 'stretch', marginTop: 8 }}
           />
+
+          {canAccessAdminConsole ? (
+            <AppButton
+              title="Admin console"
+              onPress={goToAdminConsole}
+              variant="secondary"
+              size="md"
+              icon="admin-panel-settings"
+              style={{ alignSelf: 'stretch', marginTop: 10 }}
+            />
+          ) : null}
 
           {(bioDisplay || phoneDisplay || addressDisplay) && (
             <View style={{ marginTop: 20, gap: 12 }}>

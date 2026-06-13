@@ -1,8 +1,10 @@
-namespace Omada.Api.Infrastructure;
+namespace Omada.Api.Infrastructure.Constants;
 
 public static class RoleNames
 {
-    // We ONLY hardcode Admin because it's required for the fallback safety net.
-    // All other roles (Student, Dean, Manager) are purely dynamic data in the DB!
     public const string Admin = "Admin";
+    /// <summary>Generic holding role for open-code joins when no Unassigned role exists.</summary>
+    public const string Member = "Member";
+    /// <summary>Holding role when a custom role is deleted — not a substitute for Dean/Teacher/etc.</summary>
+    public const string Unassigned = "Unassigned";
 }

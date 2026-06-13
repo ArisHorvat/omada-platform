@@ -69,7 +69,7 @@ public class MapsController : ControllerBase
     public async Task<ActionResult<ServiceResponse<FloorDto>>> CreateFloorForBuilding(
         Guid buildingId,
         [FromForm] int levelNumber,
-        [FromForm] IFormFile floorplanFile)
+        [FromForm] IFormFile? floorplanFile = null)
     {
         // Bind primitives + file directly. A single [FromForm] DTO uses the parameter name as a prefix
         // (`request.*`), so multipart clients sending `LevelNumber` / `FloorplanFile` saw `FloorplanFile` null.

@@ -10,7 +10,10 @@ public class GroupConfiguration : IEntityTypeConfiguration<Group>
     {
         // Soft-delete + tenant filter applied in ApplicationDbContext
 
-        builder.Property(x => x.Id).HasDefaultValueSql("NEWSEQUENTIALID()");
+        builder.Property(g => g.Name).IsRequired().HasMaxLength(200);
+        builder.Property(g => g.Type).IsRequired().HasMaxLength(40);
+        builder.Property(g => g.AcademicYear).HasMaxLength(20);
+        builder.Property(g => g.ScheduleConfig).HasMaxLength(4000);
 
         // Ensure this link exists and is Restricted
         builder.HasOne(g => g.Organization)

@@ -23,6 +23,8 @@ import { PermissionProvider } from '../context/PermissionContext';
 import { CurrentOrganizationProvider } from '../context/CurrentOrganizationContext';
 import { WebMainPaneBridge } from '@/src/components/layout/WebMainPaneBridge';
 import { ConfirmDialogProvider } from '../context/ConfirmDialogProvider';
+import { OrgAdminExperienceProvider } from '../context/OrgAdminExperienceContext';
+import { WebDocumentThemeSync } from '@/src/components/system/WebDocumentThemeSync';
 
 const ThemedStatusBar = () => {
   const { themeMode } = useUserPreferences();
@@ -74,15 +76,18 @@ export default function RootLayout() {
           <AuthProvider>
             <CurrentOrganizationProvider>
               <UserPreferencesProvider>
+                <WebDocumentThemeSync />
                 <ProfilePreferencesSync />
                 <I18nPreferencesBridge />
                 <OrganizationThemeProvider>
                   <WebMainPaneBridge>
                     <ConfirmDialogProvider>
-                      <PermissionProvider>
-                        <ThemedStatusBar />
-                        <RootNavigation />
-                      </PermissionProvider>
+                      <OrgAdminExperienceProvider>
+                        <PermissionProvider>
+                          <ThemedStatusBar />
+                          <RootNavigation />
+                        </PermissionProvider>
+                      </OrgAdminExperienceProvider>
                     </ConfirmDialogProvider>
                   </WebMainPaneBridge>
                 </OrganizationThemeProvider>

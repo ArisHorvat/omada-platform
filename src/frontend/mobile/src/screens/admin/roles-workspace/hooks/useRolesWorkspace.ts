@@ -48,6 +48,16 @@ export const useRolesWorkspace = () => {
   const selectedRole = roles.find((r) => r.id === selectedRoleId);
 
   useEffect(() => {
+    if (roles.length === 0) {
+      setSelectedRoleId(null);
+      return;
+    }
+    if (!selectedRoleId || !roles.some((r) => r.id === selectedRoleId)) {
+      setSelectedRoleId(roles[0]?.id ?? null);
+    }
+  }, [roles, selectedRoleId]);
+
+  useEffect(() => {
     if (!roleDetailQuery.data?.permissions) return;
     const map: Record<string, PermissionLevel> = {};
     for (const p of roleDetailQuery.data.permissions) {
@@ -133,6 +143,12 @@ export const useRolesWorkspace = () => {
     savePermissions: () => savePermissionsMutation.mutate(),
     deleteRole: (roleId: string) => deleteRoleMutation.mutate(roleId),
     isSaving: savePermissionsMutation.isPending,
-    isLoading: rolesQuery.isLoading || roleDetailQuery.isLoading,
+    isCreating: createRoleMutation.isPending,
+    isDeleting: deleteRoleMutation.isPending,
+    isLoading: rolesQuery.isLoading || widgetsQuery.isLoading,
+    isRoleDetailLoading: roleDetailQuery.isLoading,
+    refetch: async () => {
+      await Promise.all([rolesQuery.refetch(), widgetsQuery.refetch(), roleDetailQuery.refetch()]);
+    },
   };
 };

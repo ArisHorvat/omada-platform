@@ -92,6 +92,7 @@ builder.Services.AddScoped<IOrganizationService, OrganizationService>();
 builder.Services.AddScoped<IOrganizationAdminService, OrganizationAdminService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddScoped<IPermissionCacheInvalidator, PermissionCacheInvalidator>();
+builder.Services.AddScoped<IGroupScopeService, GroupScopeService>();
 builder.Services.AddScoped<IGroupService, GroupService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddOptions<BrevoOptions>()
@@ -106,6 +107,11 @@ builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<IColorExtractionService, ColorExtractionService>();
 builder.Services.AddScoped<IScheduleService, ScheduleService>();
 builder.Services.AddScoped<ITaskService, TaskService>();
+builder.Services.AddScoped<ICourseOfferingService, CourseOfferingService>();
+builder.Services.AddScoped<IOfferingTimetableService, OfferingTimetableService>();
+builder.Services.AddScoped<IGradebookService, GradebookService>();
+builder.Services.AddScoped<IOfferingGradePlanService, OfferingGradePlanService>();
+builder.Services.AddScoped<ICourseOfferingPackageService, CourseOfferingPackageService>();
 builder.Services.AddScoped<IGradeService, GradeService>();
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 builder.Services.Configure<DigitalIdOptions>(builder.Configuration.GetSection(DigitalIdOptions.SectionName));
@@ -166,7 +172,13 @@ builder.Services.AddAuthentication(options =>
 
 // Register the custom Permission Handler for [HasPermission] attributes
 builder.Services.AddScoped<IAuthorizationHandler, PermissionHandler>();
+builder.Services.AddScoped<IAuthorizationHandler, OrgAdminHandler>();
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("OrgAdmin", policy => policy.Requirements.Add(new OrgAdminRequirement()));
+});
 
 builder.Services.AddControllers(options =>
     {
@@ -175,6 +187,7 @@ builder.Services.AddControllers(options =>
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
 
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();

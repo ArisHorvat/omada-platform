@@ -21,7 +21,7 @@ public class UpdateOrganizationEnabledWidgetsRequestValidator : AbstractValidato
 {
     public UpdateOrganizationEnabledWidgetsRequestValidator()
     {
-        RuleFor(x => x.EnabledWidgetKeys).NotNull().NotEmpty();
+        RuleFor(x => x.EnabledWidgetKeys).NotNull();
         RuleForEach(x => x.EnabledWidgetKeys).NotEmpty().MaximumLength(64);
     }
 }

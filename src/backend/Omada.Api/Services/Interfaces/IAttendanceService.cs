@@ -17,4 +17,34 @@ public interface IAttendanceService
         Guid? groupId,
         int? days,
         CancellationToken cancellationToken = default);
+
+    Task<ServiceResponse<bool>> RecordMemberAttendanceAsync(
+        RecordMemberAttendanceRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<ServiceResponse<AttendanceSessionRosterDto>> GetSessionRosterAsync(
+        Guid eventId,
+        DateTime instanceDate,
+        CancellationToken cancellationToken = default);
+
+    Task<ServiceResponse<bool>> BulkMarkSessionRosterAsync(
+        Guid eventId,
+        BulkMarkAttendanceRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<ServiceResponse<MyOfferingAttendanceResponse>> GetMyOfferingAttendanceAsync(
+        Guid? periodId,
+        CancellationToken cancellationToken = default);
+
+    Task<ServiceResponse<WorkTimeTodayResponse>> GetWorkTimeAsync(
+        int recentDays = 14,
+        CancellationToken cancellationToken = default);
+
+    Task<ServiceResponse<WorkTimeEntryDto>> ClockInAsync(CancellationToken cancellationToken = default);
+
+    Task<ServiceResponse<WorkTimeEntryDto>> ClockOutAsync(CancellationToken cancellationToken = default);
+
+    Task<ServiceResponse<WorkTimeEntryDto>> SetTodayBreakAsync(
+        SetWorkBreakRequest request,
+        CancellationToken cancellationToken = default);
 }

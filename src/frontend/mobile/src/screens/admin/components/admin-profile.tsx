@@ -38,6 +38,8 @@ export default function AdminProfileScreen() {
     handleLogout,
     email,
     role,
+    canAccessAdminConsole,
+    goToMemberApp,
   } = useProfileLogic();
 
   if (isLoading) {
@@ -79,7 +81,7 @@ export default function AdminProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <WidgetPageShell>
+      <WidgetPageShell fullBleed>
         <PageContainer>
           <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 32 }]} showsVerticalScrollIndicator={false}>
             <ClayView depth={12} puffy={18} style={{ paddingHorizontal: 16, paddingVertical: 12, marginBottom: 20 }}>
@@ -136,6 +138,17 @@ export default function AdminProfileScreen() {
                 icon="edit"
                 style={{ alignSelf: 'stretch', marginTop: 8 }}
               />
+
+              {canAccessAdminConsole ? (
+                <AppButton
+                  title="Member app"
+                  onPress={goToMemberApp}
+                  variant="secondary"
+                  size="md"
+                  icon="person"
+                  style={{ alignSelf: 'stretch', marginTop: 10 }}
+                />
+              ) : null}
 
               {(bioDisplay || phoneDisplay || addressDisplay) && (
                 <View style={{ marginTop: 20, gap: 12 }}>

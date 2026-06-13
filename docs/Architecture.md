@@ -2,7 +2,7 @@
 
 A visual, practical guide to how Omada is designed — from login to database rows to dashboard widgets.
 
-**Related:** [`Backend.md`](Backend.md) · [`Frontend.md`](Frontend.md) · [`Configuration.md`](Configuration.md)
+**Related:** [`Backend.md`](Backend.md) · [`Frontend.md`](Frontend.md) · [`Configuration.md`](Configuration.md) · [`AccountSecurity.md`](AccountSecurity.md) · [`DigitalId.md`](DigitalId.md)
 
 ---
 
@@ -101,6 +101,17 @@ Login → Access token (short) + Refresh token (stored in DB)
 - **Password hashing:** BCrypt
 - **Org switch:** `POST /api/Auth/switch-org` → new JWT with different `OrganizationId`
 - **SuperAdmin:** can enter any **active** org without membership
+- **Forgot / reset password:** email link flow — [`AccountSecurity.md`](AccountSecurity.md)
+- **Email OTP 2FA:** when enabled on profile, login returns `requiresTwoFactor` + session token until `verify-2fa` succeeds
+
+```text
+Login (password OK)
+  ├── 2FA off → JWT + refresh
+  └── 2FA on  → email 6-digit code → verify-2fa → JWT + refresh
+
+Change password (logged in) → POST /api/Users/me/change-password (revokes refresh tokens)
+Forgot password → email link → POST /api/Auth/reset-password
+```
 
 ### Authorization (widget RBAC)
 
@@ -109,15 +120,22 @@ Two independent layers:
 ```mermaid
 flowchart LR
     subgraph Layer1["1️⃣ Org catalog"]
-        OW["Organization.EnabledWidgetKeysJson"]
+        WR["WidgetRegistry\nAudience + IsInOrgCatalog"]
+        OW["Organization.EnabledWidgetKeysJson\n(toggleable keys only;\n[] = none on new orgs)"]
+        AO["Always-on:\nschedule · tasks · digital-id"]
     end
     subgraph Layer2["2️⃣ Role permissions"]
         RP["RolePermission\n(RoleId, WidgetKey, AccessLevel)"]
     end
-    OW --> Intersect["Intersection"]
+    WR --> OW
+    OW --> Intersect["Effective enabled set"]
+    AO --> Intersect
     RP --> Intersect
     Intersect --> User["User's WidgetAccess\non GET /api/users/me"]
 ```
+
+- **Org type** filters catalog options: university (grades) vs corporate (documents) vs shared (chat, news, map, rooms, …). **Coursework** uses always-on **`tasks`** (roles UI: **Tasks**) — see [`Coursework.md`](Coursework.md). **Grades widget** — coursework standing + teacher gradebook — see [`Grades.md`](Grades.md).
+- **Removed** from member catalog: events, transport, finance. **Groups** = admin RBAC only.
 
 | Access level | Can do |
 |--------------|--------|
@@ -128,6 +146,17 @@ flowchart LR
 - Policy format: `widgetKey:AccessLevel` (e.g. `news:View`)
 - **SuperAdmin** role bypasses all widget checks
 - Frontend mirrors via `permissions.config.ts` → `PermissionContext.can()`
+- **Org admin console access (mobile):** **Admin** / **SuperAdmin** role, or **`admin`** widget **Admin** on `GET /api/users/me` → **`canAccessOrgAdminConsole`**; profile toggles switch between admin console and member app (`OrgAdminExperienceContext`)
+
+**Holding roles (org admin)**
+
+When an org admin deletes a custom role, members are moved to a **holding role** — not another custom role:
+
+1. Existing **`Unassigned`** role, else **`Member`**, else auto-create **`Unassigned`**
+2. Deleting **`Unassigned`** uses **`Member`** (create if missing)
+3. Admins reassign people from **Members** (filter by holding role) to proper roles
+
+Logic: **`RoleResolution`** + **`OrganizationAdminService.DeleteRoleAsync`**. Names in **`RoleNames`**.
 
 ---
 
@@ -206,12 +235,13 @@ Product UI uses **Claymorphism** primitives — not raw React Native chrome:
 flowchart TB
     subgraph Backend
         WK["WidgetKeys.cs"]
-        WR["WidgetRegistry\n(core vs configurable)"]
+        WR["WidgetRegistry\n(core · always-on · catalog · audience)"]
         OE["Organization.EnabledWidgetKeysJson"]
         RP2["RolePermission rows"]
     end
 
     subgraph Mobile
+        OEW["orgEnabledWidgets.ts"]
         BW["constants/widgets.ts\nBASE_WIDGETS"]
         REG["WIDGET_REGISTRY\n10 dashboard components"]
         PC["permissions.config.ts"]
@@ -220,13 +250,16 @@ flowchart TB
 
     WK --> PC
     WR --> OE
-    OE --> DASH
+    OE --> OEW
+    OEW --> DASH
     RP2 --> DASH
     BW --> DASH
     REG --> DASH
 ```
 
-**Dashboard widgets (10):** `news`, `schedule`, `tasks`, `map`, `users`, `attendance`, `assignments`, `chat`, `grades`, `rooms`
+**Dashboard widgets (9):** `news`, `schedule`, `tasks`, `map`, `users`, `attendance`, `chat`, `grades`, `rooms` — university **coursework** is under always-on **`tasks`**, not a separate catalog widget
+
+**Admin catalog:** toggleable per org type; **always on:** schedule, tasks, digital-id. **Not in catalog:** events, transport, finance. **Groups:** admin permissions only.
 
 ---
 
@@ -238,6 +271,8 @@ flowchart TB
 | 📅 Schedule | `Event`, `EventType`, `ScrapedClassEvent` | Schedule, EventTypes, WebSpider |
 | 📰 Content | `NewsItem`, `TaskItem`, `Grade`, `Message` | News, Tasks, Grades, Chat |
 | 🗺️ Map | `Building`, `Floor`, `Room`, `Floorplan`, `MapPin` | Buildings, Maps, Floorplans, Rooms |
+
+**Map coordinates:** campus **`Building.Latitude/Longitude`** (outdoor markers) vs indoor **`Room.CoordinateX/Y`** normalized on floorplan images. Admin: **`/floorplan-workspace`** (Locations & maps) — levels may exist without floorplan; optional Roboflow AI. See **`domain-map-rooms-admin.mdc`**.
 | 🕷️ Spider | `ScrapedClassEvent`, `SpiderSyncRun` | WebSpider |
 | 📋 Admin | `AuditLog`, `OrganizationPeriod` | OrgAdmin, SuperAdmin |
 

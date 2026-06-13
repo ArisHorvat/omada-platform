@@ -11,6 +11,7 @@ import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
 import { AppText, IconInput, AppButton, ClayView } from '@/src/components/ui';
 import { useLoginLogic } from '../hooks/useLoginLogic';
 import SelectOrganization from './select-organization';
+import TwoFactorChallengePanel from './TwoFactorChallengePanel';
 import { setCompletingLoginOrgPick } from '@/src/utils/loginOrgPick';
 
 // 1. Define the Validation Schema
@@ -40,6 +41,17 @@ export default function LoginScreen() {
     userOrgs,
     handleOrgSelect,
     setShowOrgSelector,
+    loginError,
+    setLoginError,
+    twoFactorChallenge,
+    twoFactorCode,
+    setTwoFactorCode,
+    twoFactorError,
+    twoFactorInfo,
+    handleVerifyTwoFactor,
+    handleResendTwoFactor,
+    cancelTwoFactor,
+    resendBusy,
   } = useLoginLogic(pendingJoinCode);
 
   useEffect(() => {
@@ -67,16 +79,51 @@ export default function LoginScreen() {
           
           <View style={styles.header}>
             <AppText variant="h1" style={{ marginBottom: 8 }}>
-              {pendingJoinCode ? 'Sign in to join' : 'Welcome Back'}
+              {twoFactorChallenge ? 'Check your email' : pendingJoinCode ? 'Sign in to join' : 'Welcome Back'}
             </AppText>
             <AppText style={{ color: colors.subtle }}>
-              {pendingJoinCode
-                ? 'Use your existing account, then we will add you to the organization.'
-                : 'Sign in to continue to Omada'}
+              {twoFactorChallenge
+                ? 'Enter the verification code we sent you to finish signing in.'
+                : pendingJoinCode
+                  ? 'Use your existing account, then we will add you to the organization.'
+                  : 'Sign in to continue to Omada'}
             </AppText>
           </View>
 
+          {twoFactorChallenge ? (
+            <TwoFactorChallengePanel
+              challenge={twoFactorChallenge}
+              code={twoFactorCode}
+              onCodeChange={(value) => {
+                setTwoFactorCode(value);
+              }}
+              error={twoFactorError}
+              info={twoFactorInfo}
+              isLoading={isLoading}
+              resendBusy={resendBusy}
+              onVerify={() => void handleVerifyTwoFactor()}
+              onResend={() => void handleResendTwoFactor()}
+              onBack={cancelTwoFactor}
+            />
+          ) : (
           <ClayView depth={8} puffy={12} color={colors.card} style={styles.formContainer}>
+
+            {loginError ? (
+              <View
+                style={{
+                  marginBottom: 16,
+                  padding: 12,
+                  borderRadius: 12,
+                  backgroundColor: `${colors.error}18`,
+                  borderWidth: 1,
+                  borderColor: colors.error,
+                }}
+              >
+                <AppText variant="body" style={{ color: colors.error }}>
+                  {loginError}
+                </AppText>
+              </View>
+            ) : null}
             
             {/* EMAIL CONTROLLER */}
             <Controller
@@ -89,7 +136,10 @@ export default function LoginScreen() {
                     placeholder="Email Address"
                     value={value}
                     onBlur={onBlur}
-                    onChangeText={onChange}
+                    onChangeText={(text) => {
+                      setLoginError(null);
+                      onChange(text);
+                    }}
                     keyboardType="email-address"
                     autoCapitalize="none"
                     style={errors.email ? { borderColor: colors.error, borderWidth: 1 } : {}}
@@ -114,7 +164,10 @@ export default function LoginScreen() {
                     placeholder="Password"
                     value={value}
                     onBlur={onBlur}
-                    onChangeText={onChange}
+                    onChangeText={(text) => {
+                      setLoginError(null);
+                      onChange(text);
+                    }}
                     secureTextEntry={!showPassword}
                     rightIcon={showPassword ? 'visibility-off' : 'visibility'}
                     onRightIconPress={() => setShowPassword((v) => !v)}
@@ -130,7 +183,7 @@ export default function LoginScreen() {
             />
 
             <TouchableOpacity 
-              onPress={() => router.push('/(auth)/login-flow')}
+              onPress={() => router.push('/(auth)/forgot-password')}
               style={{ alignSelf: 'flex-end', marginBottom: 24 }}
             >
               <AppText variant="caption" style={{ color: colors.primary }}>Forgot Password?</AppText>
@@ -144,6 +197,7 @@ export default function LoginScreen() {
               size="lg"
             />
           </ClayView>
+          )}
 
           <View style={styles.footer}>
             <AppText style={{ color: colors.subtle, textAlign: 'center' }}>

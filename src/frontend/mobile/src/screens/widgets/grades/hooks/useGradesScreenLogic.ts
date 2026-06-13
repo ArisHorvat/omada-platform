@@ -1,80 +1,128 @@
-import { useMemo, useState, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 
-import { useAssignableGroups } from '@/src/hooks';
+import { useMyOfferings } from '@/src/hooks';
 import { usePermission } from '@/src/context/PermissionContext';
-import type { GradeDto } from '@/src/api/generatedClient';
-import { useGradesLogic } from './useGradesLogic';
+import { computeCourseworkStats } from '../../tasks/utils/courseworkStats';
+import { useTasksApi } from '../../tasks/hooks/useTasksApi';
+import { useOrganizationPeriods } from './useOrganizationPeriods';
 import {
-  getUniqueSemesters,
-  getTotalCredits,
-  weightedGpaForGrades,
-} from '../utils/gradesTrend';
+  buildCourseGradeViews,
+  filterCourseGradeViews,
+  computeOverallTenGrade,
+  type CourseGradeView,
+} from '../utils/courseGradesModel';
 
 export interface UseGradesScreenLogicResult {
-  grades: GradeDto[];
-  currentGpa: number;
-  totalCredits: number;
   isLoading: boolean;
   isError: boolean;
-  refetchGrades: () => void;
-  gradesQuery: ReturnType<typeof useGradesLogic>['gradesQuery'];
+  refetch: () => void;
   canView: boolean;
   permissionsLoading: boolean;
-  activeGroupId: string | null;
-  setActiveGroupId: Dispatch<SetStateAction<string | null>>;
-  activeSemester: string | null;
-  setActiveSemester: Dispatch<SetStateAction<string | null>>;
-  semesters: string[];
-  assignableGroups: ReturnType<typeof useAssignableGroups>['data'];
+  activePeriodId: string | null;
+  setActivePeriodId: Dispatch<SetStateAction<string | null>>;
+  activePeriodName: string | null;
+  periodOptions: { value: string; label: string; subtitle?: string }[];
+  activeOfferingId: string | null;
+  setActiveOfferingId: Dispatch<SetStateAction<string | null>>;
+  offeringOptions: { value: string; label: string; subtitle?: string }[];
   isFiltered: boolean;
+  courses: CourseGradeView[];
+  overallGrade: number | null;
+  gradedAssignments: number;
+  pendingAssignments: number;
+  canViewCoursework: boolean;
 }
 
 export function useGradesScreenLogic(): UseGradesScreenLogicResult {
-  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
-  const [activeSemester, setActiveSemester] = useState<string | null>(null);
+  const [activeOfferingId, setActiveOfferingId] = useState<string | null>(null);
+
+  const periodsRemote = useOrganizationPeriods();
+  const enrollmentsQuery = useMyOfferings(periodsRemote.activePeriodId);
 
   const { can, isLoading: permissionsLoading } = usePermission();
   const canView = can('grades.view_own');
-  const assignableQuery = useAssignableGroups('grade');
+  const canViewCoursework = can('assignments.submit') || can('tasks.view');
 
-  const remote = useGradesLogic({
-    groupId: activeGroupId,
-    enabled: canView && !permissionsLoading,
+  useEffect(() => {
+    setActiveOfferingId(null);
+  }, [periodsRemote.activePeriodId]);
+
+  const tasksRemote = useTasksApi({
+    page: 1,
+    pageSize: 100,
+    enabled: canView && canViewCoursework && !permissionsLoading,
   });
 
-  const semesters = useMemo(() => getUniqueSemesters(remote.grades), [remote.grades]);
+  const enrollments = enrollmentsQuery.data ?? [];
 
-  const grades = useMemo(() => {
-    if (!activeSemester) return remote.grades;
-    return remote.grades.filter((g) => g.semester === activeSemester);
-  }, [remote.grades, activeSemester]);
+  const tasksForTerm = useMemo(() => {
+    const tasks = tasksRemote.tasks;
+    const periodId = periodsRemote.activePeriodId;
+    if (!periodId) return tasks;
+    const offeringIds = new Set(enrollments.map((e) => e.id));
+    return tasks.filter((task) => {
+      const t = task as { periodId?: string; offeringId?: string };
+      if (t.offeringId && offeringIds.has(t.offeringId)) return true;
+      if (t.periodId === periodId) return true;
+      return !t.periodId && !t.offeringId;
+    });
+  }, [tasksRemote.tasks, periodsRemote.activePeriodId, enrollments]);
 
-  const currentGpa = useMemo(() => {
-    if (!activeSemester) return remote.currentGpa;
-    return weightedGpaForGrades(grades);
-  }, [activeSemester, remote.currentGpa, grades]);
+  const allCourses = useMemo(
+    () => buildCourseGradeViews(enrollments, tasksForTerm),
+    [enrollments, tasksForTerm],
+  );
 
-  const totalCredits = useMemo(() => {
-    if (!activeSemester) return remote.totalCredits;
-    return getTotalCredits(grades);
-  }, [activeSemester, remote.totalCredits, grades]);
+  const courses = useMemo(
+    () => filterCourseGradeViews(allCourses, activeOfferingId),
+    [allCourses, activeOfferingId],
+  );
+
+  const overallGrade = useMemo(() => computeOverallTenGrade(courses), [courses]);
+
+  const courseworkStats = useMemo(
+    () => computeCourseworkStats(tasksForTerm),
+    [tasksForTerm],
+  );
+
+  const offeringOptions = useMemo(
+    () =>
+      allCourses.map((c) => ({
+        value: c.offeringId,
+        label: c.courseName,
+        subtitle: c.courseCode ?? undefined,
+      })),
+    [allCourses],
+  );
+
+  const refetch = () => {
+    void periodsRemote.refetch();
+    void enrollmentsQuery.refetch();
+    void tasksRemote.tasksQuery.refetch();
+  };
 
   return {
-    grades,
-    currentGpa,
-    totalCredits,
-    isLoading: remote.isLoading || permissionsLoading,
-    isError: remote.isError,
-    refetchGrades: remote.refetchGrades,
-    gradesQuery: remote.gradesQuery,
+    isLoading:
+      permissionsLoading ||
+      periodsRemote.isLoading ||
+      enrollmentsQuery.isLoading ||
+      (canViewCoursework && tasksRemote.isLoading),
+    isError: periodsRemote.isError || enrollmentsQuery.isError || tasksRemote.isError,
+    refetch,
     canView,
     permissionsLoading,
-    activeGroupId,
-    setActiveGroupId,
-    activeSemester,
-    setActiveSemester,
-    semesters,
-    assignableGroups: assignableQuery.data,
-    isFiltered: activeGroupId != null || activeSemester != null,
+    activePeriodId: periodsRemote.activePeriodId,
+    setActivePeriodId: periodsRemote.setActivePeriodId,
+    activePeriodName: periodsRemote.activePeriod?.name ?? null,
+    periodOptions: periodsRemote.periodOptions,
+    activeOfferingId,
+    setActiveOfferingId,
+    offeringOptions,
+    isFiltered: activeOfferingId != null,
+    courses,
+    overallGrade,
+    gradedAssignments: courseworkStats.graded,
+    pendingAssignments: courseworkStats.pending,
+    canViewCoursework,
   };
 }

@@ -12,6 +12,8 @@ public interface IAuthService
     Task<ServiceResponse<LoginResponse>> SwitchOrganizationAsync(SwitchOrgRequest request);
     Task<ServiceResponse<string>> ForgotPasswordAsync(ForgotPasswordRequest request);
     Task<ServiceResponse<string>> ResetPasswordAsync(ResetPasswordRequest request);
+    Task<ServiceResponse<LoginResponse>> VerifyTwoFactorAsync(VerifyTwoFactorRequest request);
+    Task<ServiceResponse<string>> ResendTwoFactorCodeAsync(ResendTwoFactorRequest request);
     Task<ServiceResponse<JoinOrganizationResultDto>> JoinOrganizationAsync(JoinOrganizationRequest request);
     Task<ServiceResponse<JoinWithCodeResultDto>> JoinWithInviteCodeAsync(JoinWithInviteCodeRequest request);
     Task<ServiceResponse<List<PendingOrganizationInviteDto>>> GetPendingInvitesAsync();

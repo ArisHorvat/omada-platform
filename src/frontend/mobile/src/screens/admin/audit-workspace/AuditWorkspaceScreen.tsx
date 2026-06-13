@@ -6,6 +6,7 @@ import { ScreenHeader } from '@/src/components/navigation/ScreenHeader';
 import { PageContainer } from '@/src/components/layout/PageContainer';
 import { AppText, ClayView } from '@/src/components/ui';
 import { useThemeColors } from '@/src/hooks';
+import { adminWorkspaceScrollContent } from '@/src/screens/admin/styles/adminWorkspaceLayout';
 import { useAuditLogWorkspace } from './hooks/useAuditLogWorkspace';
 
 export default function AuditWorkspaceScreen() {
@@ -16,7 +17,7 @@ export default function AuditWorkspaceScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-        <PageContainer>
+        <PageContainer fullBleed>
           <ScreenHeader
             title="Audit log"
             subtitle={`${totalCount} recent admin action${totalCount === 1 ? '' : 's'}`}
@@ -25,7 +26,7 @@ export default function AuditWorkspaceScreen() {
           {loading ? (
             <ActivityIndicator color={colors.primary} />
           ) : (
-            <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
+            <ScrollView contentContainerStyle={[adminWorkspaceScrollContent, { paddingBottom: insets.bottom + 24 }]}>
               {logs.length === 0 ? (
                 <AppText variant="body" style={{ color: colors.subtle, textAlign: 'center', marginTop: 24 }}>
                   No admin actions recorded yet.

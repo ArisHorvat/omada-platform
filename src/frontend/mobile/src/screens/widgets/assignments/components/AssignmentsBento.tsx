@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { useRouter } from 'expo-router';
 
 import {
   AppText,
@@ -15,6 +16,7 @@ import {
   formatDueKicker,
   getNextPendingAssignment,
 } from '../utils/assignmentUrgency';
+import { openAssignmentDetail } from '../../tasks/utils/assignmentNavigation';
 import type { BaseWidgetProps } from '@/src/constants/widgets.registry';
 import { getPendingAssignments } from '../utils/assignmentFilters';
 
@@ -24,8 +26,8 @@ interface AssignmentsBentoProps {
 }
 
 export const AssignmentsBento: React.FC<AssignmentsBentoProps> = ({ accentColor, size }) => {
-  const { assignments, isLoading, isError, tasksQuery, toggleTaskCompletion } =
-    useAssignmentsWidgetLogic();
+  const router = useRouter();
+  const { assignments, isLoading, isError, tasksQuery } = useAssignmentsWidgetLogic();
 
   const dueSoonCount = useMemo(() => countDueSoonAssignments(assignments), [assignments]);
   const pendingCount = useMemo(() => getPendingAssignments(assignments).length, [assignments]);
@@ -85,11 +87,10 @@ export const AssignmentsBento: React.FC<AssignmentsBentoProps> = ({ accentColor,
           </View>
         </View>
         <AppButton
-          title="Mark submitted"
+          title="Open"
           size="sm"
-          icon="check"
-          onPress={() => toggleTaskCompletion.mutate(next)}
-          loading={toggleTaskCompletion.isPending}
+          icon="chevron-right"
+          onPress={() => openAssignmentDetail(router, next)}
           style={{ marginTop: 10 }}
         />
       </ClayView>

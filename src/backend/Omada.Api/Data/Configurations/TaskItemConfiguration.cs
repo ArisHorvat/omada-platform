@@ -29,8 +29,14 @@ public class TaskItemConfiguration : IEntityTypeConfiguration<TaskItem>
         builder.Property(t => t.ReferenceUrl)
             .HasMaxLength(2048);
 
+        builder.Property(t => t.MaterialsJson)
+            .HasMaxLength(8000);
+
         builder.Property(t => t.SubmissionUrl)
             .HasMaxLength(2048);
+
+        builder.Property(t => t.SubmissionAttachmentsJson)
+            .HasMaxLength(8000);
 
         builder.Property(t => t.TeacherFeedback)
             .HasMaxLength(4000);
@@ -49,5 +55,23 @@ public class TaskItemConfiguration : IEntityTypeConfiguration<TaskItem>
             .WithMany()
             .HasForeignKey(t => t.CreatedByUserId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(t => t.Period)
+            .WithMany()
+            .HasForeignKey(t => t.PeriodId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne(t => t.Offering)
+            .WithMany()
+            .HasForeignKey(t => t.OfferingId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne(t => t.GradeCategory)
+            .WithMany()
+            .HasForeignKey(t => t.GradeCategoryId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasIndex(t => new { t.OrganizationId, t.AssignmentBatchId })
+            .HasFilter("[AssignmentBatchId] IS NOT NULL AND [IsDeleted] = 0");
     }
 }

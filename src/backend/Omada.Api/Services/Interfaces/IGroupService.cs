@@ -18,6 +18,6 @@ public interface IGroupService
     Task<ServiceResponse<IEnumerable<DepartmentSummaryDto>>> GetDepartmentsAsync();
     Task<ServiceResponse<PagedResponse<GroupMemberDto>>> GetGroupMembersAsync(Guid groupId, PagedRequest request, string? q);
     Task<ServiceResponse<int>> AddGroupMembersAsync(Guid groupId, AddGroupMembersRequest request);
-    Task<ServiceResponse<bool>> RemoveGroupMemberAsync(Guid groupId, Guid userId);
+    Task<ServiceResponse<bool>> RemoveGroupMemberAsync(Guid scopeGroupId, Guid userId, Guid? placementGroupId = null);
     Task<ServiceResponse<int>> MoveGroupMembersAsync(MoveGroupMembersRequest request);
 }

@@ -9,6 +9,7 @@ export type AdminWorkspaceItem = {
   route: string;
   widgetKey?: string;
   anyWidgetKeys?: string[];
+  requiresOrgAdmin?: boolean;
 };
 
 export type AdminWorkspaceSection = {
@@ -54,15 +55,14 @@ export const ADMIN_WORKSPACE_SECTIONS: AdminWorkspaceSection[] = [
         id: 'groups',
         icon: 'group',
         title: 'Groups',
-        subtitle: 'Teams & classes',
+        subtitle: 'Org chart & groups',
         route: '/groups-workspace',
-        widgetKey: WIDGET_KEYS.groups,
       },
       {
         id: 'floorplan',
         icon: 'map',
-        title: 'Floorplans',
-        subtitle: 'Rooms & buildings',
+        title: 'Locations & maps',
+        subtitle: 'Sites, levels, rooms & floorplans',
         route: '/floorplan-workspace',
         widgetKey: WIDGET_KEYS.map,
       },
@@ -78,9 +78,24 @@ export const ADMIN_WORKSPACE_SECTIONS: AdminWorkspaceSection[] = [
         id: 'periods',
         icon: 'date-range',
         title: 'Periods',
-        subtitle: 'Terms & semesters',
+        subtitle: 'Terms, quarters & cycles',
         route: '/periods-workspace',
-        widgetKey: WIDGET_KEYS.grades,
+        requiresOrgAdmin: true,
+      },
+      {
+        id: 'offerings',
+        icon: 'school',
+        title: 'Offerings',
+        subtitle: 'Packages & curriculum',
+        route: '/offerings-workspace',
+        requiresOrgAdmin: true,
+      },
+      {
+        id: 'coursework',
+        icon: 'assignment',
+        title: 'Coursework',
+        subtitle: 'Post & grade assignments',
+        route: '/assignments-workspace',
       },
     ],
   },
@@ -99,28 +114,6 @@ export const ADMIN_WORKSPACE_SECTIONS: AdminWorkspaceSection[] = [
     ],
   },
   {
-    id: 'academic',
-    title: 'Academic & attendance',
-    items: [
-      {
-        id: 'grades',
-        icon: 'school',
-        title: 'Grades',
-        subtitle: 'Student results',
-        route: '/grades-workspace',
-        widgetKey: WIDGET_KEYS.grades,
-      },
-      {
-        id: 'attendance',
-        icon: 'fact-check',
-        title: 'Attendance',
-        subtitle: 'Org-wide records',
-        route: '/attendance-workspace',
-        widgetKey: WIDGET_KEYS.attendance,
-      },
-    ],
-  },
-  {
     id: 'platform',
     title: 'Platform & compliance',
     items: [
@@ -130,14 +123,6 @@ export const ADMIN_WORKSPACE_SECTIONS: AdminWorkspaceSection[] = [
         title: 'Widgets',
         subtitle: 'Feature catalog',
         route: '/widgets-workspace',
-      },
-      {
-        id: 'rooms',
-        icon: 'meeting-room',
-        title: 'Rooms',
-        subtitle: 'Bookable spaces',
-        route: '/rooms-workspace',
-        widgetKey: WIDGET_KEYS.rooms,
       },
       {
         id: 'audit',
@@ -154,11 +139,13 @@ export function filterAdminWorkspaceSections(
   sections: AdminWorkspaceSection[],
   enabledWidgets: string[] | undefined | null,
   isWidgetEnabled: (key: string | undefined, enabled: string[] | undefined | null) => boolean,
+  canAccessOrgStructure: boolean,
 ): AdminWorkspaceSection[] {
   return sections
     .map((section) => ({
       ...section,
       items: section.items.filter((item) => {
+        if (item.requiresOrgAdmin && !canAccessOrgStructure) return false;
         if (item.anyWidgetKeys?.length) {
           return item.anyWidgetKeys.some((k) => isWidgetEnabled(k, enabledWidgets));
         }

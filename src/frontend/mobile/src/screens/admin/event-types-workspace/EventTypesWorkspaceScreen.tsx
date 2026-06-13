@@ -1,16 +1,21 @@
 import React, { useMemo } from 'react';
-import { ActivityIndicator, ScrollView, TextInput, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, TextInput, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ScreenHeader } from '@/src/components/navigation/ScreenHeader';
 import { PageContainer } from '@/src/components/layout/PageContainer';
-import { AppButton, AppText, ClayView, Icon } from '@/src/components/ui';
+import { AppButton, AppText, ClayView, Icon, WidgetEmptyState } from '@/src/components/ui';
 import { useThemeColors } from '@/src/hooks';
+import { EventTypeColorPicker } from './components/EventTypeColorPicker';
+import { EventTypeListCard } from './components/EventTypeListCard';
+import { EventTypeUsagePreview } from './components/EventTypeUsagePreview';
 import { useEventTypesWorkspace } from './hooks/useEventTypesWorkspace';
+import { createEventTypesWorkspaceStyles } from './styles/event-types-workspace.styles';
 
 export default function EventTypesWorkspaceScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
+  const styles = useMemo(() => createEventTypesWorkspaceStyles(colors), [colors]);
   const {
     types,
     loading,
@@ -29,144 +34,93 @@ export default function EventTypesWorkspaceScreen() {
     saveEdit,
     confirmDelete,
     isSaving,
+    refetch,
   } = useEventTypesWorkspace();
-
-  const inputStyle = useMemo(
-    () => ({
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: 10,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      color: colors.text,
-      backgroundColor: colors.background,
-      marginBottom: 10,
-    }),
-    [colors],
-  );
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-        <PageContainer>
+        <PageContainer fullBleed>
           <ScreenHeader title="Event types" />
 
-          <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
-            <ClayView depth={3} color={colors.card} style={{ borderRadius: 14, padding: 14, marginBottom: 14 }}>
-              <AppText variant="caption" style={{ color: colors.subtle, marginBottom: 10, lineHeight: 20 }}>
-                Define schedule event categories (lecture, lab, meeting, etc.) with colors used across the calendar
-                and room booking flows.
-              </AppText>
-              <AppText variant="label" style={{ color: colors.subtle, marginBottom: 8 }}>
-                NEW TYPE
-              </AppText>
-              <TextInput
-                value={newName}
-                onChangeText={setNewName}
-                placeholder="Name (e.g. Laboratory)"
-                placeholderTextColor={colors.subtle}
-                style={inputStyle}
-              />
-              <TextInput
-                value={newColor}
-                onChangeText={setNewColor}
-                placeholder="#3b82f6"
-                placeholderTextColor={colors.subtle}
-                autoCapitalize="none"
-                style={inputStyle}
-              />
-              <AppButton
-                title={isSaving ? 'Saving…' : 'Add event type'}
-                onPress={createType}
-                disabled={isSaving || !newName.trim()}
-                style={{ alignSelf: 'flex-start', minWidth: 160 }}
-              />
+          <ScrollView
+            contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 24 }]}
+            refreshControl={<RefreshControl refreshing={loading} onRefresh={refetch} tintColor={colors.primary} />}
+          >
+            <ClayView depth={3} color={colors.card} style={styles.clayShell}>
+              <View style={styles.clayInner}>
+                <AppText variant="h3" weight="bold">
+                  Categories for schedule & rooms
+                </AppText>
+                <AppText variant="caption" style={styles.sectionHint}>
+                  Event types drive the colored cards in the schedule and the selectable pills when booking a room.
+                  Rooms only appear for types they support.
+                </AppText>
+
+                <AppText variant="label" style={styles.sectionLabel}>
+                  NEW TYPE
+                </AppText>
+                <TextInput
+                  value={newName}
+                  onChangeText={setNewName}
+                  placeholder="Name (e.g. Laboratory, Client meeting)"
+                  placeholderTextColor={colors.subtle}
+                  style={styles.input}
+                  maxLength={50}
+                />
+
+                <AppText variant="label" style={[styles.sectionLabel, { marginBottom: 8 }]}>
+                  COLOR
+                </AppText>
+                <EventTypeColorPicker value={newColor} onChange={setNewColor} />
+                <EventTypeUsagePreview name={newName} color={newColor} />
+
+                <AppButton
+                  title={isSaving ? 'Saving…' : 'Add event type'}
+                  onPress={createType}
+                  disabled={isSaving || !newName.trim()}
+                  style={{ alignSelf: 'flex-start', minWidth: 180 }}
+                />
+              </View>
             </ClayView>
 
-            <AppText variant="label" style={{ color: colors.subtle, marginBottom: 10 }}>
-              EXISTING TYPES
+            <AppText variant="label" style={styles.sectionLabel}>
+              YOUR TYPES ({types.length})
             </AppText>
 
-            {loading ? (
-              <ActivityIndicator color={colors.primary} />
+            {loading && !types.length ? (
+              <ActivityIndicator color={colors.primary} style={{ marginTop: 12 }} />
             ) : !types.length ? (
-              <AppText variant="body" style={{ color: colors.subtle }}>
-                No event types yet. Add one above to get started.
-              </AppText>
+              <WidgetEmptyState
+                icon="event"
+                title="No event types yet"
+                message="Add your first type above. Members will pick from these when creating events or booking rooms."
+              />
             ) : (
-              types.map((type) => {
-                const isEditing = editingId === type.id;
-                return (
-                  <ClayView
-                    key={type.id}
-                    depth={2}
-                    color={colors.card}
-                    style={{ borderRadius: 12, padding: 14, marginBottom: 10 }}
-                  >
-                    {isEditing ? (
-                      <>
-                        <TextInput
-                          value={editName}
-                          onChangeText={setEditName}
-                          placeholder="Name"
-                          placeholderTextColor={colors.subtle}
-                          style={inputStyle}
-                        />
-                        <TextInput
-                          value={editColor}
-                          onChangeText={setEditColor}
-                          placeholder="#3b82f6"
-                          placeholderTextColor={colors.subtle}
-                          autoCapitalize="none"
-                          style={inputStyle}
-                        />
-                        <View style={{ flexDirection: 'row', gap: 8 }}>
-                          <AppButton title="Save" onPress={saveEdit} disabled={isSaving} style={{ minWidth: 90 }} />
-                          <AppButton title="Cancel" variant="outline" onPress={cancelEdit} style={{ minWidth: 90 }} />
-                        </View>
-                      </>
-                    ) : (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
-                          <View
-                            style={{
-                              width: 16,
-                              height: 16,
-                              borderRadius: 8,
-                              backgroundColor: type.color ?? colors.primary,
-                            }}
-                          />
-                          <AppText variant="body" weight="bold" style={{ color: colors.text }}>
-                            {type.name}
-                          </AppText>
-                        </View>
-                        <View style={{ flexDirection: 'row', gap: 8 }}>
-                          <AppButton
-                            title="Edit"
-                            variant="outline"
-                            onPress={() => startEdit(type.id!, type.name ?? '', type.color)}
-                            style={{ minWidth: 72 }}
-                          />
-                          <AppButton
-                            title="Delete"
-                            variant="outline"
-                            onPress={() => confirmDelete(type.id!, type.name ?? 'type')}
-                            style={{ minWidth: 72 }}
-                          />
-                        </View>
-                      </View>
-                    )}
-                  </ClayView>
-                );
-              })
+              types.map((type) => (
+                <EventTypeListCard
+                  key={type.id}
+                  type={type}
+                  isEditing={editingId === type.id}
+                  editName={editName}
+                  editColor={editColor}
+                  isSaving={isSaving}
+                  onEditNameChange={setEditName}
+                  onEditColorChange={setEditColor}
+                  onStartEdit={() => startEdit(type.id!, type.name ?? '', type.color)}
+                  onCancelEdit={cancelEdit}
+                  onSaveEdit={saveEdit}
+                  onDelete={() => confirmDelete(type.id!, type.name ?? 'type')}
+                />
+              ))
             )}
 
-            <ClayView depth={1} color={colors.card} style={{ borderRadius: 12, padding: 12, marginTop: 8 }}>
-              <View style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-start' }}>
+            <ClayView depth={1} color={colors.card} style={styles.infoBox}>
+              <View style={styles.infoRow}>
                 <Icon name="info-outline" size={18} color={colors.primary} />
                 <AppText variant="caption" style={{ color: colors.subtle, flex: 1, lineHeight: 18 }}>
-                  Deleting a type requires schedule admin permission. Members with schedule edit access can create and
-                  update types.
+                  Schedule edit access can create and update types. Deleting requires schedule admin permission and
+                  only succeeds when no events or room allow-lists reference the type.
                 </AppText>
               </View>
             </ClayView>
