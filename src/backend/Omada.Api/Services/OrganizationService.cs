@@ -2,6 +2,7 @@ using Omada.Api.Services.Interfaces;
 using Omada.Api.Repositories.Interfaces;
 using Omada.Api.Entities;
 using Omada.Api.Infrastructure;
+using Omada.Api.Infrastructure.Constants;
 using Omada.Api.DTOs.Organizations;
 using Omada.Api.Abstractions;
 using Microsoft.AspNetCore.SignalR;
@@ -48,6 +49,17 @@ public class OrganizationService : IOrganizationService
 
         // 2. Performance Fix: Fetch all relevant users in ONE database query
         var existingUsersDict = await FetchExistingUsersBulkAsync(request);
+
+        if (existingUsersDict.TryGetValue(request.AdminEmail, out var existingAdmin)
+            && !BCrypt.Net.BCrypt.Verify(request.Password, existingAdmin.PasswordHash))
+        {
+            return new ServiceResponse<OrganizationDetailsDto>(
+                false,
+                null,
+                new AppError(
+                    ErrorCodes.InvalidInput,
+                    "An account with this email already exists. Sign in with your current password, or use a different email."));
+        }
 
         // 3. Process Admin & Users (In-Memory)
         ProcessAdminUser(org, request, existingUsersDict);
@@ -152,7 +164,7 @@ public class OrganizationService : IOrganizationService
         return new ServiceResponse<OrganizationDetailsDto>(true, dto);
     }
 
-    public async Task<ServiceResponse<OrganizationInvitePreviewDto>> GetInvitePreviewAsync(string inviteCode)
+    public async Task<ServiceResponse<OrganizationInvitePreviewDto>> GetInvitePreviewAsync(string inviteCode, string? email = null)
     {
         if (string.IsNullOrWhiteSpace(inviteCode))
             return new ServiceResponse<OrganizationInvitePreviewDto>(false, null, new AppError(ErrorCodes.InvalidInput, "Invite code is required."));
@@ -164,13 +176,54 @@ public class OrganizationService : IOrganizationService
         if (org == null)
             return new ServiceResponse<OrganizationInvitePreviewDto>(false, null, new AppError(ErrorCodes.NotFound, "Invalid or expired invite code."));
 
-        return new ServiceResponse<OrganizationInvitePreviewDto>(true, new OrganizationInvitePreviewDto
+        var dto = new OrganizationInvitePreviewDto
         {
             OrganizationId = org.Id,
             Name = org.Name,
             LogoUrl = _mediaUrls.ToPublicUrl(string.IsNullOrEmpty(org.LogoUrl) ? null : org.LogoUrl),
             InviteCode = org.InviteCode
-        });
+        };
+
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            var normalizedEmail = email.Trim();
+            var user = (await _uow.Repository<User>().FindAsync(u =>
+                u.Email.ToLower() == normalizedEmail.ToLower())).FirstOrDefault();
+            if (user != null)
+            {
+                dto.InvitedEmail = user.Email;
+                dto.InvitedFirstName = user.FirstName;
+                dto.InvitedLastName = user.LastName;
+
+                var membership = (await _uow.Repository<OrganizationMember>().FindAsync(m =>
+                    m.UserId == user.Id && m.OrganizationId == org.Id)).FirstOrDefault();
+
+                if (membership?.IsActive == true)
+                {
+                    dto.IsAlreadyMember = true;
+                    dto.HasExistingAccount = true;
+                }
+                else if (membership != null && !membership.IsActive)
+                {
+                    dto.HasPendingInvite = true;
+                    var hasIncompleteSetup = !string.IsNullOrEmpty(user.PasswordResetToken)
+                        && !string.Equals(user.PasswordResetTokenPurpose, PasswordResetTokenPurposes.PasswordReset, StringComparison.Ordinal);
+                    var tokenExpired = user.PasswordResetTokenExpires.HasValue
+                        && user.PasswordResetTokenExpires.Value < DateTime.UtcNow;
+                    dto.RequiresRegistration = hasIncompleteSetup;
+                    dto.RequiresSignIn = !hasIncompleteSetup;
+                    dto.HasExistingAccount = !hasIncompleteSetup;
+                    dto.InviteLinkExpired = hasIncompleteSetup && tokenExpired;
+                }
+                else
+                {
+                    dto.HasExistingAccount = true;
+                    dto.RequiresSignIn = true;
+                }
+            }
+        }
+
+        return new ServiceResponse<OrganizationInvitePreviewDto>(true, dto);
     }
 
     // --- Private Helper Methods ---
@@ -192,16 +245,34 @@ public class OrganizationService : IOrganizationService
             PrimaryColor = request.PrimaryColor,
             SecondaryColor = request.SecondaryColor,
             TertiaryColor = request.TertiaryColor,
-            InviteCode = OrganizationInviteCodeGenerator.Generate()
+            InviteCode = OrganizationInviteCodeGenerator.Generate(),
+            OnboardingStep = 0,
+            EnabledWidgetKeysJson = "[]",
         };
 
-        var roleNames = request.Roles ?? new List<string>();
+        OrganizationOnboardingProgress.MarkComplete(org, OrganizationOnboardingProgress.StepIds.Branding);
 
-        // THE SAFEGUARD: Never trust the frontend completely. 
-        // Always ensure 'Admin' exists so the DB relationships don't break.
-        if (!roleNames.Any(r => r.Equals("Admin", StringComparison.OrdinalIgnoreCase)))
+        var roleNames = request.Roles?
+            .Where(r => !string.IsNullOrWhiteSpace(r))
+            .Select(r => r.Trim())
+            .ToList() ?? new List<string>();
+
+        if (roleNames.Count == 0)
         {
-            roleNames.Add("Admin");
+            roleNames.Add(RoleNames.Admin);
+            roleNames.Add(RoleNames.Member);
+            roleNames.Add(RoleNames.Unassigned);
+        }
+        else
+        {
+            if (!roleNames.Any(r => r.Equals(RoleNames.Admin, StringComparison.OrdinalIgnoreCase)))
+                roleNames.Insert(0, RoleNames.Admin);
+
+            foreach (var required in new[] { RoleNames.Member, RoleNames.Unassigned })
+            {
+                if (!roleNames.Any(r => r.Equals(required, StringComparison.OrdinalIgnoreCase)))
+                    roleNames.Add(required);
+            }
         }
 
         foreach (var name in roleNames)
@@ -322,7 +393,8 @@ public class OrganizationService : IOrganizationService
                     CNP = userDto.CNP,
                     Address = userDto.Address,
                     PasswordResetToken = token,
-                    PasswordResetTokenExpires = DateTime.UtcNow.AddDays(7)
+                    PasswordResetTokenExpires = DateTime.UtcNow.AddDays(7),
+                    PasswordResetTokenPurpose = PasswordResetTokenPurposes.InviteSetup
                 };
                 
                 // Track this new user so we can email them after DB save
@@ -369,6 +441,7 @@ public class OrganizationService : IOrganizationService
             InviteCode = org.InviteCode,
             InviteLink = inviteLink,
             OnboardingStep = org.OnboardingStep,
+            CompletedOnboardingSteps = OrganizationOnboardingProgress.GetCompletedSteps(org),
             IsActive = org.IsActive,
             EnabledWidgets = OrganizationWidgetKeys.GetEffectiveEnabledKeys(org).OrderBy(k => k).ToList()
         };

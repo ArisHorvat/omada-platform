@@ -10,7 +10,7 @@
 
 | Part | Topic | Who |
 |------|-------|-----|
-| [Part 1](#-part-1-the-superadmin-experience-setup) | Organization setup wizard | 🌐 SuperAdmin |
+| [Part 1](#-part-1-creating-an-organization-registration-wizard) | 3-step registration wizard + admin checklist | 🛡️ New org admin |
 | [Part 2](#-part-2-joining-an-organization-new-users) | Join via invite | 👤 New users |
 | [Part 3](#-part-3-the-user-experience-daily-use) | Daily app usage | 👥 All users |
 | [Part 4](#-part-4-organization-admin-console) | Org admin hub | 🛡️ Admin |
@@ -19,76 +19,84 @@
 
 ---
 
-## 🌐 Part 1: The SuperAdmin Experience (Setup)
+## 🌐 Part 1: Creating an Organization (Registration Wizard)
 
-As a **SuperAdmin**, you create new tenants (universities or companies) using the **Registration Wizard**.
+Anyone can create a new tenant (university or company) from the landing screen — **Create Organization**. The wizard has **3 steps**; roles, widgets, and invites are configured later in the **admin console checklist**.
 
-### Step 1: Organization Details 🏛️
+### Step 1: Your organization 🏛️
 
 | Action | Detail |
 |--------|--------|
-| **Tap** | "Create Organization" on the landing screen |
+| **Type** | **Corporate** or **University** — two-card picker (same design as step 2 account mode) |
 | **Enter** | Full name (e.g. "Hogwarts University") + short name (e.g. "HU") |
-| **Note** | Email domain derives from admin email (e.g. `@hogwarts.edu`) |
 
-### Step 2: Admin Account 👤
+### Step 2: Admin account 👤
 
-| Action | Detail |
-|--------|--------|
-| **Create** | Root admin account (name, email, password) |
-| **Security** | Created in same DB transaction as org — if this fails, org is not created |
+| Mode | Detail |
+|------|--------|
+| **New account** | First name, last name, email, password (with separate show/hide for password fields) |
+| **Existing account** | Email + your **current Omada password** — links your existing user as this org’s admin |
 
-### Step 3: Branding & Theming 🎨
+> 🔒 The admin user is created in the same transaction as the organization.
+
+### Step 3: Branding 🎨
 
 | Feature | How it works |
 |---------|--------------|
-| **Upload Logo** | Tap "Upload Logo" → select image |
-| **Auto colors** | Backend analyzes pixels → returns Primary, Secondary, Tertiary palette |
-| **API** | `POST /api/tools/extract-colors` |
-| **Preview** | Toggle Light/Dark to see instant preview |
+| **Preview** | Digital ID card — org name, short name, logo, theme colors |
+| **Upload logo** | Tap the circle → select image (saved via **`POST /api/files/upload`**) |
+| **Auto colors** | Backend extracts dominant colors → sorted swatches + generated palette presets |
+| **Palettes** | **Base Colors** or **Presets** tab |
+| **Finish** | Creates the org via **`POST /api/Organizations`** |
 
-### Step 4: Custom Roles 🎭
+### Success screen ✅
 
-| Option | Detail |
-|--------|--------|
-| **Presets** | University: Student, Professor · Corporate: Employee, Project Manager |
-| **Custom** | Add Dean, Janitor, Guest, etc. |
-| **Always included** | `Admin` role |
+After creation you are signed in automatically, see a **checkmark success screen**, then tap **Go to admin console** to open **`/org-dashboard`**.
 
-### Step 5: Enable Widgets 🧩
+> ⚙️ **Developers:** the auth guard must not redirect away from **`/register-flow/registration-success`** before you tap the button — see **`registrationSuccessFlow.ts`**.
 
-Choose which features are enabled and assign permission levels per role:
+### Finish setup in the admin console (not in the wizard)
 
-| Example | Configuration |
-|---------|---------------|
-| 📊 Grades | Only `Student` + `Professor` |
-| 👥 User Management | Only `Admin` |
-| 📅 Schedule | All roles with View |
+From **`/org-dashboard`**, use the checklist and workspaces:
 
-### Step 6: Invite Users 🔗
+| Task | Where |
+|------|-------|
+| 🧩 Enable optional widgets | **Widget catalog** — new orgs start with **none** enabled (schedule, tasks, digital ID stay on) |
+| 🔐 Roles & permissions | **Roles workspace** |
+| 🎨 Branding tweaks | **Branding workspace** |
+| 📅 Periods, groups, maps, spider | Respective workspaces |
+| 👥 Invite team | **Members workspace** — email invites or share org code/link |
 
-| Method | How |
-|--------|-----|
-| **Link & code** | After Finish → unique invite code + link (e.g. `/join?code=AB12CD34`) |
-| **Email invites** | Add colleague emails + assign role → backend sends invitations |
-| **Templates** | Wizard shows preview of member invitation + admin onboarding emails |
-
-> 📧 In development, emails are logged to the API console (real SMTP coming soon).
+> 📧 Configure **Brevo** (`BREVO_API_KEY`, verified `BREVO_SENDER_EMAIL`) for real invite emails; otherwise the API logs email bodies to the console.
 
 ---
 
-## 👤 Part 2: Joining an Organization (New Users)
+## 👤 Part 2: Joining an Organization
 
-Received an invite link or code? Here's how to join:
+### Email invite (from admin)
 
 ```text
-1. 🔗 Open invite link (/join?code=…) OR tap "Have an invite code?" on login
-2. ✅ Enter organization code (app validates + shows org name)
-3. 📝 Fill in name, email, password
-4. 🎉 Tap "Create account & join" → signed in and added to org
+1. 🔗 Open invite link (/join?code=…&token=…&email=…) from email
+2. ✅ App shows org name + accept/decline (or register / sign in first)
+3. 🎉 Accept → active member in that org
 ```
 
-> 💡 Already have an Omada account? Same join flow links your existing account.
+### Open org code (already have an Omada account)
+
+```text
+1. Profile → Change organization → + Join organization
+2. Enter org code → submit join request
+3. ⏳ Wait for admin approval (Members workspace → Approve and assign role)
+4. After approval, org appears in Change organization list
+```
+
+### New user via invite link (no account)
+
+```text
+1. 🔗 Open invite link → complete registration form
+2. ✅ Success screen → Go to sign in (no auto-login)
+3. Sign in → accept invite if still pending
+```
 
 ---
 
@@ -101,7 +109,7 @@ Received an invite link or code? Here's how to join:
 | **Layout** | Changes based on widgets enabled by Admin |
 | **Theme** | Entire app colored with org's palette (buttons, headers, icons) |
 | **Widgets** | Bento grid with news, schedule, tasks, map, and more |
-| **Search** | Universal search bar → cross-widget results |
+| **Search** | Dashboard **`SearchBar`** → **`/search`** modal — cross-widget results (people, rooms, news, tasks, schedule, groups, grades) scoped to your permissions |
 
 ### 📌 Custom Tab Bar
 
@@ -112,6 +120,22 @@ Too many widgets for the bottom menu? **Pin your favorites:**
 2. Under "Customize Tab Bar" → tap Pin Icon next to favorites
 3. Bottom tab bar updates immediately (up to 4 pinned items)
 ```
+
+### 🪪 Digital ID (always on)
+
+Every org includes **Digital ID** (with schedule and tasks) — it is not toggled in the widget catalog.
+
+| Role | How to open | What you see |
+|------|-------------|--------------|
+| **Member** | Profile → **Digital ID** | Wallet-style pass with org logo and colors; **QR code** refreshes about every minute |
+| **Member** | Same screen → **Show member barcode** | Optional 1D barcode in a bottom sheet (secondary to QR) |
+| **Staff** (attendance or digital-id permission) | Pass → **How to use** → **Open scanner**, or Attendance → **Scan Digital ID** | Camera (or paste on web), pick session, verify, mark present or use manual roll |
+
+> 🔆 On mobile, brightness is raised while the pass is open to help scanners read the QR.
+
+> 🏢 The pass is valid for your **current organization** only — switch org in profile if you belong to more than one.
+
+Details: [`../../docs/DigitalId.md`](../../docs/DigitalId.md)
 
 ### 📡 Real-Time Updates
 
@@ -132,30 +156,33 @@ Too many widgets for the bottom menu? **Pin your favorites:**
 
 **Admins** land on **`/org-dashboard`** — the organization admin hub.
 
+Use **Member app** on the admin profile (or **Admin console** on the member profile) to switch between the admin console and the normal tab-bar experience. Only organization admins see these buttons.
+
 ### ✅ Getting started checklist
 
-The hub shows a progress checklist:
+The hub shows a progress checklist (each step tracked separately in the backend):
 
 ```text
-Invite team → Roles → Branding → Groups → Floorplans
-  → Spider → Periods → Grades → Widgets → Rooms
+Widgets → Roles → Branding → Periods → Groups
+  → Locations & maps → Spider → Invite team
 ```
+
+- **Widgets** — toggle optional features on (new orgs start with catalog **empty**)
+- **Invite team** — marked done when more than one member exists
 
 ### 🗂️ Key workspaces
 
 | Workspace | What you do |
 |-----------|-------------|
-| 👥 **People & invites** | Search members, change roles, share invite link/code |
-| 🔐 **Roles & permissions** | View/Edit/Admin per enabled widget |
-| 🎨 **Branding** | Logo, colors, org type, active status |
-| 🧩 **Widget catalog** | Enable/disable features org-wide |
-| 📅 **Academic periods** | Semesters, terms, sprints |
-| 📊 **Grades / Attendance** | Record grades, review attendance |
-| 🚪 **Rooms** | Create and manage bookable rooms |
+| 👥 **People & invites** | Email invites, copy/share code & link, approve code join requests, change roles (Admin hidden) |
+| 🔐 **Roles & permissions** | View/Edit/Admin per widget allowed for the org (catalog + always-on + groups for admin) |
+| 🎨 **Branding** | Name, short name, logo, color palettes, org type (Corporate/University), active status — discard or save |
+| 🧩 **Widget catalog** | Enable/disable **optional** features by org type (starts **empty** on new orgs); schedule, tasks, digital ID always on |
+| 📅 **Periods** | Reporting periods — semesters, quarters, or cycles (edit, set current) |
 | 📝 **Audit log** | Review admin actions |
-| 📐 **Floorplan** | Upload floorplans, AI room extraction, publish rooms |
+| 📐 **Floorplan** | Upload floorplans, AI room extraction, publish & configure bookable rooms |
 | 🕷️ **Web spider** | Import timetable/news from your website |
-| 👥 **Groups** | Departments, teams, classes |
+| 👥 **Groups** | Departments, teams, classes — always in admin nav (org structure; not a member catalog widget) |
 | 🏷️ **Event types** | Schedule event types and colors |
 
 > 🔄 Switch orgs via **Change organization** — theme and permissions follow.
@@ -183,7 +210,7 @@ Manage the whole platform from **`/admin-dashboard`**:
 ```text
 Backend:
   1. Entity + Service + Controller (vertical slice)
-  2. Register in WidgetRegistry (IsCoreFeature if always-on)
+  2. Register in WidgetRegistry — set IsCoreFeature / IsAlwaysEnabled / IsInOrgCatalog / Audience
   3. Add WidgetKeys + mobile permissions.config.ts
   4. npm run generate-api
 
@@ -191,7 +218,8 @@ Frontend:
   1. Route in app/(app)/(widgets)/my-new-widget.tsx
   2. Screen in screens/widgets/my-new-widget/
   3. Add to WIDGET_REGISTRY (if dashboard widget)
-  4. Enable via Widget catalog admin workspace
+  4. Add to BASE_WIDGETS + orgEnabledWidgets catalog keys if org-catalog toggleable
+  5. Enable via Widget catalog admin workspace (if IsInOrgCatalog)
 ```
 
 ### 🚀 Future roadmap

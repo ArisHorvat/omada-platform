@@ -1,6 +1,18 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { View, TouchableOpacity, StyleSheet, LayoutAnimation, Platform, UIManager } from 'react-native';
-import { startOfMonth, endOfMonth, format, addMonths, subMonths, isSameDay, isToday, startOfWeek, endOfWeek, eachDayOfInterval, setMonth, setYear, addYears, subYears } from 'date-fns';
+import {
+  startOfMonth,
+  endOfMonth,
+  format,
+  addMonths,
+  subMonths,
+  isSameDay,
+  isToday,
+  startOfWeek,
+  endOfWeek,
+  eachDayOfInterval,
+  isWithinInterval,
+} from 'date-fns';
 import { AppText } from './AppText';
 import { Icon } from './Icon';
 import { useThemeColors } from '@/src/hooks';
@@ -18,13 +30,59 @@ const CALENDAR_LAYOUT_ANIM = LayoutAnimation.create(
 interface ClayDatePickerProps {
   value: Date;
   onChange: (date: Date) => void;
+  /** Tighter grid for schedule popover and dense forms. */
+  compact?: boolean;
+  /** Renders a close control in the month toolbar (schedule popover). */
+  onDismiss?: () => void;
+  /** Single day (default) or Airbnb-style start/end range on one calendar. */
+  mode?: 'single' | 'range';
+  /** End of range when `mode` is `range`. Defaults to `value`. */
+  endValue?: Date;
+  onRangeChange?: (start: Date, end: Date) => void;
 }
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-export const ClayDatePicker: React.FC<ClayDatePickerProps> = ({ value, onChange }) => {
+export const ClayDatePicker: React.FC<ClayDatePickerProps> = ({
+  value,
+  onChange,
+  compact = false,
+  onDismiss,
+  mode = 'single',
+  endValue,
+  onRangeChange,
+}) => {
   const colors = useThemeColors();
   const [currentMonth, setCurrentMonth] = useState(startOfMonth(value));
+  const cellStyles = compact ? compactStyles : styles;
+  const rangeEnd = endValue ?? value;
+  const isRangeMode = mode === 'range' && !!onRangeChange;
+
+  const handleDayPress = (date: Date) => {
+    if (!isRangeMode) {
+      onChange(date);
+      return;
+    }
+
+    const start = value;
+    const end = rangeEnd;
+    const pickingEnd = isSameDay(start, end);
+
+    if (pickingEnd) {
+      if (date < start) {
+        onRangeChange(date, date);
+      } else {
+        onRangeChange(start, date);
+      }
+      return;
+    }
+
+    onRangeChange(date, date);
+  };
+
+  useEffect(() => {
+    setCurrentMonth(startOfMonth(value));
+  }, [value]);
 
   // 🚀 DYNAMIC GRID: Calculates EXACTLY the weeks needed (4, 5, or 6)
   const calendarDays = useMemo(() => {
@@ -45,56 +103,108 @@ export const ClayDatePicker: React.FC<ClayDatePickerProps> = ({ value, onChange 
   };
 
   return (
-    <View style={styles.container}>
-      
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => changeMonth('prev')} hitSlop={15} style={styles.arrow}>
-          <Icon name="chevron-left" size={20} color={colors.primary} />
+    <View style={cellStyles.container}>
+      <View style={cellStyles.header}>
+        <TouchableOpacity
+          onPress={() => changeMonth('prev')}
+          hitSlop={8}
+          style={cellStyles.navBtn}
+          accessibilityLabel="Previous month"
+        >
+          <Icon name="chevron-left" size={compact ? 20 : 22} color={colors.primary} />
         </TouchableOpacity>
-        
-        <AppText weight="bold" style={{ fontSize: 16, color: colors.text }}>
+
+        <AppText
+          weight="bold"
+          numberOfLines={1}
+          style={[cellStyles.headerTitle, { color: colors.text, fontSize: compact ? 14 : 16 }]}
+        >
           {format(currentMonth, 'MMMM yyyy')}
         </AppText>
-        
-        <TouchableOpacity onPress={() => changeMonth('next')} hitSlop={15} style={styles.arrow}>
-          <Icon name="chevron-right" size={20} color={colors.primary} />
+
+        <TouchableOpacity
+          onPress={() => changeMonth('next')}
+          hitSlop={8}
+          style={cellStyles.navBtn}
+          accessibilityLabel="Next month"
+        >
+          <Icon name="chevron-right" size={compact ? 20 : 22} color={colors.primary} />
         </TouchableOpacity>
+
+        {onDismiss ? (
+          <TouchableOpacity
+            onPress={onDismiss}
+            hitSlop={8}
+            style={cellStyles.navBtn}
+            accessibilityLabel="Close calendar"
+          >
+            <Icon name="close" size={compact ? 18 : 20} color={colors.subtle} />
+          </TouchableOpacity>
+        ) : null}
       </View>
 
-      {/* Weekdays */}
-      <View style={styles.weekdaysRow}>
+      <View style={cellStyles.weekdaysRow}>
         {WEEKDAYS.map((day, index) => (
-          <View key={index} style={styles.dayCell}>
-            <AppText variant="caption" weight="bold" style={{ color: colors.subtle, fontSize: 12, opacity: 0.6 }}>{day}</AppText>
+          <View key={index} style={cellStyles.dayCell}>
+            <AppText
+              variant="caption"
+              weight="bold"
+              style={{ color: colors.subtle, fontSize: compact ? 10 : 12, opacity: 0.6 }}
+            >
+              {day}
+            </AppText>
           </View>
         ))}
       </View>
 
-      {/* Grid */}
-      <View style={styles.grid}>
-        {calendarDays.map(date => {
-          const isSelected = isSameDay(date, value);
+      {isRangeMode ? (
+        <AppText variant="caption" style={{ color: colors.subtle, textAlign: 'center', marginBottom: 8 }}>
+          {format(value, 'MMM d, yyyy')}
+          {!isSameDay(value, rangeEnd) ? ` – ${format(rangeEnd, 'MMM d, yyyy')}` : ' – pick end date'}
+        </AppText>
+      ) : null}
+
+      <View style={cellStyles.grid}>
+        {calendarDays.map((date) => {
+          const isStart = isSameDay(date, value);
+          const isEnd = isSameDay(date, rangeEnd);
+          const isSelected = isRangeMode ? isStart || isEnd : isStart;
+          const inRange =
+            isRangeMode &&
+            !isSameDay(value, rangeEnd) &&
+            isWithinInterval(date, {
+              start: value < rangeEnd ? value : rangeEnd,
+              end: value < rangeEnd ? rangeEnd : value,
+            });
           const isTodayDate = isToday(date);
           const isCurrentMonth = date.getMonth() === currentMonth.getMonth();
 
           return (
-            <TouchableOpacity 
-              key={date.toString()} 
-              style={styles.dayCell} 
-              onPress={() => onChange(date)}
+            <TouchableOpacity
+              key={date.toString()}
+              style={cellStyles.dayCell}
+              onPress={() => handleDayPress(date)}
               activeOpacity={0.7}
             >
-              <View style={[
-                styles.dayCircle,
-                isSelected && { backgroundColor: colors.primary },
-                !isSelected && isTodayDate && { backgroundColor: colors.primary + '15' }
-              ]}>
-                <AppText 
-                  weight={isSelected || isTodayDate ? 'bold' : 'medium'} 
-                  style={{ 
-                    fontSize: 16,
-                    color: isSelected ? '#FFF' : (isCurrentMonth ? (isTodayDate ? colors.primary : colors.text) : colors.subtle + '40'),
+              <View
+                style={[
+                  cellStyles.dayCircle,
+                  inRange && !isSelected && { backgroundColor: colors.primary + '18' },
+                  isSelected && { backgroundColor: colors.primary },
+                  !isSelected && !inRange && isTodayDate && { backgroundColor: colors.primary + '15' },
+                ]}
+              >
+                <AppText
+                  weight={isSelected || isTodayDate ? 'bold' : 'medium'}
+                  style={{
+                    fontSize: compact ? 13 : 16,
+                    color: isSelected
+                      ? '#FFF'
+                      : isCurrentMonth
+                        ? isTodayDate
+                          ? colors.primary
+                          : colors.text
+                        : colors.subtle + '40',
                   }}
                 >
                   {format(date, 'd')}
@@ -110,7 +220,23 @@ export const ClayDatePicker: React.FC<ClayDatePickerProps> = ({ value, onChange 
 
 const styles = StyleSheet.create({
   container: { width: '100%', paddingVertical: 4 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, paddingHorizontal: 12 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingHorizontal: 0,
+    gap: 4,
+  },
+  navBtn: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+  },
   arrow: { padding: 4 },
   weekdaysRow: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 8 },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
@@ -120,8 +246,48 @@ const styles = StyleSheet.create({
     justifyContent: 'center', 
     alignItems: 'center', 
   },
-  dayCircle: { 
-    width: 36, height: 36, borderRadius: 18, 
-    justifyContent: 'center', alignItems: 'center' 
-  }
+  dayCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});
+
+const compactStyles = StyleSheet.create({
+  container: { width: '100%', paddingVertical: 2 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingHorizontal: 2,
+    gap: 6,
+  },
+  navBtn: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+  },
+  arrow: { padding: 2 },
+  weekdaysRow: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 8 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap' },
+  dayCell: {
+    width: '14.28%',
+    height: 38,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dayCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });

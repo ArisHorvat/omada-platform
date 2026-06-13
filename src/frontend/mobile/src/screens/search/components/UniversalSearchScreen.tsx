@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { View, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PageContainer } from '@/src/components/layout/PageContainer';
-import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
+import { ScreenHeader } from '@/src/components/navigation/ScreenHeader';
 import { SearchBar } from '@/src/screens/widgets/dashboard/components/SearchBar';
 import {
   AppText,
@@ -128,7 +128,6 @@ function ResultSection({
 export default function UniversalSearchScreen() {
   const router = useRouter();
   const colors = useThemeColors();
-  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createUniversalSearchStyles(colors), [colors]);
   const [query, setQuery] = useState('');
   const { data, config } = useDashboardLogic();
@@ -151,22 +150,19 @@ export default function UniversalSearchScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
       <PageContainer>
-        <View style={[styles.header, { paddingTop: insets.top }]}>
-          <View style={styles.headerTop}>
-            <ClayBackButton />
-            <AppText variant="h3" weight="bold">
-              Search
-            </AppText>
-            <View style={{ width: 44 }} />
-          </View>
-          <SearchBar
-            autoFocus
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Search apps, grades, people..."
-          />
-        </View>
+        <ScreenHeader
+          title="Search"
+          footer={
+            <SearchBar
+              autoFocus
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Search apps, grades, people..."
+            />
+          }
+        />
 
         <ScrollView
           keyboardShouldPersistTaps="handled"
@@ -246,6 +242,7 @@ export default function UniversalSearchScreen() {
           ) : null}
         </ScrollView>
       </PageContainer>
+      </SafeAreaView>
     </View>
   );
 }

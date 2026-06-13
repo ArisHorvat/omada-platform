@@ -1,9 +1,10 @@
 import React, { useMemo, useRef } from 'react';
-import { View, TextInput, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
 import { ClayView } from '@/src/components/ui/ClayView';
 import { Icon } from '@/src/components/ui/Icon';
 import { PressClay } from '@/src/components/animations/PressClay';
 import { useThemeColors } from '@/src/hooks';
+import { inputTextStyle } from '@/src/styles/typography';
 
 interface SearchBarProps {
   onPress?: () => void;       // If provided, acts as a button (Dashboard)
@@ -63,7 +64,8 @@ export const SearchBar = ({
                 placeholder={placeholder || defaultPlaceholder} 
                 placeholderTextColor={colors.subtle}
                 style={[
-                    styles.input, 
+                    styles.input,
+                    inputTextStyle(),
                     compact && styles.inputCompact,
                     { color: colors.text },
                     { pointerEvents: isReadOnly ? 'none' : 'auto' },
@@ -141,10 +143,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     justifyContent: 'center',
     height: '100%',
   },
-  input: { 
-    fontSize: 16, 
-    fontFamily: Platform.select({ ios: 'System', default: 'Roboto' }), // Replace with your 'Body' font if loaded
-    fontWeight: '500',
+  input: {
     height: '100%',
     paddingVertical: 0, // Fixes Android text vertical alignment
   },

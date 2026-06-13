@@ -1,23 +1,22 @@
 import { useState, useEffect } from 'react';
 import { Alert, Share } from 'react-native';
-import { promptLocalAuthentication } from '@/src/utils/promptLocalAuthentication';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '@/src/context/AuthContext';
-import { useUserPreferences } from '@/src/context/UserPreferencesContext';
-import { authApi, unwrap, usersApi } from '@/src/api';
+import { unwrap, usersApi } from '@/src/api';
 import { fetchUserDataExportJson } from '@/src/api/exportUserData';
 import {
-  ResetPasswordRequest,
+  ChangePasswordRequest,
   UpdateSecurityRequest,
   type UserProfileDto,
 } from '@/src/api/generatedClient';
 import { QUERY_KEYS } from '@/src/api/queryKeys';
+import { formatApiErrorMessage } from '@/src/utils/formatApiError';
+import { validatePassword } from '@/src/utils/passwordValidation';
 
 export const useSecurityLogic = () => {
   const queryClient = useQueryClient();
   const { activeSession, logout } = useAuth();
-  const { isBiometricEnabled, toggleBiometric } = useUserPreferences();
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -25,6 +24,7 @@ export const useSecurityLogic = () => {
   const [is2FAEnabled, setIs2FAEnabled] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [changePasswordBusy, setChangePasswordBusy] = useState(false);
 
   const { data: profile } = useQuery({
     queryKey: QUERY_KEYS.userProfile,
@@ -40,10 +40,6 @@ export const useSecurityLogic = () => {
 
   const updateSecurityMutation = useMutation({
     mutationFn: async (req: UpdateSecurityRequest) => await unwrap(usersApi.updateSecurity(req)),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.userProfile });
-      Alert.alert('Success', 'Security settings updated.');
-    },
     onError: () => {
       const cached = queryClient.getQueryData<UserProfileDto>(QUERY_KEYS.userProfile);
       setIs2FAEnabled(!!cached?.isTwoFactorEnabled);
@@ -60,46 +56,47 @@ export const useSecurityLogic = () => {
       Alert.alert('Error', 'New passwords do not match.');
       return;
     }
+    const passwordError = validatePassword(newPassword);
+    if (passwordError) {
+      Alert.alert('Error', passwordError);
+      return;
+    }
+    if (currentPassword === newPassword) {
+      Alert.alert('Error', 'New password must be different from your current password.');
+      return;
+    }
 
+    setChangePasswordBusy(true);
     try {
-      const request = new ResetPasswordRequest({ token: '', email: '', newPassword });
-      await unwrap(authApi.resetPassword(request));
+      const request = new ChangePasswordRequest({
+        oldPassword: currentPassword,
+        newPassword,
+      });
+      await unwrap(usersApi.changePassword(request));
       Alert.alert('Success', 'Password updated successfully.');
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Network error.';
-      Alert.alert('Error', msg);
+      Alert.alert('Error', formatApiErrorMessage(e, 'Could not update password.'));
+    } finally {
+      setChangePasswordBusy(false);
     }
   };
 
   const handleToggle2FA = (value: boolean) => {
     setIs2FAEnabled(value);
-    updateSecurityMutation.mutate(new UpdateSecurityRequest({ isTwoFactorEnabled: value }));
-  };
-
-  const onBiometricToggle = async (enable: boolean) => {
-    if (enable) {
-      const LocalAuthentication = await import('expo-local-authentication');
-      const hasHardware = await LocalAuthentication.hasHardwareAsync();
-      if (!hasHardware) {
-        Alert.alert('Unavailable', 'This device does not support Face ID or Touch ID.');
-        return;
-      }
-      const enrolled = await LocalAuthentication.isEnrolledAsync();
-      if (!enrolled) {
-        Alert.alert('Not set up', 'Add Face ID or Touch ID in your device settings first.');
-        return;
-      }
-      const ok = await promptLocalAuthentication({
-        promptMessage: 'Confirm to enable biometric unlock for Omada',
-        fallbackLabel: 'Use device passcode',
-        cancelLabel: 'Cancel',
-      });
-      if (!ok) return;
-    }
-    await toggleBiometric(enable);
+    updateSecurityMutation.mutate(new UpdateSecurityRequest({ isTwoFactorEnabled: value }), {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.userProfile });
+        Alert.alert(
+          value ? 'Two-factor enabled' : 'Two-factor disabled',
+          value
+            ? 'Next time you sign in, we will email you a 6-digit code after your password.'
+            : 'Sign-in will only require your password again.'
+        );
+      },
+    });
   };
 
   const handleExportData = async () => {
@@ -154,12 +151,11 @@ export const useSecurityLogic = () => {
     setConfirmPassword,
     is2FAEnabled,
     handleToggle2FA,
-    isBiometricEnabled,
-    onBiometricToggle,
     handleChangePassword,
     handleExportData,
     handleDeleteAccount,
     exportBusy,
     deleteBusy,
+    changePasswordBusy,
   };
 };

@@ -1,7 +1,7 @@
 import '@/src/i18n';
-import { Slot, useSegments, Redirect } from 'expo-router';
+import { Slot, useRootNavigationState } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useFonts, Outfit_400Regular, Outfit_600SemiBold, Outfit_800ExtraBold } from '@expo-google-fonts/outfit';
@@ -10,71 +10,52 @@ import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { WebAwareSafeAreaProvider } from '@/src/components/layout/WebAwareSafeAreaProvider';
 import { JailbreakGuard } from '@/src/components/system/JailbreakGuard';
 import { I18nPreferencesBridge } from '@/src/components/system/I18nPreferencesBridge';
 import { ProfilePreferencesSync } from '@/src/components/system/ProfilePreferencesSync';
+import { AuthBootstrapOverlay } from '@/src/components/system/AuthBootstrapOverlay';
 
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { OrganizationThemeProvider } from '../context/OrganizationThemeContext';
 import { UserPreferencesProvider, useUserPreferences } from '../context/UserPreferencesContext';
 import { PermissionProvider } from '../context/PermissionContext';
 import { CurrentOrganizationProvider } from '../context/CurrentOrganizationContext';
-
+import { WebMainPaneBridge } from '@/src/components/layout/WebMainPaneBridge';
+import { ConfirmDialogProvider } from '../context/ConfirmDialogProvider';
+import { OrgAdminExperienceProvider } from '../context/OrgAdminExperienceContext';
+import { WebDocumentThemeSync } from '@/src/components/system/WebDocumentThemeSync';
 
 const ThemedStatusBar = () => {
   const { themeMode } = useUserPreferences();
   return <StatusBar style={themeMode === 'dark' ? 'light' : 'dark'} />;
 };
 
-function AuthLayout() {
-  const { activeSession, isLoading } = useAuth();
-  const segments = useSegments();
+function RootNavigation() {
+  const { isLoading: authLoading } = useAuth();
+  const navigationState = useRootNavigationState();
   const [fontsLoaded] = useFonts({
-    'Body': Outfit_400Regular,
-    'Heading': Outfit_600SemiBold,
-    'Display': Outfit_800ExtraBold,
+    Body: Outfit_400Regular,
+    Heading: Outfit_600SemiBold,
+    Display: Outfit_800ExtraBold,
   });
 
-  if (!fontsLoaded || isLoading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
-  }
+  const navigationReady = Boolean(navigationState?.key);
+  const showBootstrapOverlay = !fontsLoaded || authLoading || !navigationReady;
 
-  // --- ROUTING LOGIC ---
-  const inAuthGroup = segments[0] === '(auth)';
-  
-  // 1. Not logged in -> landing (create org or login)
-  if (!activeSession && !inAuthGroup) {
-    return <Redirect href="/" />;
-  }
-
-  // 2. Logged In -> Redirect to App (if currently in Login screens)
-  if (activeSession && inAuthGroup) {
-    const isRegistrationFlow = segments[1] === 'register-flow';
-    
-    // SuperAdmin exception
-    if (activeSession.role === 'SuperAdmin' && isRegistrationFlow) {
-      return <Slot />;
-    }
-    
-    // Org-level admin tools: Admin and SuperAdmin share the same org dashboard entry.
-    if (activeSession.role === 'Admin' || activeSession.role === 'SuperAdmin' || activeSession.role === 'Super Admin') {
-      return <Redirect href="/org-dashboard" />;
-    }
-    return <Redirect href="/dashboard" />;
-  }
-
-  return <Slot />;
+  return (
+    <View style={styles.root}>
+      <Slot />
+      {showBootstrapOverlay ? <AuthBootstrapOverlay /> : null}
+    </View>
+  );
 }
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      gcTime: 1000 * 60 * 60 * 24, // Keep garbage collection time high (24 hours) for offline use
-      staleTime: 1000 * 60 * 5, // Data is fresh for 5 mins
+      gcTime: 1000 * 60 * 60 * 24,
+      staleTime: 1000 * 60 * 5,
     },
   },
 });
@@ -90,23 +71,39 @@ export default function RootLayout() {
       persistOptions={{ persister: asyncStoragePersister }}
     >
       <GestureHandlerRootView style={{ flex: 1 }}>
+        <WebAwareSafeAreaProvider>
         <JailbreakGuard>
           <AuthProvider>
             <CurrentOrganizationProvider>
               <UserPreferencesProvider>
+                <WebDocumentThemeSync />
                 <ProfilePreferencesSync />
                 <I18nPreferencesBridge />
                 <OrganizationThemeProvider>
-                  <PermissionProvider>
-                    <ThemedStatusBar />
-                    <AuthLayout />
-                  </PermissionProvider>
+                  <WebMainPaneBridge>
+                    <ConfirmDialogProvider>
+                      <OrgAdminExperienceProvider>
+                        <PermissionProvider>
+                          <ThemedStatusBar />
+                          <RootNavigation />
+                        </PermissionProvider>
+                      </OrgAdminExperienceProvider>
+                    </ConfirmDialogProvider>
+                  </WebMainPaneBridge>
                 </OrganizationThemeProvider>
               </UserPreferencesProvider>
             </CurrentOrganizationProvider>
           </AuthProvider>
         </JailbreakGuard>
+        </WebAwareSafeAreaProvider>
       </GestureHandlerRootView>
     </PersistQueryClientProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+  },
+});

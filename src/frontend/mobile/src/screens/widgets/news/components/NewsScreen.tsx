@@ -1,12 +1,13 @@
 import React from 'react';
-import { View, FlatList, TouchableOpacity, Modal, TextInput, ActivityIndicator, RefreshControl, ScrollView, Image } from 'react-native';
+import { View, FlatList, TouchableOpacity, Modal, TextInput, ActivityIndicator, RefreshControl, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 
-import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
+import { ScreenHeader } from '@/src/components/navigation/ScreenHeader';
 import { WidgetPageShell } from '@/src/components/layout';
-import { AppText, AppButton, Icon, ClayView } from '@/src/components/ui';
+import { WebAnchoredOverlay } from '@/src/components/layout/WebAnchoredOverlay';
+import { AppText, AppButton, Icon, ClayView, ProgressiveImage } from '@/src/components/ui';
 import { ScreenTransition, AnimatedItem, PressClay } from '@/src/components/animations';
 import { ClayAnimations } from '@/src/constants/animations';
 import { useEscapeKey } from '@/src/hooks';
@@ -50,7 +51,7 @@ export default function NewsScreen() {
     <AnimatedItem animation={ClayAnimations.SlideInFlow(index)}>
         <ClayView depth={5} puffy={10} color={colors.card} style={{ marginBottom: 16, borderRadius: 20, overflow: 'hidden' }}>
             {item.coverImageUrl && (
-                <Image source={{ uri: item.coverImageUrl }} style={{ width: '100%', height: 160 }} />
+                <ProgressiveImage source={{ uri: item.coverImageUrl }} style={{ width: '100%', height: 160 }} resizeMode="cover" />
             )}
             <View style={{ padding: 16 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -85,13 +86,9 @@ export default function NewsScreen() {
     <WidgetPageShell>
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScreenTransition>
-        <SafeAreaView style={{ flex: 1 }}>
+        <SafeAreaView style={{ flex: 1 }} edges={['top']}>
           
-          {/* HEADER */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 16 }}>
-            <ClayBackButton />
-            <AppText variant="h2" weight="bold" style={{ marginLeft: 16 }}>News & Alerts</AppText>
-          </View>
+          <ScreenHeader title="News & Alerts" />
 
           {/* LIST */}
           <FlatList
@@ -125,7 +122,7 @@ export default function NewsScreen() {
 
           {/* CREATE POST MODAL */}
           <Modal visible={createModalVisible} transparent animationType="slide">
-             <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+             <WebAnchoredOverlay style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
                 <ClayView depth={20} puffy={20} color={colors.card} style={{ padding: 24, borderTopLeftRadius: 32, borderTopRightRadius: 32, height: '85%' }}>
                     
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
@@ -177,7 +174,7 @@ export default function NewsScreen() {
                     </ScrollView>
 
                 </ClayView>
-             </View>
+             </WebAnchoredOverlay>
           </Modal>
 
         </SafeAreaView>

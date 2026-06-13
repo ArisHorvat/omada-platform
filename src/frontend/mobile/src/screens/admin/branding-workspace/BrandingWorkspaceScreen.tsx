@@ -1,202 +1,329 @@
-import React, { useEffect, useState } from 'react';
-import { View, ScrollView, TouchableOpacity, TextInput, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React from 'react';
+import { View, ScrollView, TouchableOpacity, ActivityIndicator, type ViewStyle } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
+import { ScreenHeader } from '@/src/components/navigation/ScreenHeader';
 import { PageContainer } from '@/src/components/layout/PageContainer';
-import { AppButton, AppText, ClayView, Icon, ProgressiveImage, SegmentedControl } from '@/src/components/ui';
+import { BrandingIdCardPreview } from '@/src/components/branding/BrandingIdCardPreview';
+import {
+  AppButton,
+  AppText,
+  ClayView,
+  Icon,
+  IconInput,
+  ProgressiveImage,
+  SegmentedControl,
+} from '@/src/components/ui';
 import { OrganizationType } from '@/src/api/generatedClient';
 import { useThemeColors } from '@/src/hooks';
-import { useBrandingWorkspace } from '../hooks/useBrandingWorkspace';
+import { DEFAULT_BASE_COLORS, getContrastTextColor } from '@/src/utils/brandingPalettes';
+import { useBrandingWorkspace } from './hooks/useBrandingWorkspace';
+import { createStyles } from './styles/branding-workspace.styles';
 
 export default function BrandingWorkspaceScreen() {
   const colors = useThemeColors();
-  const insets = useSafeAreaInsets();
   const styles = createStyles(colors);
   const {
     name,
     setName,
     shortName,
     setShortName,
-    emailDomain,
-    setEmailDomain,
     primary,
-    setPrimary,
     secondary,
-    setSecondary,
     tertiary,
-    setTertiary,
     logoUri,
     pickLogo,
-    palettePresets,
-    defaultColors,
+    isExtracting,
+    sortedExtractedColors,
+    selectedBaseColor,
+    setSelectedBaseColor,
+    activeTab,
+    setActiveTab,
+    generatedPalettes,
+    handlePaletteSelect,
     organizationType,
     setOrganizationType,
     isActive,
     setIsActive,
     save,
     isSaving,
+    isLoading,
+    hasChanges,
+    discardChanges,
   } = useBrandingWorkspace();
 
+  const roleLabel = organizationType === OrganizationType.University ? 'STUDENT' : 'EMPLOYEE';
+
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top }}>
-      <PageContainer>
-        <View style={styles.header}>
-          <ClayBackButton />
-          <AppText variant="h3" weight="bold">
-            Branding & appearance
-          </AppText>
-        </View>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+        <PageContainer fullBleed>
+          <ScreenHeader title="Branding & appearance" />
 
-        <ScrollView contentContainerStyle={styles.scroll}>
-          <ClayView depth={8} puffy={16} color={primary} style={styles.preview}>
-            <AppText weight="bold" style={{ color: '#fff', fontSize: 18 }}>
-              {name || 'Organization name'}
-            </AppText>
-            <View style={styles.previewBars}>
-              <View style={[styles.bar, { backgroundColor: secondary }]} />
-              <View style={[styles.bar, { backgroundColor: tertiary }]} />
+          {isLoading ? (
+            <View style={styles.loadingWrap}>
+              <ActivityIndicator color={colors.primary} />
             </View>
-          </ClayView>
-
-          <Field label="Organization name" value={name} onChangeText={setName} colors={colors} />
-          <Field label="Short name" value={shortName} onChangeText={setShortName} colors={colors} />
-          <Field label="Email domain" value={emailDomain} onChangeText={setEmailDomain} colors={colors} placeholder="company.com" />
-
-          <TouchableOpacity onPress={pickLogo} style={{ marginVertical: 16 }}>
-            <ClayView depth={6} puffy={14} color={colors.card} style={styles.logoRow}>
-              <ClayView depth={3} color={colors.background} style={styles.logoCircle}>
-                {logoUri ? (
-                  <ProgressiveImage source={{ uri: logoUri }} style={{ width: 64, height: 64 }} resizeMode="cover" />
-                ) : (
-                  <Icon name="cloud-upload" size={28} color={colors.primary} />
-                )}
-              </ClayView>
-              <View>
-                <AppText weight="bold">Organization logo</AppText>
-                <AppText variant="caption" style={{ color: colors.subtle }}>
-                  Tap to upload — colors can be extracted automatically
-                </AppText>
-              </View>
-            </ClayView>
-          </TouchableOpacity>
-
-          <AppText variant="caption" style={styles.sectionLabel}>
-            PRIMARY COLOR
-          </AppText>
-          <View style={styles.colorRow}>
-            {defaultColors.map((c) => (
-              <TouchableOpacity key={c} onPress={() => setPrimary(c)}>
-                <View style={[styles.swatch, { backgroundColor: c, borderWidth: primary === c ? 3 : 0, borderColor: colors.text }]} />
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <AppText variant="caption" style={styles.sectionLabel}>
-            PALETTE PRESETS
-          </AppText>
-          <View style={styles.presetGrid}>
-            {palettePresets.map((p) => (
-              <TouchableOpacity
-                key={p.name}
-                style={{ width: '47%' }}
-                onPress={() => {
-                  setPrimary(p.primary);
-                  setSecondary(p.secondary);
-                  setTertiary(p.tertiary);
-                }}
-              >
-                <ClayView depth={4} puffy={10} color={colors.card} style={styles.presetCard}>
-                  <View style={styles.presetStrip}>
-                    <View style={{ flex: 1, backgroundColor: p.primary }} />
-                    <View style={{ flex: 1, backgroundColor: p.secondary }} />
-                    <View style={{ flex: 1, backgroundColor: p.tertiary }} />
-                  </View>
-                  <AppText variant="caption" weight="bold">
-                    {p.name}
-                  </AppText>
-                </ClayView>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <ClayView depth={3} color={colors.card} style={{ borderRadius: 14, padding: 14, marginBottom: 16 }}>
-            <AppText variant="label" style={{ color: colors.subtle, marginBottom: 10 }}>
-              ORGANIZATION SETTINGS
-            </AppText>
-            <AppText variant="caption" style={{ color: colors.subtle, marginBottom: 8 }}>
-              Organization type
-            </AppText>
-            <SegmentedControl
-              options={['Corporate', 'University']}
-              selectedIndex={organizationType === OrganizationType.University ? 1 : 0}
-              onChange={(index) =>
-                setOrganizationType(index === 1 ? OrganizationType.University : OrganizationType.Corporate)
-              }
-            />
-            <View style={{ marginTop: 14 }}>
-              <AppText variant="caption" style={{ color: colors.subtle, marginBottom: 8 }}>
-                Organization status
-              </AppText>
-              <SegmentedControl
-                options={['Active', 'Inactive']}
-                selectedIndex={isActive ? 0 : 1}
-                onChange={(index) => setIsActive(index === 0)}
+          ) : (
+            <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+              <BrandingIdCardPreview
+                orgName={name}
+                shortName={shortName}
+                primary={primary}
+                secondary={secondary}
+                tertiary={tertiary}
+                logoUri={logoUri}
+                roleLabel={roleLabel}
               />
-            </View>
-          </ClayView>
 
-          <AppButton title={isSaving ? 'Saving…' : 'Save branding'} onPress={save} disabled={isSaving} />
-        </ScrollView>
-      </PageContainer>
+              <ClayView depth={6} color={colors.card} style={styles.sectionCard}>
+                <AppText variant="caption" style={styles.sectionLabel}>
+                  ORGANIZATION IDENTITY
+                </AppText>
+                <View style={{ gap: 12 }}>
+                  <IconInput icon="business" placeholder="Organization name" value={name} onChangeText={setName} />
+                  <IconInput
+                    icon="short-text"
+                    placeholder="Short name (e.g. UBB)"
+                    value={shortName}
+                    onChangeText={setShortName}
+                    maxLength={10}
+                    autoCapitalize="characters"
+                  />
+                </View>
+              </ClayView>
+
+              <View style={styles.logoRow}>
+                <TouchableOpacity onPress={pickLogo} disabled={isExtracting} activeOpacity={0.8}>
+                  <ClayView depth={4} color={colors.card} style={styles.logoCircle}>
+                    <View style={styles.logoCenter}>
+                      <View style={styles.logoInner}>
+                        {logoUri ? (
+                          <ProgressiveImage
+                            source={{ uri: logoUri }}
+                            style={styles.logoImage}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <Icon name="cloud-upload" size={28} color={colors.primary} />
+                        )}
+                      </View>
+                    </View>
+                  </ClayView>
+                </TouchableOpacity>
+                <View style={{ flex: 1 }}>
+                  <AppText weight="bold">Organization logo</AppText>
+                  <AppText variant="caption" style={{ color: colors.subtle }}>
+                    {isExtracting ? 'Extracting colors…' : 'Tap circle to upload'}
+                  </AppText>
+                </View>
+              </View>
+
+              <SegmentedControl
+                options={['Base Colors', 'Presets']}
+                selectedIndex={activeTab === 'colors' ? 0 : 1}
+                onChange={(index) => setActiveTab(index === 0 ? 'colors' : 'palettes')}
+              />
+
+              <View style={{ marginTop: 20 }}>
+                {activeTab === 'colors' ? (
+                  <View>
+                    {sortedExtractedColors.length > 0 ? (
+                      <View style={{ marginBottom: 20 }}>
+                        <AppText variant="caption" style={styles.sectionLabel}>
+                          EXTRACTED FROM LOGO
+                        </AppText>
+                        <View style={styles.colorGrid}>
+                          {sortedExtractedColors.map((color, idx) => (
+                            <TouchableOpacity
+                              key={`ext-${idx}`}
+                              onPress={() => setSelectedBaseColor(color)}
+                              style={styles.colorSwatchHit}
+                              activeOpacity={0.8}
+                            >
+                              <ClayView depth={2} color={colors.card} style={styles.colorSwatchOuter}>
+                                <View style={styles.colorSwatchCenter}>
+                                  <View style={[styles.colorSwatchInner, { backgroundColor: color }]}>
+                                    {selectedBaseColor === color ? (
+                                      <Icon name="check" size={22} color={getContrastTextColor(color)} />
+                                    ) : null}
+                                  </View>
+                                </View>
+                              </ClayView>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      </View>
+                    ) : null}
+
+                    <AppText variant="caption" style={styles.sectionLabel}>
+                      STANDARD COLORS
+                    </AppText>
+                    <View style={styles.colorGrid}>
+                      {DEFAULT_BASE_COLORS.map((color, idx) => (
+                        <TouchableOpacity
+                          key={`def-${idx}`}
+                          onPress={() => setSelectedBaseColor(color)}
+                          style={styles.colorSwatchHit}
+                          activeOpacity={0.8}
+                        >
+                          <ClayView depth={2} color={colors.card} style={styles.colorSwatchOuter}>
+                            <View style={styles.colorSwatchCenter}>
+                              <View style={[styles.colorSwatchInner, { backgroundColor: color }]}>
+                                {selectedBaseColor === color ? (
+                                  <Icon name="check" size={22} color={getContrastTextColor(color)} />
+                                ) : null}
+                              </View>
+                            </View>
+                          </ClayView>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                ) : (
+                  <View style={styles.presetGrid}>
+                    {generatedPalettes.map((palette, idx) => {
+                      const isSelected =
+                        primary === palette.primary && secondary === palette.secondary;
+                      return (
+                        <TouchableOpacity
+                          key={idx}
+                          style={styles.presetItem}
+                          onPress={() => handlePaletteSelect(palette)}
+                          activeOpacity={0.8}
+                        >
+                          <View
+                            style={[
+                              styles.presetOuter,
+                              isSelected && { borderColor: palette.primary, backgroundColor: colors.primaryContainer },
+                            ]}
+                          >
+                            <ClayView
+                              depth={4}
+                              color={isSelected ? colors.primaryContainer : colors.card}
+                              style={styles.presetCard}
+                            >
+                            <View style={styles.presetStrip}>
+                              <View style={{ flex: 1, backgroundColor: palette.primary }} />
+                              <View style={{ flex: 1, backgroundColor: palette.secondary }} />
+                              <View style={{ flex: 1, backgroundColor: palette.tertiary }} />
+                            </View>
+                            <AppText weight="bold" style={{ textAlign: 'center', fontSize: 12 }}>
+                              {palette.name}
+                            </AppText>
+                          </ClayView>
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
+              </View>
+
+              <ClayView depth={6} color={colors.card} style={[styles.sectionCard, { marginTop: 24 }]}>
+                <AppText variant="caption" style={styles.sectionLabel}>
+                  ORGANIZATION SETTINGS
+                </AppText>
+
+                <AppText variant="caption" style={{ color: colors.subtle, marginBottom: 10 }}>
+                  Organization type
+                </AppText>
+                <View style={styles.typeRow}>
+                  <OrganizationTypeOption
+                    label="Corporate"
+                    icon="business"
+                    selected={organizationType === OrganizationType.Corporate}
+                    onPress={() => setOrganizationType(OrganizationType.Corporate)}
+                    colors={colors}
+                    optionStyle={styles.typeOption}
+                    outerStyle={styles.typeOuter}
+                  />
+                  <OrganizationTypeOption
+                    label="University"
+                    icon="school"
+                    selected={organizationType === OrganizationType.University}
+                    onPress={() => setOrganizationType(OrganizationType.University)}
+                    colors={colors}
+                    optionStyle={styles.typeOption}
+                    outerStyle={styles.typeOuter}
+                  />
+                </View>
+
+                <View style={{ marginTop: 16 }}>
+                  <AppText variant="caption" style={{ color: colors.subtle, marginBottom: 8 }}>
+                    Organization status
+                  </AppText>
+                  <SegmentedControl
+                    options={['Active', 'Inactive']}
+                    selectedIndex={isActive ? 0 : 1}
+                    onChange={(index) => setIsActive(index === 0)}
+                  />
+                </View>
+              </ClayView>
+
+              <View style={styles.actionRow}>
+                <AppButton
+                  title="Discard changes"
+                  variant="outline"
+                  onPress={discardChanges}
+                  disabled={!hasChanges || isSaving}
+                  style={styles.actionButton}
+                />
+                <AppButton
+                  title={isSaving ? 'Saving…' : 'Save branding'}
+                  onPress={save}
+                  disabled={isSaving || !hasChanges}
+                  style={styles.actionButton}
+                />
+              </View>
+            </ScrollView>
+          )}
+        </PageContainer>
+      </SafeAreaView>
     </View>
   );
 }
 
-function Field({
+function OrganizationTypeOption({
   label,
-  value,
-  onChangeText,
+  icon,
+  selected,
+  onPress,
   colors,
-  placeholder,
+  optionStyle,
+  outerStyle,
 }: {
   label: string;
-  value: string;
-  onChangeText: (v: string) => void;
+  icon: 'business' | 'school';
+  selected: boolean;
+  onPress: () => void;
   colors: ReturnType<typeof useThemeColors>;
-  placeholder?: string;
+  optionStyle: ViewStyle;
+  outerStyle: ViewStyle;
 }) {
   return (
-    <View style={{ marginBottom: 12 }}>
-      <AppText variant="caption" style={{ color: colors.subtle, marginBottom: 4 }}>
-        {label}
-      </AppText>
-      <ClayView depth={2} color={colors.card} style={{ borderRadius: 12, paddingHorizontal: 12 }}>
-        <TextInput
-          value={value}
-          onChangeText={onChangeText}
-          placeholder={placeholder}
-          placeholderTextColor={colors.subtle}
-          style={{ paddingVertical: 12, color: colors.text, fontSize: 16 }}
-        />
-      </ClayView>
-    </View>
+    <TouchableOpacity style={{ flex: 1 }} onPress={onPress} activeOpacity={0.75}>
+      <View
+        style={[
+          outerStyle,
+          selected && { borderColor: colors.primary, backgroundColor: colors.primaryContainer },
+        ]}
+      >
+        <ClayView
+          depth={selected ? 8 : 4}
+          color={selected ? colors.primaryContainer : colors.card}
+          style={optionStyle}
+        >
+          <Icon name={icon} size={26} color={selected ? colors.primary : colors.subtle} />
+          <AppText
+            variant="label"
+            weight={selected ? 'bold' : 'medium'}
+            style={{ color: selected ? colors.primary : colors.text }}
+          >
+            {label}
+          </AppText>
+        </ClayView>
+      </View>
+    </TouchableOpacity>
   );
 }
-
-const createStyles = (colors: ReturnType<typeof useThemeColors>) =>
-  StyleSheet.create({
-    header: { paddingHorizontal: 16, paddingBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 8 },
-    scroll: { paddingHorizontal: 16, paddingBottom: 120 },
-    preview: { borderRadius: 20, marginBottom: 20, minHeight: 120, justifyContent: 'space-between' },
-    previewBars: { flexDirection: 'row', gap: 8, marginTop: 16 },
-    bar: { flex: 1, height: 8, borderRadius: 4 },
-    logoRow: { borderRadius: 16, flexDirection: 'row', alignItems: 'center', gap: 14 },
-    logoCircle: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-    sectionLabel: { color: colors.subtle, marginBottom: 8, marginTop: 4 },
-    colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
-    swatch: { width: 40, height: 40, borderRadius: 20 },
-    presetGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24 },
-    presetCard: { borderRadius: 14, padding: 10 },
-    presetStrip: { flexDirection: 'row', height: 24, borderRadius: 6, overflow: 'hidden', marginBottom: 6 },
-  });

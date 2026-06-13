@@ -15,6 +15,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText, ClayView, Icon, AppButton } from '@/src/components/ui';
+import { WebAnchoredOverlay } from '@/src/components/layout/WebAnchoredOverlay';
 import { ClayDatePicker } from '@/src/components/ui/ClayDatePicker';
 import { ClayTimeSpinner } from '@/src/components/ui/ClayTimeSpinner';
 import { useThemeColors, useTabContentBottomPadding } from '@/src/hooks';
@@ -25,7 +26,9 @@ import { HostPickerSheet } from '@/src/screens/widgets/schedule/components/HostP
 import { formatRecurrenceLabel } from '@/src/screens/widgets/schedule/utils/recurrenceLabels';
 import { eventsToBusyIntervals, selectionOverlapsBusy } from '@/src/screens/widgets/schedule/utils/roomDayTimeline';
 
-const EVENT_COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6'];
+import { EVENT_TYPE_COLOR_PRESETS } from '@/src/constants/eventTypeColors';
+
+const EVENT_COLORS = EVENT_TYPE_COLOR_PRESETS;
 
 const TOTAL_STEPS = 3;
 
@@ -613,6 +616,7 @@ export function RoomBookingModal({ visible, onClose, room, form, isSaving, onSav
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <WebAnchoredOverlay>
       <View style={{ flex: 1 }} pointerEvents="box-none">
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -676,6 +680,7 @@ export function RoomBookingModal({ visible, onClose, room, form, isSaving, onSav
           }}
         />
       </View>
+      </WebAnchoredOverlay>
     </Modal>
   );
 }

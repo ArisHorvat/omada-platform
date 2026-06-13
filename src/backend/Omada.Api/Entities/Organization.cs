@@ -12,6 +12,9 @@ public class Organization : BaseEntity
     public string SecondaryColor { get; set; } = "#64748b";
     public string TertiaryColor { get; set; } = "#eab308";
     public int OnboardingStep { get; set; } = 0;
+
+    /// <summary>JSON array of completed onboarding checklist step ids (non-cumulative).</summary>
+    public string? OnboardingCompletedStepsJson { get; set; }
     public bool IsActive { get; set; } = true;
 
     /// <summary>Short code members use to join the organization (self-service registration).</summary>

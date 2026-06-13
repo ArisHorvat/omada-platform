@@ -3,14 +3,18 @@ using Omada.Api.DTOs.Common;
 using Omada.Api.Data;
 using Omada.Api.Entities;
 using Omada.Api.Repositories.Interfaces;
+using Omada.Api.Services.Interfaces;
 
 namespace Omada.Api.Repositories;
 
 public class GradeRepository : GenericRepository<Grade>, IGradeRepository
 {
-    public GradeRepository(ApplicationDbContext context)
+    private readonly IGroupScopeService _groupScope;
+
+    public GradeRepository(ApplicationDbContext context, IGroupScopeService groupScope)
         : base(context)
     {
+        _groupScope = groupScope;
     }
 
     public async Task<IReadOnlyList<Grade>> GetForUserAsync(
@@ -25,7 +29,10 @@ public class GradeRepository : GenericRepository<Grade>, IGradeRepository
             .Where(g => g.OrganizationId == organizationId && g.UserId == userId);
 
         if (groupId.HasValue)
-            query = query.Where(g => g.GroupId == groupId.Value);
+        {
+            var scopeIds = await _groupScope.GetDescendantIdsAsync(organizationId, groupId.Value, includeSelf: true);
+            query = query.Where(g => g.GroupId.HasValue && scopeIds.Contains(g.GroupId.Value));
+        }
 
         return await query
             .OrderByDescending(g => g.Semester)
@@ -58,7 +65,10 @@ public class GradeRepository : GenericRepository<Grade>, IGradeRepository
             query = query.Where(g => g.Semester == semester.Trim());
 
         if (groupId.HasValue)
-            query = query.Where(g => g.GroupId == groupId.Value);
+        {
+            var scopeIds = await _groupScope.GetDescendantIdsAsync(organizationId, groupId.Value, includeSelf: true);
+            query = query.Where(g => g.GroupId.HasValue && scopeIds.Contains(g.GroupId.Value));
+        }
 
         var total = await query.CountAsync(cancellationToken);
         var items = await query

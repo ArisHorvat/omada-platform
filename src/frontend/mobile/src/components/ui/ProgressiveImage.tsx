@@ -1,16 +1,44 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Animated, ImageProps, ImageStyle, StyleProp, Platform } from 'react-native';
+import {
+  View,
+  StyleSheet,
+  Platform,
+  type ImageResizeMode,
+  type ImageStyle,
+  type StyleProp,
+} from 'react-native';
+import { Image, type ImageProps as ExpoImageProps, type ImageContentFit } from 'expo-image';
 
 import { Icon } from '@/src/components/ui/Icon';
 
-interface ProgressiveImageProps extends ImageProps {
+interface ProgressiveImageProps extends Omit<ExpoImageProps, 'source' | 'style' | 'placeholder'> {
+  source?: ExpoImageProps['source'];
   style?: StyleProp<ImageStyle>;
-  thumbnailSource?: ImageProps['source'];
+  thumbnailSource?: ExpoImageProps['source'];
   /** Shown while loading and when the image fails to load. */
   fallback?: React.ReactNode;
   borderColor?: string;
   borderWidth?: number;
+  resizeMode?: ImageResizeMode;
 }
+
+function resizeModeToContentFit(mode?: ImageResizeMode | string): ImageContentFit {
+  switch (mode) {
+    case 'contain':
+      return 'contain';
+    case 'stretch':
+      return 'fill';
+    case 'center':
+      return 'none';
+    default:
+      return 'cover';
+  }
+}
+
+const webSharpImageStyle = Platform.select<ImageStyle>({
+  web: { imageRendering: 'auto' },
+  default: {},
+});
 
 export const ProgressiveImage = ({
   thumbnailSource,
@@ -19,37 +47,31 @@ export const ProgressiveImage = ({
   fallback,
   borderColor,
   borderWidth = 0,
+  resizeMode = 'cover',
   onLoad,
   onError,
-  ...props
+  ...imageProps
 }: ProgressiveImageProps) => {
-  const [imageOpacity] = useState(new Animated.Value(0));
   const [error, setError] = useState(false);
+  const contentFit = resizeModeToContentFit(resizeMode);
 
   const uri =
-    source && typeof source === 'object' && 'uri' in source && source.uri != null
+    source && typeof source === 'object' && !Array.isArray(source) && 'uri' in source && source.uri != null
       ? String(source.uri)
       : '';
   const isLocalAsset = typeof source === 'number';
 
   useEffect(() => {
     setError(false);
-    imageOpacity.setValue(0);
-  }, [uri, imageOpacity, isLocalAsset]);
+  }, [uri, isLocalAsset]);
 
-  const onImageLoad = (e: Parameters<NonNullable<ImageProps['onLoad']>>[0]) => {
-    Animated.timing(imageOpacity, {
-      toValue: 1,
-      duration: 300,
-      useNativeDriver: Platform.OS !== 'web',
-    }).start();
-    onLoad?.(e);
-  };
+  const showImage = isLocalAsset ? !error : !error && uri.length > 0;
 
-  const handleError = (e: Parameters<NonNullable<ImageProps['onError']>>[0]) => {
-    setError(true);
-    onError?.(e);
-  };
+  const flatStyle = StyleSheet.flatten(style) as ImageStyle | undefined;
+  const borderStyle =
+    borderWidth > 0 && borderColor
+      ? { borderWidth, borderColor, borderRadius: flatStyle?.borderRadius }
+      : null;
 
   const defaultFallback = (
     <View style={[styles.fallbackInner, StyleSheet.absoluteFill]}>
@@ -57,38 +79,23 @@ export const ProgressiveImage = ({
     </View>
   );
 
-  const showImage = isLocalAsset ? !error : !error && uri.length > 0;
-
   return (
-    <View
-      style={[
-        styles.container,
-        style,
-        borderWidth > 0 && borderColor
-          ? { borderWidth, borderColor, borderRadius: (style as ImageStyle)?.borderRadius }
-          : null,
-      ]}
-    >
-      {thumbnailSource && showImage && (
-        <Animated.Image
-          {...props}
-          source={thumbnailSource}
-          style={[StyleSheet.absoluteFill, style]}
-          blurRadius={2}
-        />
-      )}
-
+    <View style={[styles.container, style, borderStyle]}>
       {showImage ? (
-        <Animated.Image
-          {...props}
-          source={source}
-          style={[
-            styles.imageOverlay,
-            style,
-            { opacity: imageOpacity },
-          ]}
-          onLoad={onImageLoad}
-          onError={handleError}
+        <Image
+          {...imageProps}
+          source={source ?? null}
+          placeholder={thumbnailSource ?? undefined}
+          placeholderContentFit={contentFit}
+          style={[styles.fill, webSharpImageStyle]}
+          contentFit={contentFit}
+          transition={300}
+          cachePolicy="memory-disk"
+          onLoad={onLoad}
+          onError={(event) => {
+            setError(true);
+            onError?.(event);
+          }}
         />
       ) : (
         fallback ?? defaultFallback
@@ -104,11 +111,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  imageOverlay: {
-    width: '100%',
-    height: '100%',
-    position: 'absolute',
-    backgroundColor: 'transparent',
+  fill: {
+    ...StyleSheet.absoluteFillObject,
   },
   fallbackInner: {
     justifyContent: 'center',

@@ -25,6 +25,9 @@ export const SPLIT_PANE_LIST_WIDTH = 400;
 /** Default horizontal inset inside `PageContainer` on wide layouts. */
 export const PAGE_HORIZONTAL_PADDING = 20;
 
+/** Minimum top breathing room on web (desktop browsers report 0 safe-area). */
+export const WEB_TOP_INSET = 28;
+
 /** Max width for sign-in / landing forms on wide web. */
 export const AUTH_CONTENT_MAX_WIDTH = 480;
 

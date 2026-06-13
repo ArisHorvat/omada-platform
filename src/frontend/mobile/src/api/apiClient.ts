@@ -29,7 +29,9 @@ function isPublicAuthRequest(config: InternalAxiosRequestConfig): boolean {
     u.includes('/auth/login') ||
     u.includes('/auth/register') ||
     u.includes('/auth/forgot') ||
-    u.includes('/auth/reset')
+    u.includes('/auth/reset') ||
+    u.includes('/auth/verify-2fa') ||
+    u.includes('/auth/resend-2fa')
   );
 }
 

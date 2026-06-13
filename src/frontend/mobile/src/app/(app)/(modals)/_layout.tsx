@@ -1,4 +1,6 @@
 import { Stack } from 'expo-router';
+import { Platform } from 'react-native';
+
 import { useThemeColors } from '@/src/hooks';
 
 export default function ModalsLayout() {
@@ -8,8 +10,7 @@ export default function ModalsLayout() {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: colors.background },
-        // This forces everything in this folder to be a Modal
-        presentation: 'modal', 
+        presentation: Platform.OS === 'web' ? 'card' : 'modal',
       }}
     />
   );

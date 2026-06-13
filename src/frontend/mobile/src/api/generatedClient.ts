@@ -137,6 +137,166 @@ export class AttendanceClient {
         return Promise.resolve<ServiceResponseOfMyAttendanceResponse>(null as any);
     }
 
+    getMyOfferingAttendance(periodId: string | null | undefined, cancelToken?: CancelToken): Promise<ServiceResponseOfMyOfferingAttendanceResponse> {
+        let url_ = this.baseUrl + "/api/Attendance/my-offerings?";
+        if (periodId !== undefined && periodId !== null)
+            url_ += "periodId=" + encodeURIComponent("" + periodId) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processGetMyOfferingAttendance(_response);
+        });
+    }
+
+    protected processGetMyOfferingAttendance(response: AxiosResponse): Promise<ServiceResponseOfMyOfferingAttendanceResponse> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfMyOfferingAttendanceResponse.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfMyOfferingAttendanceResponse>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfMyOfferingAttendanceResponse>(null as any);
+    }
+
+    getSessionRoster(eventId: string, instanceDate: Date | undefined, cancelToken?: CancelToken): Promise<ServiceResponseOfAttendanceSessionRosterDto> {
+        let url_ = this.baseUrl + "/api/Attendance/sessions/{eventId}/roster?";
+        if (eventId === undefined || eventId === null)
+            throw new globalThis.Error("The parameter 'eventId' must be defined.");
+        url_ = url_.replace("{eventId}", encodeURIComponent("" + eventId));
+        if (instanceDate === null)
+            throw new globalThis.Error("The parameter 'instanceDate' cannot be null.");
+        else if (instanceDate !== undefined)
+            url_ += "instanceDate=" + encodeURIComponent(instanceDate ? "" + instanceDate.toISOString() : "") + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processGetSessionRoster(_response);
+        });
+    }
+
+    protected processGetSessionRoster(response: AxiosResponse): Promise<ServiceResponseOfAttendanceSessionRosterDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfAttendanceSessionRosterDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfAttendanceSessionRosterDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfAttendanceSessionRosterDto>(null as any);
+    }
+
+    bulkMarkSessionRoster(eventId: string, request: BulkMarkAttendanceRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfBoolean> {
+        let url_ = this.baseUrl + "/api/Attendance/sessions/{eventId}/roster";
+        if (eventId === undefined || eventId === null)
+            throw new globalThis.Error("The parameter 'eventId' must be defined.");
+        url_ = url_.replace("{eventId}", encodeURIComponent("" + eventId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processBulkMarkSessionRoster(_response);
+        });
+    }
+
+    protected processBulkMarkSessionRoster(response: AxiosResponse): Promise<ServiceResponseOfBoolean> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfBoolean.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfBoolean>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfBoolean>(null as any);
+    }
+
     getAdminRecords(page: number | undefined, pageSize: number | undefined, userId: string | null | undefined, groupId: string | null | undefined, days: number | null | undefined, cancelToken?: CancelToken): Promise<ServiceResponseOfPagedResponseOfAttendanceAdminRecordDto> {
         let url_ = this.baseUrl + "/api/Attendance/admin/records?";
         if (page === null)
@@ -197,6 +357,258 @@ export class AttendanceClient {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
         }
         return Promise.resolve<ServiceResponseOfPagedResponseOfAttendanceAdminRecordDto>(null as any);
+    }
+
+    recordMemberAttendance(request: RecordMemberAttendanceRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfBoolean> {
+        let url_ = this.baseUrl + "/api/Attendance/record";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processRecordMemberAttendance(_response);
+        });
+    }
+
+    protected processRecordMemberAttendance(response: AxiosResponse): Promise<ServiceResponseOfBoolean> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfBoolean.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfBoolean>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfBoolean>(null as any);
+    }
+
+    getWorkTime(days: number | undefined, cancelToken?: CancelToken): Promise<ServiceResponseOfWorkTimeTodayResponse> {
+        let url_ = this.baseUrl + "/api/Attendance/work-time/today?";
+        if (days === null)
+            throw new globalThis.Error("The parameter 'days' cannot be null.");
+        else if (days !== undefined)
+            url_ += "days=" + encodeURIComponent("" + days) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processGetWorkTime(_response);
+        });
+    }
+
+    protected processGetWorkTime(response: AxiosResponse): Promise<ServiceResponseOfWorkTimeTodayResponse> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfWorkTimeTodayResponse.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfWorkTimeTodayResponse>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfWorkTimeTodayResponse>(null as any);
+    }
+
+    clockIn( cancelToken?: CancelToken): Promise<ServiceResponseOfWorkTimeEntryDto> {
+        let url_ = this.baseUrl + "/api/Attendance/work-time/clock-in";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "POST",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processClockIn(_response);
+        });
+    }
+
+    protected processClockIn(response: AxiosResponse): Promise<ServiceResponseOfWorkTimeEntryDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfWorkTimeEntryDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfWorkTimeEntryDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfWorkTimeEntryDto>(null as any);
+    }
+
+    clockOut( cancelToken?: CancelToken): Promise<ServiceResponseOfWorkTimeEntryDto> {
+        let url_ = this.baseUrl + "/api/Attendance/work-time/clock-out";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "POST",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processClockOut(_response);
+        });
+    }
+
+    protected processClockOut(response: AxiosResponse): Promise<ServiceResponseOfWorkTimeEntryDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfWorkTimeEntryDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfWorkTimeEntryDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfWorkTimeEntryDto>(null as any);
+    }
+
+    setTodayBreak(request: SetWorkBreakRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfWorkTimeEntryDto> {
+        let url_ = this.baseUrl + "/api/Attendance/work-time/today/break";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "PUT",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processSetTodayBreak(_response);
+        });
+    }
+
+    protected processSetTodayBreak(response: AxiosResponse): Promise<ServiceResponseOfWorkTimeEntryDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfWorkTimeEntryDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfWorkTimeEntryDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfWorkTimeEntryDto>(null as any);
     }
 }
 
@@ -521,7 +933,111 @@ export class AuthClient {
         return Promise.resolve<ServiceResponseOfString>(null as any);
     }
 
-    joinOrganization(request: JoinOrganizationRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfLoginResponse> {
+    verifyTwoFactor(request: VerifyTwoFactorRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfLoginResponse> {
+        let url_ = this.baseUrl + "/api/Auth/verify-2fa";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processVerifyTwoFactor(_response);
+        });
+    }
+
+    protected processVerifyTwoFactor(response: AxiosResponse): Promise<ServiceResponseOfLoginResponse> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfLoginResponse.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfLoginResponse>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfLoginResponse>(null as any);
+    }
+
+    resendTwoFactor(request: ResendTwoFactorRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfString> {
+        let url_ = this.baseUrl + "/api/Auth/resend-2fa";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processResendTwoFactor(_response);
+        });
+    }
+
+    protected processResendTwoFactor(response: AxiosResponse): Promise<ServiceResponseOfString> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfString.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfString>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfString>(null as any);
+    }
+
+    joinOrganization(request: JoinOrganizationRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfJoinOrganizationResultDto> {
         let url_ = this.baseUrl + "/api/Auth/join";
         url_ = url_.replace(/[?&]$/, "");
 
@@ -549,7 +1065,210 @@ export class AuthClient {
         });
     }
 
-    protected processJoinOrganization(response: AxiosResponse): Promise<ServiceResponseOfLoginResponse> {
+    protected processJoinOrganization(response: AxiosResponse): Promise<ServiceResponseOfJoinOrganizationResultDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfJoinOrganizationResultDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfJoinOrganizationResultDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfJoinOrganizationResultDto>(null as any);
+    }
+
+    joinWithCurrentUser(request: JoinWithInviteCodeRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfJoinWithCodeResultDto> {
+        let url_ = this.baseUrl + "/api/Auth/join/current-user";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processJoinWithCurrentUser(_response);
+        });
+    }
+
+    protected processJoinWithCurrentUser(response: AxiosResponse): Promise<ServiceResponseOfJoinWithCodeResultDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfJoinWithCodeResultDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfJoinWithCodeResultDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfJoinWithCodeResultDto>(null as any);
+    }
+
+    getPendingInvites( cancelToken?: CancelToken): Promise<ServiceResponseOfListOfPendingOrganizationInviteDto> {
+        let url_ = this.baseUrl + "/api/Auth/pending-invites";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processGetPendingInvites(_response);
+        });
+    }
+
+    protected processGetPendingInvites(response: AxiosResponse): Promise<ServiceResponseOfListOfPendingOrganizationInviteDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfListOfPendingOrganizationInviteDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfListOfPendingOrganizationInviteDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfListOfPendingOrganizationInviteDto>(null as any);
+    }
+
+    getInvitePreviewForCurrentUser(inviteCode: string, cancelToken?: CancelToken): Promise<ServiceResponseOfOrganizationInvitePreviewDto> {
+        let url_ = this.baseUrl + "/api/Auth/invite/{inviteCode}/preview";
+        if (inviteCode === undefined || inviteCode === null)
+            throw new globalThis.Error("The parameter 'inviteCode' must be defined.");
+        url_ = url_.replace("{inviteCode}", encodeURIComponent("" + inviteCode));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processGetInvitePreviewForCurrentUser(_response);
+        });
+    }
+
+    protected processGetInvitePreviewForCurrentUser(response: AxiosResponse): Promise<ServiceResponseOfOrganizationInvitePreviewDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfOrganizationInvitePreviewDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfOrganizationInvitePreviewDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfOrganizationInvitePreviewDto>(null as any);
+    }
+
+    acceptInvite(request: InviteCodeRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfLoginResponse> {
+        let url_ = this.baseUrl + "/api/Auth/invites/accept";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processAcceptInvite(_response);
+        });
+    }
+
+    protected processAcceptInvite(response: AxiosResponse): Promise<ServiceResponseOfLoginResponse> {
         const status = response.status;
         let _headers: any = {};
         if (response.headers && typeof response.headers === "object") {
@@ -571,6 +1290,58 @@ export class AuthClient {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
         }
         return Promise.resolve<ServiceResponseOfLoginResponse>(null as any);
+    }
+
+    declineInvite(request: InviteCodeRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfBoolean> {
+        let url_ = this.baseUrl + "/api/Auth/invites/decline";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processDeclineInvite(_response);
+        });
+    }
+
+    protected processDeclineInvite(response: AxiosResponse): Promise<ServiceResponseOfBoolean> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfBoolean.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfBoolean>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfBoolean>(null as any);
     }
 }
 
@@ -764,6 +1535,688 @@ export class ChatClient {
     }
 }
 
+export class CourseOfferingsAdminClient {
+    protected instance: AxiosInstance;
+    protected baseUrl: string;
+    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
+
+    constructor(baseUrl?: string, instance?: AxiosInstance) {
+
+        this.instance = instance || axios.create();
+
+        this.baseUrl = baseUrl ?? "http://localhost:5069";
+
+    }
+
+    getOfferings(periodId: string, cancelToken?: CancelToken): Promise<ServiceResponseOfIEnumerableOfCourseOfferingDto> {
+        let url_ = this.baseUrl + "/api/Organizations/current/periods/{periodId}/offerings";
+        if (periodId === undefined || periodId === null)
+            throw new globalThis.Error("The parameter 'periodId' must be defined.");
+        url_ = url_.replace("{periodId}", encodeURIComponent("" + periodId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processGetOfferings(_response);
+        });
+    }
+
+    protected processGetOfferings(response: AxiosResponse): Promise<ServiceResponseOfIEnumerableOfCourseOfferingDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfIEnumerableOfCourseOfferingDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfIEnumerableOfCourseOfferingDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfIEnumerableOfCourseOfferingDto>(null as any);
+    }
+
+    create(periodId: string, request: CreateCourseOfferingRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfCourseOfferingDto> {
+        let url_ = this.baseUrl + "/api/Organizations/current/periods/{periodId}/offerings";
+        if (periodId === undefined || periodId === null)
+            throw new globalThis.Error("The parameter 'periodId' must be defined.");
+        url_ = url_.replace("{periodId}", encodeURIComponent("" + periodId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processCreate(_response);
+        });
+    }
+
+    protected processCreate(response: AxiosResponse): Promise<ServiceResponseOfCourseOfferingDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfCourseOfferingDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfCourseOfferingDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfCourseOfferingDto>(null as any);
+    }
+
+    update(periodId: string, offeringId: string, request: UpdateCourseOfferingRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfCourseOfferingDto> {
+        let url_ = this.baseUrl + "/api/Organizations/current/periods/{periodId}/offerings/{offeringId}";
+        if (periodId === undefined || periodId === null)
+            throw new globalThis.Error("The parameter 'periodId' must be defined.");
+        url_ = url_.replace("{periodId}", encodeURIComponent("" + periodId));
+        if (offeringId === undefined || offeringId === null)
+            throw new globalThis.Error("The parameter 'offeringId' must be defined.");
+        url_ = url_.replace("{offeringId}", encodeURIComponent("" + offeringId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "PUT",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processUpdate(_response);
+        });
+    }
+
+    protected processUpdate(response: AxiosResponse): Promise<ServiceResponseOfCourseOfferingDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfCourseOfferingDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfCourseOfferingDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfCourseOfferingDto>(null as any);
+    }
+
+    delete(periodId: string, offeringId: string, cancelToken?: CancelToken): Promise<ServiceResponseOfBoolean> {
+        let url_ = this.baseUrl + "/api/Organizations/current/periods/{periodId}/offerings/{offeringId}";
+        if (periodId === undefined || periodId === null)
+            throw new globalThis.Error("The parameter 'periodId' must be defined.");
+        url_ = url_.replace("{periodId}", encodeURIComponent("" + periodId));
+        if (offeringId === undefined || offeringId === null)
+            throw new globalThis.Error("The parameter 'offeringId' must be defined.");
+        url_ = url_.replace("{offeringId}", encodeURIComponent("" + offeringId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "DELETE",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processDelete(_response);
+        });
+    }
+
+    protected processDelete(response: AxiosResponse): Promise<ServiceResponseOfBoolean> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfBoolean.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfBoolean>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfBoolean>(null as any);
+    }
+
+    getEnrollments(periodId: string, offeringId: string, cancelToken?: CancelToken): Promise<ServiceResponseOfIEnumerableOfOfferingEnrollmentDto> {
+        let url_ = this.baseUrl + "/api/Organizations/current/periods/{periodId}/offerings/{offeringId}/enrollments";
+        if (periodId === undefined || periodId === null)
+            throw new globalThis.Error("The parameter 'periodId' must be defined.");
+        url_ = url_.replace("{periodId}", encodeURIComponent("" + periodId));
+        if (offeringId === undefined || offeringId === null)
+            throw new globalThis.Error("The parameter 'offeringId' must be defined.");
+        url_ = url_.replace("{offeringId}", encodeURIComponent("" + offeringId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processGetEnrollments(_response);
+        });
+    }
+
+    protected processGetEnrollments(response: AxiosResponse): Promise<ServiceResponseOfIEnumerableOfOfferingEnrollmentDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfIEnumerableOfOfferingEnrollmentDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfIEnumerableOfOfferingEnrollmentDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfIEnumerableOfOfferingEnrollmentDto>(null as any);
+    }
+
+    enrollCohort(periodId: string, offeringId: string, request: EnrollCohortRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfInteger> {
+        let url_ = this.baseUrl + "/api/Organizations/current/periods/{periodId}/offerings/{offeringId}/enroll-cohort";
+        if (periodId === undefined || periodId === null)
+            throw new globalThis.Error("The parameter 'periodId' must be defined.");
+        url_ = url_.replace("{periodId}", encodeURIComponent("" + periodId));
+        if (offeringId === undefined || offeringId === null)
+            throw new globalThis.Error("The parameter 'offeringId' must be defined.");
+        url_ = url_.replace("{offeringId}", encodeURIComponent("" + offeringId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processEnrollCohort(_response);
+        });
+    }
+
+    protected processEnrollCohort(response: AxiosResponse): Promise<ServiceResponseOfInteger> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfInteger.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfInteger>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfInteger>(null as any);
+    }
+
+    enrollProgramCohorts(periodId: string, offeringId: string, request: EnrollProgramCohortsRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfInteger> {
+        let url_ = this.baseUrl + "/api/Organizations/current/periods/{periodId}/offerings/{offeringId}/enroll-program-cohorts";
+        if (periodId === undefined || periodId === null)
+            throw new globalThis.Error("The parameter 'periodId' must be defined.");
+        url_ = url_.replace("{periodId}", encodeURIComponent("" + periodId));
+        if (offeringId === undefined || offeringId === null)
+            throw new globalThis.Error("The parameter 'offeringId' must be defined.");
+        url_ = url_.replace("{offeringId}", encodeURIComponent("" + offeringId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processEnrollProgramCohorts(_response);
+        });
+    }
+
+    protected processEnrollProgramCohorts(response: AxiosResponse): Promise<ServiceResponseOfInteger> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfInteger.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfInteger>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfInteger>(null as any);
+    }
+
+    enrollLinkedPrograms(periodId: string, offeringId: string, request: EnrollLinkedProgramsRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfInteger> {
+        let url_ = this.baseUrl + "/api/Organizations/current/periods/{periodId}/offerings/{offeringId}/enroll-linked-programs";
+        if (periodId === undefined || periodId === null)
+            throw new globalThis.Error("The parameter 'periodId' must be defined.");
+        url_ = url_.replace("{periodId}", encodeURIComponent("" + periodId));
+        if (offeringId === undefined || offeringId === null)
+            throw new globalThis.Error("The parameter 'offeringId' must be defined.");
+        url_ = url_.replace("{offeringId}", encodeURIComponent("" + offeringId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processEnrollLinkedPrograms(_response);
+        });
+    }
+
+    protected processEnrollLinkedPrograms(response: AxiosResponse): Promise<ServiceResponseOfInteger> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfInteger.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfInteger>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfInteger>(null as any);
+    }
+
+    getGradePlan(periodId: string, offeringId: string, cancelToken?: CancelToken): Promise<ServiceResponseOfOfferingGradePlanDto> {
+        let url_ = this.baseUrl + "/api/Organizations/current/periods/{periodId}/offerings/{offeringId}/grade-plan";
+        if (periodId === undefined || periodId === null)
+            throw new globalThis.Error("The parameter 'periodId' must be defined.");
+        url_ = url_.replace("{periodId}", encodeURIComponent("" + periodId));
+        if (offeringId === undefined || offeringId === null)
+            throw new globalThis.Error("The parameter 'offeringId' must be defined.");
+        url_ = url_.replace("{offeringId}", encodeURIComponent("" + offeringId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processGetGradePlan(_response);
+        });
+    }
+
+    protected processGetGradePlan(response: AxiosResponse): Promise<ServiceResponseOfOfferingGradePlanDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfOfferingGradePlanDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfOfferingGradePlanDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfOfferingGradePlanDto>(null as any);
+    }
+
+    saveGradePlan(periodId: string, offeringId: string, request: SaveOfferingGradePlanRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfOfferingGradePlanDto> {
+        let url_ = this.baseUrl + "/api/Organizations/current/periods/{periodId}/offerings/{offeringId}/grade-plan";
+        if (periodId === undefined || periodId === null)
+            throw new globalThis.Error("The parameter 'periodId' must be defined.");
+        url_ = url_.replace("{periodId}", encodeURIComponent("" + periodId));
+        if (offeringId === undefined || offeringId === null)
+            throw new globalThis.Error("The parameter 'offeringId' must be defined.");
+        url_ = url_.replace("{offeringId}", encodeURIComponent("" + offeringId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "PUT",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processSaveGradePlan(_response);
+        });
+    }
+
+    protected processSaveGradePlan(response: AxiosResponse): Promise<ServiceResponseOfOfferingGradePlanDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfOfferingGradePlanDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfOfferingGradePlanDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfOfferingGradePlanDto>(null as any);
+    }
+
+    setupProgram(periodId: string, request: SetupProgramTermRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfSetupProgramTermResultDto> {
+        let url_ = this.baseUrl + "/api/Organizations/current/periods/{periodId}/offerings/setup-program";
+        if (periodId === undefined || periodId === null)
+            throw new globalThis.Error("The parameter 'periodId' must be defined.");
+        url_ = url_.replace("{periodId}", encodeURIComponent("" + periodId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processSetupProgram(_response);
+        });
+    }
+
+    protected processSetupProgram(response: AxiosResponse): Promise<ServiceResponseOfSetupProgramTermResultDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfSetupProgramTermResultDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfSetupProgramTermResultDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfSetupProgramTermResultDto>(null as any);
+    }
+
+    rollover(periodId: string, request: RolloverOfferingsRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfInteger> {
+        let url_ = this.baseUrl + "/api/Organizations/current/periods/{periodId}/offerings/rollover";
+        if (periodId === undefined || periodId === null)
+            throw new globalThis.Error("The parameter 'periodId' must be defined.");
+        url_ = url_.replace("{periodId}", encodeURIComponent("" + periodId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processRollover(_response);
+        });
+    }
+
+    protected processRollover(response: AxiosResponse): Promise<ServiceResponseOfInteger> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfInteger.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfInteger>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfInteger>(null as any);
+    }
+}
+
 export class DigitalIdClient {
     protected instance: AxiosInstance;
     protected baseUrl: string;
@@ -827,6 +2280,58 @@ export class DigitalIdClient {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
         }
         return Promise.resolve<ServiceResponseOfDigitalIdValidationResponse>(null as any);
+    }
+
+    scan(request: ValidateDigitalIdRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfDigitalIdScanResultDto> {
+        let url_ = this.baseUrl + "/api/DigitalId/scan";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processScan(_response);
+        });
+    }
+
+    protected processScan(response: AxiosResponse): Promise<ServiceResponseOfDigitalIdScanResultDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfDigitalIdScanResultDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfDigitalIdScanResultDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfDigitalIdScanResultDto>(null as any);
     }
 }
 
@@ -2129,14 +3634,16 @@ export class GroupsClient {
         return Promise.resolve<ServiceResponseOfInteger>(null as any);
     }
 
-    removeMember(id: string, userId: string, cancelToken?: CancelToken): Promise<ServiceResponseOfBoolean> {
-        let url_ = this.baseUrl + "/api/Groups/{id}/members/{userId}";
+    removeMember(id: string, userId: string, placementGroupId: string | null | undefined, cancelToken?: CancelToken): Promise<ServiceResponseOfBoolean> {
+        let url_ = this.baseUrl + "/api/Groups/{id}/members/{userId}?";
         if (id === undefined || id === null)
             throw new globalThis.Error("The parameter 'id' must be defined.");
         url_ = url_.replace("{id}", encodeURIComponent("" + id));
         if (userId === undefined || userId === null)
             throw new globalThis.Error("The parameter 'userId' must be defined.");
         url_ = url_.replace("{userId}", encodeURIComponent("" + userId));
+        if (placementGroupId !== undefined && placementGroupId !== null)
+            url_ += "placementGroupId=" + encodeURIComponent("" + placementGroupId) + "&";
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: AxiosRequestConfig = {
@@ -3235,6 +4742,767 @@ export class NewsClient {
     }
 }
 
+export class OfferingPackagesAdminClient {
+    protected instance: AxiosInstance;
+    protected baseUrl: string;
+    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
+
+    constructor(baseUrl?: string, instance?: AxiosInstance) {
+
+        this.instance = instance || axios.create();
+
+        this.baseUrl = baseUrl ?? "http://localhost:5069";
+
+    }
+
+    getPackages( cancelToken?: CancelToken): Promise<ServiceResponseOfIEnumerableOfCourseOfferingPackageDto> {
+        let url_ = this.baseUrl + "/api/Organizations/current/offering-packages";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processGetPackages(_response);
+        });
+    }
+
+    protected processGetPackages(response: AxiosResponse): Promise<ServiceResponseOfIEnumerableOfCourseOfferingPackageDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfIEnumerableOfCourseOfferingPackageDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfIEnumerableOfCourseOfferingPackageDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfIEnumerableOfCourseOfferingPackageDto>(null as any);
+    }
+
+    create(request: CreateCourseOfferingPackageRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfCourseOfferingPackageDto> {
+        let url_ = this.baseUrl + "/api/Organizations/current/offering-packages";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processCreate(_response);
+        });
+    }
+
+    protected processCreate(response: AxiosResponse): Promise<ServiceResponseOfCourseOfferingPackageDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfCourseOfferingPackageDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfCourseOfferingPackageDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfCourseOfferingPackageDto>(null as any);
+    }
+
+    getPackage(packageId: string, cancelToken?: CancelToken): Promise<ServiceResponseOfCourseOfferingPackageDto> {
+        let url_ = this.baseUrl + "/api/Organizations/current/offering-packages/{packageId}";
+        if (packageId === undefined || packageId === null)
+            throw new globalThis.Error("The parameter 'packageId' must be defined.");
+        url_ = url_.replace("{packageId}", encodeURIComponent("" + packageId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processGetPackage(_response);
+        });
+    }
+
+    protected processGetPackage(response: AxiosResponse): Promise<ServiceResponseOfCourseOfferingPackageDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfCourseOfferingPackageDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfCourseOfferingPackageDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfCourseOfferingPackageDto>(null as any);
+    }
+
+    update(packageId: string, request: UpdateCourseOfferingPackageRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfCourseOfferingPackageDto> {
+        let url_ = this.baseUrl + "/api/Organizations/current/offering-packages/{packageId}";
+        if (packageId === undefined || packageId === null)
+            throw new globalThis.Error("The parameter 'packageId' must be defined.");
+        url_ = url_.replace("{packageId}", encodeURIComponent("" + packageId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "PUT",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processUpdate(_response);
+        });
+    }
+
+    protected processUpdate(response: AxiosResponse): Promise<ServiceResponseOfCourseOfferingPackageDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfCourseOfferingPackageDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfCourseOfferingPackageDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfCourseOfferingPackageDto>(null as any);
+    }
+
+    delete(packageId: string, cancelToken?: CancelToken): Promise<ServiceResponseOfBoolean> {
+        let url_ = this.baseUrl + "/api/Organizations/current/offering-packages/{packageId}";
+        if (packageId === undefined || packageId === null)
+            throw new globalThis.Error("The parameter 'packageId' must be defined.");
+        url_ = url_.replace("{packageId}", encodeURIComponent("" + packageId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "DELETE",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processDelete(_response);
+        });
+    }
+
+    protected processDelete(response: AxiosResponse): Promise<ServiceResponseOfBoolean> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfBoolean.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfBoolean>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfBoolean>(null as any);
+    }
+
+    saveItems(packageId: string, request: SaveCourseOfferingPackageItemsRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfCourseOfferingPackageDto> {
+        let url_ = this.baseUrl + "/api/Organizations/current/offering-packages/{packageId}/items";
+        if (packageId === undefined || packageId === null)
+            throw new globalThis.Error("The parameter 'packageId' must be defined.");
+        url_ = url_.replace("{packageId}", encodeURIComponent("" + packageId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "PUT",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processSaveItems(_response);
+        });
+    }
+
+    protected processSaveItems(response: AxiosResponse): Promise<ServiceResponseOfCourseOfferingPackageDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfCourseOfferingPackageDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfCourseOfferingPackageDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfCourseOfferingPackageDto>(null as any);
+    }
+
+    applyToPeriod(packageId: string, periodId: string, request: ApplyOfferingPackageRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfApplyOfferingPackageResultDto> {
+        let url_ = this.baseUrl + "/api/Organizations/current/offering-packages/{packageId}/apply/{periodId}";
+        if (packageId === undefined || packageId === null)
+            throw new globalThis.Error("The parameter 'packageId' must be defined.");
+        url_ = url_.replace("{packageId}", encodeURIComponent("" + packageId));
+        if (periodId === undefined || periodId === null)
+            throw new globalThis.Error("The parameter 'periodId' must be defined.");
+        url_ = url_.replace("{periodId}", encodeURIComponent("" + periodId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processApplyToPeriod(_response);
+        });
+    }
+
+    protected processApplyToPeriod(response: AxiosResponse): Promise<ServiceResponseOfApplyOfferingPackageResultDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfApplyOfferingPackageResultDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfApplyOfferingPackageResultDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfApplyOfferingPackageResultDto>(null as any);
+    }
+
+    revertFromPeriod(packageId: string, periodId: string, cancelToken?: CancelToken): Promise<ServiceResponseOfRevertOfferingPackageResultDto> {
+        let url_ = this.baseUrl + "/api/Organizations/current/offering-packages/{packageId}/revert/{periodId}";
+        if (packageId === undefined || packageId === null)
+            throw new globalThis.Error("The parameter 'packageId' must be defined.");
+        url_ = url_.replace("{packageId}", encodeURIComponent("" + packageId));
+        if (periodId === undefined || periodId === null)
+            throw new globalThis.Error("The parameter 'periodId' must be defined.");
+        url_ = url_.replace("{periodId}", encodeURIComponent("" + periodId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "POST",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processRevertFromPeriod(_response);
+        });
+    }
+
+    protected processRevertFromPeriod(response: AxiosResponse): Promise<ServiceResponseOfRevertOfferingPackageResultDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfRevertOfferingPackageResultDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfRevertOfferingPackageResultDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfRevertOfferingPackageResultDto>(null as any);
+    }
+}
+
+export class OfferingsClient {
+    protected instance: AxiosInstance;
+    protected baseUrl: string;
+    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
+
+    constructor(baseUrl?: string, instance?: AxiosInstance) {
+
+        this.instance = instance || axios.create();
+
+        this.baseUrl = baseUrl ?? "http://localhost:5069";
+
+    }
+
+    getCurrentPeriod( cancelToken?: CancelToken): Promise<ServiceResponseOfCurrentOrganizationPeriodDto> {
+        let url_ = this.baseUrl + "/api/Offerings/current-period";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processGetCurrentPeriod(_response);
+        });
+    }
+
+    protected processGetCurrentPeriod(response: AxiosResponse): Promise<ServiceResponseOfCurrentOrganizationPeriodDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfCurrentOrganizationPeriodDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfCurrentOrganizationPeriodDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfCurrentOrganizationPeriodDto>(null as any);
+    }
+
+    getPeriods( cancelToken?: CancelToken): Promise<ServiceResponseOfIEnumerableOfOrganizationPeriodDto> {
+        let url_ = this.baseUrl + "/api/Offerings/periods";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processGetPeriods(_response);
+        });
+    }
+
+    protected processGetPeriods(response: AxiosResponse): Promise<ServiceResponseOfIEnumerableOfOrganizationPeriodDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfIEnumerableOfOrganizationPeriodDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfIEnumerableOfOrganizationPeriodDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfIEnumerableOfOrganizationPeriodDto>(null as any);
+    }
+
+    getAssignable(periodId: string | null | undefined, cancelToken?: CancelToken): Promise<ServiceResponseOfIEnumerableOfOfferingPickerItemDto> {
+        let url_ = this.baseUrl + "/api/Offerings/assignable?";
+        if (periodId !== undefined && periodId !== null)
+            url_ += "periodId=" + encodeURIComponent("" + periodId) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processGetAssignable(_response);
+        });
+    }
+
+    protected processGetAssignable(response: AxiosResponse): Promise<ServiceResponseOfIEnumerableOfOfferingPickerItemDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfIEnumerableOfOfferingPickerItemDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfIEnumerableOfOfferingPickerItemDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfIEnumerableOfOfferingPickerItemDto>(null as any);
+    }
+
+    getMyEnrollments(periodId: string | null | undefined, cancelToken?: CancelToken): Promise<ServiceResponseOfIEnumerableOfOfferingPickerItemDto> {
+        let url_ = this.baseUrl + "/api/Offerings/my?";
+        if (periodId !== undefined && periodId !== null)
+            url_ += "periodId=" + encodeURIComponent("" + periodId) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processGetMyEnrollments(_response);
+        });
+    }
+
+    protected processGetMyEnrollments(response: AxiosResponse): Promise<ServiceResponseOfIEnumerableOfOfferingPickerItemDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfIEnumerableOfOfferingPickerItemDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfIEnumerableOfOfferingPickerItemDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfIEnumerableOfOfferingPickerItemDto>(null as any);
+    }
+
+    getGradebook(periodId: string, offeringId: string, cohortGroupId: string | null | undefined, cancelToken?: CancelToken): Promise<ServiceResponseOfOfferingGradebookDto> {
+        let url_ = this.baseUrl + "/api/Offerings/{periodId}/{offeringId}/gradebook?";
+        if (periodId === undefined || periodId === null)
+            throw new globalThis.Error("The parameter 'periodId' must be defined.");
+        url_ = url_.replace("{periodId}", encodeURIComponent("" + periodId));
+        if (offeringId === undefined || offeringId === null)
+            throw new globalThis.Error("The parameter 'offeringId' must be defined.");
+        url_ = url_.replace("{offeringId}", encodeURIComponent("" + offeringId));
+        if (cohortGroupId !== undefined && cohortGroupId !== null)
+            url_ += "cohortGroupId=" + encodeURIComponent("" + cohortGroupId) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processGetGradebook(_response);
+        });
+    }
+
+    protected processGetGradebook(response: AxiosResponse): Promise<ServiceResponseOfOfferingGradebookDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfOfferingGradebookDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfOfferingGradebookDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfOfferingGradebookDto>(null as any);
+    }
+
+    getStudentGradeBreakdown(periodId: string, offeringId: string, studentUserId: string, cancelToken?: CancelToken): Promise<ServiceResponseOfStudentOfferingGradeBreakdownDto> {
+        let url_ = this.baseUrl + "/api/Offerings/{periodId}/{offeringId}/students/{studentUserId}/grade-breakdown";
+        if (periodId === undefined || periodId === null)
+            throw new globalThis.Error("The parameter 'periodId' must be defined.");
+        url_ = url_.replace("{periodId}", encodeURIComponent("" + periodId));
+        if (offeringId === undefined || offeringId === null)
+            throw new globalThis.Error("The parameter 'offeringId' must be defined.");
+        url_ = url_.replace("{offeringId}", encodeURIComponent("" + offeringId));
+        if (studentUserId === undefined || studentUserId === null)
+            throw new globalThis.Error("The parameter 'studentUserId' must be defined.");
+        url_ = url_.replace("{studentUserId}", encodeURIComponent("" + studentUserId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processGetStudentGradeBreakdown(_response);
+        });
+    }
+
+    protected processGetStudentGradeBreakdown(response: AxiosResponse): Promise<ServiceResponseOfStudentOfferingGradeBreakdownDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfStudentOfferingGradeBreakdownDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfStudentOfferingGradeBreakdownDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfStudentOfferingGradeBreakdownDto>(null as any);
+    }
+}
+
 export class OrganizationAdminClient {
     protected instance: AxiosInstance;
     protected baseUrl: string;
@@ -3561,6 +5829,57 @@ export class OrganizationAdminClient {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
         }
         return Promise.resolve<ServiceResponseOfOrganizationMemberDto>(null as any);
+    }
+
+    deleteMember(userId: string, cancelToken?: CancelToken): Promise<ServiceResponseOfBoolean> {
+        let url_ = this.baseUrl + "/api/Organizations/current/members/{userId}";
+        if (userId === undefined || userId === null)
+            throw new globalThis.Error("The parameter 'userId' must be defined.");
+        url_ = url_.replace("{userId}", encodeURIComponent("" + userId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "DELETE",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processDeleteMember(_response);
+        });
+    }
+
+    protected processDeleteMember(response: AxiosResponse): Promise<ServiceResponseOfBoolean> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfBoolean.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfBoolean>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfBoolean>(null as any);
     }
 
     getRoles( cancelToken?: CancelToken): Promise<ServiceResponseOfIEnumerableOfOrganizationRoleDto> {
@@ -4362,11 +6681,13 @@ export class OrganizationsClient {
         return Promise.resolve<ServiceResponseOfOrganizationDetailsDto>(null as any);
     }
 
-    getInvitePreview(inviteCode: string, cancelToken?: CancelToken): Promise<ServiceResponseOfOrganizationInvitePreviewDto> {
-        let url_ = this.baseUrl + "/api/Organizations/invite/{inviteCode}";
+    getInvitePreview(inviteCode: string, email: string | null | undefined, cancelToken?: CancelToken): Promise<ServiceResponseOfOrganizationInvitePreviewDto> {
+        let url_ = this.baseUrl + "/api/Organizations/invite/{inviteCode}?";
         if (inviteCode === undefined || inviteCode === null)
             throw new globalThis.Error("The parameter 'inviteCode' must be defined.");
         url_ = url_.replace("{inviteCode}", encodeURIComponent("" + inviteCode));
+        if (email !== undefined && email !== null)
+            url_ += "email=" + encodeURIComponent("" + email) + "&";
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: AxiosRequestConfig = {
@@ -5812,7 +8133,7 @@ export class TasksClient {
 
     }
 
-    getAll(page: number | undefined, pageSize: number | undefined, groupId: string | null | undefined, cancelToken?: CancelToken): Promise<ServiceResponseOfPagedResponseOfTaskItemDto> {
+    getAll(page: number | undefined, pageSize: number | undefined, groupId: string | null | undefined, offeringId: string | null | undefined, cancelToken?: CancelToken): Promise<ServiceResponseOfPagedResponseOfTaskItemDto> {
         let url_ = this.baseUrl + "/api/Tasks?";
         if (page === null)
             throw new globalThis.Error("The parameter 'page' cannot be null.");
@@ -5824,6 +8145,8 @@ export class TasksClient {
             url_ += "PageSize=" + encodeURIComponent("" + pageSize) + "&";
         if (groupId !== undefined && groupId !== null)
             url_ += "groupId=" + encodeURIComponent("" + groupId) + "&";
+        if (offeringId !== undefined && offeringId !== null)
+            url_ += "offeringId=" + encodeURIComponent("" + offeringId) + "&";
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: AxiosRequestConfig = {
@@ -6056,6 +8379,271 @@ export class TasksClient {
     }
 
     protected processDelete(response: AxiosResponse): Promise<ServiceResponseOfBoolean> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfBoolean.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfBoolean>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfBoolean>(null as any);
+    }
+
+    submitSubmission(id: string, request: SubmitTaskSubmissionRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfTaskItemDto> {
+        let url_ = this.baseUrl + "/api/Tasks/{id}/submission";
+        if (id === undefined || id === null)
+            throw new globalThis.Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "PATCH",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processSubmitSubmission(_response);
+        });
+    }
+
+    protected processSubmitSubmission(response: AxiosResponse): Promise<ServiceResponseOfTaskItemDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfTaskItemDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfTaskItemDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfTaskItemDto>(null as any);
+    }
+
+    getBatches(page: number | undefined, pageSize: number | undefined, cancelToken?: CancelToken): Promise<ServiceResponseOfPagedResponseOfAssignmentBatchSummaryDto> {
+        let url_ = this.baseUrl + "/api/Tasks/batches?";
+        if (page === null)
+            throw new globalThis.Error("The parameter 'page' cannot be null.");
+        else if (page !== undefined)
+            url_ += "Page=" + encodeURIComponent("" + page) + "&";
+        if (pageSize === null)
+            throw new globalThis.Error("The parameter 'pageSize' cannot be null.");
+        else if (pageSize !== undefined)
+            url_ += "PageSize=" + encodeURIComponent("" + pageSize) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processGetBatches(_response);
+        });
+    }
+
+    protected processGetBatches(response: AxiosResponse): Promise<ServiceResponseOfPagedResponseOfAssignmentBatchSummaryDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfPagedResponseOfAssignmentBatchSummaryDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfPagedResponseOfAssignmentBatchSummaryDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfPagedResponseOfAssignmentBatchSummaryDto>(null as any);
+    }
+
+    createBatch(request: CreateAssignmentBatchRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfCreateAssignmentBatchResultDto> {
+        let url_ = this.baseUrl + "/api/Tasks/batches";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processCreateBatch(_response);
+        });
+    }
+
+    protected processCreateBatch(response: AxiosResponse): Promise<ServiceResponseOfCreateAssignmentBatchResultDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfCreateAssignmentBatchResultDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfCreateAssignmentBatchResultDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfCreateAssignmentBatchResultDto>(null as any);
+    }
+
+    getBatchSubmissions(batchId: string, cancelToken?: CancelToken): Promise<ServiceResponseOfIEnumerableOfAssignmentBatchSubmissionDto> {
+        let url_ = this.baseUrl + "/api/Tasks/batches/{batchId}/submissions";
+        if (batchId === undefined || batchId === null)
+            throw new globalThis.Error("The parameter 'batchId' must be defined.");
+        url_ = url_.replace("{batchId}", encodeURIComponent("" + batchId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processGetBatchSubmissions(_response);
+        });
+    }
+
+    protected processGetBatchSubmissions(response: AxiosResponse): Promise<ServiceResponseOfIEnumerableOfAssignmentBatchSubmissionDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfIEnumerableOfAssignmentBatchSubmissionDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfIEnumerableOfAssignmentBatchSubmissionDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfIEnumerableOfAssignmentBatchSubmissionDto>(null as any);
+    }
+
+    deleteBatch(batchId: string, cancelToken?: CancelToken): Promise<ServiceResponseOfBoolean> {
+        let url_ = this.baseUrl + "/api/Tasks/batches/{batchId}";
+        if (batchId === undefined || batchId === null)
+            throw new globalThis.Error("The parameter 'batchId' must be defined.");
+        url_ = url_.replace("{batchId}", encodeURIComponent("" + batchId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "DELETE",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processDeleteBatch(_response);
+        });
+    }
+
+    protected processDeleteBatch(response: AxiosResponse): Promise<ServiceResponseOfBoolean> {
         const status = response.status;
         let _headers: any = {};
         if (response.headers && typeof response.headers === "object") {
@@ -6490,6 +9078,58 @@ export class UsersClient {
     }
 
     protected processUpdateSecurity(response: AxiosResponse): Promise<ServiceResponseOfString> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfString.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfString>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfString>(null as any);
+    }
+
+    changePassword(request: ChangePasswordRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfString> {
+        let url_ = this.baseUrl + "/api/Users/me/change-password";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processChangePassword(_response);
+        });
+    }
+
+    protected processChangePassword(response: AxiosResponse): Promise<ServiceResponseOfString> {
         const status = response.status;
         let _headers: any = {};
         if (response.headers && typeof response.headers === "object") {
@@ -7214,6 +9854,8 @@ export class WidgetCatalogItemDto implements IWidgetCatalogItemDto {
     icon!: string;
     defaultAccessLevel!: string;
     isCoreFeature!: boolean;
+    isAlwaysEnabled!: boolean;
+    isInOrgCatalog!: boolean;
     isEnabledForOrganization!: boolean;
 
     constructor(data?: IWidgetCatalogItemDto) {
@@ -7233,6 +9875,8 @@ export class WidgetCatalogItemDto implements IWidgetCatalogItemDto {
             this.icon = _data["icon"];
             this.defaultAccessLevel = _data["defaultAccessLevel"];
             this.isCoreFeature = _data["isCoreFeature"];
+            this.isAlwaysEnabled = _data["isAlwaysEnabled"];
+            this.isInOrgCatalog = _data["isInOrgCatalog"];
             this.isEnabledForOrganization = _data["isEnabledForOrganization"];
         }
     }
@@ -7252,6 +9896,8 @@ export class WidgetCatalogItemDto implements IWidgetCatalogItemDto {
         data["icon"] = this.icon;
         data["defaultAccessLevel"] = this.defaultAccessLevel;
         data["isCoreFeature"] = this.isCoreFeature;
+        data["isAlwaysEnabled"] = this.isAlwaysEnabled;
+        data["isInOrgCatalog"] = this.isInOrgCatalog;
         data["isEnabledForOrganization"] = this.isEnabledForOrganization;
         return data;
     }
@@ -7264,6 +9910,8 @@ export interface IWidgetCatalogItemDto {
     icon: string;
     defaultAccessLevel: string;
     isCoreFeature: boolean;
+    isAlwaysEnabled: boolean;
+    isInOrgCatalog: boolean;
     isEnabledForOrganization: boolean;
 }
 
@@ -7557,12 +10205,12 @@ export interface IAttendanceRecordDto {
 }
 
 export enum AttendanceStatus {
-    None = 0,
-    Added = 1,
-    Declined = 2,
-    Expected = 3,
-    Tentative = 4,
-    Accepted = 5,
+    None = "None",
+    Added = "Added",
+    Declined = "Declined",
+    Expected = "Expected",
+    Tentative = "Tentative",
+    Accepted = "Accepted",
 }
 
 export class AttendanceSessionDto implements IAttendanceSessionDto {
@@ -7575,6 +10223,10 @@ export class AttendanceSessionDto implements IAttendanceSessionDto {
     endTime!: Date;
     enrolledCount!: number;
     maxCapacity?: number | undefined;
+    offeringId?: string | undefined;
+    offeringName?: string | undefined;
+    eventTypeName?: string | undefined;
+    instanceDate?: Date | undefined;
 
     constructor(data?: IAttendanceSessionDto) {
         if (data) {
@@ -7596,6 +10248,10 @@ export class AttendanceSessionDto implements IAttendanceSessionDto {
             this.endTime = _data["endTime"] ? new Date(_data["endTime"].toString()) : undefined as any;
             this.enrolledCount = _data["enrolledCount"];
             this.maxCapacity = _data["maxCapacity"];
+            this.offeringId = _data["offeringId"];
+            this.offeringName = _data["offeringName"];
+            this.eventTypeName = _data["eventTypeName"];
+            this.instanceDate = _data["instanceDate"] ? new Date(_data["instanceDate"].toString()) : undefined as any;
         }
     }
 
@@ -7617,6 +10273,10 @@ export class AttendanceSessionDto implements IAttendanceSessionDto {
         data["endTime"] = this.endTime ? this.endTime.toISOString() : undefined as any;
         data["enrolledCount"] = this.enrolledCount;
         data["maxCapacity"] = this.maxCapacity;
+        data["offeringId"] = this.offeringId;
+        data["offeringName"] = this.offeringName;
+        data["eventTypeName"] = this.eventTypeName;
+        data["instanceDate"] = this.instanceDate ? this.instanceDate.toISOString() : undefined as any;
         return data;
     }
 }
@@ -7631,6 +10291,546 @@ export interface IAttendanceSessionDto {
     endTime: Date;
     enrolledCount: number;
     maxCapacity?: number | undefined;
+    offeringId?: string | undefined;
+    offeringName?: string | undefined;
+    eventTypeName?: string | undefined;
+    instanceDate?: Date | undefined;
+}
+
+export class ServiceResponseOfMyOfferingAttendanceResponse implements IServiceResponseOfMyOfferingAttendanceResponse {
+    isSuccess?: boolean;
+    data?: MyOfferingAttendanceResponse | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfMyOfferingAttendanceResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"] ? MyOfferingAttendanceResponse.fromJS(_data["data"]) : undefined as any;
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfMyOfferingAttendanceResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfMyOfferingAttendanceResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data ? this.data.toJSON() : undefined as any;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfMyOfferingAttendanceResponse {
+    isSuccess?: boolean;
+    data?: MyOfferingAttendanceResponse | undefined;
+    error?: AppError | undefined;
+}
+
+export class MyOfferingAttendanceResponse implements IMyOfferingAttendanceResponse {
+    periodId?: string | undefined;
+    offerings!: OfferingAttendanceSummaryDto[];
+
+    constructor(data?: IMyOfferingAttendanceResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+        if (!data) {
+            this.offerings = [];
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.periodId = _data["periodId"];
+            if (Array.isArray(_data["offerings"])) {
+                this.offerings = [] as any;
+                for (let item of _data["offerings"])
+                    this.offerings!.push(OfferingAttendanceSummaryDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): MyOfferingAttendanceResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new MyOfferingAttendanceResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["periodId"] = this.periodId;
+        if (Array.isArray(this.offerings)) {
+            data["offerings"] = [];
+            for (let item of this.offerings)
+                data["offerings"].push(item ? item.toJSON() : undefined as any);
+        }
+        return data;
+    }
+}
+
+export interface IMyOfferingAttendanceResponse {
+    periodId?: string | undefined;
+    offerings: OfferingAttendanceSummaryDto[];
+}
+
+export class OfferingAttendanceSummaryDto implements IOfferingAttendanceSummaryDto {
+    offeringId!: string;
+    offeringName!: string;
+    offeringCode?: string | undefined;
+    requiredAttendancePercent?: number | undefined;
+    presentCount!: number;
+    heldCount!: number;
+    ratePercent!: number;
+    meetsRequirement?: boolean | undefined;
+    activities!: OfferingActivityAttendanceDto[];
+
+    constructor(data?: IOfferingAttendanceSummaryDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+        if (!data) {
+            this.activities = [];
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.offeringId = _data["offeringId"];
+            this.offeringName = _data["offeringName"];
+            this.offeringCode = _data["offeringCode"];
+            this.requiredAttendancePercent = _data["requiredAttendancePercent"];
+            this.presentCount = _data["presentCount"];
+            this.heldCount = _data["heldCount"];
+            this.ratePercent = _data["ratePercent"];
+            this.meetsRequirement = _data["meetsRequirement"];
+            if (Array.isArray(_data["activities"])) {
+                this.activities = [] as any;
+                for (let item of _data["activities"])
+                    this.activities!.push(OfferingActivityAttendanceDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): OfferingAttendanceSummaryDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new OfferingAttendanceSummaryDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["offeringId"] = this.offeringId;
+        data["offeringName"] = this.offeringName;
+        data["offeringCode"] = this.offeringCode;
+        data["requiredAttendancePercent"] = this.requiredAttendancePercent;
+        data["presentCount"] = this.presentCount;
+        data["heldCount"] = this.heldCount;
+        data["ratePercent"] = this.ratePercent;
+        data["meetsRequirement"] = this.meetsRequirement;
+        if (Array.isArray(this.activities)) {
+            data["activities"] = [];
+            for (let item of this.activities)
+                data["activities"].push(item ? item.toJSON() : undefined as any);
+        }
+        return data;
+    }
+}
+
+export interface IOfferingAttendanceSummaryDto {
+    offeringId: string;
+    offeringName: string;
+    offeringCode?: string | undefined;
+    requiredAttendancePercent?: number | undefined;
+    presentCount: number;
+    heldCount: number;
+    ratePercent: number;
+    meetsRequirement?: boolean | undefined;
+    activities: OfferingActivityAttendanceDto[];
+}
+
+export class OfferingActivityAttendanceDto implements IOfferingActivityAttendanceDto {
+    eventTypeId!: string;
+    eventTypeName!: string;
+    presentCount!: number;
+    heldCount!: number;
+    ratePercent!: number;
+
+    constructor(data?: IOfferingActivityAttendanceDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.eventTypeId = _data["eventTypeId"];
+            this.eventTypeName = _data["eventTypeName"];
+            this.presentCount = _data["presentCount"];
+            this.heldCount = _data["heldCount"];
+            this.ratePercent = _data["ratePercent"];
+        }
+    }
+
+    static fromJS(data: any): OfferingActivityAttendanceDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new OfferingActivityAttendanceDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["eventTypeId"] = this.eventTypeId;
+        data["eventTypeName"] = this.eventTypeName;
+        data["presentCount"] = this.presentCount;
+        data["heldCount"] = this.heldCount;
+        data["ratePercent"] = this.ratePercent;
+        return data;
+    }
+}
+
+export interface IOfferingActivityAttendanceDto {
+    eventTypeId: string;
+    eventTypeName: string;
+    presentCount: number;
+    heldCount: number;
+    ratePercent: number;
+}
+
+export class ServiceResponseOfAttendanceSessionRosterDto implements IServiceResponseOfAttendanceSessionRosterDto {
+    isSuccess?: boolean;
+    data?: AttendanceSessionRosterDto | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfAttendanceSessionRosterDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"] ? AttendanceSessionRosterDto.fromJS(_data["data"]) : undefined as any;
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfAttendanceSessionRosterDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfAttendanceSessionRosterDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data ? this.data.toJSON() : undefined as any;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfAttendanceSessionRosterDto {
+    isSuccess?: boolean;
+    data?: AttendanceSessionRosterDto | undefined;
+    error?: AppError | undefined;
+}
+
+export class AttendanceSessionRosterDto implements IAttendanceSessionRosterDto {
+    eventId!: string;
+    title!: string;
+    offeringId?: string | undefined;
+    offeringName?: string | undefined;
+    eventTypeName?: string | undefined;
+    instanceDate!: Date;
+    startTime!: Date;
+    endTime!: Date;
+    members!: AttendanceRosterMemberDto[];
+
+    constructor(data?: IAttendanceSessionRosterDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+        if (!data) {
+            this.members = [];
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.eventId = _data["eventId"];
+            this.title = _data["title"];
+            this.offeringId = _data["offeringId"];
+            this.offeringName = _data["offeringName"];
+            this.eventTypeName = _data["eventTypeName"];
+            this.instanceDate = _data["instanceDate"] ? new Date(_data["instanceDate"].toString()) : undefined as any;
+            this.startTime = _data["startTime"] ? new Date(_data["startTime"].toString()) : undefined as any;
+            this.endTime = _data["endTime"] ? new Date(_data["endTime"].toString()) : undefined as any;
+            if (Array.isArray(_data["members"])) {
+                this.members = [] as any;
+                for (let item of _data["members"])
+                    this.members!.push(AttendanceRosterMemberDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): AttendanceSessionRosterDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new AttendanceSessionRosterDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["eventId"] = this.eventId;
+        data["title"] = this.title;
+        data["offeringId"] = this.offeringId;
+        data["offeringName"] = this.offeringName;
+        data["eventTypeName"] = this.eventTypeName;
+        data["instanceDate"] = this.instanceDate ? this.instanceDate.toISOString() : undefined as any;
+        data["startTime"] = this.startTime ? this.startTime.toISOString() : undefined as any;
+        data["endTime"] = this.endTime ? this.endTime.toISOString() : undefined as any;
+        if (Array.isArray(this.members)) {
+            data["members"] = [];
+            for (let item of this.members)
+                data["members"].push(item ? item.toJSON() : undefined as any);
+        }
+        return data;
+    }
+}
+
+export interface IAttendanceSessionRosterDto {
+    eventId: string;
+    title: string;
+    offeringId?: string | undefined;
+    offeringName?: string | undefined;
+    eventTypeName?: string | undefined;
+    instanceDate: Date;
+    startTime: Date;
+    endTime: Date;
+    members: AttendanceRosterMemberDto[];
+}
+
+export class AttendanceRosterMemberDto implements IAttendanceRosterMemberDto {
+    userId!: string;
+    displayName!: string;
+    cohortGroupName?: string | undefined;
+    status!: AttendanceStatus;
+    statusLabel!: string;
+
+    constructor(data?: IAttendanceRosterMemberDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.userId = _data["userId"];
+            this.displayName = _data["displayName"];
+            this.cohortGroupName = _data["cohortGroupName"];
+            this.status = _data["status"];
+            this.statusLabel = _data["statusLabel"];
+        }
+    }
+
+    static fromJS(data: any): AttendanceRosterMemberDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new AttendanceRosterMemberDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["userId"] = this.userId;
+        data["displayName"] = this.displayName;
+        data["cohortGroupName"] = this.cohortGroupName;
+        data["status"] = this.status;
+        data["statusLabel"] = this.statusLabel;
+        return data;
+    }
+}
+
+export interface IAttendanceRosterMemberDto {
+    userId: string;
+    displayName: string;
+    cohortGroupName?: string | undefined;
+    status: AttendanceStatus;
+    statusLabel: string;
+}
+
+export class ServiceResponseOfBoolean implements IServiceResponseOfBoolean {
+    isSuccess?: boolean;
+    data?: boolean;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfBoolean) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"];
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfBoolean {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfBoolean();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfBoolean {
+    isSuccess?: boolean;
+    data?: boolean;
+    error?: AppError | undefined;
+}
+
+export class BulkMarkAttendanceRequest implements IBulkMarkAttendanceRequest {
+    instanceDate!: Date;
+    rows!: BulkMarkAttendanceRowDto[];
+
+    constructor(data?: IBulkMarkAttendanceRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+        if (!data) {
+            this.rows = [];
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.instanceDate = _data["instanceDate"] ? new Date(_data["instanceDate"].toString()) : undefined as any;
+            if (Array.isArray(_data["rows"])) {
+                this.rows = [] as any;
+                for (let item of _data["rows"])
+                    this.rows!.push(BulkMarkAttendanceRowDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): BulkMarkAttendanceRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new BulkMarkAttendanceRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["instanceDate"] = this.instanceDate ? this.instanceDate.toISOString() : undefined as any;
+        if (Array.isArray(this.rows)) {
+            data["rows"] = [];
+            for (let item of this.rows)
+                data["rows"].push(item ? item.toJSON() : undefined as any);
+        }
+        return data;
+    }
+}
+
+export interface IBulkMarkAttendanceRequest {
+    instanceDate: Date;
+    rows: BulkMarkAttendanceRowDto[];
+}
+
+export class BulkMarkAttendanceRowDto implements IBulkMarkAttendanceRowDto {
+    userId!: string;
+    status!: AttendanceStatus;
+
+    constructor(data?: IBulkMarkAttendanceRowDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.userId = _data["userId"];
+            this.status = _data["status"];
+        }
+    }
+
+    static fromJS(data: any): BulkMarkAttendanceRowDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new BulkMarkAttendanceRowDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["userId"] = this.userId;
+        data["status"] = this.status;
+        return data;
+    }
+}
+
+export interface IBulkMarkAttendanceRowDto {
+    userId: string;
+    status: AttendanceStatus;
 }
 
 export class ServiceResponseOfPagedResponseOfAttendanceAdminRecordDto implements IServiceResponseOfPagedResponseOfAttendanceAdminRecordDto {
@@ -7804,6 +11004,285 @@ export interface IAttendanceAdminRecordDto {
     status: AttendanceStatus;
 }
 
+export class RecordMemberAttendanceRequest implements IRecordMemberAttendanceRequest {
+    eventId!: string;
+    instanceDate!: Date;
+    userId!: string;
+    status?: AttendanceStatus;
+
+    constructor(data?: IRecordMemberAttendanceRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.eventId = _data["eventId"];
+            this.instanceDate = _data["instanceDate"] ? new Date(_data["instanceDate"].toString()) : undefined as any;
+            this.userId = _data["userId"];
+            this.status = _data["status"];
+        }
+    }
+
+    static fromJS(data: any): RecordMemberAttendanceRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new RecordMemberAttendanceRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["eventId"] = this.eventId;
+        data["instanceDate"] = this.instanceDate ? this.instanceDate.toISOString() : undefined as any;
+        data["userId"] = this.userId;
+        data["status"] = this.status;
+        return data;
+    }
+}
+
+export interface IRecordMemberAttendanceRequest {
+    eventId: string;
+    instanceDate: Date;
+    userId: string;
+    status?: AttendanceStatus;
+}
+
+export class ServiceResponseOfWorkTimeTodayResponse implements IServiceResponseOfWorkTimeTodayResponse {
+    isSuccess?: boolean;
+    data?: WorkTimeTodayResponse | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfWorkTimeTodayResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"] ? WorkTimeTodayResponse.fromJS(_data["data"]) : undefined as any;
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfWorkTimeTodayResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfWorkTimeTodayResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data ? this.data.toJSON() : undefined as any;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfWorkTimeTodayResponse {
+    isSuccess?: boolean;
+    data?: WorkTimeTodayResponse | undefined;
+    error?: AppError | undefined;
+}
+
+export class WorkTimeTodayResponse implements IWorkTimeTodayResponse {
+    today?: WorkTimeEntryDto | undefined;
+    recent!: WorkTimeEntryDto[];
+
+    constructor(data?: IWorkTimeTodayResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+        if (!data) {
+            this.recent = [];
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.today = _data["today"] ? WorkTimeEntryDto.fromJS(_data["today"]) : undefined as any;
+            if (Array.isArray(_data["recent"])) {
+                this.recent = [] as any;
+                for (let item of _data["recent"])
+                    this.recent!.push(WorkTimeEntryDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): WorkTimeTodayResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new WorkTimeTodayResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["today"] = this.today ? this.today.toJSON() : undefined as any;
+        if (Array.isArray(this.recent)) {
+            data["recent"] = [];
+            for (let item of this.recent)
+                data["recent"].push(item ? item.toJSON() : undefined as any);
+        }
+        return data;
+    }
+}
+
+export interface IWorkTimeTodayResponse {
+    today?: WorkTimeEntryDto | undefined;
+    recent: WorkTimeEntryDto[];
+}
+
+export class WorkTimeEntryDto implements IWorkTimeEntryDto {
+    id!: string;
+    workDate!: Date;
+    clockInUtc?: Date | undefined;
+    clockOutUtc?: Date | undefined;
+    breakMinutes!: number;
+    workedMinutes!: number;
+
+    constructor(data?: IWorkTimeEntryDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.workDate = _data["workDate"] ? new Date(_data["workDate"].toString()) : undefined as any;
+            this.clockInUtc = _data["clockInUtc"] ? new Date(_data["clockInUtc"].toString()) : undefined as any;
+            this.clockOutUtc = _data["clockOutUtc"] ? new Date(_data["clockOutUtc"].toString()) : undefined as any;
+            this.breakMinutes = _data["breakMinutes"];
+            this.workedMinutes = _data["workedMinutes"];
+        }
+    }
+
+    static fromJS(data: any): WorkTimeEntryDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new WorkTimeEntryDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["workDate"] = this.workDate ? this.workDate.toISOString() : undefined as any;
+        data["clockInUtc"] = this.clockInUtc ? this.clockInUtc.toISOString() : undefined as any;
+        data["clockOutUtc"] = this.clockOutUtc ? this.clockOutUtc.toISOString() : undefined as any;
+        data["breakMinutes"] = this.breakMinutes;
+        data["workedMinutes"] = this.workedMinutes;
+        return data;
+    }
+}
+
+export interface IWorkTimeEntryDto {
+    id: string;
+    workDate: Date;
+    clockInUtc?: Date | undefined;
+    clockOutUtc?: Date | undefined;
+    breakMinutes: number;
+    workedMinutes: number;
+}
+
+export class ServiceResponseOfWorkTimeEntryDto implements IServiceResponseOfWorkTimeEntryDto {
+    isSuccess?: boolean;
+    data?: WorkTimeEntryDto | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfWorkTimeEntryDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"] ? WorkTimeEntryDto.fromJS(_data["data"]) : undefined as any;
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfWorkTimeEntryDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfWorkTimeEntryDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data ? this.data.toJSON() : undefined as any;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfWorkTimeEntryDto {
+    isSuccess?: boolean;
+    data?: WorkTimeEntryDto | undefined;
+    error?: AppError | undefined;
+}
+
+export class SetWorkBreakRequest implements ISetWorkBreakRequest {
+    breakMinutes!: number;
+
+    constructor(data?: ISetWorkBreakRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.breakMinutes = _data["breakMinutes"];
+        }
+    }
+
+    static fromJS(data: any): SetWorkBreakRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new SetWorkBreakRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["breakMinutes"] = this.breakMinutes;
+        return data;
+    }
+}
+
+export interface ISetWorkBreakRequest {
+    breakMinutes: number;
+}
+
 export class ServiceResponseOfLoginResponse implements IServiceResponseOfLoginResponse {
     isSuccess?: boolean;
     data?: LoginResponse | undefined;
@@ -7849,11 +11328,13 @@ export interface IServiceResponseOfLoginResponse {
 }
 
 export class LoginResponse implements ILoginResponse {
-    accessToken!: string;
+    requiresTwoFactor!: boolean;
+    twoFactorSessionToken?: string | undefined;
+    accessToken?: string | undefined;
     refreshToken?: string | undefined;
-    user!: UserDto;
-    organizationId!: string;
-    role!: string;
+    user?: UserDto | undefined;
+    organizationId?: string | undefined;
+    role?: string | undefined;
 
     constructor(data?: ILoginResponse) {
         if (data) {
@@ -7862,16 +11343,15 @@ export class LoginResponse implements ILoginResponse {
                     (this as any)[property] = (data as any)[property];
             }
         }
-        if (!data) {
-            this.user = new UserDto();
-        }
     }
 
     init(_data?: any) {
         if (_data) {
+            this.requiresTwoFactor = _data["requiresTwoFactor"];
+            this.twoFactorSessionToken = _data["twoFactorSessionToken"];
             this.accessToken = _data["accessToken"];
             this.refreshToken = _data["refreshToken"];
-            this.user = _data["user"] ? UserDto.fromJS(_data["user"]) : new UserDto();
+            this.user = _data["user"] ? UserDto.fromJS(_data["user"]) : undefined as any;
             this.organizationId = _data["organizationId"];
             this.role = _data["role"];
         }
@@ -7886,6 +11366,8 @@ export class LoginResponse implements ILoginResponse {
 
     toJSON(data?: any) {
         data = typeof data === 'object' ? data : {};
+        data["requiresTwoFactor"] = this.requiresTwoFactor;
+        data["twoFactorSessionToken"] = this.twoFactorSessionToken;
         data["accessToken"] = this.accessToken;
         data["refreshToken"] = this.refreshToken;
         data["user"] = this.user ? this.user.toJSON() : undefined as any;
@@ -7896,11 +11378,13 @@ export class LoginResponse implements ILoginResponse {
 }
 
 export interface ILoginResponse {
-    accessToken: string;
+    requiresTwoFactor: boolean;
+    twoFactorSessionToken?: string | undefined;
+    accessToken?: string | undefined;
     refreshToken?: string | undefined;
-    user: UserDto;
-    organizationId: string;
-    role: string;
+    user?: UserDto | undefined;
+    organizationId?: string | undefined;
+    role?: string | undefined;
 }
 
 export class UserDto implements IUserDto {
@@ -8144,8 +11628,8 @@ export interface IUserOrganizationDto {
 }
 
 export enum OrganizationType {
-    University = 0,
-    Corporate = 1,
+    University = "University",
+    Corporate = "Corporate",
 }
 
 export class SwitchOrgRequest implements ISwitchOrgRequest {
@@ -8308,12 +11792,173 @@ export interface IResetPasswordRequest {
     newPassword: string;
 }
 
+export class VerifyTwoFactorRequest implements IVerifyTwoFactorRequest {
+    twoFactorSessionToken!: string;
+    code!: string;
+
+    constructor(data?: IVerifyTwoFactorRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.twoFactorSessionToken = _data["twoFactorSessionToken"];
+            this.code = _data["code"];
+        }
+    }
+
+    static fromJS(data: any): VerifyTwoFactorRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new VerifyTwoFactorRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["twoFactorSessionToken"] = this.twoFactorSessionToken;
+        data["code"] = this.code;
+        return data;
+    }
+}
+
+export interface IVerifyTwoFactorRequest {
+    twoFactorSessionToken: string;
+    code: string;
+}
+
+export class ResendTwoFactorRequest implements IResendTwoFactorRequest {
+    twoFactorSessionToken!: string;
+
+    constructor(data?: IResendTwoFactorRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.twoFactorSessionToken = _data["twoFactorSessionToken"];
+        }
+    }
+
+    static fromJS(data: any): ResendTwoFactorRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new ResendTwoFactorRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["twoFactorSessionToken"] = this.twoFactorSessionToken;
+        return data;
+    }
+}
+
+export interface IResendTwoFactorRequest {
+    twoFactorSessionToken: string;
+}
+
+export class ServiceResponseOfJoinOrganizationResultDto implements IServiceResponseOfJoinOrganizationResultDto {
+    isSuccess?: boolean;
+    data?: JoinOrganizationResultDto | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfJoinOrganizationResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"] ? JoinOrganizationResultDto.fromJS(_data["data"]) : undefined as any;
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfJoinOrganizationResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfJoinOrganizationResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data ? this.data.toJSON() : undefined as any;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfJoinOrganizationResultDto {
+    isSuccess?: boolean;
+    data?: JoinOrganizationResultDto | undefined;
+    error?: AppError | undefined;
+}
+
+export class JoinOrganizationResultDto implements IJoinOrganizationResultDto {
+    organizationName!: string;
+    email!: string;
+
+    constructor(data?: IJoinOrganizationResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.organizationName = _data["organizationName"];
+            this.email = _data["email"];
+        }
+    }
+
+    static fromJS(data: any): JoinOrganizationResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new JoinOrganizationResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["organizationName"] = this.organizationName;
+        data["email"] = this.email;
+        return data;
+    }
+}
+
+export interface IJoinOrganizationResultDto {
+    organizationName: string;
+    email: string;
+}
+
 export class JoinOrganizationRequest implements IJoinOrganizationRequest {
     inviteCode!: string;
     firstName!: string;
     lastName!: string;
     email!: string;
     password!: string;
+    setupToken?: string | undefined;
 
     constructor(data?: IJoinOrganizationRequest) {
         if (data) {
@@ -8331,6 +11976,7 @@ export class JoinOrganizationRequest implements IJoinOrganizationRequest {
             this.lastName = _data["lastName"];
             this.email = _data["email"];
             this.password = _data["password"];
+            this.setupToken = _data["setupToken"];
         }
     }
 
@@ -8348,6 +11994,7 @@ export class JoinOrganizationRequest implements IJoinOrganizationRequest {
         data["lastName"] = this.lastName;
         data["email"] = this.email;
         data["password"] = this.password;
+        data["setupToken"] = this.setupToken;
         return data;
     }
 }
@@ -8358,6 +12005,403 @@ export interface IJoinOrganizationRequest {
     lastName: string;
     email: string;
     password: string;
+    setupToken?: string | undefined;
+}
+
+export class ServiceResponseOfJoinWithCodeResultDto implements IServiceResponseOfJoinWithCodeResultDto {
+    isSuccess?: boolean;
+    data?: JoinWithCodeResultDto | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfJoinWithCodeResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"] ? JoinWithCodeResultDto.fromJS(_data["data"]) : undefined as any;
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfJoinWithCodeResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfJoinWithCodeResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data ? this.data.toJSON() : undefined as any;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfJoinWithCodeResultDto {
+    isSuccess?: boolean;
+    data?: JoinWithCodeResultDto | undefined;
+    error?: AppError | undefined;
+}
+
+export class JoinWithCodeResultDto implements IJoinWithCodeResultDto {
+    organizationName!: string;
+    status!: string;
+    session?: LoginResponse | undefined;
+
+    constructor(data?: IJoinWithCodeResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.organizationName = _data["organizationName"];
+            this.status = _data["status"];
+            this.session = _data["session"] ? LoginResponse.fromJS(_data["session"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): JoinWithCodeResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new JoinWithCodeResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["organizationName"] = this.organizationName;
+        data["status"] = this.status;
+        data["session"] = this.session ? this.session.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IJoinWithCodeResultDto {
+    organizationName: string;
+    status: string;
+    session?: LoginResponse | undefined;
+}
+
+export class JoinWithInviteCodeRequest implements IJoinWithInviteCodeRequest {
+    inviteCode!: string;
+
+    constructor(data?: IJoinWithInviteCodeRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.inviteCode = _data["inviteCode"];
+        }
+    }
+
+    static fromJS(data: any): JoinWithInviteCodeRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new JoinWithInviteCodeRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["inviteCode"] = this.inviteCode;
+        return data;
+    }
+}
+
+export interface IJoinWithInviteCodeRequest {
+    inviteCode: string;
+}
+
+export class ServiceResponseOfListOfPendingOrganizationInviteDto implements IServiceResponseOfListOfPendingOrganizationInviteDto {
+    isSuccess?: boolean;
+    data?: PendingOrganizationInviteDto[] | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfListOfPendingOrganizationInviteDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            if (Array.isArray(_data["data"])) {
+                this.data = [] as any;
+                for (let item of _data["data"])
+                    this.data!.push(PendingOrganizationInviteDto.fromJS(item));
+            }
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfListOfPendingOrganizationInviteDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfListOfPendingOrganizationInviteDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        if (Array.isArray(this.data)) {
+            data["data"] = [];
+            for (let item of this.data)
+                data["data"].push(item ? item.toJSON() : undefined as any);
+        }
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfListOfPendingOrganizationInviteDto {
+    isSuccess?: boolean;
+    data?: PendingOrganizationInviteDto[] | undefined;
+    error?: AppError | undefined;
+}
+
+export class PendingOrganizationInviteDto implements IPendingOrganizationInviteDto {
+    organizationId!: string;
+    organizationName!: string;
+    logoUrl?: string | undefined;
+    inviteCode!: string;
+    roleName!: string;
+    invitedAt?: Date;
+
+    constructor(data?: IPendingOrganizationInviteDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.organizationId = _data["organizationId"];
+            this.organizationName = _data["organizationName"];
+            this.logoUrl = _data["logoUrl"];
+            this.inviteCode = _data["inviteCode"];
+            this.roleName = _data["roleName"];
+            this.invitedAt = _data["invitedAt"] ? new Date(_data["invitedAt"].toString()) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): PendingOrganizationInviteDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new PendingOrganizationInviteDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["organizationId"] = this.organizationId;
+        data["organizationName"] = this.organizationName;
+        data["logoUrl"] = this.logoUrl;
+        data["inviteCode"] = this.inviteCode;
+        data["roleName"] = this.roleName;
+        data["invitedAt"] = this.invitedAt ? this.invitedAt.toISOString() : undefined as any;
+        return data;
+    }
+}
+
+export interface IPendingOrganizationInviteDto {
+    organizationId: string;
+    organizationName: string;
+    logoUrl?: string | undefined;
+    inviteCode: string;
+    roleName: string;
+    invitedAt?: Date;
+}
+
+export class ServiceResponseOfOrganizationInvitePreviewDto implements IServiceResponseOfOrganizationInvitePreviewDto {
+    isSuccess?: boolean;
+    data?: OrganizationInvitePreviewDto | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfOrganizationInvitePreviewDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"] ? OrganizationInvitePreviewDto.fromJS(_data["data"]) : undefined as any;
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfOrganizationInvitePreviewDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfOrganizationInvitePreviewDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data ? this.data.toJSON() : undefined as any;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfOrganizationInvitePreviewDto {
+    isSuccess?: boolean;
+    data?: OrganizationInvitePreviewDto | undefined;
+    error?: AppError | undefined;
+}
+
+export class OrganizationInvitePreviewDto implements IOrganizationInvitePreviewDto {
+    organizationId!: string;
+    name!: string;
+    logoUrl?: string | undefined;
+    inviteCode!: string;
+    hasExistingAccount?: boolean;
+    hasPendingInvite?: boolean;
+    isAlreadyMember?: boolean;
+    requiresSignIn?: boolean;
+    requiresRegistration?: boolean;
+    invitedFirstName?: string | undefined;
+    invitedLastName?: string | undefined;
+    invitedEmail?: string | undefined;
+    inviteLinkExpired?: boolean;
+
+    constructor(data?: IOrganizationInvitePreviewDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.organizationId = _data["organizationId"];
+            this.name = _data["name"];
+            this.logoUrl = _data["logoUrl"];
+            this.inviteCode = _data["inviteCode"];
+            this.hasExistingAccount = _data["hasExistingAccount"];
+            this.hasPendingInvite = _data["hasPendingInvite"];
+            this.isAlreadyMember = _data["isAlreadyMember"];
+            this.requiresSignIn = _data["requiresSignIn"];
+            this.requiresRegistration = _data["requiresRegistration"];
+            this.invitedFirstName = _data["invitedFirstName"];
+            this.invitedLastName = _data["invitedLastName"];
+            this.invitedEmail = _data["invitedEmail"];
+            this.inviteLinkExpired = _data["inviteLinkExpired"];
+        }
+    }
+
+    static fromJS(data: any): OrganizationInvitePreviewDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new OrganizationInvitePreviewDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["organizationId"] = this.organizationId;
+        data["name"] = this.name;
+        data["logoUrl"] = this.logoUrl;
+        data["inviteCode"] = this.inviteCode;
+        data["hasExistingAccount"] = this.hasExistingAccount;
+        data["hasPendingInvite"] = this.hasPendingInvite;
+        data["isAlreadyMember"] = this.isAlreadyMember;
+        data["requiresSignIn"] = this.requiresSignIn;
+        data["requiresRegistration"] = this.requiresRegistration;
+        data["invitedFirstName"] = this.invitedFirstName;
+        data["invitedLastName"] = this.invitedLastName;
+        data["invitedEmail"] = this.invitedEmail;
+        data["inviteLinkExpired"] = this.inviteLinkExpired;
+        return data;
+    }
+}
+
+export interface IOrganizationInvitePreviewDto {
+    organizationId: string;
+    name: string;
+    logoUrl?: string | undefined;
+    inviteCode: string;
+    hasExistingAccount?: boolean;
+    hasPendingInvite?: boolean;
+    isAlreadyMember?: boolean;
+    requiresSignIn?: boolean;
+    requiresRegistration?: boolean;
+    invitedFirstName?: string | undefined;
+    invitedLastName?: string | undefined;
+    invitedEmail?: string | undefined;
+    inviteLinkExpired?: boolean;
+}
+
+export class InviteCodeRequest implements IInviteCodeRequest {
+    inviteCode!: string;
+
+    constructor(data?: IInviteCodeRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.inviteCode = _data["inviteCode"];
+        }
+    }
+
+    static fromJS(data: any): InviteCodeRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new InviteCodeRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["inviteCode"] = this.inviteCode;
+        return data;
+    }
+}
+
+export interface IInviteCodeRequest {
+    inviteCode: string;
 }
 
 export class ServiceResponseOfIEnumerableOfBuildingDto implements IServiceResponseOfIEnumerableOfBuildingDto {
@@ -8711,6 +12755,1369 @@ export interface ICreateMessageRequest {
     userName?: string | undefined;
 }
 
+export class ServiceResponseOfIEnumerableOfCourseOfferingDto implements IServiceResponseOfIEnumerableOfCourseOfferingDto {
+    isSuccess?: boolean;
+    data?: CourseOfferingDto[] | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfIEnumerableOfCourseOfferingDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            if (Array.isArray(_data["data"])) {
+                this.data = [] as any;
+                for (let item of _data["data"])
+                    this.data!.push(CourseOfferingDto.fromJS(item));
+            }
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfIEnumerableOfCourseOfferingDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfIEnumerableOfCourseOfferingDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        if (Array.isArray(this.data)) {
+            data["data"] = [];
+            for (let item of this.data)
+                data["data"].push(item ? item.toJSON() : undefined as any);
+        }
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfIEnumerableOfCourseOfferingDto {
+    isSuccess?: boolean;
+    data?: CourseOfferingDto[] | undefined;
+    error?: AppError | undefined;
+}
+
+export class CourseOfferingDto implements ICourseOfferingDto {
+    id!: string;
+    organizationId!: string;
+    periodId!: string;
+    programGroupId?: string | undefined;
+    programGroupName?: string | undefined;
+    subjectCatalogGroupId?: string | undefined;
+    subjectCatalogGroupName?: string | undefined;
+    name!: string;
+    code?: string | undefined;
+    description?: string | undefined;
+    hostId?: string | undefined;
+    hostName?: string | undefined;
+    programGroupIds!: string[];
+    programGroupNames!: string[];
+    instructors!: OfferingInstructorDto[];
+    enrollmentCount!: number;
+    credits!: number;
+    requiredAttendancePercent?: number | undefined;
+    weeklySessions!: OfferingWeeklySessionDto[];
+    createdAt!: Date;
+
+    constructor(data?: ICourseOfferingDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+        if (!data) {
+            this.programGroupIds = [];
+            this.programGroupNames = [];
+            this.instructors = [];
+            this.weeklySessions = [];
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.organizationId = _data["organizationId"];
+            this.periodId = _data["periodId"];
+            this.programGroupId = _data["programGroupId"];
+            this.programGroupName = _data["programGroupName"];
+            this.subjectCatalogGroupId = _data["subjectCatalogGroupId"];
+            this.subjectCatalogGroupName = _data["subjectCatalogGroupName"];
+            this.name = _data["name"];
+            this.code = _data["code"];
+            this.description = _data["description"];
+            this.hostId = _data["hostId"];
+            this.hostName = _data["hostName"];
+            if (Array.isArray(_data["programGroupIds"])) {
+                this.programGroupIds = [] as any;
+                for (let item of _data["programGroupIds"])
+                    this.programGroupIds!.push(item);
+            }
+            if (Array.isArray(_data["programGroupNames"])) {
+                this.programGroupNames = [] as any;
+                for (let item of _data["programGroupNames"])
+                    this.programGroupNames!.push(item);
+            }
+            if (Array.isArray(_data["instructors"])) {
+                this.instructors = [] as any;
+                for (let item of _data["instructors"])
+                    this.instructors!.push(OfferingInstructorDto.fromJS(item));
+            }
+            this.enrollmentCount = _data["enrollmentCount"];
+            this.credits = _data["credits"];
+            this.requiredAttendancePercent = _data["requiredAttendancePercent"];
+            if (Array.isArray(_data["weeklySessions"])) {
+                this.weeklySessions = [] as any;
+                for (let item of _data["weeklySessions"])
+                    this.weeklySessions!.push(OfferingWeeklySessionDto.fromJS(item));
+            }
+            this.createdAt = _data["createdAt"] ? new Date(_data["createdAt"].toString()) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): CourseOfferingDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new CourseOfferingDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["organizationId"] = this.organizationId;
+        data["periodId"] = this.periodId;
+        data["programGroupId"] = this.programGroupId;
+        data["programGroupName"] = this.programGroupName;
+        data["subjectCatalogGroupId"] = this.subjectCatalogGroupId;
+        data["subjectCatalogGroupName"] = this.subjectCatalogGroupName;
+        data["name"] = this.name;
+        data["code"] = this.code;
+        data["description"] = this.description;
+        data["hostId"] = this.hostId;
+        data["hostName"] = this.hostName;
+        if (Array.isArray(this.programGroupIds)) {
+            data["programGroupIds"] = [];
+            for (let item of this.programGroupIds)
+                data["programGroupIds"].push(item);
+        }
+        if (Array.isArray(this.programGroupNames)) {
+            data["programGroupNames"] = [];
+            for (let item of this.programGroupNames)
+                data["programGroupNames"].push(item);
+        }
+        if (Array.isArray(this.instructors)) {
+            data["instructors"] = [];
+            for (let item of this.instructors)
+                data["instructors"].push(item ? item.toJSON() : undefined as any);
+        }
+        data["enrollmentCount"] = this.enrollmentCount;
+        data["credits"] = this.credits;
+        data["requiredAttendancePercent"] = this.requiredAttendancePercent;
+        if (Array.isArray(this.weeklySessions)) {
+            data["weeklySessions"] = [];
+            for (let item of this.weeklySessions)
+                data["weeklySessions"].push(item ? item.toJSON() : undefined as any);
+        }
+        data["createdAt"] = this.createdAt ? this.createdAt.toISOString() : undefined as any;
+        return data;
+    }
+}
+
+export interface ICourseOfferingDto {
+    id: string;
+    organizationId: string;
+    periodId: string;
+    programGroupId?: string | undefined;
+    programGroupName?: string | undefined;
+    subjectCatalogGroupId?: string | undefined;
+    subjectCatalogGroupName?: string | undefined;
+    name: string;
+    code?: string | undefined;
+    description?: string | undefined;
+    hostId?: string | undefined;
+    hostName?: string | undefined;
+    programGroupIds: string[];
+    programGroupNames: string[];
+    instructors: OfferingInstructorDto[];
+    enrollmentCount: number;
+    credits: number;
+    requiredAttendancePercent?: number | undefined;
+    weeklySessions: OfferingWeeklySessionDto[];
+    createdAt: Date;
+}
+
+export class OfferingInstructorDto implements IOfferingInstructorDto {
+    userId!: string;
+    displayName!: string;
+    role!: string;
+    isPrimary!: boolean;
+
+    constructor(data?: IOfferingInstructorDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.userId = _data["userId"];
+            this.displayName = _data["displayName"];
+            this.role = _data["role"];
+            this.isPrimary = _data["isPrimary"];
+        }
+    }
+
+    static fromJS(data: any): OfferingInstructorDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new OfferingInstructorDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["userId"] = this.userId;
+        data["displayName"] = this.displayName;
+        data["role"] = this.role;
+        data["isPrimary"] = this.isPrimary;
+        return data;
+    }
+}
+
+export interface IOfferingInstructorDto {
+    userId: string;
+    displayName: string;
+    role: string;
+    isPrimary: boolean;
+}
+
+export class OfferingWeeklySessionDto implements IOfferingWeeklySessionDto {
+    eventTypeId?: string | undefined;
+    eventTypeName?: string | undefined;
+    hoursPerSession!: number;
+    frequency!: string;
+    isOptional?: boolean;
+    sortOrder?: number;
+
+    constructor(data?: IOfferingWeeklySessionDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.eventTypeId = _data["eventTypeId"];
+            this.eventTypeName = _data["eventTypeName"];
+            this.hoursPerSession = _data["hoursPerSession"];
+            this.frequency = _data["frequency"];
+            this.isOptional = _data["isOptional"];
+            this.sortOrder = _data["sortOrder"];
+        }
+    }
+
+    static fromJS(data: any): OfferingWeeklySessionDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new OfferingWeeklySessionDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["eventTypeId"] = this.eventTypeId;
+        data["eventTypeName"] = this.eventTypeName;
+        data["hoursPerSession"] = this.hoursPerSession;
+        data["frequency"] = this.frequency;
+        data["isOptional"] = this.isOptional;
+        data["sortOrder"] = this.sortOrder;
+        return data;
+    }
+}
+
+export interface IOfferingWeeklySessionDto {
+    eventTypeId?: string | undefined;
+    eventTypeName?: string | undefined;
+    hoursPerSession: number;
+    frequency: string;
+    isOptional?: boolean;
+    sortOrder?: number;
+}
+
+export class ServiceResponseOfCourseOfferingDto implements IServiceResponseOfCourseOfferingDto {
+    isSuccess?: boolean;
+    data?: CourseOfferingDto | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfCourseOfferingDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"] ? CourseOfferingDto.fromJS(_data["data"]) : undefined as any;
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfCourseOfferingDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfCourseOfferingDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data ? this.data.toJSON() : undefined as any;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfCourseOfferingDto {
+    isSuccess?: boolean;
+    data?: CourseOfferingDto | undefined;
+    error?: AppError | undefined;
+}
+
+export class CreateCourseOfferingRequest implements ICreateCourseOfferingRequest {
+    name!: string;
+    code?: string | undefined;
+    description?: string | undefined;
+    programGroupId?: string | undefined;
+    subjectCatalogGroupId?: string | undefined;
+    hostId?: string | undefined;
+    programGroupIds?: string[] | undefined;
+    instructors?: OfferingInstructorInputDto[] | undefined;
+    weeklySessions?: OfferingWeeklySessionDto[] | undefined;
+    credits?: number;
+    requiredAttendancePercent?: number | undefined;
+
+    constructor(data?: ICreateCourseOfferingRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.name = _data["name"];
+            this.code = _data["code"];
+            this.description = _data["description"];
+            this.programGroupId = _data["programGroupId"];
+            this.subjectCatalogGroupId = _data["subjectCatalogGroupId"];
+            this.hostId = _data["hostId"];
+            if (Array.isArray(_data["programGroupIds"])) {
+                this.programGroupIds = [] as any;
+                for (let item of _data["programGroupIds"])
+                    this.programGroupIds!.push(item);
+            }
+            if (Array.isArray(_data["instructors"])) {
+                this.instructors = [] as any;
+                for (let item of _data["instructors"])
+                    this.instructors!.push(OfferingInstructorInputDto.fromJS(item));
+            }
+            if (Array.isArray(_data["weeklySessions"])) {
+                this.weeklySessions = [] as any;
+                for (let item of _data["weeklySessions"])
+                    this.weeklySessions!.push(OfferingWeeklySessionDto.fromJS(item));
+            }
+            this.credits = _data["credits"];
+            this.requiredAttendancePercent = _data["requiredAttendancePercent"];
+        }
+    }
+
+    static fromJS(data: any): CreateCourseOfferingRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new CreateCourseOfferingRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["name"] = this.name;
+        data["code"] = this.code;
+        data["description"] = this.description;
+        data["programGroupId"] = this.programGroupId;
+        data["subjectCatalogGroupId"] = this.subjectCatalogGroupId;
+        data["hostId"] = this.hostId;
+        if (Array.isArray(this.programGroupIds)) {
+            data["programGroupIds"] = [];
+            for (let item of this.programGroupIds)
+                data["programGroupIds"].push(item);
+        }
+        if (Array.isArray(this.instructors)) {
+            data["instructors"] = [];
+            for (let item of this.instructors)
+                data["instructors"].push(item ? item.toJSON() : undefined as any);
+        }
+        if (Array.isArray(this.weeklySessions)) {
+            data["weeklySessions"] = [];
+            for (let item of this.weeklySessions)
+                data["weeklySessions"].push(item ? item.toJSON() : undefined as any);
+        }
+        data["credits"] = this.credits;
+        data["requiredAttendancePercent"] = this.requiredAttendancePercent;
+        return data;
+    }
+}
+
+export interface ICreateCourseOfferingRequest {
+    name: string;
+    code?: string | undefined;
+    description?: string | undefined;
+    programGroupId?: string | undefined;
+    subjectCatalogGroupId?: string | undefined;
+    hostId?: string | undefined;
+    programGroupIds?: string[] | undefined;
+    instructors?: OfferingInstructorInputDto[] | undefined;
+    weeklySessions?: OfferingWeeklySessionDto[] | undefined;
+    credits?: number;
+    requiredAttendancePercent?: number | undefined;
+}
+
+export class OfferingInstructorInputDto implements IOfferingInstructorInputDto {
+    userId!: string;
+    role?: string | undefined;
+
+    constructor(data?: IOfferingInstructorInputDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.userId = _data["userId"];
+            this.role = _data["role"];
+        }
+    }
+
+    static fromJS(data: any): OfferingInstructorInputDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new OfferingInstructorInputDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["userId"] = this.userId;
+        data["role"] = this.role;
+        return data;
+    }
+}
+
+export interface IOfferingInstructorInputDto {
+    userId: string;
+    role?: string | undefined;
+}
+
+export class UpdateCourseOfferingRequest implements IUpdateCourseOfferingRequest {
+    name!: string;
+    code?: string | undefined;
+    description?: string | undefined;
+    programGroupId?: string | undefined;
+    subjectCatalogGroupId?: string | undefined;
+    hostId?: string | undefined;
+    programGroupIds?: string[] | undefined;
+    instructors?: OfferingInstructorInputDto[] | undefined;
+    weeklySessions?: OfferingWeeklySessionDto[] | undefined;
+    credits?: number;
+    requiredAttendancePercent?: number | undefined;
+
+    constructor(data?: IUpdateCourseOfferingRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.name = _data["name"];
+            this.code = _data["code"];
+            this.description = _data["description"];
+            this.programGroupId = _data["programGroupId"];
+            this.subjectCatalogGroupId = _data["subjectCatalogGroupId"];
+            this.hostId = _data["hostId"];
+            if (Array.isArray(_data["programGroupIds"])) {
+                this.programGroupIds = [] as any;
+                for (let item of _data["programGroupIds"])
+                    this.programGroupIds!.push(item);
+            }
+            if (Array.isArray(_data["instructors"])) {
+                this.instructors = [] as any;
+                for (let item of _data["instructors"])
+                    this.instructors!.push(OfferingInstructorInputDto.fromJS(item));
+            }
+            if (Array.isArray(_data["weeklySessions"])) {
+                this.weeklySessions = [] as any;
+                for (let item of _data["weeklySessions"])
+                    this.weeklySessions!.push(OfferingWeeklySessionDto.fromJS(item));
+            }
+            this.credits = _data["credits"];
+            this.requiredAttendancePercent = _data["requiredAttendancePercent"];
+        }
+    }
+
+    static fromJS(data: any): UpdateCourseOfferingRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new UpdateCourseOfferingRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["name"] = this.name;
+        data["code"] = this.code;
+        data["description"] = this.description;
+        data["programGroupId"] = this.programGroupId;
+        data["subjectCatalogGroupId"] = this.subjectCatalogGroupId;
+        data["hostId"] = this.hostId;
+        if (Array.isArray(this.programGroupIds)) {
+            data["programGroupIds"] = [];
+            for (let item of this.programGroupIds)
+                data["programGroupIds"].push(item);
+        }
+        if (Array.isArray(this.instructors)) {
+            data["instructors"] = [];
+            for (let item of this.instructors)
+                data["instructors"].push(item ? item.toJSON() : undefined as any);
+        }
+        if (Array.isArray(this.weeklySessions)) {
+            data["weeklySessions"] = [];
+            for (let item of this.weeklySessions)
+                data["weeklySessions"].push(item ? item.toJSON() : undefined as any);
+        }
+        data["credits"] = this.credits;
+        data["requiredAttendancePercent"] = this.requiredAttendancePercent;
+        return data;
+    }
+}
+
+export interface IUpdateCourseOfferingRequest {
+    name: string;
+    code?: string | undefined;
+    description?: string | undefined;
+    programGroupId?: string | undefined;
+    subjectCatalogGroupId?: string | undefined;
+    hostId?: string | undefined;
+    programGroupIds?: string[] | undefined;
+    instructors?: OfferingInstructorInputDto[] | undefined;
+    weeklySessions?: OfferingWeeklySessionDto[] | undefined;
+    credits?: number;
+    requiredAttendancePercent?: number | undefined;
+}
+
+export class ServiceResponseOfIEnumerableOfOfferingEnrollmentDto implements IServiceResponseOfIEnumerableOfOfferingEnrollmentDto {
+    isSuccess?: boolean;
+    data?: OfferingEnrollmentDto[] | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfIEnumerableOfOfferingEnrollmentDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            if (Array.isArray(_data["data"])) {
+                this.data = [] as any;
+                for (let item of _data["data"])
+                    this.data!.push(OfferingEnrollmentDto.fromJS(item));
+            }
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfIEnumerableOfOfferingEnrollmentDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfIEnumerableOfOfferingEnrollmentDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        if (Array.isArray(this.data)) {
+            data["data"] = [];
+            for (let item of this.data)
+                data["data"].push(item ? item.toJSON() : undefined as any);
+        }
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfIEnumerableOfOfferingEnrollmentDto {
+    isSuccess?: boolean;
+    data?: OfferingEnrollmentDto[] | undefined;
+    error?: AppError | undefined;
+}
+
+export class OfferingEnrollmentDto implements IOfferingEnrollmentDto {
+    id!: string;
+    offeringId!: string;
+    userId!: string;
+    userDisplayName!: string;
+    cohortGroupId?: string | undefined;
+    cohortGroupName?: string | undefined;
+
+    constructor(data?: IOfferingEnrollmentDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.offeringId = _data["offeringId"];
+            this.userId = _data["userId"];
+            this.userDisplayName = _data["userDisplayName"];
+            this.cohortGroupId = _data["cohortGroupId"];
+            this.cohortGroupName = _data["cohortGroupName"];
+        }
+    }
+
+    static fromJS(data: any): OfferingEnrollmentDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new OfferingEnrollmentDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["offeringId"] = this.offeringId;
+        data["userId"] = this.userId;
+        data["userDisplayName"] = this.userDisplayName;
+        data["cohortGroupId"] = this.cohortGroupId;
+        data["cohortGroupName"] = this.cohortGroupName;
+        return data;
+    }
+}
+
+export interface IOfferingEnrollmentDto {
+    id: string;
+    offeringId: string;
+    userId: string;
+    userDisplayName: string;
+    cohortGroupId?: string | undefined;
+    cohortGroupName?: string | undefined;
+}
+
+export class ServiceResponseOfInteger implements IServiceResponseOfInteger {
+    isSuccess?: boolean;
+    data?: number;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfInteger) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"];
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfInteger {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfInteger();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfInteger {
+    isSuccess?: boolean;
+    data?: number;
+    error?: AppError | undefined;
+}
+
+export class EnrollCohortRequest implements IEnrollCohortRequest {
+    cohortGroupId!: string;
+
+    constructor(data?: IEnrollCohortRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.cohortGroupId = _data["cohortGroupId"];
+        }
+    }
+
+    static fromJS(data: any): EnrollCohortRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new EnrollCohortRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["cohortGroupId"] = this.cohortGroupId;
+        return data;
+    }
+}
+
+export interface IEnrollCohortRequest {
+    cohortGroupId: string;
+}
+
+export class EnrollProgramCohortsRequest implements IEnrollProgramCohortsRequest {
+    programGroupId!: string;
+
+    constructor(data?: IEnrollProgramCohortsRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.programGroupId = _data["programGroupId"];
+        }
+    }
+
+    static fromJS(data: any): EnrollProgramCohortsRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new EnrollProgramCohortsRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["programGroupId"] = this.programGroupId;
+        return data;
+    }
+}
+
+export interface IEnrollProgramCohortsRequest {
+    programGroupId: string;
+}
+
+export class EnrollLinkedProgramsRequest implements IEnrollLinkedProgramsRequest {
+    useLinkedPrograms?: boolean;
+
+    constructor(data?: IEnrollLinkedProgramsRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.useLinkedPrograms = _data["useLinkedPrograms"];
+        }
+    }
+
+    static fromJS(data: any): EnrollLinkedProgramsRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new EnrollLinkedProgramsRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["useLinkedPrograms"] = this.useLinkedPrograms;
+        return data;
+    }
+}
+
+export interface IEnrollLinkedProgramsRequest {
+    useLinkedPrograms?: boolean;
+}
+
+export class ServiceResponseOfOfferingGradePlanDto implements IServiceResponseOfOfferingGradePlanDto {
+    isSuccess?: boolean;
+    data?: OfferingGradePlanDto | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfOfferingGradePlanDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"] ? OfferingGradePlanDto.fromJS(_data["data"]) : undefined as any;
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfOfferingGradePlanDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfOfferingGradePlanDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data ? this.data.toJSON() : undefined as any;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfOfferingGradePlanDto {
+    isSuccess?: boolean;
+    data?: OfferingGradePlanDto | undefined;
+    error?: AppError | undefined;
+}
+
+export class OfferingGradePlanDto implements IOfferingGradePlanDto {
+    offeringId!: string;
+    offeringName!: string;
+    categories!: OfferingGradeCategoryDto[];
+    coreWeightSum!: number;
+    bonusWeightSum!: number;
+    canEditGradePlan!: boolean;
+
+    constructor(data?: IOfferingGradePlanDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+        if (!data) {
+            this.categories = [];
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.offeringId = _data["offeringId"];
+            this.offeringName = _data["offeringName"];
+            if (Array.isArray(_data["categories"])) {
+                this.categories = [] as any;
+                for (let item of _data["categories"])
+                    this.categories!.push(OfferingGradeCategoryDto.fromJS(item));
+            }
+            this.coreWeightSum = _data["coreWeightSum"];
+            this.bonusWeightSum = _data["bonusWeightSum"];
+            this.canEditGradePlan = _data["canEditGradePlan"];
+        }
+    }
+
+    static fromJS(data: any): OfferingGradePlanDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new OfferingGradePlanDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["offeringId"] = this.offeringId;
+        data["offeringName"] = this.offeringName;
+        if (Array.isArray(this.categories)) {
+            data["categories"] = [];
+            for (let item of this.categories)
+                data["categories"].push(item ? item.toJSON() : undefined as any);
+        }
+        data["coreWeightSum"] = this.coreWeightSum;
+        data["bonusWeightSum"] = this.bonusWeightSum;
+        data["canEditGradePlan"] = this.canEditGradePlan;
+        return data;
+    }
+}
+
+export interface IOfferingGradePlanDto {
+    offeringId: string;
+    offeringName: string;
+    categories: OfferingGradeCategoryDto[];
+    coreWeightSum: number;
+    bonusWeightSum: number;
+    canEditGradePlan: boolean;
+}
+
+export class OfferingGradeCategoryDto implements IOfferingGradeCategoryDto {
+    id!: string;
+    name!: string;
+    weight!: number;
+    sortOrder!: number;
+    isBonus!: boolean;
+    assignedWeightSum!: number;
+    tasks!: GradePlanTaskItemDto[];
+
+    constructor(data?: IOfferingGradeCategoryDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+        if (!data) {
+            this.tasks = [];
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.name = _data["name"];
+            this.weight = _data["weight"];
+            this.sortOrder = _data["sortOrder"];
+            this.isBonus = _data["isBonus"];
+            this.assignedWeightSum = _data["assignedWeightSum"];
+            if (Array.isArray(_data["tasks"])) {
+                this.tasks = [] as any;
+                for (let item of _data["tasks"])
+                    this.tasks!.push(GradePlanTaskItemDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): OfferingGradeCategoryDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new OfferingGradeCategoryDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["name"] = this.name;
+        data["weight"] = this.weight;
+        data["sortOrder"] = this.sortOrder;
+        data["isBonus"] = this.isBonus;
+        data["assignedWeightSum"] = this.assignedWeightSum;
+        if (Array.isArray(this.tasks)) {
+            data["tasks"] = [];
+            for (let item of this.tasks)
+                data["tasks"].push(item ? item.toJSON() : undefined as any);
+        }
+        return data;
+    }
+}
+
+export interface IOfferingGradeCategoryDto {
+    id: string;
+    name: string;
+    weight: number;
+    sortOrder: number;
+    isBonus: boolean;
+    assignedWeightSum: number;
+    tasks: GradePlanTaskItemDto[];
+}
+
+export class GradePlanTaskItemDto implements IGradePlanTaskItemDto {
+    id!: string;
+    title!: string;
+    assignmentBatchId?: string | undefined;
+    weight?: number | undefined;
+    maxScore?: number | undefined;
+    dueDate?: Date | undefined;
+
+    constructor(data?: IGradePlanTaskItemDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.title = _data["title"];
+            this.assignmentBatchId = _data["assignmentBatchId"];
+            this.weight = _data["weight"];
+            this.maxScore = _data["maxScore"];
+            this.dueDate = _data["dueDate"] ? new Date(_data["dueDate"].toString()) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): GradePlanTaskItemDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new GradePlanTaskItemDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["title"] = this.title;
+        data["assignmentBatchId"] = this.assignmentBatchId;
+        data["weight"] = this.weight;
+        data["maxScore"] = this.maxScore;
+        data["dueDate"] = this.dueDate ? this.dueDate.toISOString() : undefined as any;
+        return data;
+    }
+}
+
+export interface IGradePlanTaskItemDto {
+    id: string;
+    title: string;
+    assignmentBatchId?: string | undefined;
+    weight?: number | undefined;
+    maxScore?: number | undefined;
+    dueDate?: Date | undefined;
+}
+
+export class SaveOfferingGradePlanRequest implements ISaveOfferingGradePlanRequest {
+    categories!: UpsertOfferingGradeCategoryRequest[];
+
+    constructor(data?: ISaveOfferingGradePlanRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+        if (!data) {
+            this.categories = [];
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["categories"])) {
+                this.categories = [] as any;
+                for (let item of _data["categories"])
+                    this.categories!.push(UpsertOfferingGradeCategoryRequest.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): SaveOfferingGradePlanRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new SaveOfferingGradePlanRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.categories)) {
+            data["categories"] = [];
+            for (let item of this.categories)
+                data["categories"].push(item ? item.toJSON() : undefined as any);
+        }
+        return data;
+    }
+}
+
+export interface ISaveOfferingGradePlanRequest {
+    categories: UpsertOfferingGradeCategoryRequest[];
+}
+
+export class UpsertOfferingGradeCategoryRequest implements IUpsertOfferingGradeCategoryRequest {
+    id?: string | undefined;
+    name!: string;
+    weight!: number;
+    sortOrder?: number;
+    isBonus?: boolean;
+
+    constructor(data?: IUpsertOfferingGradeCategoryRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.name = _data["name"];
+            this.weight = _data["weight"];
+            this.sortOrder = _data["sortOrder"];
+            this.isBonus = _data["isBonus"];
+        }
+    }
+
+    static fromJS(data: any): UpsertOfferingGradeCategoryRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new UpsertOfferingGradeCategoryRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["name"] = this.name;
+        data["weight"] = this.weight;
+        data["sortOrder"] = this.sortOrder;
+        data["isBonus"] = this.isBonus;
+        return data;
+    }
+}
+
+export interface IUpsertOfferingGradeCategoryRequest {
+    id?: string | undefined;
+    name: string;
+    weight: number;
+    sortOrder?: number;
+    isBonus?: boolean;
+}
+
+export class ServiceResponseOfSetupProgramTermResultDto implements IServiceResponseOfSetupProgramTermResultDto {
+    isSuccess?: boolean;
+    data?: SetupProgramTermResultDto | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfSetupProgramTermResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"] ? SetupProgramTermResultDto.fromJS(_data["data"]) : undefined as any;
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfSetupProgramTermResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfSetupProgramTermResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data ? this.data.toJSON() : undefined as any;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfSetupProgramTermResultDto {
+    isSuccess?: boolean;
+    data?: SetupProgramTermResultDto | undefined;
+    error?: AppError | undefined;
+}
+
+export class SetupProgramTermResultDto implements ISetupProgramTermResultDto {
+    offeringsCreated!: number;
+    enrollmentsCreated!: number;
+
+    constructor(data?: ISetupProgramTermResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.offeringsCreated = _data["offeringsCreated"];
+            this.enrollmentsCreated = _data["enrollmentsCreated"];
+        }
+    }
+
+    static fromJS(data: any): SetupProgramTermResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new SetupProgramTermResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["offeringsCreated"] = this.offeringsCreated;
+        data["enrollmentsCreated"] = this.enrollmentsCreated;
+        return data;
+    }
+}
+
+export interface ISetupProgramTermResultDto {
+    offeringsCreated: number;
+    enrollmentsCreated: number;
+}
+
+export class SetupProgramTermRequest implements ISetupProgramTermRequest {
+    programGroupId!: string;
+    offeringNames?: string[] | undefined;
+    enrollAllCohorts?: boolean;
+
+    constructor(data?: ISetupProgramTermRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.programGroupId = _data["programGroupId"];
+            if (Array.isArray(_data["offeringNames"])) {
+                this.offeringNames = [] as any;
+                for (let item of _data["offeringNames"])
+                    this.offeringNames!.push(item);
+            }
+            this.enrollAllCohorts = _data["enrollAllCohorts"];
+        }
+    }
+
+    static fromJS(data: any): SetupProgramTermRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new SetupProgramTermRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["programGroupId"] = this.programGroupId;
+        if (Array.isArray(this.offeringNames)) {
+            data["offeringNames"] = [];
+            for (let item of this.offeringNames)
+                data["offeringNames"].push(item);
+        }
+        data["enrollAllCohorts"] = this.enrollAllCohorts;
+        return data;
+    }
+}
+
+export interface ISetupProgramTermRequest {
+    programGroupId: string;
+    offeringNames?: string[] | undefined;
+    enrollAllCohorts?: boolean;
+}
+
+export class RolloverOfferingsRequest implements IRolloverOfferingsRequest {
+    sourcePeriodId!: string;
+    copyEnrollments?: boolean;
+
+    constructor(data?: IRolloverOfferingsRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.sourcePeriodId = _data["sourcePeriodId"];
+            this.copyEnrollments = _data["copyEnrollments"];
+        }
+    }
+
+    static fromJS(data: any): RolloverOfferingsRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new RolloverOfferingsRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["sourcePeriodId"] = this.sourcePeriodId;
+        data["copyEnrollments"] = this.copyEnrollments;
+        return data;
+    }
+}
+
+export interface IRolloverOfferingsRequest {
+    sourcePeriodId: string;
+    copyEnrollments?: boolean;
+}
+
 export class ServiceResponseOfDigitalIdValidationResponse implements IServiceResponseOfDigitalIdValidationResponse {
     isSuccess?: boolean;
     data?: DigitalIdValidationResponse | undefined;
@@ -8845,6 +14252,110 @@ export class ValidateDigitalIdRequest implements IValidateDigitalIdRequest {
 
 export interface IValidateDigitalIdRequest {
     token: string;
+}
+
+export class ServiceResponseOfDigitalIdScanResultDto implements IServiceResponseOfDigitalIdScanResultDto {
+    isSuccess?: boolean;
+    data?: DigitalIdScanResultDto | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfDigitalIdScanResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"] ? DigitalIdScanResultDto.fromJS(_data["data"]) : undefined as any;
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfDigitalIdScanResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfDigitalIdScanResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data ? this.data.toJSON() : undefined as any;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfDigitalIdScanResultDto {
+    isSuccess?: boolean;
+    data?: DigitalIdScanResultDto | undefined;
+    error?: AppError | undefined;
+}
+
+export class DigitalIdScanResultDto implements IDigitalIdScanResultDto {
+    valid!: boolean;
+    userId?: string | undefined;
+    organizationId?: string | undefined;
+    fullName?: string | undefined;
+    roleName?: string | undefined;
+    avatarUrl?: string | undefined;
+    message?: string | undefined;
+
+    constructor(data?: IDigitalIdScanResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.valid = _data["valid"];
+            this.userId = _data["userId"];
+            this.organizationId = _data["organizationId"];
+            this.fullName = _data["fullName"];
+            this.roleName = _data["roleName"];
+            this.avatarUrl = _data["avatarUrl"];
+            this.message = _data["message"];
+        }
+    }
+
+    static fromJS(data: any): DigitalIdScanResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new DigitalIdScanResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["valid"] = this.valid;
+        data["userId"] = this.userId;
+        data["organizationId"] = this.organizationId;
+        data["fullName"] = this.fullName;
+        data["roleName"] = this.roleName;
+        data["avatarUrl"] = this.avatarUrl;
+        data["message"] = this.message;
+        return data;
+    }
+}
+
+export interface IDigitalIdScanResultDto {
+    valid: boolean;
+    userId?: string | undefined;
+    organizationId?: string | undefined;
+    fullName?: string | undefined;
+    roleName?: string | undefined;
+    avatarUrl?: string | undefined;
+    message?: string | undefined;
 }
 
 export class ServiceResponseOfIEnumerableOfEventTypeDto implements IServiceResponseOfIEnumerableOfEventTypeDto {
@@ -9025,50 +14536,6 @@ export class CreateEventTypeRequest implements ICreateEventTypeRequest {
 export interface ICreateEventTypeRequest {
     name: string;
     colorHex: string;
-}
-
-export class ServiceResponseOfBoolean implements IServiceResponseOfBoolean {
-    isSuccess?: boolean;
-    data?: boolean;
-    error?: AppError | undefined;
-
-    constructor(data?: IServiceResponseOfBoolean) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (this as any)[property] = (data as any)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.isSuccess = _data["isSuccess"];
-            this.data = _data["data"];
-            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
-        }
-    }
-
-    static fromJS(data: any): ServiceResponseOfBoolean {
-        data = typeof data === 'object' ? data : {};
-        let result = new ServiceResponseOfBoolean();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["isSuccess"] = this.isSuccess;
-        data["data"] = this.data;
-        data["error"] = this.error ? this.error.toJSON() : undefined as any;
-        return data;
-    }
-}
-
-export interface IServiceResponseOfBoolean {
-    isSuccess?: boolean;
-    data?: boolean;
-    error?: AppError | undefined;
 }
 
 export class ServiceResponseOfFileUploadResponse implements IServiceResponseOfFileUploadResponse {
@@ -10253,6 +15720,7 @@ export class GroupDetailDto implements IGroupDetailDto {
     managerId?: string | undefined;
     managerName?: string | undefined;
     scheduleConfig?: string | undefined;
+    directMemberCount!: number;
     memberCount!: number;
     childCount!: number;
     children!: GroupSummaryDto[];
@@ -10279,6 +15747,7 @@ export class GroupDetailDto implements IGroupDetailDto {
             this.managerId = _data["managerId"];
             this.managerName = _data["managerName"];
             this.scheduleConfig = _data["scheduleConfig"];
+            this.directMemberCount = _data["directMemberCount"];
             this.memberCount = _data["memberCount"];
             this.childCount = _data["childCount"];
             if (Array.isArray(_data["children"])) {
@@ -10306,6 +15775,7 @@ export class GroupDetailDto implements IGroupDetailDto {
         data["managerId"] = this.managerId;
         data["managerName"] = this.managerName;
         data["scheduleConfig"] = this.scheduleConfig;
+        data["directMemberCount"] = this.directMemberCount;
         data["memberCount"] = this.memberCount;
         data["childCount"] = this.childCount;
         if (Array.isArray(this.children)) {
@@ -10326,6 +15796,7 @@ export interface IGroupDetailDto {
     managerId?: string | undefined;
     managerName?: string | undefined;
     scheduleConfig?: string | undefined;
+    directMemberCount: number;
     memberCount: number;
     childCount: number;
     children: GroupSummaryDto[];
@@ -10429,6 +15900,7 @@ export class GroupDto implements IGroupDto {
     type!: string;
     parentGroupId?: string | undefined;
     managerId?: string | undefined;
+    academicYear?: string | undefined;
     memberCount!: number;
     childCount!: number;
 
@@ -10448,6 +15920,7 @@ export class GroupDto implements IGroupDto {
             this.type = _data["type"];
             this.parentGroupId = _data["parentGroupId"];
             this.managerId = _data["managerId"];
+            this.academicYear = _data["academicYear"];
             this.memberCount = _data["memberCount"];
             this.childCount = _data["childCount"];
         }
@@ -10467,6 +15940,7 @@ export class GroupDto implements IGroupDto {
         data["type"] = this.type;
         data["parentGroupId"] = this.parentGroupId;
         data["managerId"] = this.managerId;
+        data["academicYear"] = this.academicYear;
         data["memberCount"] = this.memberCount;
         data["childCount"] = this.childCount;
         return data;
@@ -10479,6 +15953,7 @@ export interface IGroupDto {
     type: string;
     parentGroupId?: string | undefined;
     managerId?: string | undefined;
+    academicYear?: string | undefined;
     memberCount: number;
     childCount: number;
 }
@@ -10489,6 +15964,7 @@ export class CreateGroupRequest implements ICreateGroupRequest {
     managerId?: string | undefined;
     parentGroupId?: string | undefined;
     scheduleConfig?: string | undefined;
+    academicYear?: string | undefined;
 
     constructor(data?: ICreateGroupRequest) {
         if (data) {
@@ -10506,6 +15982,7 @@ export class CreateGroupRequest implements ICreateGroupRequest {
             this.managerId = _data["managerId"];
             this.parentGroupId = _data["parentGroupId"];
             this.scheduleConfig = _data["scheduleConfig"];
+            this.academicYear = _data["academicYear"];
         }
     }
 
@@ -10523,6 +16000,7 @@ export class CreateGroupRequest implements ICreateGroupRequest {
         data["managerId"] = this.managerId;
         data["parentGroupId"] = this.parentGroupId;
         data["scheduleConfig"] = this.scheduleConfig;
+        data["academicYear"] = this.academicYear;
         return data;
     }
 }
@@ -10533,6 +16011,7 @@ export interface ICreateGroupRequest {
     managerId?: string | undefined;
     parentGroupId?: string | undefined;
     scheduleConfig?: string | undefined;
+    academicYear?: string | undefined;
 }
 
 export class UpdateGroupRequest implements IUpdateGroupRequest {
@@ -10541,6 +16020,7 @@ export class UpdateGroupRequest implements IUpdateGroupRequest {
     managerId?: string | undefined;
     parentGroupId?: string | undefined;
     scheduleConfig?: string | undefined;
+    academicYear?: string | undefined;
 
     constructor(data?: IUpdateGroupRequest) {
         if (data) {
@@ -10558,6 +16038,7 @@ export class UpdateGroupRequest implements IUpdateGroupRequest {
             this.managerId = _data["managerId"];
             this.parentGroupId = _data["parentGroupId"];
             this.scheduleConfig = _data["scheduleConfig"];
+            this.academicYear = _data["academicYear"];
         }
     }
 
@@ -10575,6 +16056,7 @@ export class UpdateGroupRequest implements IUpdateGroupRequest {
         data["managerId"] = this.managerId;
         data["parentGroupId"] = this.parentGroupId;
         data["scheduleConfig"] = this.scheduleConfig;
+        data["academicYear"] = this.academicYear;
         return data;
     }
 }
@@ -10585,6 +16067,7 @@ export interface IUpdateGroupRequest {
     managerId?: string | undefined;
     parentGroupId?: string | undefined;
     scheduleConfig?: string | undefined;
+    academicYear?: string | undefined;
 }
 
 export class ServiceResponseOfPagedResponseOfGroupMemberDto implements IServiceResponseOfPagedResponseOfGroupMemberDto {
@@ -10702,6 +16185,9 @@ export class GroupMemberDto implements IGroupMemberDto {
     roleInGroup?: string | undefined;
     avatarUrl?: string | undefined;
     roleName!: string;
+    isDirectMember!: boolean;
+    placementGroupId!: string;
+    placementGroupName!: string;
 
     constructor(data?: IGroupMemberDto) {
         if (data) {
@@ -10721,6 +16207,9 @@ export class GroupMemberDto implements IGroupMemberDto {
             this.roleInGroup = _data["roleInGroup"];
             this.avatarUrl = _data["avatarUrl"];
             this.roleName = _data["roleName"];
+            this.isDirectMember = _data["isDirectMember"];
+            this.placementGroupId = _data["placementGroupId"];
+            this.placementGroupName = _data["placementGroupName"];
         }
     }
 
@@ -10740,6 +16229,9 @@ export class GroupMemberDto implements IGroupMemberDto {
         data["roleInGroup"] = this.roleInGroup;
         data["avatarUrl"] = this.avatarUrl;
         data["roleName"] = this.roleName;
+        data["isDirectMember"] = this.isDirectMember;
+        data["placementGroupId"] = this.placementGroupId;
+        data["placementGroupName"] = this.placementGroupName;
         return data;
     }
 }
@@ -10752,50 +16244,9 @@ export interface IGroupMemberDto {
     roleInGroup?: string | undefined;
     avatarUrl?: string | undefined;
     roleName: string;
-}
-
-export class ServiceResponseOfInteger implements IServiceResponseOfInteger {
-    isSuccess?: boolean;
-    data?: number;
-    error?: AppError | undefined;
-
-    constructor(data?: IServiceResponseOfInteger) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (this as any)[property] = (data as any)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.isSuccess = _data["isSuccess"];
-            this.data = _data["data"];
-            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
-        }
-    }
-
-    static fromJS(data: any): ServiceResponseOfInteger {
-        data = typeof data === 'object' ? data : {};
-        let result = new ServiceResponseOfInteger();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["isSuccess"] = this.isSuccess;
-        data["data"] = this.data;
-        data["error"] = this.error ? this.error.toJSON() : undefined as any;
-        return data;
-    }
-}
-
-export interface IServiceResponseOfInteger {
-    isSuccess?: boolean;
-    data?: number;
-    error?: AppError | undefined;
+    isDirectMember: boolean;
+    placementGroupId: string;
+    placementGroupName: string;
 }
 
 export class AddGroupMembersRequest implements IAddGroupMembersRequest {
@@ -11427,10 +16878,10 @@ export interface IMapPinDto {
 }
 
 export enum PinType {
-    Room = 0,
-    Restroom = 1,
-    Elevator = 2,
-    Exit = 3,
+    Room = "Room",
+    Restroom = "Restroom",
+    Elevator = "Elevator",
+    Exit = "Exit",
 }
 
 export class ServiceResponseOfFloorDto implements IServiceResponseOfFloorDto {
@@ -11749,23 +17200,23 @@ export interface INewsItemDto {
 }
 
 export enum NewsType {
-    Announcement = 0,
-    Alert = 1,
-    Event = 2,
-    Info = 3,
+    Announcement = "Announcement",
+    Alert = "Alert",
+    Event = "Event",
+    Info = "Info",
 }
 
 export enum NewsCategory {
-    General = 0,
-    Academic = 1,
-    Urgent = 2,
-    Facilities = 3,
-    PeopleAndCulture = 4,
-    EventsAndPrograms = 5,
-    ResearchAndInnovation = 6,
-    CommunityAndEngagement = 7,
-    OperationsAndBusiness = 8,
-    ComplianceAndSecurity = 9,
+    General = "General",
+    Academic = "Academic",
+    Urgent = "Urgent",
+    Facilities = "Facilities",
+    PeopleAndCulture = "PeopleAndCulture",
+    EventsAndPrograms = "EventsAndPrograms",
+    ResearchAndInnovation = "ResearchAndInnovation",
+    CommunityAndEngagement = "CommunityAndEngagement",
+    OperationsAndBusiness = "OperationsAndBusiness",
+    ComplianceAndSecurity = "ComplianceAndSecurity",
 }
 
 export class ServiceResponseOfNewsItemDto implements IServiceResponseOfNewsItemDto {
@@ -11968,6 +17419,1643 @@ export interface IUpdateNewsRequest {
     coverImageUrl?: string | undefined;
 }
 
+export class ServiceResponseOfIEnumerableOfCourseOfferingPackageDto implements IServiceResponseOfIEnumerableOfCourseOfferingPackageDto {
+    isSuccess?: boolean;
+    data?: CourseOfferingPackageDto[] | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfIEnumerableOfCourseOfferingPackageDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            if (Array.isArray(_data["data"])) {
+                this.data = [] as any;
+                for (let item of _data["data"])
+                    this.data!.push(CourseOfferingPackageDto.fromJS(item));
+            }
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfIEnumerableOfCourseOfferingPackageDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfIEnumerableOfCourseOfferingPackageDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        if (Array.isArray(this.data)) {
+            data["data"] = [];
+            for (let item of this.data)
+                data["data"].push(item ? item.toJSON() : undefined as any);
+        }
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfIEnumerableOfCourseOfferingPackageDto {
+    isSuccess?: boolean;
+    data?: CourseOfferingPackageDto[] | undefined;
+    error?: AppError | undefined;
+}
+
+export class CourseOfferingPackageDto implements ICourseOfferingPackageDto {
+    id!: string;
+    name!: string;
+    description?: string | undefined;
+    programGroupIds!: string[];
+    programGroupNames!: string[];
+    items!: CourseOfferingPackageItemDto[];
+    createdAt!: Date;
+
+    constructor(data?: ICourseOfferingPackageDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+        if (!data) {
+            this.programGroupIds = [];
+            this.programGroupNames = [];
+            this.items = [];
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.name = _data["name"];
+            this.description = _data["description"];
+            if (Array.isArray(_data["programGroupIds"])) {
+                this.programGroupIds = [] as any;
+                for (let item of _data["programGroupIds"])
+                    this.programGroupIds!.push(item);
+            }
+            if (Array.isArray(_data["programGroupNames"])) {
+                this.programGroupNames = [] as any;
+                for (let item of _data["programGroupNames"])
+                    this.programGroupNames!.push(item);
+            }
+            if (Array.isArray(_data["items"])) {
+                this.items = [] as any;
+                for (let item of _data["items"])
+                    this.items!.push(CourseOfferingPackageItemDto.fromJS(item));
+            }
+            this.createdAt = _data["createdAt"] ? new Date(_data["createdAt"].toString()) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): CourseOfferingPackageDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new CourseOfferingPackageDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["name"] = this.name;
+        data["description"] = this.description;
+        if (Array.isArray(this.programGroupIds)) {
+            data["programGroupIds"] = [];
+            for (let item of this.programGroupIds)
+                data["programGroupIds"].push(item);
+        }
+        if (Array.isArray(this.programGroupNames)) {
+            data["programGroupNames"] = [];
+            for (let item of this.programGroupNames)
+                data["programGroupNames"].push(item);
+        }
+        if (Array.isArray(this.items)) {
+            data["items"] = [];
+            for (let item of this.items)
+                data["items"].push(item ? item.toJSON() : undefined as any);
+        }
+        data["createdAt"] = this.createdAt ? this.createdAt.toISOString() : undefined as any;
+        return data;
+    }
+}
+
+export interface ICourseOfferingPackageDto {
+    id: string;
+    name: string;
+    description?: string | undefined;
+    programGroupIds: string[];
+    programGroupNames: string[];
+    items: CourseOfferingPackageItemDto[];
+    createdAt: Date;
+}
+
+export class CourseOfferingPackageItemDto implements ICourseOfferingPackageItemDto {
+    id!: string;
+    name!: string;
+    code?: string | undefined;
+    description?: string | undefined;
+    sortOrder!: number;
+    defaultHostId?: string | undefined;
+    defaultHostName?: string | undefined;
+    instructors!: OfferingInstructorDto[];
+    programGroupIds!: string[];
+    programGroupNames!: string[];
+    weeklySessions!: OfferingWeeklySessionDto[];
+
+    constructor(data?: ICourseOfferingPackageItemDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+        if (!data) {
+            this.instructors = [];
+            this.programGroupIds = [];
+            this.programGroupNames = [];
+            this.weeklySessions = [];
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.name = _data["name"];
+            this.code = _data["code"];
+            this.description = _data["description"];
+            this.sortOrder = _data["sortOrder"];
+            this.defaultHostId = _data["defaultHostId"];
+            this.defaultHostName = _data["defaultHostName"];
+            if (Array.isArray(_data["instructors"])) {
+                this.instructors = [] as any;
+                for (let item of _data["instructors"])
+                    this.instructors!.push(OfferingInstructorDto.fromJS(item));
+            }
+            if (Array.isArray(_data["programGroupIds"])) {
+                this.programGroupIds = [] as any;
+                for (let item of _data["programGroupIds"])
+                    this.programGroupIds!.push(item);
+            }
+            if (Array.isArray(_data["programGroupNames"])) {
+                this.programGroupNames = [] as any;
+                for (let item of _data["programGroupNames"])
+                    this.programGroupNames!.push(item);
+            }
+            if (Array.isArray(_data["weeklySessions"])) {
+                this.weeklySessions = [] as any;
+                for (let item of _data["weeklySessions"])
+                    this.weeklySessions!.push(OfferingWeeklySessionDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): CourseOfferingPackageItemDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new CourseOfferingPackageItemDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["name"] = this.name;
+        data["code"] = this.code;
+        data["description"] = this.description;
+        data["sortOrder"] = this.sortOrder;
+        data["defaultHostId"] = this.defaultHostId;
+        data["defaultHostName"] = this.defaultHostName;
+        if (Array.isArray(this.instructors)) {
+            data["instructors"] = [];
+            for (let item of this.instructors)
+                data["instructors"].push(item ? item.toJSON() : undefined as any);
+        }
+        if (Array.isArray(this.programGroupIds)) {
+            data["programGroupIds"] = [];
+            for (let item of this.programGroupIds)
+                data["programGroupIds"].push(item);
+        }
+        if (Array.isArray(this.programGroupNames)) {
+            data["programGroupNames"] = [];
+            for (let item of this.programGroupNames)
+                data["programGroupNames"].push(item);
+        }
+        if (Array.isArray(this.weeklySessions)) {
+            data["weeklySessions"] = [];
+            for (let item of this.weeklySessions)
+                data["weeklySessions"].push(item ? item.toJSON() : undefined as any);
+        }
+        return data;
+    }
+}
+
+export interface ICourseOfferingPackageItemDto {
+    id: string;
+    name: string;
+    code?: string | undefined;
+    description?: string | undefined;
+    sortOrder: number;
+    defaultHostId?: string | undefined;
+    defaultHostName?: string | undefined;
+    instructors: OfferingInstructorDto[];
+    programGroupIds: string[];
+    programGroupNames: string[];
+    weeklySessions: OfferingWeeklySessionDto[];
+}
+
+export class ServiceResponseOfCourseOfferingPackageDto implements IServiceResponseOfCourseOfferingPackageDto {
+    isSuccess?: boolean;
+    data?: CourseOfferingPackageDto | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfCourseOfferingPackageDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"] ? CourseOfferingPackageDto.fromJS(_data["data"]) : undefined as any;
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfCourseOfferingPackageDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfCourseOfferingPackageDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data ? this.data.toJSON() : undefined as any;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfCourseOfferingPackageDto {
+    isSuccess?: boolean;
+    data?: CourseOfferingPackageDto | undefined;
+    error?: AppError | undefined;
+}
+
+export class CreateCourseOfferingPackageRequest implements ICreateCourseOfferingPackageRequest {
+    name!: string;
+    description?: string | undefined;
+    programGroupIds?: string[] | undefined;
+
+    constructor(data?: ICreateCourseOfferingPackageRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.name = _data["name"];
+            this.description = _data["description"];
+            if (Array.isArray(_data["programGroupIds"])) {
+                this.programGroupIds = [] as any;
+                for (let item of _data["programGroupIds"])
+                    this.programGroupIds!.push(item);
+            }
+        }
+    }
+
+    static fromJS(data: any): CreateCourseOfferingPackageRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new CreateCourseOfferingPackageRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["name"] = this.name;
+        data["description"] = this.description;
+        if (Array.isArray(this.programGroupIds)) {
+            data["programGroupIds"] = [];
+            for (let item of this.programGroupIds)
+                data["programGroupIds"].push(item);
+        }
+        return data;
+    }
+}
+
+export interface ICreateCourseOfferingPackageRequest {
+    name: string;
+    description?: string | undefined;
+    programGroupIds?: string[] | undefined;
+}
+
+export class UpdateCourseOfferingPackageRequest implements IUpdateCourseOfferingPackageRequest {
+    name!: string;
+    description?: string | undefined;
+    programGroupIds?: string[] | undefined;
+
+    constructor(data?: IUpdateCourseOfferingPackageRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.name = _data["name"];
+            this.description = _data["description"];
+            if (Array.isArray(_data["programGroupIds"])) {
+                this.programGroupIds = [] as any;
+                for (let item of _data["programGroupIds"])
+                    this.programGroupIds!.push(item);
+            }
+        }
+    }
+
+    static fromJS(data: any): UpdateCourseOfferingPackageRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new UpdateCourseOfferingPackageRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["name"] = this.name;
+        data["description"] = this.description;
+        if (Array.isArray(this.programGroupIds)) {
+            data["programGroupIds"] = [];
+            for (let item of this.programGroupIds)
+                data["programGroupIds"].push(item);
+        }
+        return data;
+    }
+}
+
+export interface IUpdateCourseOfferingPackageRequest {
+    name: string;
+    description?: string | undefined;
+    programGroupIds?: string[] | undefined;
+}
+
+export class SaveCourseOfferingPackageItemsRequest implements ISaveCourseOfferingPackageItemsRequest {
+    items!: UpsertCourseOfferingPackageItemRequest[];
+
+    constructor(data?: ISaveCourseOfferingPackageItemsRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+        if (!data) {
+            this.items = [];
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["items"])) {
+                this.items = [] as any;
+                for (let item of _data["items"])
+                    this.items!.push(UpsertCourseOfferingPackageItemRequest.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): SaveCourseOfferingPackageItemsRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new SaveCourseOfferingPackageItemsRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.items)) {
+            data["items"] = [];
+            for (let item of this.items)
+                data["items"].push(item ? item.toJSON() : undefined as any);
+        }
+        return data;
+    }
+}
+
+export interface ISaveCourseOfferingPackageItemsRequest {
+    items: UpsertCourseOfferingPackageItemRequest[];
+}
+
+export class UpsertCourseOfferingPackageItemRequest implements IUpsertCourseOfferingPackageItemRequest {
+    id?: string | undefined;
+    name!: string;
+    code?: string | undefined;
+    description?: string | undefined;
+    sortOrder?: number;
+    defaultHostId?: string | undefined;
+    defaultHostName?: string | undefined;
+    instructors?: OfferingInstructorInputDto[] | undefined;
+    programGroupIds?: string[] | undefined;
+    weeklySessions?: OfferingWeeklySessionDto[] | undefined;
+
+    constructor(data?: IUpsertCourseOfferingPackageItemRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.name = _data["name"];
+            this.code = _data["code"];
+            this.description = _data["description"];
+            this.sortOrder = _data["sortOrder"];
+            this.defaultHostId = _data["defaultHostId"];
+            this.defaultHostName = _data["defaultHostName"];
+            if (Array.isArray(_data["instructors"])) {
+                this.instructors = [] as any;
+                for (let item of _data["instructors"])
+                    this.instructors!.push(OfferingInstructorInputDto.fromJS(item));
+            }
+            if (Array.isArray(_data["programGroupIds"])) {
+                this.programGroupIds = [] as any;
+                for (let item of _data["programGroupIds"])
+                    this.programGroupIds!.push(item);
+            }
+            if (Array.isArray(_data["weeklySessions"])) {
+                this.weeklySessions = [] as any;
+                for (let item of _data["weeklySessions"])
+                    this.weeklySessions!.push(OfferingWeeklySessionDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): UpsertCourseOfferingPackageItemRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new UpsertCourseOfferingPackageItemRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["name"] = this.name;
+        data["code"] = this.code;
+        data["description"] = this.description;
+        data["sortOrder"] = this.sortOrder;
+        data["defaultHostId"] = this.defaultHostId;
+        data["defaultHostName"] = this.defaultHostName;
+        if (Array.isArray(this.instructors)) {
+            data["instructors"] = [];
+            for (let item of this.instructors)
+                data["instructors"].push(item ? item.toJSON() : undefined as any);
+        }
+        if (Array.isArray(this.programGroupIds)) {
+            data["programGroupIds"] = [];
+            for (let item of this.programGroupIds)
+                data["programGroupIds"].push(item);
+        }
+        if (Array.isArray(this.weeklySessions)) {
+            data["weeklySessions"] = [];
+            for (let item of this.weeklySessions)
+                data["weeklySessions"].push(item ? item.toJSON() : undefined as any);
+        }
+        return data;
+    }
+}
+
+export interface IUpsertCourseOfferingPackageItemRequest {
+    id?: string | undefined;
+    name: string;
+    code?: string | undefined;
+    description?: string | undefined;
+    sortOrder?: number;
+    defaultHostId?: string | undefined;
+    defaultHostName?: string | undefined;
+    instructors?: OfferingInstructorInputDto[] | undefined;
+    programGroupIds?: string[] | undefined;
+    weeklySessions?: OfferingWeeklySessionDto[] | undefined;
+}
+
+export class ServiceResponseOfApplyOfferingPackageResultDto implements IServiceResponseOfApplyOfferingPackageResultDto {
+    isSuccess?: boolean;
+    data?: ApplyOfferingPackageResultDto | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfApplyOfferingPackageResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"] ? ApplyOfferingPackageResultDto.fromJS(_data["data"]) : undefined as any;
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfApplyOfferingPackageResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfApplyOfferingPackageResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data ? this.data.toJSON() : undefined as any;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfApplyOfferingPackageResultDto {
+    isSuccess?: boolean;
+    data?: ApplyOfferingPackageResultDto | undefined;
+    error?: AppError | undefined;
+}
+
+export class ApplyOfferingPackageResultDto implements IApplyOfferingPackageResultDto {
+    offeringsCreated!: number;
+    offeringsSkipped!: number;
+    enrollmentsCreated!: number;
+    offeringsExistingEnrolled!: number;
+
+    constructor(data?: IApplyOfferingPackageResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.offeringsCreated = _data["offeringsCreated"];
+            this.offeringsSkipped = _data["offeringsSkipped"];
+            this.enrollmentsCreated = _data["enrollmentsCreated"];
+            this.offeringsExistingEnrolled = _data["offeringsExistingEnrolled"];
+        }
+    }
+
+    static fromJS(data: any): ApplyOfferingPackageResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ApplyOfferingPackageResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["offeringsCreated"] = this.offeringsCreated;
+        data["offeringsSkipped"] = this.offeringsSkipped;
+        data["enrollmentsCreated"] = this.enrollmentsCreated;
+        data["offeringsExistingEnrolled"] = this.offeringsExistingEnrolled;
+        return data;
+    }
+}
+
+export interface IApplyOfferingPackageResultDto {
+    offeringsCreated: number;
+    offeringsSkipped: number;
+    enrollmentsCreated: number;
+    offeringsExistingEnrolled: number;
+}
+
+export class ApplyOfferingPackageRequest implements IApplyOfferingPackageRequest {
+    enrollLinkedPrograms?: boolean;
+    skipExistingNames?: boolean;
+    enrollExistingOfferings?: boolean;
+    limitToItemNames?: string[] | undefined;
+
+    constructor(data?: IApplyOfferingPackageRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.enrollLinkedPrograms = _data["enrollLinkedPrograms"];
+            this.skipExistingNames = _data["skipExistingNames"];
+            this.enrollExistingOfferings = _data["enrollExistingOfferings"];
+            if (Array.isArray(_data["limitToItemNames"])) {
+                this.limitToItemNames = [] as any;
+                for (let item of _data["limitToItemNames"])
+                    this.limitToItemNames!.push(item);
+            }
+        }
+    }
+
+    static fromJS(data: any): ApplyOfferingPackageRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new ApplyOfferingPackageRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["enrollLinkedPrograms"] = this.enrollLinkedPrograms;
+        data["skipExistingNames"] = this.skipExistingNames;
+        data["enrollExistingOfferings"] = this.enrollExistingOfferings;
+        if (Array.isArray(this.limitToItemNames)) {
+            data["limitToItemNames"] = [];
+            for (let item of this.limitToItemNames)
+                data["limitToItemNames"].push(item);
+        }
+        return data;
+    }
+}
+
+export interface IApplyOfferingPackageRequest {
+    enrollLinkedPrograms?: boolean;
+    skipExistingNames?: boolean;
+    enrollExistingOfferings?: boolean;
+    limitToItemNames?: string[] | undefined;
+}
+
+export class ServiceResponseOfRevertOfferingPackageResultDto implements IServiceResponseOfRevertOfferingPackageResultDto {
+    isSuccess?: boolean;
+    data?: RevertOfferingPackageResultDto | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfRevertOfferingPackageResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"] ? RevertOfferingPackageResultDto.fromJS(_data["data"]) : undefined as any;
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfRevertOfferingPackageResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfRevertOfferingPackageResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data ? this.data.toJSON() : undefined as any;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfRevertOfferingPackageResultDto {
+    isSuccess?: boolean;
+    data?: RevertOfferingPackageResultDto | undefined;
+    error?: AppError | undefined;
+}
+
+export class RevertOfferingPackageResultDto implements IRevertOfferingPackageResultDto {
+    offeringsRemoved!: number;
+    enrollmentsRemoved!: number;
+
+    constructor(data?: IRevertOfferingPackageResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.offeringsRemoved = _data["offeringsRemoved"];
+            this.enrollmentsRemoved = _data["enrollmentsRemoved"];
+        }
+    }
+
+    static fromJS(data: any): RevertOfferingPackageResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new RevertOfferingPackageResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["offeringsRemoved"] = this.offeringsRemoved;
+        data["enrollmentsRemoved"] = this.enrollmentsRemoved;
+        return data;
+    }
+}
+
+export interface IRevertOfferingPackageResultDto {
+    offeringsRemoved: number;
+    enrollmentsRemoved: number;
+}
+
+export class ServiceResponseOfCurrentOrganizationPeriodDto implements IServiceResponseOfCurrentOrganizationPeriodDto {
+    isSuccess?: boolean;
+    data?: CurrentOrganizationPeriodDto | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfCurrentOrganizationPeriodDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"] ? CurrentOrganizationPeriodDto.fromJS(_data["data"]) : undefined as any;
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfCurrentOrganizationPeriodDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfCurrentOrganizationPeriodDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data ? this.data.toJSON() : undefined as any;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfCurrentOrganizationPeriodDto {
+    isSuccess?: boolean;
+    data?: CurrentOrganizationPeriodDto | undefined;
+    error?: AppError | undefined;
+}
+
+export class CurrentOrganizationPeriodDto implements ICurrentOrganizationPeriodDto {
+    periodId?: string | undefined;
+    periodName?: string | undefined;
+
+    constructor(data?: ICurrentOrganizationPeriodDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.periodId = _data["periodId"];
+            this.periodName = _data["periodName"];
+        }
+    }
+
+    static fromJS(data: any): CurrentOrganizationPeriodDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new CurrentOrganizationPeriodDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["periodId"] = this.periodId;
+        data["periodName"] = this.periodName;
+        return data;
+    }
+}
+
+export interface ICurrentOrganizationPeriodDto {
+    periodId?: string | undefined;
+    periodName?: string | undefined;
+}
+
+export class ServiceResponseOfIEnumerableOfOrganizationPeriodDto implements IServiceResponseOfIEnumerableOfOrganizationPeriodDto {
+    isSuccess?: boolean;
+    data?: OrganizationPeriodDto[] | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfIEnumerableOfOrganizationPeriodDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            if (Array.isArray(_data["data"])) {
+                this.data = [] as any;
+                for (let item of _data["data"])
+                    this.data!.push(OrganizationPeriodDto.fromJS(item));
+            }
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfIEnumerableOfOrganizationPeriodDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfIEnumerableOfOrganizationPeriodDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        if (Array.isArray(this.data)) {
+            data["data"] = [];
+            for (let item of this.data)
+                data["data"].push(item ? item.toJSON() : undefined as any);
+        }
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfIEnumerableOfOrganizationPeriodDto {
+    isSuccess?: boolean;
+    data?: OrganizationPeriodDto[] | undefined;
+    error?: AppError | undefined;
+}
+
+export class OrganizationPeriodDto implements IOrganizationPeriodDto {
+    id!: string;
+    name!: string;
+    startDate!: Date;
+    endDate!: Date;
+    isCurrent!: boolean;
+
+    constructor(data?: IOrganizationPeriodDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.name = _data["name"];
+            this.startDate = _data["startDate"] ? new Date(_data["startDate"].toString()) : undefined as any;
+            this.endDate = _data["endDate"] ? new Date(_data["endDate"].toString()) : undefined as any;
+            this.isCurrent = _data["isCurrent"];
+        }
+    }
+
+    static fromJS(data: any): OrganizationPeriodDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new OrganizationPeriodDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["name"] = this.name;
+        data["startDate"] = this.startDate ? this.startDate.toISOString() : undefined as any;
+        data["endDate"] = this.endDate ? this.endDate.toISOString() : undefined as any;
+        data["isCurrent"] = this.isCurrent;
+        return data;
+    }
+}
+
+export interface IOrganizationPeriodDto {
+    id: string;
+    name: string;
+    startDate: Date;
+    endDate: Date;
+    isCurrent: boolean;
+}
+
+export class ServiceResponseOfIEnumerableOfOfferingPickerItemDto implements IServiceResponseOfIEnumerableOfOfferingPickerItemDto {
+    isSuccess?: boolean;
+    data?: OfferingPickerItemDto[] | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfIEnumerableOfOfferingPickerItemDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            if (Array.isArray(_data["data"])) {
+                this.data = [] as any;
+                for (let item of _data["data"])
+                    this.data!.push(OfferingPickerItemDto.fromJS(item));
+            }
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfIEnumerableOfOfferingPickerItemDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfIEnumerableOfOfferingPickerItemDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        if (Array.isArray(this.data)) {
+            data["data"] = [];
+            for (let item of this.data)
+                data["data"].push(item ? item.toJSON() : undefined as any);
+        }
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfIEnumerableOfOfferingPickerItemDto {
+    isSuccess?: boolean;
+    data?: OfferingPickerItemDto[] | undefined;
+    error?: AppError | undefined;
+}
+
+export class OfferingPickerItemDto implements IOfferingPickerItemDto {
+    id!: string;
+    name!: string;
+    code?: string | undefined;
+    periodId!: string;
+    periodName?: string | undefined;
+    programGroupId?: string | undefined;
+    credits!: number;
+
+    constructor(data?: IOfferingPickerItemDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.name = _data["name"];
+            this.code = _data["code"];
+            this.periodId = _data["periodId"];
+            this.periodName = _data["periodName"];
+            this.programGroupId = _data["programGroupId"];
+            this.credits = _data["credits"];
+        }
+    }
+
+    static fromJS(data: any): OfferingPickerItemDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new OfferingPickerItemDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["name"] = this.name;
+        data["code"] = this.code;
+        data["periodId"] = this.periodId;
+        data["periodName"] = this.periodName;
+        data["programGroupId"] = this.programGroupId;
+        data["credits"] = this.credits;
+        return data;
+    }
+}
+
+export interface IOfferingPickerItemDto {
+    id: string;
+    name: string;
+    code?: string | undefined;
+    periodId: string;
+    periodName?: string | undefined;
+    programGroupId?: string | undefined;
+    credits: number;
+}
+
+export class ServiceResponseOfOfferingGradebookDto implements IServiceResponseOfOfferingGradebookDto {
+    isSuccess?: boolean;
+    data?: OfferingGradebookDto | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfOfferingGradebookDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"] ? OfferingGradebookDto.fromJS(_data["data"]) : undefined as any;
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfOfferingGradebookDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfOfferingGradebookDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data ? this.data.toJSON() : undefined as any;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfOfferingGradebookDto {
+    isSuccess?: boolean;
+    data?: OfferingGradebookDto | undefined;
+    error?: AppError | undefined;
+}
+
+export class OfferingGradebookDto implements IOfferingGradebookDto {
+    offeringId!: string;
+    offeringName!: string;
+    offeringCode?: string | undefined;
+    periodId!: string;
+    credits!: number;
+    cohortOptions!: GradebookCohortOptionDto[];
+    students!: GradebookStudentSummaryDto[];
+
+    constructor(data?: IOfferingGradebookDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+        if (!data) {
+            this.cohortOptions = [];
+            this.students = [];
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.offeringId = _data["offeringId"];
+            this.offeringName = _data["offeringName"];
+            this.offeringCode = _data["offeringCode"];
+            this.periodId = _data["periodId"];
+            this.credits = _data["credits"];
+            if (Array.isArray(_data["cohortOptions"])) {
+                this.cohortOptions = [] as any;
+                for (let item of _data["cohortOptions"])
+                    this.cohortOptions!.push(GradebookCohortOptionDto.fromJS(item));
+            }
+            if (Array.isArray(_data["students"])) {
+                this.students = [] as any;
+                for (let item of _data["students"])
+                    this.students!.push(GradebookStudentSummaryDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): OfferingGradebookDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new OfferingGradebookDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["offeringId"] = this.offeringId;
+        data["offeringName"] = this.offeringName;
+        data["offeringCode"] = this.offeringCode;
+        data["periodId"] = this.periodId;
+        data["credits"] = this.credits;
+        if (Array.isArray(this.cohortOptions)) {
+            data["cohortOptions"] = [];
+            for (let item of this.cohortOptions)
+                data["cohortOptions"].push(item ? item.toJSON() : undefined as any);
+        }
+        if (Array.isArray(this.students)) {
+            data["students"] = [];
+            for (let item of this.students)
+                data["students"].push(item ? item.toJSON() : undefined as any);
+        }
+        return data;
+    }
+}
+
+export interface IOfferingGradebookDto {
+    offeringId: string;
+    offeringName: string;
+    offeringCode?: string | undefined;
+    periodId: string;
+    credits: number;
+    cohortOptions: GradebookCohortOptionDto[];
+    students: GradebookStudentSummaryDto[];
+}
+
+export class GradebookCohortOptionDto implements IGradebookCohortOptionDto {
+    id!: string;
+    name!: string;
+
+    constructor(data?: IGradebookCohortOptionDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.name = _data["name"];
+        }
+    }
+
+    static fromJS(data: any): GradebookCohortOptionDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new GradebookCohortOptionDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["name"] = this.name;
+        return data;
+    }
+}
+
+export interface IGradebookCohortOptionDto {
+    id: string;
+    name: string;
+}
+
+export class GradebookStudentSummaryDto implements IGradebookStudentSummaryDto {
+    userId!: string;
+    displayName!: string;
+    cohortGroupId?: string | undefined;
+    cohortGroupName?: string | undefined;
+    gradeSoFarTen?: number | undefined;
+    gradedCount!: number;
+    totalAssignments!: number;
+    submittedCount!: number;
+    overdueCount!: number;
+    pendingCount!: number;
+
+    constructor(data?: IGradebookStudentSummaryDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.userId = _data["userId"];
+            this.displayName = _data["displayName"];
+            this.cohortGroupId = _data["cohortGroupId"];
+            this.cohortGroupName = _data["cohortGroupName"];
+            this.gradeSoFarTen = _data["gradeSoFarTen"];
+            this.gradedCount = _data["gradedCount"];
+            this.totalAssignments = _data["totalAssignments"];
+            this.submittedCount = _data["submittedCount"];
+            this.overdueCount = _data["overdueCount"];
+            this.pendingCount = _data["pendingCount"];
+        }
+    }
+
+    static fromJS(data: any): GradebookStudentSummaryDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new GradebookStudentSummaryDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["userId"] = this.userId;
+        data["displayName"] = this.displayName;
+        data["cohortGroupId"] = this.cohortGroupId;
+        data["cohortGroupName"] = this.cohortGroupName;
+        data["gradeSoFarTen"] = this.gradeSoFarTen;
+        data["gradedCount"] = this.gradedCount;
+        data["totalAssignments"] = this.totalAssignments;
+        data["submittedCount"] = this.submittedCount;
+        data["overdueCount"] = this.overdueCount;
+        data["pendingCount"] = this.pendingCount;
+        return data;
+    }
+}
+
+export interface IGradebookStudentSummaryDto {
+    userId: string;
+    displayName: string;
+    cohortGroupId?: string | undefined;
+    cohortGroupName?: string | undefined;
+    gradeSoFarTen?: number | undefined;
+    gradedCount: number;
+    totalAssignments: number;
+    submittedCount: number;
+    overdueCount: number;
+    pendingCount: number;
+}
+
+export class ServiceResponseOfStudentOfferingGradeBreakdownDto implements IServiceResponseOfStudentOfferingGradeBreakdownDto {
+    isSuccess?: boolean;
+    data?: StudentOfferingGradeBreakdownDto | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfStudentOfferingGradeBreakdownDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"] ? StudentOfferingGradeBreakdownDto.fromJS(_data["data"]) : undefined as any;
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfStudentOfferingGradeBreakdownDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfStudentOfferingGradeBreakdownDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data ? this.data.toJSON() : undefined as any;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfStudentOfferingGradeBreakdownDto {
+    isSuccess?: boolean;
+    data?: StudentOfferingGradeBreakdownDto | undefined;
+    error?: AppError | undefined;
+}
+
+export class StudentOfferingGradeBreakdownDto implements IStudentOfferingGradeBreakdownDto {
+    userId!: string;
+    displayName!: string;
+    offeringId!: string;
+    courseName!: string;
+    courseCode?: string | undefined;
+    gradeSoFarTen?: number | undefined;
+    credits!: number;
+    stats!: GradebookStatsDto;
+    categories!: GradebookCategoryBreakdownDto[];
+
+    constructor(data?: IStudentOfferingGradeBreakdownDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+        if (!data) {
+            this.stats = new GradebookStatsDto();
+            this.categories = [];
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.userId = _data["userId"];
+            this.displayName = _data["displayName"];
+            this.offeringId = _data["offeringId"];
+            this.courseName = _data["courseName"];
+            this.courseCode = _data["courseCode"];
+            this.gradeSoFarTen = _data["gradeSoFarTen"];
+            this.credits = _data["credits"];
+            this.stats = _data["stats"] ? GradebookStatsDto.fromJS(_data["stats"]) : new GradebookStatsDto();
+            if (Array.isArray(_data["categories"])) {
+                this.categories = [] as any;
+                for (let item of _data["categories"])
+                    this.categories!.push(GradebookCategoryBreakdownDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): StudentOfferingGradeBreakdownDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new StudentOfferingGradeBreakdownDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["userId"] = this.userId;
+        data["displayName"] = this.displayName;
+        data["offeringId"] = this.offeringId;
+        data["courseName"] = this.courseName;
+        data["courseCode"] = this.courseCode;
+        data["gradeSoFarTen"] = this.gradeSoFarTen;
+        data["credits"] = this.credits;
+        data["stats"] = this.stats ? this.stats.toJSON() : undefined as any;
+        if (Array.isArray(this.categories)) {
+            data["categories"] = [];
+            for (let item of this.categories)
+                data["categories"].push(item ? item.toJSON() : undefined as any);
+        }
+        return data;
+    }
+}
+
+export interface IStudentOfferingGradeBreakdownDto {
+    userId: string;
+    displayName: string;
+    offeringId: string;
+    courseName: string;
+    courseCode?: string | undefined;
+    gradeSoFarTen?: number | undefined;
+    credits: number;
+    stats: GradebookStatsDto;
+    categories: GradebookCategoryBreakdownDto[];
+}
+
+export class GradebookStatsDto implements IGradebookStatsDto {
+    total!: number;
+    graded!: number;
+    pending!: number;
+    submitted!: number;
+    overdue!: number;
+
+    constructor(data?: IGradebookStatsDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.total = _data["total"];
+            this.graded = _data["graded"];
+            this.pending = _data["pending"];
+            this.submitted = _data["submitted"];
+            this.overdue = _data["overdue"];
+        }
+    }
+
+    static fromJS(data: any): GradebookStatsDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new GradebookStatsDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["total"] = this.total;
+        data["graded"] = this.graded;
+        data["pending"] = this.pending;
+        data["submitted"] = this.submitted;
+        data["overdue"] = this.overdue;
+        return data;
+    }
+}
+
+export interface IGradebookStatsDto {
+    total: number;
+    graded: number;
+    pending: number;
+    submitted: number;
+    overdue: number;
+}
+
+export class GradebookCategoryBreakdownDto implements IGradebookCategoryBreakdownDto {
+    id!: string;
+    name!: string;
+    weightLabel?: string | undefined;
+    categoryAverageTen?: number | undefined;
+    assignments!: GradebookAssignmentRowDto[];
+
+    constructor(data?: IGradebookCategoryBreakdownDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+        if (!data) {
+            this.assignments = [];
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.name = _data["name"];
+            this.weightLabel = _data["weightLabel"];
+            this.categoryAverageTen = _data["categoryAverageTen"];
+            if (Array.isArray(_data["assignments"])) {
+                this.assignments = [] as any;
+                for (let item of _data["assignments"])
+                    this.assignments!.push(GradebookAssignmentRowDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): GradebookCategoryBreakdownDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new GradebookCategoryBreakdownDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["name"] = this.name;
+        data["weightLabel"] = this.weightLabel;
+        data["categoryAverageTen"] = this.categoryAverageTen;
+        if (Array.isArray(this.assignments)) {
+            data["assignments"] = [];
+            for (let item of this.assignments)
+                data["assignments"].push(item ? item.toJSON() : undefined as any);
+        }
+        return data;
+    }
+}
+
+export interface IGradebookCategoryBreakdownDto {
+    id: string;
+    name: string;
+    weightLabel?: string | undefined;
+    categoryAverageTen?: number | undefined;
+    assignments: GradebookAssignmentRowDto[];
+}
+
+export class GradebookAssignmentRowDto implements IGradebookAssignmentRowDto {
+    taskId!: string;
+    title!: string;
+    assignmentBatchId?: string | undefined;
+    dueDate?: Date | undefined;
+    maxScore?: number | undefined;
+    weight?: number | undefined;
+    effectiveWeight?: number | undefined;
+    grade?: number | undefined;
+    gradeTen?: number | undefined;
+    isCompleted!: boolean;
+    isLate!: boolean;
+    teacherFeedback?: string | undefined;
+    status!: string;
+
+    constructor(data?: IGradebookAssignmentRowDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.taskId = _data["taskId"];
+            this.title = _data["title"];
+            this.assignmentBatchId = _data["assignmentBatchId"];
+            this.dueDate = _data["dueDate"] ? new Date(_data["dueDate"].toString()) : undefined as any;
+            this.maxScore = _data["maxScore"];
+            this.weight = _data["weight"];
+            this.effectiveWeight = _data["effectiveWeight"];
+            this.grade = _data["grade"];
+            this.gradeTen = _data["gradeTen"];
+            this.isCompleted = _data["isCompleted"];
+            this.isLate = _data["isLate"];
+            this.teacherFeedback = _data["teacherFeedback"];
+            this.status = _data["status"];
+        }
+    }
+
+    static fromJS(data: any): GradebookAssignmentRowDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new GradebookAssignmentRowDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["taskId"] = this.taskId;
+        data["title"] = this.title;
+        data["assignmentBatchId"] = this.assignmentBatchId;
+        data["dueDate"] = this.dueDate ? this.dueDate.toISOString() : undefined as any;
+        data["maxScore"] = this.maxScore;
+        data["weight"] = this.weight;
+        data["effectiveWeight"] = this.effectiveWeight;
+        data["grade"] = this.grade;
+        data["gradeTen"] = this.gradeTen;
+        data["isCompleted"] = this.isCompleted;
+        data["isLate"] = this.isLate;
+        data["teacherFeedback"] = this.teacherFeedback;
+        data["status"] = this.status;
+        return data;
+    }
+}
+
+export interface IGradebookAssignmentRowDto {
+    taskId: string;
+    title: string;
+    assignmentBatchId?: string | undefined;
+    dueDate?: Date | undefined;
+    maxScore?: number | undefined;
+    weight?: number | undefined;
+    effectiveWeight?: number | undefined;
+    grade?: number | undefined;
+    gradeTen?: number | undefined;
+    isCompleted: boolean;
+    isLate: boolean;
+    teacherFeedback?: string | undefined;
+    status: string;
+}
+
 export class ServiceResponseOfOrganizationDetailsDto implements IServiceResponseOfOrganizationDetailsDto {
     isSuccess?: boolean;
     data?: OrganizationDetailsDto | undefined;
@@ -12028,6 +19116,7 @@ export class OrganizationDetailsDto implements IOrganizationDetailsDto {
     inviteCode!: string;
     inviteLink!: string;
     onboardingStep!: number;
+    completedOnboardingSteps!: string[];
     isActive!: boolean;
     enabledWidgets!: string[];
 
@@ -12042,6 +19131,7 @@ export class OrganizationDetailsDto implements IOrganizationDetailsDto {
             this.roles = [];
             this.widgets = [];
             this.roleWidgetMappings = {};
+            this.completedOnboardingSteps = [];
             this.enabledWidgets = [];
         }
     }
@@ -12077,6 +19167,11 @@ export class OrganizationDetailsDto implements IOrganizationDetailsDto {
             this.inviteCode = _data["inviteCode"];
             this.inviteLink = _data["inviteLink"];
             this.onboardingStep = _data["onboardingStep"];
+            if (Array.isArray(_data["completedOnboardingSteps"])) {
+                this.completedOnboardingSteps = [] as any;
+                for (let item of _data["completedOnboardingSteps"])
+                    this.completedOnboardingSteps!.push(item);
+            }
             this.isActive = _data["isActive"];
             if (Array.isArray(_data["enabledWidgets"])) {
                 this.enabledWidgets = [] as any;
@@ -12124,6 +19219,11 @@ export class OrganizationDetailsDto implements IOrganizationDetailsDto {
         data["inviteCode"] = this.inviteCode;
         data["inviteLink"] = this.inviteLink;
         data["onboardingStep"] = this.onboardingStep;
+        if (Array.isArray(this.completedOnboardingSteps)) {
+            data["completedOnboardingSteps"] = [];
+            for (let item of this.completedOnboardingSteps)
+                data["completedOnboardingSteps"].push(item);
+        }
         data["isActive"] = this.isActive;
         if (Array.isArray(this.enabledWidgets)) {
             data["enabledWidgets"] = [];
@@ -12150,6 +19250,7 @@ export interface IOrganizationDetailsDto {
     inviteCode: string;
     inviteLink: string;
     onboardingStep: number;
+    completedOnboardingSteps: string[];
     isActive: boolean;
     enabledWidgets: string[];
 }
@@ -12163,6 +19264,7 @@ export class UpdateCurrentOrganizationRequest implements IUpdateCurrentOrganizat
     tertiaryColor!: string;
     logoUrl?: string | undefined;
     onboardingStep?: number | undefined;
+    completedOnboardingSteps?: string[] | undefined;
     organizationType?: OrganizationType | undefined;
     isActive?: boolean | undefined;
 
@@ -12185,6 +19287,11 @@ export class UpdateCurrentOrganizationRequest implements IUpdateCurrentOrganizat
             this.tertiaryColor = _data["tertiaryColor"];
             this.logoUrl = _data["logoUrl"];
             this.onboardingStep = _data["onboardingStep"];
+            if (Array.isArray(_data["completedOnboardingSteps"])) {
+                this.completedOnboardingSteps = [] as any;
+                for (let item of _data["completedOnboardingSteps"])
+                    this.completedOnboardingSteps!.push(item);
+            }
             this.organizationType = _data["organizationType"];
             this.isActive = _data["isActive"];
         }
@@ -12207,6 +19314,11 @@ export class UpdateCurrentOrganizationRequest implements IUpdateCurrentOrganizat
         data["tertiaryColor"] = this.tertiaryColor;
         data["logoUrl"] = this.logoUrl;
         data["onboardingStep"] = this.onboardingStep;
+        if (Array.isArray(this.completedOnboardingSteps)) {
+            data["completedOnboardingSteps"] = [];
+            for (let item of this.completedOnboardingSteps)
+                data["completedOnboardingSteps"].push(item);
+        }
         data["organizationType"] = this.organizationType;
         data["isActive"] = this.isActive;
         return data;
@@ -12222,6 +19334,7 @@ export interface IUpdateCurrentOrganizationRequest {
     tertiaryColor: string;
     logoUrl?: string | undefined;
     onboardingStep?: number | undefined;
+    completedOnboardingSteps?: string[] | undefined;
     organizationType?: OrganizationType | undefined;
     isActive?: boolean | undefined;
 }
@@ -12425,7 +19538,9 @@ export class OrganizationMemberDto implements IOrganizationMemberDto {
     roleId!: string;
     roleName!: string;
     isActive!: boolean;
+    requiresAdminApproval!: boolean;
     joinedAt!: Date;
+    avatarUrl?: string | undefined;
 
     constructor(data?: IOrganizationMemberDto) {
         if (data) {
@@ -12445,7 +19560,9 @@ export class OrganizationMemberDto implements IOrganizationMemberDto {
             this.roleId = _data["roleId"];
             this.roleName = _data["roleName"];
             this.isActive = _data["isActive"];
+            this.requiresAdminApproval = _data["requiresAdminApproval"];
             this.joinedAt = _data["joinedAt"] ? new Date(_data["joinedAt"].toString()) : undefined as any;
+            this.avatarUrl = _data["avatarUrl"];
         }
     }
 
@@ -12465,7 +19582,9 @@ export class OrganizationMemberDto implements IOrganizationMemberDto {
         data["roleId"] = this.roleId;
         data["roleName"] = this.roleName;
         data["isActive"] = this.isActive;
+        data["requiresAdminApproval"] = this.requiresAdminApproval;
         data["joinedAt"] = this.joinedAt ? this.joinedAt.toISOString() : undefined as any;
+        data["avatarUrl"] = this.avatarUrl;
         return data;
     }
 }
@@ -12478,7 +19597,9 @@ export interface IOrganizationMemberDto {
     roleId: string;
     roleName: string;
     isActive: boolean;
+    requiresAdminApproval: boolean;
     joinedAt: Date;
+    avatarUrl?: string | undefined;
 }
 
 export class InviteMembersRequest implements IInviteMembersRequest {
@@ -13060,110 +20181,6 @@ export class UpdateRolePermissionsRequest implements IUpdateRolePermissionsReque
 
 export interface IUpdateRolePermissionsRequest {
     permissions: WidgetPermissionDto[];
-}
-
-export class ServiceResponseOfIEnumerableOfOrganizationPeriodDto implements IServiceResponseOfIEnumerableOfOrganizationPeriodDto {
-    isSuccess?: boolean;
-    data?: OrganizationPeriodDto[] | undefined;
-    error?: AppError | undefined;
-
-    constructor(data?: IServiceResponseOfIEnumerableOfOrganizationPeriodDto) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (this as any)[property] = (data as any)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.isSuccess = _data["isSuccess"];
-            if (Array.isArray(_data["data"])) {
-                this.data = [] as any;
-                for (let item of _data["data"])
-                    this.data!.push(OrganizationPeriodDto.fromJS(item));
-            }
-            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
-        }
-    }
-
-    static fromJS(data: any): ServiceResponseOfIEnumerableOfOrganizationPeriodDto {
-        data = typeof data === 'object' ? data : {};
-        let result = new ServiceResponseOfIEnumerableOfOrganizationPeriodDto();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["isSuccess"] = this.isSuccess;
-        if (Array.isArray(this.data)) {
-            data["data"] = [];
-            for (let item of this.data)
-                data["data"].push(item ? item.toJSON() : undefined as any);
-        }
-        data["error"] = this.error ? this.error.toJSON() : undefined as any;
-        return data;
-    }
-}
-
-export interface IServiceResponseOfIEnumerableOfOrganizationPeriodDto {
-    isSuccess?: boolean;
-    data?: OrganizationPeriodDto[] | undefined;
-    error?: AppError | undefined;
-}
-
-export class OrganizationPeriodDto implements IOrganizationPeriodDto {
-    id!: string;
-    name!: string;
-    startDate!: Date;
-    endDate!: Date;
-    isCurrent!: boolean;
-
-    constructor(data?: IOrganizationPeriodDto) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (this as any)[property] = (data as any)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.id = _data["id"];
-            this.name = _data["name"];
-            this.startDate = _data["startDate"] ? new Date(_data["startDate"].toString()) : undefined as any;
-            this.endDate = _data["endDate"] ? new Date(_data["endDate"].toString()) : undefined as any;
-            this.isCurrent = _data["isCurrent"];
-        }
-    }
-
-    static fromJS(data: any): OrganizationPeriodDto {
-        data = typeof data === 'object' ? data : {};
-        let result = new OrganizationPeriodDto();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["id"] = this.id;
-        data["name"] = this.name;
-        data["startDate"] = this.startDate ? this.startDate.toISOString() : undefined as any;
-        data["endDate"] = this.endDate ? this.endDate.toISOString() : undefined as any;
-        data["isCurrent"] = this.isCurrent;
-        return data;
-    }
-}
-
-export interface IOrganizationPeriodDto {
-    id: string;
-    name: string;
-    startDate: Date;
-    endDate: Date;
-    isCurrent: boolean;
 }
 
 export class ServiceResponseOfOrganizationPeriodDto implements IServiceResponseOfOrganizationPeriodDto {
@@ -13774,98 +20791,6 @@ export interface IUserImportDto {
     address?: string | undefined;
     group?: string | undefined;
     isGroupManager?: boolean | undefined;
-}
-
-export class ServiceResponseOfOrganizationInvitePreviewDto implements IServiceResponseOfOrganizationInvitePreviewDto {
-    isSuccess?: boolean;
-    data?: OrganizationInvitePreviewDto | undefined;
-    error?: AppError | undefined;
-
-    constructor(data?: IServiceResponseOfOrganizationInvitePreviewDto) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (this as any)[property] = (data as any)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.isSuccess = _data["isSuccess"];
-            this.data = _data["data"] ? OrganizationInvitePreviewDto.fromJS(_data["data"]) : undefined as any;
-            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
-        }
-    }
-
-    static fromJS(data: any): ServiceResponseOfOrganizationInvitePreviewDto {
-        data = typeof data === 'object' ? data : {};
-        let result = new ServiceResponseOfOrganizationInvitePreviewDto();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["isSuccess"] = this.isSuccess;
-        data["data"] = this.data ? this.data.toJSON() : undefined as any;
-        data["error"] = this.error ? this.error.toJSON() : undefined as any;
-        return data;
-    }
-}
-
-export interface IServiceResponseOfOrganizationInvitePreviewDto {
-    isSuccess?: boolean;
-    data?: OrganizationInvitePreviewDto | undefined;
-    error?: AppError | undefined;
-}
-
-export class OrganizationInvitePreviewDto implements IOrganizationInvitePreviewDto {
-    organizationId!: string;
-    name!: string;
-    logoUrl?: string | undefined;
-    inviteCode!: string;
-
-    constructor(data?: IOrganizationInvitePreviewDto) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (this as any)[property] = (data as any)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.organizationId = _data["organizationId"];
-            this.name = _data["name"];
-            this.logoUrl = _data["logoUrl"];
-            this.inviteCode = _data["inviteCode"];
-        }
-    }
-
-    static fromJS(data: any): OrganizationInvitePreviewDto {
-        data = typeof data === 'object' ? data : {};
-        let result = new OrganizationInvitePreviewDto();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["organizationId"] = this.organizationId;
-        data["name"] = this.name;
-        data["logoUrl"] = this.logoUrl;
-        data["inviteCode"] = this.inviteCode;
-        return data;
-    }
-}
-
-export interface IOrganizationInvitePreviewDto {
-    organizationId: string;
-    name: string;
-    logoUrl?: string | undefined;
-    inviteCode: string;
 }
 
 export class ServiceResponseOfPagedResponseOfOrganizationDetailsDto implements IServiceResponseOfPagedResponseOfOrganizationDetailsDto {
@@ -14689,6 +21614,11 @@ export class ScheduleItemDto implements IScheduleItemDto {
     hostName?: string | undefined;
     groupId?: string | undefined;
     groupName?: string | undefined;
+    periodId?: string | undefined;
+    offeringId?: string | undefined;
+    offeringName?: string | undefined;
+    cohortGroupId?: string | undefined;
+    cohortGroupName?: string | undefined;
     currentRSVPCount?: number;
     maxCapacity?: number | undefined;
     isPublic?: boolean;
@@ -14719,6 +21649,11 @@ export class ScheduleItemDto implements IScheduleItemDto {
             this.hostName = _data["hostName"];
             this.groupId = _data["groupId"];
             this.groupName = _data["groupName"];
+            this.periodId = _data["periodId"];
+            this.offeringId = _data["offeringId"];
+            this.offeringName = _data["offeringName"];
+            this.cohortGroupId = _data["cohortGroupId"];
+            this.cohortGroupName = _data["cohortGroupName"];
             this.currentRSVPCount = _data["currentRSVPCount"];
             this.maxCapacity = _data["maxCapacity"];
             this.isPublic = _data["isPublic"];
@@ -14749,6 +21684,11 @@ export class ScheduleItemDto implements IScheduleItemDto {
         data["hostName"] = this.hostName;
         data["groupId"] = this.groupId;
         data["groupName"] = this.groupName;
+        data["periodId"] = this.periodId;
+        data["offeringId"] = this.offeringId;
+        data["offeringName"] = this.offeringName;
+        data["cohortGroupId"] = this.cohortGroupId;
+        data["cohortGroupName"] = this.cohortGroupName;
         data["currentRSVPCount"] = this.currentRSVPCount;
         data["maxCapacity"] = this.maxCapacity;
         data["isPublic"] = this.isPublic;
@@ -14772,6 +21712,11 @@ export interface IScheduleItemDto {
     hostName?: string | undefined;
     groupId?: string | undefined;
     groupName?: string | undefined;
+    periodId?: string | undefined;
+    offeringId?: string | undefined;
+    offeringName?: string | undefined;
+    cohortGroupId?: string | undefined;
+    cohortGroupName?: string | undefined;
     currentRSVPCount?: number;
     maxCapacity?: number | undefined;
     isPublic?: boolean;
@@ -14829,6 +21774,9 @@ export class CreateEventRequest implements ICreateEventRequest {
     colorHex?: string | undefined;
     eventTypeId!: string;
     groupId?: string | undefined;
+    periodId?: string | undefined;
+    offeringId?: string | undefined;
+    cohortGroupId?: string | undefined;
     roomId?: string | undefined;
     hostId?: string | undefined;
     recurrenceRule?: string | undefined;
@@ -14853,6 +21801,9 @@ export class CreateEventRequest implements ICreateEventRequest {
             this.colorHex = _data["colorHex"];
             this.eventTypeId = _data["eventTypeId"];
             this.groupId = _data["groupId"];
+            this.periodId = _data["periodId"];
+            this.offeringId = _data["offeringId"];
+            this.cohortGroupId = _data["cohortGroupId"];
             this.roomId = _data["roomId"];
             this.hostId = _data["hostId"];
             this.recurrenceRule = _data["recurrenceRule"];
@@ -14877,6 +21828,9 @@ export class CreateEventRequest implements ICreateEventRequest {
         data["colorHex"] = this.colorHex;
         data["eventTypeId"] = this.eventTypeId;
         data["groupId"] = this.groupId;
+        data["periodId"] = this.periodId;
+        data["offeringId"] = this.offeringId;
+        data["cohortGroupId"] = this.cohortGroupId;
         data["roomId"] = this.roomId;
         data["hostId"] = this.hostId;
         data["recurrenceRule"] = this.recurrenceRule;
@@ -14894,6 +21848,9 @@ export interface ICreateEventRequest {
     colorHex?: string | undefined;
     eventTypeId: string;
     groupId?: string | undefined;
+    periodId?: string | undefined;
+    offeringId?: string | undefined;
+    cohortGroupId?: string | undefined;
     roomId?: string | undefined;
     hostId?: string | undefined;
     recurrenceRule?: string | undefined;
@@ -15510,11 +22467,21 @@ export class TaskItemDto implements ITaskItemDto {
     priority?: TaskPriority | undefined;
     projectId?: string | undefined;
     subjectId?: string | undefined;
+    periodId?: string | undefined;
+    offeringId?: string | undefined;
+    assignmentBatchId?: string | undefined;
     groupName?: string | undefined;
+    offeringName?: string | undefined;
     maxScore?: number | undefined;
     weight?: number | undefined;
+    gradeCategoryId?: string | undefined;
+    gradeCategoryName?: string | undefined;
+    categoryWeight?: number | undefined;
+    effectiveWeight?: number | undefined;
     referenceUrl?: string | undefined;
+    materials?: TaskAttachmentDto[];
     submissionUrl?: string | undefined;
+    submissionAttachments?: TaskAttachmentDto[];
     teacherFeedback?: string | undefined;
     grade?: number | undefined;
     createdAt!: Date;
@@ -15542,11 +22509,29 @@ export class TaskItemDto implements ITaskItemDto {
             this.priority = _data["priority"];
             this.projectId = _data["projectId"];
             this.subjectId = _data["subjectId"];
+            this.periodId = _data["periodId"];
+            this.offeringId = _data["offeringId"];
+            this.assignmentBatchId = _data["assignmentBatchId"];
             this.groupName = _data["groupName"];
+            this.offeringName = _data["offeringName"];
             this.maxScore = _data["maxScore"];
             this.weight = _data["weight"];
+            this.gradeCategoryId = _data["gradeCategoryId"];
+            this.gradeCategoryName = _data["gradeCategoryName"];
+            this.categoryWeight = _data["categoryWeight"];
+            this.effectiveWeight = _data["effectiveWeight"];
             this.referenceUrl = _data["referenceUrl"];
+            if (Array.isArray(_data["materials"])) {
+                this.materials = [] as any;
+                for (let item of _data["materials"])
+                    this.materials!.push(TaskAttachmentDto.fromJS(item));
+            }
             this.submissionUrl = _data["submissionUrl"];
+            if (Array.isArray(_data["submissionAttachments"])) {
+                this.submissionAttachments = [] as any;
+                for (let item of _data["submissionAttachments"])
+                    this.submissionAttachments!.push(TaskAttachmentDto.fromJS(item));
+            }
             this.teacherFeedback = _data["teacherFeedback"];
             this.grade = _data["grade"];
             this.createdAt = _data["createdAt"] ? new Date(_data["createdAt"].toString()) : undefined as any;
@@ -15574,11 +22559,29 @@ export class TaskItemDto implements ITaskItemDto {
         data["priority"] = this.priority;
         data["projectId"] = this.projectId;
         data["subjectId"] = this.subjectId;
+        data["periodId"] = this.periodId;
+        data["offeringId"] = this.offeringId;
+        data["assignmentBatchId"] = this.assignmentBatchId;
         data["groupName"] = this.groupName;
+        data["offeringName"] = this.offeringName;
         data["maxScore"] = this.maxScore;
         data["weight"] = this.weight;
+        data["gradeCategoryId"] = this.gradeCategoryId;
+        data["gradeCategoryName"] = this.gradeCategoryName;
+        data["categoryWeight"] = this.categoryWeight;
+        data["effectiveWeight"] = this.effectiveWeight;
         data["referenceUrl"] = this.referenceUrl;
+        if (Array.isArray(this.materials)) {
+            data["materials"] = [];
+            for (let item of this.materials)
+                data["materials"].push(item ? item.toJSON() : undefined as any);
+        }
         data["submissionUrl"] = this.submissionUrl;
+        if (Array.isArray(this.submissionAttachments)) {
+            data["submissionAttachments"] = [];
+            for (let item of this.submissionAttachments)
+                data["submissionAttachments"].push(item ? item.toJSON() : undefined as any);
+        }
         data["teacherFeedback"] = this.teacherFeedback;
         data["grade"] = this.grade;
         data["createdAt"] = this.createdAt ? this.createdAt.toISOString() : undefined as any;
@@ -15599,11 +22602,21 @@ export interface ITaskItemDto {
     priority?: TaskPriority | undefined;
     projectId?: string | undefined;
     subjectId?: string | undefined;
+    periodId?: string | undefined;
+    offeringId?: string | undefined;
+    assignmentBatchId?: string | undefined;
     groupName?: string | undefined;
+    offeringName?: string | undefined;
     maxScore?: number | undefined;
     weight?: number | undefined;
+    gradeCategoryId?: string | undefined;
+    gradeCategoryName?: string | undefined;
+    categoryWeight?: number | undefined;
+    effectiveWeight?: number | undefined;
     referenceUrl?: string | undefined;
+    materials?: TaskAttachmentDto[];
     submissionUrl?: string | undefined;
+    submissionAttachments?: TaskAttachmentDto[];
     teacherFeedback?: string | undefined;
     grade?: number | undefined;
     createdAt: Date;
@@ -15611,9 +22624,65 @@ export interface ITaskItemDto {
 }
 
 export enum TaskPriority {
-    Low = 0,
-    Medium = 1,
-    High = 2,
+    Low = "Low",
+    Medium = "Medium",
+    High = "High",
+}
+
+export class TaskAttachmentDto implements ITaskAttachmentDto {
+    url!: string;
+    fileName?: string | undefined;
+    contentType?: string | undefined;
+    kind?: string;
+    uploadedAt?: Date | undefined;
+    uploadedByUserId?: string | undefined;
+
+    constructor(data?: ITaskAttachmentDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.url = _data["url"];
+            this.fileName = _data["fileName"];
+            this.contentType = _data["contentType"];
+            this.kind = _data["kind"];
+            this.uploadedAt = _data["uploadedAt"] ? new Date(_data["uploadedAt"].toString()) : undefined as any;
+            this.uploadedByUserId = _data["uploadedByUserId"];
+        }
+    }
+
+    static fromJS(data: any): TaskAttachmentDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new TaskAttachmentDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["url"] = this.url;
+        data["fileName"] = this.fileName;
+        data["contentType"] = this.contentType;
+        data["kind"] = this.kind;
+        data["uploadedAt"] = this.uploadedAt ? this.uploadedAt.toISOString() : undefined as any;
+        data["uploadedByUserId"] = this.uploadedByUserId;
+        return data;
+    }
+}
+
+export interface ITaskAttachmentDto {
+    url: string;
+    fileName?: string | undefined;
+    contentType?: string | undefined;
+    kind?: string;
+    uploadedAt?: Date | undefined;
+    uploadedByUserId?: string | undefined;
 }
 
 export class ServiceResponseOfTaskItemDto implements IServiceResponseOfTaskItemDto {
@@ -15668,10 +22737,14 @@ export class CreateTaskRequest implements ICreateTaskRequest {
     priority?: TaskPriority | undefined;
     projectId?: string | undefined;
     subjectId?: string | undefined;
+    offeringId?: string | undefined;
+    gradeCategoryId?: string | undefined;
     maxScore?: number | undefined;
     weight?: number | undefined;
     referenceUrl?: string | undefined;
+    materials?: TaskAttachmentDto[] | undefined;
     submissionUrl?: string | undefined;
+    submissionAttachments?: TaskAttachmentDto[] | undefined;
 
     constructor(data?: ICreateTaskRequest) {
         if (data) {
@@ -15691,10 +22764,22 @@ export class CreateTaskRequest implements ICreateTaskRequest {
             this.priority = _data["priority"];
             this.projectId = _data["projectId"];
             this.subjectId = _data["subjectId"];
+            this.offeringId = _data["offeringId"];
+            this.gradeCategoryId = _data["gradeCategoryId"];
             this.maxScore = _data["maxScore"];
             this.weight = _data["weight"];
             this.referenceUrl = _data["referenceUrl"];
+            if (Array.isArray(_data["materials"])) {
+                this.materials = [] as any;
+                for (let item of _data["materials"])
+                    this.materials!.push(TaskAttachmentDto.fromJS(item));
+            }
             this.submissionUrl = _data["submissionUrl"];
+            if (Array.isArray(_data["submissionAttachments"])) {
+                this.submissionAttachments = [] as any;
+                for (let item of _data["submissionAttachments"])
+                    this.submissionAttachments!.push(TaskAttachmentDto.fromJS(item));
+            }
         }
     }
 
@@ -15714,10 +22799,22 @@ export class CreateTaskRequest implements ICreateTaskRequest {
         data["priority"] = this.priority;
         data["projectId"] = this.projectId;
         data["subjectId"] = this.subjectId;
+        data["offeringId"] = this.offeringId;
+        data["gradeCategoryId"] = this.gradeCategoryId;
         data["maxScore"] = this.maxScore;
         data["weight"] = this.weight;
         data["referenceUrl"] = this.referenceUrl;
+        if (Array.isArray(this.materials)) {
+            data["materials"] = [];
+            for (let item of this.materials)
+                data["materials"].push(item ? item.toJSON() : undefined as any);
+        }
         data["submissionUrl"] = this.submissionUrl;
+        if (Array.isArray(this.submissionAttachments)) {
+            data["submissionAttachments"] = [];
+            for (let item of this.submissionAttachments)
+                data["submissionAttachments"].push(item ? item.toJSON() : undefined as any);
+        }
         return data;
     }
 }
@@ -15730,10 +22827,14 @@ export interface ICreateTaskRequest {
     priority?: TaskPriority | undefined;
     projectId?: string | undefined;
     subjectId?: string | undefined;
+    offeringId?: string | undefined;
+    gradeCategoryId?: string | undefined;
     maxScore?: number | undefined;
     weight?: number | undefined;
     referenceUrl?: string | undefined;
+    materials?: TaskAttachmentDto[] | undefined;
     submissionUrl?: string | undefined;
+    submissionAttachments?: TaskAttachmentDto[] | undefined;
 }
 
 export class UpdateTaskRequest implements IUpdateTaskRequest {
@@ -15745,10 +22846,14 @@ export class UpdateTaskRequest implements IUpdateTaskRequest {
     priority?: TaskPriority | undefined;
     projectId?: string | undefined;
     subjectId?: string | undefined;
+    offeringId?: string | undefined;
+    gradeCategoryId?: string | undefined;
     maxScore?: number | undefined;
     weight?: number | undefined;
     referenceUrl?: string | undefined;
+    materials?: TaskAttachmentDto[] | undefined;
     submissionUrl?: string | undefined;
+    submissionAttachments?: TaskAttachmentDto[] | undefined;
     teacherFeedback?: string | undefined;
     grade?: number | undefined;
 
@@ -15771,10 +22876,22 @@ export class UpdateTaskRequest implements IUpdateTaskRequest {
             this.priority = _data["priority"];
             this.projectId = _data["projectId"];
             this.subjectId = _data["subjectId"];
+            this.offeringId = _data["offeringId"];
+            this.gradeCategoryId = _data["gradeCategoryId"];
             this.maxScore = _data["maxScore"];
             this.weight = _data["weight"];
             this.referenceUrl = _data["referenceUrl"];
+            if (Array.isArray(_data["materials"])) {
+                this.materials = [] as any;
+                for (let item of _data["materials"])
+                    this.materials!.push(TaskAttachmentDto.fromJS(item));
+            }
             this.submissionUrl = _data["submissionUrl"];
+            if (Array.isArray(_data["submissionAttachments"])) {
+                this.submissionAttachments = [] as any;
+                for (let item of _data["submissionAttachments"])
+                    this.submissionAttachments!.push(TaskAttachmentDto.fromJS(item));
+            }
             this.teacherFeedback = _data["teacherFeedback"];
             this.grade = _data["grade"];
         }
@@ -15797,10 +22914,22 @@ export class UpdateTaskRequest implements IUpdateTaskRequest {
         data["priority"] = this.priority;
         data["projectId"] = this.projectId;
         data["subjectId"] = this.subjectId;
+        data["offeringId"] = this.offeringId;
+        data["gradeCategoryId"] = this.gradeCategoryId;
         data["maxScore"] = this.maxScore;
         data["weight"] = this.weight;
         data["referenceUrl"] = this.referenceUrl;
+        if (Array.isArray(this.materials)) {
+            data["materials"] = [];
+            for (let item of this.materials)
+                data["materials"].push(item ? item.toJSON() : undefined as any);
+        }
         data["submissionUrl"] = this.submissionUrl;
+        if (Array.isArray(this.submissionAttachments)) {
+            data["submissionAttachments"] = [];
+            for (let item of this.submissionAttachments)
+                data["submissionAttachments"].push(item ? item.toJSON() : undefined as any);
+        }
         data["teacherFeedback"] = this.teacherFeedback;
         data["grade"] = this.grade;
         return data;
@@ -15816,12 +22945,597 @@ export interface IUpdateTaskRequest {
     priority?: TaskPriority | undefined;
     projectId?: string | undefined;
     subjectId?: string | undefined;
+    offeringId?: string | undefined;
+    gradeCategoryId?: string | undefined;
     maxScore?: number | undefined;
     weight?: number | undefined;
     referenceUrl?: string | undefined;
+    materials?: TaskAttachmentDto[] | undefined;
     submissionUrl?: string | undefined;
+    submissionAttachments?: TaskAttachmentDto[] | undefined;
     teacherFeedback?: string | undefined;
     grade?: number | undefined;
+}
+
+export class SubmitTaskSubmissionRequest implements ISubmitTaskSubmissionRequest {
+    isCompleted?: boolean;
+    submissionUrl?: string | undefined;
+    submissionAttachments?: TaskAttachmentDto[] | undefined;
+
+    constructor(data?: ISubmitTaskSubmissionRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isCompleted = _data["isCompleted"];
+            this.submissionUrl = _data["submissionUrl"];
+            if (Array.isArray(_data["submissionAttachments"])) {
+                this.submissionAttachments = [] as any;
+                for (let item of _data["submissionAttachments"])
+                    this.submissionAttachments!.push(TaskAttachmentDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): SubmitTaskSubmissionRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new SubmitTaskSubmissionRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isCompleted"] = this.isCompleted;
+        data["submissionUrl"] = this.submissionUrl;
+        if (Array.isArray(this.submissionAttachments)) {
+            data["submissionAttachments"] = [];
+            for (let item of this.submissionAttachments)
+                data["submissionAttachments"].push(item ? item.toJSON() : undefined as any);
+        }
+        return data;
+    }
+}
+
+export interface ISubmitTaskSubmissionRequest {
+    isCompleted?: boolean;
+    submissionUrl?: string | undefined;
+    submissionAttachments?: TaskAttachmentDto[] | undefined;
+}
+
+export class ServiceResponseOfPagedResponseOfAssignmentBatchSummaryDto implements IServiceResponseOfPagedResponseOfAssignmentBatchSummaryDto {
+    isSuccess?: boolean;
+    data?: PagedResponseOfAssignmentBatchSummaryDto | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfPagedResponseOfAssignmentBatchSummaryDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"] ? PagedResponseOfAssignmentBatchSummaryDto.fromJS(_data["data"]) : undefined as any;
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfPagedResponseOfAssignmentBatchSummaryDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfPagedResponseOfAssignmentBatchSummaryDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data ? this.data.toJSON() : undefined as any;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfPagedResponseOfAssignmentBatchSummaryDto {
+    isSuccess?: boolean;
+    data?: PagedResponseOfAssignmentBatchSummaryDto | undefined;
+    error?: AppError | undefined;
+}
+
+export class PagedResponseOfAssignmentBatchSummaryDto implements IPagedResponseOfAssignmentBatchSummaryDto {
+    items!: AssignmentBatchSummaryDto[];
+    totalCount!: number;
+    page!: number;
+    pageSize!: number;
+    totalPages?: number;
+
+    constructor(data?: IPagedResponseOfAssignmentBatchSummaryDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+        if (!data) {
+            this.items = [];
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["items"])) {
+                this.items = [] as any;
+                for (let item of _data["items"])
+                    this.items!.push(AssignmentBatchSummaryDto.fromJS(item));
+            }
+            this.totalCount = _data["totalCount"];
+            this.page = _data["page"];
+            this.pageSize = _data["pageSize"];
+            this.totalPages = _data["totalPages"];
+        }
+    }
+
+    static fromJS(data: any): PagedResponseOfAssignmentBatchSummaryDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new PagedResponseOfAssignmentBatchSummaryDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.items)) {
+            data["items"] = [];
+            for (let item of this.items)
+                data["items"].push(item ? item.toJSON() : undefined as any);
+        }
+        data["totalCount"] = this.totalCount;
+        data["page"] = this.page;
+        data["pageSize"] = this.pageSize;
+        data["totalPages"] = this.totalPages;
+        return data;
+    }
+}
+
+export interface IPagedResponseOfAssignmentBatchSummaryDto {
+    items: AssignmentBatchSummaryDto[];
+    totalCount: number;
+    page: number;
+    pageSize: number;
+    totalPages?: number;
+}
+
+export class AssignmentBatchSummaryDto implements IAssignmentBatchSummaryDto {
+    batchId!: string;
+    title!: string;
+    description?: string | undefined;
+    distributionScope?: TaskDistributionScope;
+    offeringId?: string | undefined;
+    offeringName?: string | undefined;
+    subjectId?: string | undefined;
+    groupName?: string | undefined;
+    dueDate?: Date | undefined;
+    maxScore?: number | undefined;
+    weight?: number | undefined;
+    totalAssigned!: number;
+    submittedCount!: number;
+    gradedCount!: number;
+    createdAt!: Date;
+
+    constructor(data?: IAssignmentBatchSummaryDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.batchId = _data["batchId"];
+            this.title = _data["title"];
+            this.description = _data["description"];
+            this.distributionScope = _data["distributionScope"];
+            this.offeringId = _data["offeringId"];
+            this.offeringName = _data["offeringName"];
+            this.subjectId = _data["subjectId"];
+            this.groupName = _data["groupName"];
+            this.dueDate = _data["dueDate"] ? new Date(_data["dueDate"].toString()) : undefined as any;
+            this.maxScore = _data["maxScore"];
+            this.weight = _data["weight"];
+            this.totalAssigned = _data["totalAssigned"];
+            this.submittedCount = _data["submittedCount"];
+            this.gradedCount = _data["gradedCount"];
+            this.createdAt = _data["createdAt"] ? new Date(_data["createdAt"].toString()) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): AssignmentBatchSummaryDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new AssignmentBatchSummaryDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["batchId"] = this.batchId;
+        data["title"] = this.title;
+        data["description"] = this.description;
+        data["distributionScope"] = this.distributionScope;
+        data["offeringId"] = this.offeringId;
+        data["offeringName"] = this.offeringName;
+        data["subjectId"] = this.subjectId;
+        data["groupName"] = this.groupName;
+        data["dueDate"] = this.dueDate ? this.dueDate.toISOString() : undefined as any;
+        data["maxScore"] = this.maxScore;
+        data["weight"] = this.weight;
+        data["totalAssigned"] = this.totalAssigned;
+        data["submittedCount"] = this.submittedCount;
+        data["gradedCount"] = this.gradedCount;
+        data["createdAt"] = this.createdAt ? this.createdAt.toISOString() : undefined as any;
+        return data;
+    }
+}
+
+export interface IAssignmentBatchSummaryDto {
+    batchId: string;
+    title: string;
+    description?: string | undefined;
+    distributionScope?: TaskDistributionScope;
+    offeringId?: string | undefined;
+    offeringName?: string | undefined;
+    subjectId?: string | undefined;
+    groupName?: string | undefined;
+    dueDate?: Date | undefined;
+    maxScore?: number | undefined;
+    weight?: number | undefined;
+    totalAssigned: number;
+    submittedCount: number;
+    gradedCount: number;
+    createdAt: Date;
+}
+
+export enum TaskDistributionScope {
+    Personal = "Personal",
+    OfferingEnrolled = "OfferingEnrolled",
+    GroupMembers = "GroupMembers",
+}
+
+export class ServiceResponseOfIEnumerableOfAssignmentBatchSubmissionDto implements IServiceResponseOfIEnumerableOfAssignmentBatchSubmissionDto {
+    isSuccess?: boolean;
+    data?: AssignmentBatchSubmissionDto[] | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfIEnumerableOfAssignmentBatchSubmissionDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            if (Array.isArray(_data["data"])) {
+                this.data = [] as any;
+                for (let item of _data["data"])
+                    this.data!.push(AssignmentBatchSubmissionDto.fromJS(item));
+            }
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfIEnumerableOfAssignmentBatchSubmissionDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfIEnumerableOfAssignmentBatchSubmissionDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        if (Array.isArray(this.data)) {
+            data["data"] = [];
+            for (let item of this.data)
+                data["data"].push(item ? item.toJSON() : undefined as any);
+        }
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfIEnumerableOfAssignmentBatchSubmissionDto {
+    isSuccess?: boolean;
+    data?: AssignmentBatchSubmissionDto[] | undefined;
+    error?: AppError | undefined;
+}
+
+export class AssignmentBatchSubmissionDto implements IAssignmentBatchSubmissionDto {
+    taskId!: string;
+    studentUserId!: string;
+    studentName!: string;
+    isCompleted!: boolean;
+    submissionUrl?: string | undefined;
+    submissionAttachments?: TaskAttachmentDto[];
+    grade?: number | undefined;
+    teacherFeedback?: string | undefined;
+    updatedAt?: Date | undefined;
+    dueDate?: Date | undefined;
+    maxScore?: number | undefined;
+    cohortGroupId?: string | undefined;
+    cohortGroupName?: string | undefined;
+    isLate?: boolean;
+
+    constructor(data?: IAssignmentBatchSubmissionDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.taskId = _data["taskId"];
+            this.studentUserId = _data["studentUserId"];
+            this.studentName = _data["studentName"];
+            this.isCompleted = _data["isCompleted"];
+            this.submissionUrl = _data["submissionUrl"];
+            if (Array.isArray(_data["submissionAttachments"])) {
+                this.submissionAttachments = [] as any;
+                for (let item of _data["submissionAttachments"])
+                    this.submissionAttachments!.push(TaskAttachmentDto.fromJS(item));
+            }
+            this.grade = _data["grade"];
+            this.teacherFeedback = _data["teacherFeedback"];
+            this.updatedAt = _data["updatedAt"] ? new Date(_data["updatedAt"].toString()) : undefined as any;
+            this.dueDate = _data["dueDate"] ? new Date(_data["dueDate"].toString()) : undefined as any;
+            this.maxScore = _data["maxScore"];
+            this.cohortGroupId = _data["cohortGroupId"];
+            this.cohortGroupName = _data["cohortGroupName"];
+            this.isLate = _data["isLate"];
+        }
+    }
+
+    static fromJS(data: any): AssignmentBatchSubmissionDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new AssignmentBatchSubmissionDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["taskId"] = this.taskId;
+        data["studentUserId"] = this.studentUserId;
+        data["studentName"] = this.studentName;
+        data["isCompleted"] = this.isCompleted;
+        data["submissionUrl"] = this.submissionUrl;
+        if (Array.isArray(this.submissionAttachments)) {
+            data["submissionAttachments"] = [];
+            for (let item of this.submissionAttachments)
+                data["submissionAttachments"].push(item ? item.toJSON() : undefined as any);
+        }
+        data["grade"] = this.grade;
+        data["teacherFeedback"] = this.teacherFeedback;
+        data["updatedAt"] = this.updatedAt ? this.updatedAt.toISOString() : undefined as any;
+        data["dueDate"] = this.dueDate ? this.dueDate.toISOString() : undefined as any;
+        data["maxScore"] = this.maxScore;
+        data["cohortGroupId"] = this.cohortGroupId;
+        data["cohortGroupName"] = this.cohortGroupName;
+        data["isLate"] = this.isLate;
+        return data;
+    }
+}
+
+export interface IAssignmentBatchSubmissionDto {
+    taskId: string;
+    studentUserId: string;
+    studentName: string;
+    isCompleted: boolean;
+    submissionUrl?: string | undefined;
+    submissionAttachments?: TaskAttachmentDto[];
+    grade?: number | undefined;
+    teacherFeedback?: string | undefined;
+    updatedAt?: Date | undefined;
+    dueDate?: Date | undefined;
+    maxScore?: number | undefined;
+    cohortGroupId?: string | undefined;
+    cohortGroupName?: string | undefined;
+    isLate?: boolean;
+}
+
+export class ServiceResponseOfCreateAssignmentBatchResultDto implements IServiceResponseOfCreateAssignmentBatchResultDto {
+    isSuccess?: boolean;
+    data?: CreateAssignmentBatchResultDto | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfCreateAssignmentBatchResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"] ? CreateAssignmentBatchResultDto.fromJS(_data["data"]) : undefined as any;
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfCreateAssignmentBatchResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfCreateAssignmentBatchResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data ? this.data.toJSON() : undefined as any;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfCreateAssignmentBatchResultDto {
+    isSuccess?: boolean;
+    data?: CreateAssignmentBatchResultDto | undefined;
+    error?: AppError | undefined;
+}
+
+export class CreateAssignmentBatchResultDto implements ICreateAssignmentBatchResultDto {
+    batchId!: string;
+    createdCount!: number;
+    skippedCount!: number;
+    sampleTask?: TaskItemDto | undefined;
+
+    constructor(data?: ICreateAssignmentBatchResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.batchId = _data["batchId"];
+            this.createdCount = _data["createdCount"];
+            this.skippedCount = _data["skippedCount"];
+            this.sampleTask = _data["sampleTask"] ? TaskItemDto.fromJS(_data["sampleTask"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): CreateAssignmentBatchResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new CreateAssignmentBatchResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["batchId"] = this.batchId;
+        data["createdCount"] = this.createdCount;
+        data["skippedCount"] = this.skippedCount;
+        data["sampleTask"] = this.sampleTask ? this.sampleTask.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface ICreateAssignmentBatchResultDto {
+    batchId: string;
+    createdCount: number;
+    skippedCount: number;
+    sampleTask?: TaskItemDto | undefined;
+}
+
+export class CreateAssignmentBatchRequest implements ICreateAssignmentBatchRequest {
+    title!: string;
+    description?: string | undefined;
+    dueDate?: Date | undefined;
+    distributionScope!: TaskDistributionScope;
+    offeringId?: string | undefined;
+    subjectId?: string | undefined;
+    gradeCategoryId?: string | undefined;
+    maxScore?: number | undefined;
+    weight?: number | undefined;
+    referenceUrl?: string | undefined;
+    materials?: TaskAttachmentDto[] | undefined;
+
+    constructor(data?: ICreateAssignmentBatchRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.title = _data["title"];
+            this.description = _data["description"];
+            this.dueDate = _data["dueDate"] ? new Date(_data["dueDate"].toString()) : undefined as any;
+            this.distributionScope = _data["distributionScope"];
+            this.offeringId = _data["offeringId"];
+            this.subjectId = _data["subjectId"];
+            this.gradeCategoryId = _data["gradeCategoryId"];
+            this.maxScore = _data["maxScore"];
+            this.weight = _data["weight"];
+            this.referenceUrl = _data["referenceUrl"];
+            if (Array.isArray(_data["materials"])) {
+                this.materials = [] as any;
+                for (let item of _data["materials"])
+                    this.materials!.push(TaskAttachmentDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): CreateAssignmentBatchRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new CreateAssignmentBatchRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["title"] = this.title;
+        data["description"] = this.description;
+        data["dueDate"] = this.dueDate ? this.dueDate.toISOString() : undefined as any;
+        data["distributionScope"] = this.distributionScope;
+        data["offeringId"] = this.offeringId;
+        data["subjectId"] = this.subjectId;
+        data["gradeCategoryId"] = this.gradeCategoryId;
+        data["maxScore"] = this.maxScore;
+        data["weight"] = this.weight;
+        data["referenceUrl"] = this.referenceUrl;
+        if (Array.isArray(this.materials)) {
+            data["materials"] = [];
+            for (let item of this.materials)
+                data["materials"].push(item ? item.toJSON() : undefined as any);
+        }
+        return data;
+    }
+}
+
+export interface ICreateAssignmentBatchRequest {
+    title: string;
+    description?: string | undefined;
+    dueDate?: Date | undefined;
+    distributionScope: TaskDistributionScope;
+    offeringId?: string | undefined;
+    subjectId?: string | undefined;
+    gradeCategoryId?: string | undefined;
+    maxScore?: number | undefined;
+    weight?: number | undefined;
+    referenceUrl?: string | undefined;
+    materials?: TaskAttachmentDto[] | undefined;
 }
 
 export class ServiceResponseOfListOfString implements IServiceResponseOfListOfString {
@@ -15924,7 +23638,12 @@ export class DigitalIdDto implements IDigitalIdDto {
     fullName!: string;
     roleName!: string;
     organizationName!: string;
+    organizationShortName?: string | undefined;
+    organizationLogoUrl?: string | undefined;
     organizationId!: string;
+    primaryColor!: string;
+    secondaryColor!: string;
+    tertiaryColor!: string;
     avatarUrl?: string | undefined;
     qrExpiresAtUtc!: Date;
     qrToken!: string;
@@ -15944,7 +23663,12 @@ export class DigitalIdDto implements IDigitalIdDto {
             this.fullName = _data["fullName"];
             this.roleName = _data["roleName"];
             this.organizationName = _data["organizationName"];
+            this.organizationShortName = _data["organizationShortName"];
+            this.organizationLogoUrl = _data["organizationLogoUrl"];
             this.organizationId = _data["organizationId"];
+            this.primaryColor = _data["primaryColor"];
+            this.secondaryColor = _data["secondaryColor"];
+            this.tertiaryColor = _data["tertiaryColor"];
             this.avatarUrl = _data["avatarUrl"];
             this.qrExpiresAtUtc = _data["qrExpiresAtUtc"] ? new Date(_data["qrExpiresAtUtc"].toString()) : undefined as any;
             this.qrToken = _data["qrToken"];
@@ -15964,7 +23688,12 @@ export class DigitalIdDto implements IDigitalIdDto {
         data["fullName"] = this.fullName;
         data["roleName"] = this.roleName;
         data["organizationName"] = this.organizationName;
+        data["organizationShortName"] = this.organizationShortName;
+        data["organizationLogoUrl"] = this.organizationLogoUrl;
         data["organizationId"] = this.organizationId;
+        data["primaryColor"] = this.primaryColor;
+        data["secondaryColor"] = this.secondaryColor;
+        data["tertiaryColor"] = this.tertiaryColor;
         data["avatarUrl"] = this.avatarUrl;
         data["qrExpiresAtUtc"] = this.qrExpiresAtUtc ? this.qrExpiresAtUtc.toISOString() : undefined as any;
         data["qrToken"] = this.qrToken;
@@ -15977,7 +23706,12 @@ export interface IDigitalIdDto {
     fullName: string;
     roleName: string;
     organizationName: string;
+    organizationShortName?: string | undefined;
+    organizationLogoUrl?: string | undefined;
     organizationId: string;
+    primaryColor: string;
+    secondaryColor: string;
+    tertiaryColor: string;
     avatarUrl?: string | undefined;
     qrExpiresAtUtc: Date;
     qrToken: string;
@@ -16314,6 +24048,46 @@ export class UpdateSecurityRequest implements IUpdateSecurityRequest {
 
 export interface IUpdateSecurityRequest {
     isTwoFactorEnabled: boolean;
+}
+
+export class ChangePasswordRequest implements IChangePasswordRequest {
+    oldPassword!: string;
+    newPassword!: string;
+
+    constructor(data?: IChangePasswordRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.oldPassword = _data["oldPassword"];
+            this.newPassword = _data["newPassword"];
+        }
+    }
+
+    static fromJS(data: any): ChangePasswordRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new ChangePasswordRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["oldPassword"] = this.oldPassword;
+        data["newPassword"] = this.newPassword;
+        return data;
+    }
+}
+
+export interface IChangePasswordRequest {
+    oldPassword: string;
+    newPassword: string;
 }
 
 export class ServiceResponseOfPagedResponseOfUserDirectoryItemDto implements IServiceResponseOfPagedResponseOfUserDirectoryItemDto {
@@ -16992,9 +24766,9 @@ export interface IScrapedSchedulePageSummaryDto {
 }
 
 export enum SpiderPageKind {
-    Unknown = 0,
-    Menu = 1,
-    Schedule = 2,
+    Unknown = "Unknown",
+    Menu = "Menu",
+    Schedule = "Schedule",
 }
 
 export class SpiderUrlRequest implements ISpiderUrlRequest {
@@ -17513,9 +25287,9 @@ export interface IDiscoveredNewsPageDto {
 }
 
 export enum NewsPageKind {
-    Unknown = 0,
-    Archive = 1,
-    Article = 2,
+    Unknown = "Unknown",
+    Archive = "Archive",
+    Article = "Article",
 }
 
 export class ServiceResponseOfIReadOnlyListOfSpiderSyncRunDto implements IServiceResponseOfIReadOnlyListOfSpiderSyncRunDto {
@@ -17651,15 +25425,15 @@ export interface ISpiderSyncRunDto {
 }
 
 export enum SpiderSyncKind {
-    Schedule = 1,
-    News = 2,
+    Schedule = "Schedule",
+    News = "News",
 }
 
 export enum SpiderSyncStatus {
-    Queued = 0,
-    Running = 1,
-    Completed = 2,
-    Failed = 3,
+    Queued = "Queued",
+    Running = "Running",
+    Completed = "Completed",
+    Failed = "Failed",
 }
 
 export class ServiceResponseOfIReadOnlyListOfUnresolvedScrapedEventDto implements IServiceResponseOfIReadOnlyListOfUnresolvedScrapedEventDto {

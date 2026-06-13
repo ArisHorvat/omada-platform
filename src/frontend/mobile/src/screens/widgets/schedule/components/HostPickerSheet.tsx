@@ -3,6 +3,7 @@ import { View, TextInput, StyleSheet, TouchableOpacity, ScrollView, Dimensions }
 import { BottomSheet } from '@/src/components/ui/BottomSheet';
 import { AppText, ClayView, Icon, ProgressiveImage } from '@/src/components/ui';
 import { useThemeColors } from '@/src/hooks';
+import type { WebOverlayAnchor } from '@/src/hooks/usePaneOverlayAnchor';
 import type { HostDto } from '@/src/api/generatedClient';
 import { getApiErrorMessage } from '@/src/api';
 
@@ -20,6 +21,7 @@ interface Props {
   contentInsetBottom?: number;
   /** Omit to use ~88% of screen (same idea as tall filter sheets). */
   height?: number;
+  webAnchor?: WebOverlayAnchor | null;
 }
 
 const DEFAULT_SHEET_HEIGHT = Math.round(Dimensions.get('window').height * 0.88);
@@ -35,6 +37,7 @@ export function HostPickerSheet({
   zIndexBase = 100,
   contentInsetBottom = 0,
   height = DEFAULT_SHEET_HEIGHT,
+  webAnchor = null,
 }: Props) {
   const colors = useThemeColors();
   const [query, setQuery] = useState('');
@@ -146,6 +149,7 @@ export function HostPickerSheet({
       height={height}
       zIndexBase={zIndexBase}
       contentInsetBottom={contentInsetBottom}
+      webAnchor={webAnchor}
     >
       <View style={styles.header}>
         <AppText variant="h3" weight="bold" style={{ color: colors.text }}>

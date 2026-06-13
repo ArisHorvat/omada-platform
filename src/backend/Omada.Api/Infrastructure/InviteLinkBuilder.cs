@@ -3,6 +3,7 @@ namespace Omada.Api.Infrastructure;
 public interface IInviteLinkBuilder
 {
     string BuildJoinLink(string inviteCode);
+    string BuildPasswordResetLink(string email, string token);
 }
 
 public class InviteLinkBuilder : IInviteLinkBuilder
@@ -16,9 +17,19 @@ public class InviteLinkBuilder : IInviteLinkBuilder
 
     public string BuildJoinLink(string inviteCode)
     {
-        var baseUrl = _configuration["AppConfig:PublicAppUrl"]?.TrimEnd('/')
-            ?? _configuration["AppConfig:BaseUrl"]?.TrimEnd('/')
-            ?? "http://localhost:8081";
+        var baseUrl = ResolvePublicAppBaseUrl();
         return $"{baseUrl}/join?code={Uri.EscapeDataString(inviteCode)}";
     }
+
+    public string BuildPasswordResetLink(string email, string token)
+    {
+        var baseUrl = ResolvePublicAppBaseUrl();
+        return
+            $"{baseUrl}/reset-password?email={Uri.EscapeDataString(email)}&token={Uri.EscapeDataString(token)}";
+    }
+
+    private string ResolvePublicAppBaseUrl() =>
+        _configuration["AppConfig:PublicAppUrl"]?.TrimEnd('/')
+        ?? _configuration["AppConfig:BaseUrl"]?.TrimEnd('/')
+        ?? "http://localhost:8081";
 }

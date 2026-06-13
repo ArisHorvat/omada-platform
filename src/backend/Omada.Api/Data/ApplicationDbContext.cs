@@ -45,8 +45,18 @@ public class ApplicationDbContext : DbContext
     public DbSet<ScrapedClassEvent> ScrapedClassEvents { get; set; }
     public DbSet<SpiderSyncRun> SpiderSyncRuns { get; set; }
     public DbSet<OrganizationPeriod> OrganizationPeriods { get; set; }
+    public DbSet<CourseOffering> CourseOfferings { get; set; }
+    public DbSet<OfferingEnrollment> OfferingEnrollments { get; set; }
+    public DbSet<CourseOfferingPackage> CourseOfferingPackages { get; set; }
+    public DbSet<CourseOfferingPackageItem> CourseOfferingPackageItems { get; set; }
+    public DbSet<CourseOfferingPackageProgram> CourseOfferingPackagePrograms { get; set; }
+    public DbSet<CourseOfferingPackageItemProgram> CourseOfferingPackageItemPrograms { get; set; }
+    public DbSet<CourseOfferingProgram> CourseOfferingPrograms { get; set; }
+    public DbSet<OfferingInstructor> OfferingInstructors { get; set; }
+    public DbSet<OfferingGradeCategory> OfferingGradeCategories { get; set; }
     public DbSet<Grade> Grades { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
+    public DbSet<WorkTimeEntry> WorkTimeEntries { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -112,6 +122,36 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<AuditLog>().HasQueryFilter(e =>
             !e.IsDeleted && (_currentOrganizationId == null || e.OrganizationId == _currentOrganizationId));
 
+        modelBuilder.Entity<OrganizationPeriod>().HasQueryFilter(e =>
+            !e.IsDeleted && (_currentOrganizationId == null || e.OrganizationId == _currentOrganizationId));
+
+        modelBuilder.Entity<CourseOffering>().HasQueryFilter(e =>
+            !e.IsDeleted && (_currentOrganizationId == null || e.OrganizationId == _currentOrganizationId));
+
+        modelBuilder.Entity<OfferingEnrollment>().HasQueryFilter(e =>
+            !e.IsDeleted && (_currentOrganizationId == null || e.OrganizationId == _currentOrganizationId));
+
+        modelBuilder.Entity<CourseOfferingPackage>().HasQueryFilter(e =>
+            !e.IsDeleted && (_currentOrganizationId == null || e.OrganizationId == _currentOrganizationId));
+
+        modelBuilder.Entity<CourseOfferingPackageItem>().HasQueryFilter(e =>
+            !e.IsDeleted && (_currentOrganizationId == null || e.OrganizationId == _currentOrganizationId));
+
+        modelBuilder.Entity<CourseOfferingPackageProgram>().HasQueryFilter(e =>
+            !e.IsDeleted && (_currentOrganizationId == null || e.OrganizationId == _currentOrganizationId));
+
+        modelBuilder.Entity<CourseOfferingPackageItemProgram>().HasQueryFilter(e =>
+            !e.IsDeleted && (_currentOrganizationId == null || e.OrganizationId == _currentOrganizationId));
+
+        modelBuilder.Entity<CourseOfferingProgram>().HasQueryFilter(e =>
+            !e.IsDeleted && (_currentOrganizationId == null || e.OrganizationId == _currentOrganizationId));
+
+        modelBuilder.Entity<OfferingInstructor>().HasQueryFilter(e =>
+            !e.IsDeleted && (_currentOrganizationId == null || e.OrganizationId == _currentOrganizationId));
+
+        modelBuilder.Entity<OfferingGradeCategory>().HasQueryFilter(e =>
+            !e.IsDeleted && (_currentOrganizationId == null || e.OrganizationId == _currentOrganizationId));
+
         modelBuilder.Entity<ScrapedClassEvent>().HasQueryFilter(e =>
             !e.IsDeleted && (_currentOrganizationId == null || e.OrganizationId == _currentOrganizationId));
 
@@ -130,6 +170,9 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<EventAttendance>().HasQueryFilter(ea =>
             !ea.IsDeleted &&
             (_currentOrganizationId == null || ea.Event.OrganizationId == _currentOrganizationId));
+
+        modelBuilder.Entity<WorkTimeEntry>().HasQueryFilter(e =>
+            !e.IsDeleted && (_currentOrganizationId == null || e.OrganizationId == _currentOrganizationId));
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

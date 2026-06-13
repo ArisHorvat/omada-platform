@@ -3,16 +3,6 @@ import { StyleSheet } from 'react-native';
 export const createStyles = (colors: any) => StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   container: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderColor: colors.border,
-  },
-  headerTitle: { flex: 1, textAlign: 'center', fontSize: 20, fontWeight: 'bold', color: colors.text },
   content: { padding: 24 },
   avatarContainer: { alignSelf: 'center', marginBottom: 24, position: 'relative' },
   avatar: { width: 100, height: 100, borderRadius: 50, backgroundColor: colors.border },

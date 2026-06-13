@@ -17,4 +17,11 @@ public interface IDigitalIdService
     Task<ServiceResponse<DigitalIdValidationResponse>> ValidateQrTokenAsync(
         string token,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Authenticated staff scan: verifies QR JWT and returns member identity for the active org.
+    /// </summary>
+    Task<ServiceResponse<DigitalIdScanResultDto>> ScanQrTokenAsync(
+        string token,
+        CancellationToken cancellationToken = default);
 }

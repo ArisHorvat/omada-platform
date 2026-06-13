@@ -3,6 +3,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './AuthContext';
 import { orgApi, unwrap } from '@/src/api';
 import { OrganizationDetailsDto } from '@/src/api/generatedClient';
+import { resolveMediaUrl } from '@/src/utils/resolveMediaUrl';
+
+function withResolvedOrgMedia(org: OrganizationDetailsDto): OrganizationDetailsDto {
+  const logoUrl = resolveMediaUrl(org.logoUrl);
+  return logoUrl ? { ...org, logoUrl } : org;
+}
 
 interface CurrentOrganizationContextType {
   organization: OrganizationDetailsDto | null;
@@ -22,6 +28,7 @@ export const CurrentOrganizationProvider: React.FC<{ children: React.ReactNode }
   // Re-fetch data whenever the user switches organizations
   useEffect(() => {
     if (activeSession?.orgId) {
+      setOrganization((prev) => (prev?.id === activeSession.orgId ? prev : null));
       loadOrganizationData(activeSession.orgId);
     } else {
       setOrganization(null);
@@ -36,7 +43,7 @@ export const CurrentOrganizationProvider: React.FC<{ children: React.ReactNode }
       const cachedData = await AsyncStorage.getItem(CACHE_KEY);
 
       if (cachedData) {
-        setOrganization(JSON.parse(cachedData));
+        setOrganization(withResolvedOrgMedia(JSON.parse(cachedData) as OrganizationDetailsDto));
       } else {
         // Only show loading spinner if we have NO cache
         setIsLoading(true);
@@ -49,10 +56,10 @@ export const CurrentOrganizationProvider: React.FC<{ children: React.ReactNode }
     try {
       const freshData = await unwrap(orgApi.getById(orgId));
       
-      setOrganization(freshData);
-      
-      // Save fresh data to cache for the next time the app opens
-      await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(freshData));
+      const resolved = withResolvedOrgMedia(freshData);
+      setOrganization(resolved);
+
+      await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(resolved));
     } catch (e) {
       console.error("Failed to fetch fresh org data", e);
     } finally {

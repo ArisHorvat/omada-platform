@@ -5,7 +5,7 @@ import { PageContainer } from './PageContainer';
 
 export interface WidgetPageShellProps {
   children: React.ReactNode;
-  /** Maps, floorplan editor — use full viewport width. */
+  /** Maps, floorplan editor, org admin — use full content column width on web. */
   fullBleed?: boolean;
   style?: StyleProp<ViewStyle>;
 }

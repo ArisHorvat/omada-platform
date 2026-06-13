@@ -1,25 +1,55 @@
-import { StyleSheet, Dimensions } from 'react-native';
-
-const { width: initialWidth } = Dimensions.get('window');
+import { Platform, StyleSheet } from 'react-native';
 
 // 1. CONFIGURATION
 export const CARD_MARGIN = 12;
 /** Fits in padded highlights row; caps width so emphasized (ring) cards don’t clip the viewport */
 export const HIGHLIGHT_SCROLL_PADDING = 40;
+/** Max highlight width on wide native tablet — keeps ~1 card + peek per viewport */
+export const HIGHLIGHT_CARD_MAX_WIDTH = 340;
+/** Visible sliver of the next card in the horizontal strip (native wide) */
+export const HIGHLIGHT_CARD_PEEK = 28;
+/** Full cards visible at once on wide web before horizontal scroll */
+export const HIGHLIGHT_WEB_VISIBLE_COUNT = 3;
+export const CARD_HEIGHT = 220;
 
-/** Highlight card metrics from the effective content column width (responsive / wide shell). */
-export function getHighlightMetrics(contentWidth: number) {
-  const cardWidth = Math.min(contentWidth * 0.85, contentWidth - HIGHLIGHT_SCROLL_PADDING - 16);
-  return {
-    cardWidth,
-    snapInterval: cardWidth + CARD_MARGIN,
-  };
+export interface HighlightMetrics {
+  cardWidth: number;
+  cardHeight: number;
+  snapInterval: number;
+  useSnap: boolean;
+  showScrollIndicator: boolean;
 }
 
-const fallback = getHighlightMetrics(initialWidth);
-export const CARD_WIDTH = fallback.cardWidth;
-export const SNAP_INTERVAL = fallback.snapInterval;
-export const CARD_HEIGHT = 220; 
+/** Highlight card metrics from the effective content column width (responsive / wide shell). */
+export function getHighlightMetrics(contentWidth: number, isWideShell = false): HighlightMetrics {
+  const scrollInner = Math.max(0, contentWidth - HIGHLIGHT_SCROLL_PADDING);
+  const isWebWide = Platform.OS === 'web' && isWideShell;
+
+  if (isWebWide) {
+    const gaps = CARD_MARGIN * (HIGHLIGHT_WEB_VISIBLE_COUNT - 1);
+    const raw = Math.floor((scrollInner - gaps) / HIGHLIGHT_WEB_VISIBLE_COUNT);
+    const cardWidth = Math.min(320, Math.max(240, raw));
+    return {
+      cardWidth,
+      cardHeight: CARD_HEIGHT,
+      snapInterval: cardWidth + CARD_MARGIN,
+      useSnap: false,
+      showScrollIndicator: true,
+    };
+  }
+
+  const cardWidth = isWideShell
+    ? Math.min(HIGHLIGHT_CARD_MAX_WIDTH, Math.max(280, scrollInner - HIGHLIGHT_CARD_PEEK))
+    : Math.min(contentWidth * 0.85, scrollInner - 16);
+
+  return {
+    cardWidth,
+    cardHeight: CARD_HEIGHT,
+    snapInterval: cardWidth + CARD_MARGIN,
+    useSnap: !isWideShell,
+    showScrollIndicator: false,
+  };
+} 
 
 export const createStyles = (colors: any) => StyleSheet.create({
   // ROOT CONTAINER

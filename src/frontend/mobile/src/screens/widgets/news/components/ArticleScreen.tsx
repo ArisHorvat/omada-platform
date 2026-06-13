@@ -4,8 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
 
 import { PageContainer } from '@/src/components/layout/PageContainer';
-import { AppText } from '@/src/components/ui';
-import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
+import { ScreenHeader } from '@/src/components/navigation/ScreenHeader';
 import { useThemeColors } from '@/src/hooks';
 import { ArticlePanel } from './ArticlePanel';
 
@@ -14,14 +13,9 @@ export default function ArticleScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
       <PageContainer>
-        <View style={styles.header}>
-          <ClayBackButton />
-          <AppText variant="h2" weight="bold" style={styles.headerTitle}>
-            News
-          </AppText>
-        </View>
+        <ScreenHeader title="News" />
         <ArticlePanel articleId={id} />
       </PageContainer>
     </SafeAreaView>
@@ -31,15 +25,5 @@ export default function ArticleScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingBottom: 12,
-    paddingTop: 6,
-  },
-  headerTitle: {
-    marginLeft: 14,
   },
 });

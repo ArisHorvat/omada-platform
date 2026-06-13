@@ -23,6 +23,7 @@ using Omada.Api.Services;
 using Omada.Api.Services.FloorplanAi;
 using Omada.Api.Services.Interfaces;
 using Serilog; // Add this
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json.Serialization;
 using ZymLabs.NSwag.FluentValidation;
@@ -91,12 +92,26 @@ builder.Services.AddScoped<IOrganizationService, OrganizationService>();
 builder.Services.AddScoped<IOrganizationAdminService, OrganizationAdminService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddScoped<IPermissionCacheInvalidator, PermissionCacheInvalidator>();
+builder.Services.AddScoped<IGroupScopeService, GroupScopeService>();
 builder.Services.AddScoped<IGroupService, GroupService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddOptions<BrevoOptions>()
+    .Bind(builder.Configuration.GetSection(BrevoOptions.SectionName))
+    .PostConfigure(options => BrevoEnvFallbacks.Apply(options, builder.Configuration));
+builder.Services.AddHttpClient(BrevoOptions.HttpClientName, client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+    client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+});
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<IColorExtractionService, ColorExtractionService>();
 builder.Services.AddScoped<IScheduleService, ScheduleService>();
 builder.Services.AddScoped<ITaskService, TaskService>();
+builder.Services.AddScoped<ICourseOfferingService, CourseOfferingService>();
+builder.Services.AddScoped<IOfferingTimetableService, OfferingTimetableService>();
+builder.Services.AddScoped<IGradebookService, GradebookService>();
+builder.Services.AddScoped<IOfferingGradePlanService, OfferingGradePlanService>();
+builder.Services.AddScoped<ICourseOfferingPackageService, CourseOfferingPackageService>();
 builder.Services.AddScoped<IGradeService, GradeService>();
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 builder.Services.Configure<DigitalIdOptions>(builder.Configuration.GetSection(DigitalIdOptions.SectionName));
@@ -157,7 +172,13 @@ builder.Services.AddAuthentication(options =>
 
 // Register the custom Permission Handler for [HasPermission] attributes
 builder.Services.AddScoped<IAuthorizationHandler, PermissionHandler>();
+builder.Services.AddScoped<IAuthorizationHandler, OrgAdminHandler>();
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("OrgAdmin", policy => policy.Requirements.Add(new OrgAdminRequirement()));
+});
 
 builder.Services.AddControllers(options =>
     {
@@ -166,6 +187,7 @@ builder.Services.AddControllers(options =>
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
 
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
@@ -254,5 +276,11 @@ else
 {
     app.MapGet("/", () => Results.Ok(new { name = "Omada.Api", status = "running" })).ExcludeFromDescription();
 }
+
+var brevoStartup = app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<BrevoOptions>>().Value;
+if (string.IsNullOrWhiteSpace(brevoStartup.ApiKey) || string.IsNullOrWhiteSpace(brevoStartup.SenderEmail))
+    Log.Warning("Brevo email not configured — invitation emails are logged to console only.");
+else
+    Log.Information("Brevo email enabled (sender: {SenderEmail})", brevoStartup.SenderEmail);
 
 app.Run();

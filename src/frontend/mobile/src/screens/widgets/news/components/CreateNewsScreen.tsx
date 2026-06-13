@@ -9,7 +9,7 @@ import { usePermission } from '@/src/context/PermissionContext';
 import { useThemeColors } from '@/src/hooks';
 import { uploadPublicFile } from '@/src/api/uploadFile';
 import { AppButton, AppText, ClayView, Icon, ProgressiveImage, Skeleton, WidgetErrorState } from '@/src/components/ui';
-import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
+import { ScreenHeader } from '@/src/components/navigation/ScreenHeader';
 import { PressClay } from '@/src/components/animations';
 import { useNewsLogic } from '../hooks/useNewsLogic';
 import { NewsCategory, NewsType } from '@/src/api/generatedClient';
@@ -124,13 +124,8 @@ export default function CreateNewsScreen() {
 
   if (!canPublish) {
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
-        <View style={styles.header}>
-          <ClayBackButton />
-          <AppText variant="h2" weight="bold" style={styles.headerTitle}>
-            Create News
-          </AppText>
-        </View>
+      <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
+        <ScreenHeader title="Create News" />
         <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 18 }}>
           <WidgetErrorState message="Not authorized to publish news." />
         </View>
@@ -142,12 +137,7 @@ export default function CreateNewsScreen() {
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
       <ComposeToolbarProvider>
         <View style={{ flex: 1 }}>
-          <View style={styles.header}>
-            <ClayBackButton />
-            <AppText variant="h2" weight="bold" style={styles.headerTitle}>
-              Publish
-            </AppText>
-          </View>
+          <ScreenHeader title="Publish" />
 
           <ScrollView
             keyboardShouldPersistTaps="handled"
@@ -294,16 +284,6 @@ export default function CreateNewsScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingBottom: 12,
-    paddingTop: 6,
-  },
-  headerTitle: {
-    marginLeft: 14,
   },
   scrollContent: {
     paddingHorizontal: 18,

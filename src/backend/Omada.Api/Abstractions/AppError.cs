@@ -10,5 +10,6 @@ public static class ErrorCodes
     public const string NotFound = "DATA_404";
     public const string InternalError = "SYS_500";
     public const string InvalidInput = "REQ_400";
+    public const string Conflict = "REQ_409";
     public const string OperationFailed = "OPS_001";
 }

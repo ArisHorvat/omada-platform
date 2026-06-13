@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { View, ScrollView, TextInput } from 'react-native';
+import React, { useState } from 'react';
+import { View, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 
@@ -7,16 +7,21 @@ import { ClayView } from '@/src/components/ui/ClayView';
 import { ClayGroupedSection } from '@/src/components/ui/ClayGroupedSection';
 import { AppText } from '@/src/components/ui/AppText';
 import { AppButton } from '@/src/components/ui/AppButton';
+import { IconInput } from '@/src/components/ui/IconInput';
 import { ToggleSwitch } from '@/src/components/ui/ToggleSwitch';
 import { Icon } from '@/src/components/ui/Icon';
 import { PressClay } from '@/src/components/animations/PressClay';
 import { WidgetPageShell } from '@/src/components/layout';
 import { useThemeColors } from '@/src/hooks';
 import { useSecurityLogic } from '@/src/screens/widgets/security/hooks/useSecurityLogic';
+import { ADMIN_ACCOUNT_HOME } from '@/src/screens/admin/utils/adminAccountRoutes';
 
-export default function SecurityScreen() {
+export default function SecurityScreen({ adminConsole = false }: { adminConsole?: boolean }) {
   const colors = useThemeColors();
   const router = useRouter();
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const {
     currentPassword,
     setCurrentPassword,
@@ -26,38 +31,27 @@ export default function SecurityScreen() {
     setConfirmPassword,
     is2FAEnabled,
     handleToggle2FA,
-    isBiometricEnabled,
-    onBiometricToggle,
     handleChangePassword,
     handleExportData,
     handleDeleteAccount,
     exportBusy,
     deleteBusy,
+    changePasswordBusy,
   } = useSecurityLogic();
-
-  const inputStyle = useMemo(
-    () => ({
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: 12,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      color: colors.text,
-      fontSize: 16,
-      marginTop: 6,
-      backgroundColor: colors.card,
-    }),
-    [colors.border, colors.card, colors.text]
-  );
 
   const rowDivider = { borderBottomWidth: 1, borderBottomColor: colors.border };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
-      <WidgetPageShell>
+      <WidgetPageShell fullBleed={adminConsole}>
       <ClayView depth={12} puffy={16} style={{ marginHorizontal: 20, marginBottom: 16, paddingHorizontal: 8, paddingVertical: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <PressClay onPress={() => router.back()}>
+          <PressClay
+            onPress={() => {
+              if (adminConsole) router.replace(ADMIN_ACCOUNT_HOME as never);
+              else router.back();
+            }}
+          >
             <View style={{ padding: 8 }}>
               <Icon name="arrow-back" size={24} color={colors.text} />
             </View>
@@ -72,56 +66,61 @@ export default function SecurityScreen() {
         <ClayGroupedSection title="Password">
           <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 }}>
             <AppText variant="caption">Current password</AppText>
-            <TextInput
-              style={inputStyle}
-              secureTextEntry
+            <IconInput
+              icon="lock"
+              placeholder="Current password"
               value={currentPassword}
               onChangeText={setCurrentPassword}
-              placeholder="••••••••"
-              placeholderTextColor={colors.subtle}
+              secureTextEntry={!showCurrentPassword}
+              rightIcon={showCurrentPassword ? 'visibility-off' : 'visibility'}
+              onRightIconPress={() => setShowCurrentPassword((v) => !v)}
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={{ marginTop: 6 }}
             />
           </View>
           <View style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
             <AppText variant="caption">New password</AppText>
-            <TextInput
-              style={inputStyle}
-              secureTextEntry
+            <IconInput
+              icon="lock"
+              placeholder="New password"
               value={newPassword}
               onChangeText={setNewPassword}
-              placeholder="••••••••"
-              placeholderTextColor={colors.subtle}
+              secureTextEntry={!showNewPassword}
+              rightIcon={showNewPassword ? 'visibility-off' : 'visibility'}
+              onRightIconPress={() => setShowNewPassword((v) => !v)}
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={{ marginTop: 6 }}
             />
           </View>
           <View style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
             <AppText variant="caption">Confirm new password</AppText>
-            <TextInput
-              style={inputStyle}
-              secureTextEntry
+            <IconInput
+              icon="lock"
+              placeholder="Confirm new password"
               value={confirmPassword}
               onChangeText={setConfirmPassword}
-              placeholder="••••••••"
-              placeholderTextColor={colors.subtle}
+              secureTextEntry={!showConfirmPassword}
+              rightIcon={showConfirmPassword ? 'visibility-off' : 'visibility'}
+              onRightIconPress={() => setShowConfirmPassword((v) => !v)}
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={{ marginTop: 6 }}
             />
           </View>
           <View style={{ padding: 16 }}>
-            <AppButton title="Update password" onPress={() => void handleChangePassword()} variant="primary" />
+            <AppButton
+              title="Update password"
+              onPress={() => void handleChangePassword()}
+              variant="primary"
+              loading={changePasswordBusy}
+              disabled={changePasswordBusy}
+            />
           </View>
         </ClayGroupedSection>
 
         <ClayGroupedSection title="Authentication">
-          <View style={[rowDivider, { paddingVertical: 14, paddingHorizontal: 16 }]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <View style={{ flex: 1, marginRight: 12 }}>
-                <AppText variant="body" weight="medium">
-                  Enable biometrics (Face ID / Touch ID)
-                </AppText>
-                <AppText variant="caption" style={{ marginTop: 4 }}>
-                  Use device biometrics for quick access where supported.
-                </AppText>
-              </View>
-              <ToggleSwitch value={isBiometricEnabled} onValueChange={(v) => void onBiometricToggle(v)} />
-            </View>
-          </View>
           <View style={[rowDivider, { borderBottomWidth: 0, paddingVertical: 14, paddingHorizontal: 16 }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <View style={{ flex: 1, marginRight: 12 }}>
@@ -129,7 +128,7 @@ export default function SecurityScreen() {
                   Two-factor authentication
                 </AppText>
                 <AppText variant="caption" style={{ marginTop: 4 }}>
-                  Extra verification for your account.
+                  When enabled, each sign-in sends a 6-digit code to your email after your password is accepted.
                 </AppText>
               </View>
               <ToggleSwitch value={is2FAEnabled} onValueChange={handleToggle2FA} />

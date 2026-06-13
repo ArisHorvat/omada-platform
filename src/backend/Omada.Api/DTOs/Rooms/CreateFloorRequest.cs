@@ -8,7 +8,7 @@ public class CreateFloorRequest
     [Range(1, 300)]
     public int LevelNumber { get; set; }
 
-    [Required]
-    public IFormFile FloorplanFile { get; set; } = null!;
+    /// <summary>Optional floorplan image. When omitted, the level is created without a raster map (rooms can still be added as a list).</summary>
+    public IFormFile? FloorplanFile { get; set; }
 }
 

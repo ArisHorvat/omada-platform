@@ -1,7 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import { AppText, ClayView } from '@/src/components/ui';
-import type { UnresolvedScrapedEventDto } from '@/src/api/webSpiderConfigApi';
+import type { UnresolvedScrapedEventDto } from '@/src/api/generatedClient';
 
 type Props = {
   colors: { card: string; text: string; subtle: string; border: string; primary: string };

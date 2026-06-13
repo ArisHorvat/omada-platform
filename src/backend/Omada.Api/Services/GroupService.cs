@@ -18,19 +18,22 @@ public class GroupService : IGroupService
     private readonly IPermissionService _permissionService;
     private readonly ApplicationDbContext _context;
     private readonly IPublicMediaUrlResolver _mediaUrls;
+    private readonly IGroupScopeService _groupScope;
 
     public GroupService(
         IUnitOfWork uow,
         IUserContext userContext,
         IPermissionService permissionService,
         ApplicationDbContext context,
-        IPublicMediaUrlResolver mediaUrls)
+        IPublicMediaUrlResolver mediaUrls,
+        IGroupScopeService groupScope)
     {
         _uow = uow;
         _userContext = userContext;
         _permissionService = permissionService;
         _context = context;
         _mediaUrls = mediaUrls;
+        _groupScope = groupScope;
     }
 
     public async Task<ServiceResponse<GroupDto>> CreateGroupAsync(CreateGroupRequest request)
@@ -49,7 +52,8 @@ public class GroupService : IGroupService
             Type = normalizedType,
             ManagerId = request.ManagerId,
             ParentGroupId = request.ParentGroupId,
-            ScheduleConfig = request.ScheduleConfig
+            ScheduleConfig = request.ScheduleConfig,
+            AcademicYear = string.IsNullOrWhiteSpace(request.AcademicYear) ? null : request.AcademicYear.Trim()
         };
 
         await _uow.Repository<Group>().AddAsync(group);
@@ -79,6 +83,7 @@ public class GroupService : IGroupService
         group.ManagerId = request.ManagerId;
         group.ParentGroupId = request.ParentGroupId;
         group.ScheduleConfig = request.ScheduleConfig;
+        group.AcademicYear = string.IsNullOrWhiteSpace(request.AcademicYear) ? null : request.AcademicYear.Trim();
         group.UpdatedAt = DateTime.UtcNow;
 
         _uow.Repository<Group>().Update(group);
@@ -128,6 +133,9 @@ public class GroupService : IGroupService
         if (group == null)
             return new ServiceResponse<GroupDetailDto>(false, null, new AppError(ErrorCodes.NotFound, "Group not found."));
 
+        var rollupCounts = await _groupScope.GetRollupMemberCountsAsync(organizationId);
+        var rollupForGroup = rollupCounts.TryGetValue(id, out var rollup) ? rollup : group.MemberCount;
+
         var children = await _context.Groups
             .AsNoTracking()
             .Where(g => g.ParentGroupId == id && g.OrganizationId == organizationId && !g.IsDeleted)
@@ -141,6 +149,12 @@ public class GroupService : IGroupService
             })
             .ToListAsync();
 
+        foreach (var child in children)
+        {
+            if (rollupCounts.TryGetValue(child.Id, out var childRollup))
+                child.MemberCount = childRollup;
+        }
+
         var detail = new GroupDetailDto
         {
             Id = group.Id,
@@ -153,7 +167,8 @@ public class GroupService : IGroupService
                 ? $"{group.ManagerFirst} {group.ManagerLast}".Trim()
                 : null,
             ScheduleConfig = group.ScheduleConfig,
-            MemberCount = group.MemberCount,
+            DirectMemberCount = group.MemberCount,
+            MemberCount = rollupForGroup,
             ChildCount = group.ChildCount,
             Children = children
         };
@@ -201,6 +216,9 @@ public class GroupService : IGroupService
                 roots.Add(node);
         }
 
+        var rollupCounts = await _groupScope.GetRollupMemberCountsAsync(organizationId);
+        ApplyRollupCounts(roots, rollupCounts);
+
         SortTree(roots);
         return new ServiceResponse<IEnumerable<GroupTreeNodeDto>>(true, roots);
     }
@@ -216,9 +234,6 @@ public class GroupService : IGroupService
             .Where(o => o.Id == organizationId)
             .Select(o => o.OrganizationType)
             .FirstOrDefaultAsync();
-
-        var typeCatalog = GroupTypes.GetCatalog(orgType)
-            .ToDictionary(t => t.Key, t => t.Label, StringComparer.OrdinalIgnoreCase);
 
         var canManageAll = (await _permissionService.CanManageAllGroupsInOrg(userId, organizationId)).Data;
 
@@ -251,9 +266,7 @@ public class GroupService : IGroupService
                 Id = r.Id,
                 Name = r.Name,
                 Type = GroupTypes.Normalize(r.Type),
-                TypeLabel = typeCatalog.TryGetValue(GroupTypes.Normalize(r.Type), out var label)
-                    ? label
-                    : r.Type
+                TypeLabel = GroupTypes.GetDisplayLabel(orgType, r.Type)
             })
             .ToList();
 
@@ -267,23 +280,27 @@ public class GroupService : IGroupService
         {
             "assignment" or "assignments" or "tasks" => new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
-                GroupTypes.Subject, GroupTypes.Class, GroupTypes.Series, GroupTypes.Program,
+                GroupTypes.Program, GroupTypes.Series, GroupTypes.Group, GroupTypes.Subgroup,
+                GroupTypes.Cohort, GroupTypes.Class, GroupTypes.Subject,
                 GroupTypes.Team, GroupTypes.Project
             },
             "grade" or "grades" => new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
-                GroupTypes.Subject, GroupTypes.Class, GroupTypes.Program,
+                GroupTypes.Program, GroupTypes.Series, GroupTypes.Group, GroupTypes.Subgroup,
+                GroupTypes.Cohort, GroupTypes.Class, GroupTypes.Subject,
                 GroupTypes.Department, GroupTypes.Faculty, GroupTypes.Division
             },
             "attendance" => new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
-                GroupTypes.Subject, GroupTypes.Class, GroupTypes.Series, GroupTypes.Subgroup,
+                GroupTypes.Program, GroupTypes.Series, GroupTypes.Group, GroupTypes.Subgroup,
+                GroupTypes.Cohort, GroupTypes.Class, GroupTypes.Subject,
                 GroupTypes.Team, GroupTypes.Squad, GroupTypes.Project,
                 GroupTypes.Department, GroupTypes.Division, GroupTypes.Faculty
             },
             _ => new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
-                GroupTypes.Subject, GroupTypes.Class, GroupTypes.Series, GroupTypes.Subgroup,
+                GroupTypes.Program, GroupTypes.Series, GroupTypes.Group, GroupTypes.Subgroup,
+                GroupTypes.Cohort, GroupTypes.Class, GroupTypes.Subject,
                 GroupTypes.Team, GroupTypes.Squad, GroupTypes.Project
             }
         };
@@ -332,7 +349,7 @@ public class GroupService : IGroupService
             .ToListAsync();
 
         var classesManaged = groups
-            .Where(g => string.Equals(g.Type, GroupTypes.Class, StringComparison.OrdinalIgnoreCase) && g.ManagerId == userId)
+            .Where(g => GroupTypes.IsSessionManagedGroup(g.Type) && g.ManagerId == userId)
             .ToList();
         if (classesManaged.Count > 0)
         {
@@ -402,36 +419,26 @@ public class GroupService : IGroupService
 
         var page = Math.Max(1, request.Page);
         var pageSize = Math.Clamp(request.PageSize, 1, 100);
-        var search = q?.Trim();
+        var search = q?.Trim().ToLowerInvariant();
 
-        var baseQuery = _context.GroupMembers
+        var scopeIds = await _groupScope.GetDescendantIdsAsync(organizationId, groupId, includeSelf: true);
+        var groupNames = await _context.Groups
             .AsNoTracking()
-            .Where(gm => gm.GroupId == groupId && gm.Group.OrganizationId == organizationId);
+            .Where(g => scopeIds.Contains(g.Id))
+            .ToDictionaryAsync(g => g.Id, g => g.Name);
 
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            var term = search.ToLower();
-            baseQuery = baseQuery.Where(gm =>
-                (gm.User.FirstName + " " + gm.User.LastName).ToLower().Contains(term)
-                || gm.User.Email.ToLower().Contains(term)
-                || (gm.RoleInGroup != null && gm.RoleInGroup.ToLower().Contains(term)));
-        }
-
-        var total = await baseQuery.CountAsync();
-
-        var items = await baseQuery
-            .OrderBy(gm => gm.User.LastName)
-            .ThenBy(gm => gm.User.FirstName)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .Select(gm => new GroupMemberDto
+        var rows = await _context.GroupMembers
+            .AsNoTracking()
+            .Where(gm => scopeIds.Contains(gm.GroupId) && gm.Group.OrganizationId == organizationId && !gm.Group.IsDeleted)
+            .Select(gm => new
             {
-                UserId = gm.UserId,
-                FirstName = gm.User.FirstName,
-                LastName = gm.User.LastName,
-                Email = gm.User.Email,
-                RoleInGroup = gm.RoleInGroup,
-                AvatarUrl = gm.User.AvatarUrl,
+                gm.GroupId,
+                gm.UserId,
+                gm.User.FirstName,
+                gm.User.LastName,
+                gm.User.Email,
+                gm.RoleInGroup,
+                gm.User.AvatarUrl,
                 RoleName = _context.OrganizationMembers
                     .Where(om => om.UserId == gm.UserId && om.OrganizationId == organizationId)
                     .Select(om => om.Role.Name)
@@ -439,12 +446,72 @@ public class GroupService : IGroupService
             })
             .ToListAsync();
 
-        foreach (var row in items)
-            row.AvatarUrl = _mediaUrls.ToPublicUrl(row.AvatarUrl);
+        var depthByGroup = await _groupScope.GetDepthsAsync(organizationId, scopeIds);
+
+        var rolledUp = new Dictionary<Guid, (Guid PlacementGroupId, string FirstName, string LastName, string? Email, string? RoleInGroup, string? AvatarUrl, string RoleName)>();
+        foreach (var row in rows)
+        {
+            var depth = depthByGroup.GetValueOrDefault(row.GroupId);
+            if (rolledUp.TryGetValue(row.UserId, out var existing))
+            {
+                var existingDepth = depthByGroup.GetValueOrDefault(existing.PlacementGroupId);
+                if (depth <= existingDepth)
+                    continue;
+            }
+
+            rolledUp[row.UserId] = (
+                row.GroupId,
+                row.FirstName,
+                row.LastName,
+                row.Email,
+                row.RoleInGroup,
+                row.AvatarUrl,
+                row.RoleName);
+        }
+
+        var filtered = rolledUp
+            .Where(kv =>
+            {
+                if (string.IsNullOrWhiteSpace(search))
+                    return true;
+
+                var name = $"{kv.Value.FirstName} {kv.Value.LastName}".ToLowerInvariant();
+                return name.Contains(search)
+                       || (kv.Value.Email != null && kv.Value.Email.ToLowerInvariant().Contains(search))
+                       || (kv.Value.RoleInGroup != null && kv.Value.RoleInGroup.ToLowerInvariant().Contains(search))
+                       || (groupNames.TryGetValue(kv.Value.PlacementGroupId, out var gName) && gName.ToLowerInvariant().Contains(search));
+            })
+            .OrderBy(kv => kv.Value.LastName)
+            .ThenBy(kv => kv.Value.FirstName)
+            .ToList();
+
+        var total = filtered.Count;
+        var pageItems = filtered
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(kv =>
+            {
+                var placementId = kv.Value.PlacementGroupId;
+                groupNames.TryGetValue(placementId, out var placementName);
+                return new GroupMemberDto
+                {
+                    UserId = kv.Key,
+                    FirstName = kv.Value.FirstName,
+                    LastName = kv.Value.LastName,
+                    Email = kv.Value.Email,
+                    RoleInGroup = kv.Value.RoleInGroup,
+                    AvatarUrl = _mediaUrls.ToPublicUrl(kv.Value.AvatarUrl),
+                    RoleName = kv.Value.RoleName,
+                    PlacementGroupId = placementId,
+                    PlacementGroupName = placementName ?? "Group",
+                    IsDirectMember = placementId == groupId
+                };
+            })
+            .ToList();
 
         return new ServiceResponse<PagedResponse<GroupMemberDto>>(true, new PagedResponse<GroupMemberDto>
         {
-            Items = items,
+            Items = pageItems,
             TotalCount = total,
             Page = page,
             PageSize = pageSize
@@ -504,26 +571,67 @@ public class GroupService : IGroupService
         return new ServiceResponse<int>(true, toAdd.Count);
     }
 
-    public async Task<ServiceResponse<bool>> RemoveGroupMemberAsync(Guid groupId, Guid userId)
+    public async Task<ServiceResponse<bool>> RemoveGroupMemberAsync(Guid scopeGroupId, Guid userId, Guid? placementGroupId = null)
     {
         var organizationId = _userContext.OrganizationId;
-        var group = await _context.Groups
+        var scopeGroup = await _context.Groups
             .AsNoTracking()
-            .FirstOrDefaultAsync(g => g.Id == groupId && g.OrganizationId == organizationId && !g.IsDeleted);
-        if (group == null)
+            .FirstOrDefaultAsync(g => g.Id == scopeGroupId && g.OrganizationId == organizationId && !g.IsDeleted);
+        if (scopeGroup == null)
             return new ServiceResponse<bool>(false, false, new AppError(ErrorCodes.NotFound, "Group not found."));
 
-        var membership = await _context.GroupMembers
-            .FirstOrDefaultAsync(gm => gm.GroupId == groupId && gm.UserId == userId);
+        var scopeIds = await _groupScope.GetDescendantIdsAsync(organizationId, scopeGroupId, includeSelf: true);
+
+        GroupMember? membership;
+        if (placementGroupId.HasValue)
+        {
+            if (!scopeIds.Contains(placementGroupId.Value))
+                return new ServiceResponse<bool>(false, false, new AppError(ErrorCodes.InvalidInput, "Placement group is outside this scope."));
+
+            membership = await _context.GroupMembers
+                .FirstOrDefaultAsync(gm => gm.GroupId == placementGroupId.Value && gm.UserId == userId);
+        }
+        else
+        {
+            var candidates = await _context.GroupMembers
+                .Where(gm => gm.UserId == userId && scopeIds.Contains(gm.GroupId))
+                .ToListAsync();
+
+            if (candidates.Count == 0)
+                membership = null;
+            else if (candidates.Count == 1)
+                membership = candidates[0];
+            else
+            {
+                var deepest = candidates[0];
+                var deepestDepth = await _groupScope.GetDepthAsync(organizationId, deepest.GroupId);
+                foreach (var candidate in candidates.Skip(1))
+                {
+                    var depth = await _groupScope.GetDepthAsync(organizationId, candidate.GroupId);
+                    if (depth > deepestDepth)
+                    {
+                        deepest = candidate;
+                        deepestDepth = depth;
+                    }
+                }
+
+                membership = deepest;
+            }
+        }
+
         if (membership == null)
             return new ServiceResponse<bool>(false, false, new AppError(ErrorCodes.NotFound, "Member not found in this group."));
 
+        var placementGroup = await _context.Groups
+            .AsNoTracking()
+            .FirstOrDefaultAsync(g => g.Id == membership.GroupId);
+
         _context.GroupMembers.Remove(membership);
 
-        if (GroupTypes.IsDepartmentLike(group.Type))
+        if (placementGroup != null && GroupTypes.IsDepartmentLike(placementGroup.Type))
         {
             var user = await _uow.Repository<User>().GetByIdAsync(userId);
-            if (user?.DepartmentId == groupId)
+            if (user?.DepartmentId == placementGroup.Id)
             {
                 user.DepartmentId = null;
                 _uow.Repository<User>().Update(user);
@@ -547,12 +655,41 @@ public class GroupService : IGroupService
             return new ServiceResponse<int>(false, 0, new AppError(ErrorCodes.NotFound, "Source or target group not found."));
 
         var userIds = request.UserIds.Distinct().ToList();
-        var sourceMemberships = await _context.GroupMembers
-            .Where(gm => gm.GroupId == request.SourceGroupId && userIds.Contains(gm.UserId))
+        var scopeIds = await _groupScope.GetDescendantIdsAsync(organizationId, request.SourceGroupId, includeSelf: true);
+        var candidateMemberships = await _context.GroupMembers
+            .Where(gm => scopeIds.Contains(gm.GroupId) && userIds.Contains(gm.UserId))
             .ToListAsync();
 
+        var sourceMemberships = new List<GroupMember>();
+        foreach (var uid in userIds)
+        {
+            var perUser = candidateMemberships.Where(gm => gm.UserId == uid).ToList();
+            if (perUser.Count == 0)
+                continue;
+
+            if (perUser.Count == 1)
+            {
+                sourceMemberships.Add(perUser[0]);
+                continue;
+            }
+
+            var deepest = perUser[0];
+            var deepestDepth = await _groupScope.GetDepthAsync(organizationId, deepest.GroupId);
+            foreach (var candidate in perUser.Skip(1))
+            {
+                var depth = await _groupScope.GetDepthAsync(organizationId, candidate.GroupId);
+                if (depth > deepestDepth)
+                {
+                    deepest = candidate;
+                    deepestDepth = depth;
+                }
+            }
+
+            sourceMemberships.Add(deepest);
+        }
+
         if (sourceMemberships.Count == 0)
-            return new ServiceResponse<int>(false, 0, new AppError(ErrorCodes.InvalidInput, "None of the selected users belong to the source group."));
+            return new ServiceResponse<int>(false, 0, new AppError(ErrorCodes.InvalidInput, "None of the selected users belong to this group or its sub-groups."));
 
         var role = string.IsNullOrWhiteSpace(request.RoleInGroup)
             ? sourceMemberships[0].RoleInGroup ?? "Member"
@@ -615,6 +752,7 @@ public class GroupService : IGroupService
                 Type = g.Type,
                 ParentGroupId = g.ParentGroupId,
                 ManagerId = g.ManagerId,
+                AcademicYear = g.AcademicYear,
                 MemberCount = g.Members.Count,
                 ChildCount = g.SubGroups.Count(c => !c.IsDeleted)
             })
@@ -693,6 +831,19 @@ public class GroupService : IGroupService
 
         var memberships = await _context.GroupMembers.Where(gm => gm.GroupId == groupId).ToListAsync();
         _context.GroupMembers.RemoveRange(memberships);
+    }
+
+    private static void ApplyRollupCounts(
+        IEnumerable<GroupTreeNodeDto> nodes,
+        IReadOnlyDictionary<Guid, int> rollupCounts)
+    {
+        foreach (var node in nodes)
+        {
+            if (rollupCounts.TryGetValue(node.Id, out var count))
+                node.MemberCount = count;
+
+            ApplyRollupCounts(node.Children, rollupCounts);
+        }
     }
 
     private static void SortTree(List<GroupTreeNodeDto> nodes)

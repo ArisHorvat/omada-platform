@@ -8,8 +8,8 @@ export const useScreenshotWarning = () => {
 
     const subscription = ScreenCapture.addScreenshotListener(() => {
       Alert.alert(
-        "Screenshot Detected", 
-        "Please note that this digital ID is for personal use only."
+        'Screenshot detected',
+        'This pass is personal. Do not share screenshots of your Digital ID.',
       );
     });
 

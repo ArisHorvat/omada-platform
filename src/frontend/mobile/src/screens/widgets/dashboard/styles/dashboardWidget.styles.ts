@@ -1,7 +1,18 @@
-import { CARD_HEIGHT, CARD_MARGIN, CARD_WIDTH } from '@/src/screens/widgets/dashboard/styles/dashboard.styles';
-import { StyleSheet } from 'react-native';
+import {
+  CARD_HEIGHT,
+  CARD_MARGIN,
+  getHighlightMetrics,
+  type HighlightMetrics,
+} from '@/src/screens/widgets/dashboard/styles/dashboard.styles';
+import { Dimensions, StyleSheet } from 'react-native';
 
-export const createWidgetStyles = (colors: any) => StyleSheet.create({
+const defaultCardMetrics = getHighlightMetrics(Dimensions.get('window').width);
+
+export const createWidgetStyles = (
+  colors: any,
+  cardMetrics: HighlightMetrics = defaultCardMetrics,
+) =>
+  StyleSheet.create({
   // --------------------------------------------------
   // GENERIC / FALLBACK
   // --------------------------------------------------
@@ -20,14 +31,15 @@ export const createWidgetStyles = (colors: any) => StyleSheet.create({
   // VARIANT: CARD (Highlights)
   // --------------------------------------------------
   cardContainer: {
-    width: CARD_WIDTH,
-    height: CARD_HEIGHT,
+    width: cardMetrics.cardWidth,
+    height: cardMetrics.cardHeight,
     borderRadius: 32,
     marginRight: CARD_MARGIN,
     padding: 24,
   },
   cardContent: {
     flex: 1,
+    overflow: 'hidden',
   },
   cardHeaderRow: {
     flexDirection: 'row',
@@ -47,9 +59,12 @@ export const createWidgetStyles = (colors: any) => StyleSheet.create({
   },
   cardTitleContainer: {
     flex: 1,
+    minWidth: 0,
   },
   cardInnerBody: {
     flex: 1,
+    minHeight: 0,
+    overflow: 'hidden',
     justifyContent: 'space-between',
   },
 

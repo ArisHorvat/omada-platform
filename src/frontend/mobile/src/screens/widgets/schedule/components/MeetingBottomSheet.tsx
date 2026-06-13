@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { BottomSheet } from '@/src/components/ui/BottomSheet';
+import { WebAnchoredOverlay } from '@/src/components/layout/WebAnchoredOverlay';
 import { ClayView, Icon, AppText } from '@/src/components/ui';
 import { useThemeColors, useTabContentBottomPadding } from '@/src/hooks';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,6 +20,7 @@ import { scheduleApi, unwrap } from '@/src/api';
 import { ProposeMeetingTimeRequest, ScheduleItemDto, AttendanceStatus } from '@/src/api/generatedClient';
 import { Alert } from 'react-native';
 import type { ScheduleDictionary } from '../hooks/useScheduleDictionary';
+import type { WebOverlayAnchor } from '@/src/hooks/usePaneOverlayAnchor';
 
 interface Props {
   visible: boolean;
@@ -26,9 +28,17 @@ interface Props {
   event: ScheduleItemDto | null;
   dictionary: ScheduleDictionary;
   onRsvp: (event: ScheduleItemDto, status: AttendanceStatus) => Promise<void>;
+  webAnchor?: WebOverlayAnchor | null;
 }
 
-export function MeetingBottomSheet({ visible, onClose, event, dictionary, onRsvp }: Props) {
+export function MeetingBottomSheet({
+  visible,
+  onClose,
+  event,
+  dictionary,
+  onRsvp,
+  webAnchor = null,
+}: Props) {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const tabBarPad = useTabContentBottomPadding(72);
@@ -94,7 +104,12 @@ export function MeetingBottomSheet({ visible, onClose, event, dictionary, onRsvp
 
   return (
     <>
-      <BottomSheet isVisible={visible} onClose={onClose} height={Dimensions.get('window').height * 0.78}>
+      <BottomSheet
+        isVisible={visible}
+        onClose={onClose}
+        height={Dimensions.get('window').height * 0.78}
+        webAnchor={webAnchor}
+      >
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{ paddingBottom: 28 + insets.bottom + tabBarPad }}
@@ -205,7 +220,7 @@ export function MeetingBottomSheet({ visible, onClose, event, dictionary, onRsvp
       </BottomSheet>
 
       <Modal visible={proposeOpen} transparent animationType="fade" onRequestClose={() => setProposeOpen(false)}>
-        <View style={styles.modalRoot}>
+        <WebAnchoredOverlay style={styles.modalRoot}>
         <TouchableOpacity
           style={styles.modalBackdrop}
           activeOpacity={1}
@@ -261,7 +276,7 @@ export function MeetingBottomSheet({ visible, onClose, event, dictionary, onRsvp
             </TouchableOpacity>
           </View>
         </View>
-        </View>
+        </WebAnchoredOverlay>
       </Modal>
     </>
   );

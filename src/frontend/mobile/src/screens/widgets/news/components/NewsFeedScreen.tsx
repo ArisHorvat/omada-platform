@@ -5,7 +5,7 @@ import { FlashList } from '@shopify/flash-list';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 
-import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
+import { ScreenHeader } from '@/src/components/navigation/ScreenHeader';
 import {
   AppText,
   ClayView,
@@ -189,8 +189,8 @@ export default function NewsFeedScreen() {
 
   if (feedQuery.isLoading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-        <ClayBackButton />
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
+        <ScreenHeader title="News & Alerts" />
         <View style={styles.skeletonWrap}>
           {Array.from({ length: 6 }).map((_, idx) => (
             <ClayView key={idx} depth={6} puffy={12} style={styles.skeletonCard}>
@@ -208,8 +208,8 @@ export default function NewsFeedScreen() {
 
   if (feedQuery.isError) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-        <ClayBackButton />
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
+        <ScreenHeader title="News & Alerts" />
         <View style={styles.errorWrap}>
           <WidgetErrorState message="Could not load news feed." onRetry={() => feedQuery.refetch()} />
         </View>
@@ -217,14 +217,7 @@ export default function NewsFeedScreen() {
     );
   }
 
-  const feedHeader = (
-    <View style={styles.header}>
-      {!isWideShell ? <ClayBackButton /> : null}
-      <AppText variant="h2" weight="bold" style={[styles.headerTitle, !isWideShell && { marginLeft: 14 }]}>
-        News & Alerts
-      </AppText>
-    </View>
-  );
+  const feedHeader = <ScreenHeader title="News & Alerts" />;
 
   const feedList =
     items.length === 0 ? (
@@ -307,7 +300,7 @@ export default function NewsFeedScreen() {
   );
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
       <PageContainer>
         {isWideShell ? (
           <SplitPane sidebar={feedColumn} sidebarWidth={SPLIT_PANE_LIST_WIDTH}>
@@ -399,15 +392,6 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: '#00000000',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingBottom: 8,
-  },
-  headerTitle: {
-    flex: 1,
   },
   filterRow: {
     paddingHorizontal: 18,

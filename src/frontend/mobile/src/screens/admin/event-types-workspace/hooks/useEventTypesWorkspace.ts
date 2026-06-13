@@ -1,13 +1,15 @@
 import { useCallback, useState } from 'react';
-import { Alert } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { eventTypesApi, unwrap } from '@/src/api';
 import { QUERY_KEYS } from '@/src/api/queryKeys';
 import { CreateEventTypeRequest } from '@/src/api/generatedClient';
 import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
-
-const DEFAULT_COLOR = '#3b82f6';
+import {
+  DEFAULT_EVENT_TYPE_COLOR,
+  normalizeEventTypeColor,
+} from '@/src/constants/eventTypeColors';
+import { alertAction, confirmAction } from '@/src/utils/confirmAction';
 
 export function useEventTypesWorkspace() {
   const queryClient = useQueryClient();
@@ -15,10 +17,10 @@ export function useEventTypesWorkspace() {
   const orgId = organization?.id ?? '';
 
   const [newName, setNewName] = useState('');
-  const [newColor, setNewColor] = useState(DEFAULT_COLOR);
+  const [newColor, setNewColor] = useState(DEFAULT_EVENT_TYPE_COLOR);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
-  const [editColor, setEditColor] = useState(DEFAULT_COLOR);
+  const [editColor, setEditColor] = useState(DEFAULT_EVENT_TYPE_COLOR);
 
   const typesQuery = useQuery({
     queryKey: QUERY_KEYS.orgAdmin.eventTypes(orgId),
@@ -28,22 +30,25 @@ export function useEventTypesWorkspace() {
 
   const invalidate = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.orgAdmin.eventTypes(orgId) });
+    await queryClient.invalidateQueries({ queryKey: ['event-types', orgId] });
   }, [orgId, queryClient]);
 
   const createMutation = useMutation({
     mutationFn: async () => {
       const req = CreateEventTypeRequest.fromJS({
         name: newName.trim(),
-        colorHex: newColor.trim() || DEFAULT_COLOR,
+        colorHex: normalizeEventTypeColor(newColor),
       });
       return unwrap(eventTypesApi.create(req));
     },
     onSuccess: async () => {
       setNewName('');
-      setNewColor(DEFAULT_COLOR);
+      setNewColor(DEFAULT_EVENT_TYPE_COLOR);
       await invalidate();
     },
-    onError: (e: Error) => Alert.alert('Error', e.message),
+    onError: (e: Error) => {
+      alertAction({ title: 'Could not add event type', message: e.message });
+    },
   });
 
   const updateMutation = useMutation({
@@ -51,7 +56,7 @@ export function useEventTypesWorkspace() {
       if (!editingId) throw new Error('No event type selected');
       const req = CreateEventTypeRequest.fromJS({
         name: editName.trim(),
-        colorHex: editColor.trim() || DEFAULT_COLOR,
+        colorHex: normalizeEventTypeColor(editColor),
       });
       return unwrap(eventTypesApi.update(editingId, req));
     },
@@ -59,7 +64,9 @@ export function useEventTypesWorkspace() {
       setEditingId(null);
       await invalidate();
     },
-    onError: (e: Error) => Alert.alert('Error', e.message),
+    onError: (e: Error) => {
+      alertAction({ title: 'Could not update event type', message: e.message });
+    },
   });
 
   const deleteMutation = useMutation({
@@ -68,24 +75,35 @@ export function useEventTypesWorkspace() {
       setEditingId(null);
       await invalidate();
     },
-    onError: (e: Error) => Alert.alert('Error', e.message),
+    onError: (e: Error) => {
+      const inUse = e.message.toLowerCase().includes('in use') || e.message.toLowerCase().includes('used by');
+      alertAction({
+        title: inUse ? 'Event type is in use' : 'Could not delete event type',
+        message: inUse
+          ? 'This type is linked to schedule events or room configurations. Reassign those events to another type, or remove the type from affected rooms in Floorplans, then try again.'
+          : e.message,
+      });
+    },
   });
 
   const startEdit = useCallback(
     (id: string, name: string, color?: string | null) => {
       setEditingId(id);
       setEditName(name);
-      setEditColor(color?.trim() || DEFAULT_COLOR);
+      setEditColor(normalizeEventTypeColor(color));
     },
     [],
   );
 
   const confirmDelete = useCallback(
     (id: string, name: string) => {
-      Alert.alert('Delete event type', `Remove "${name}"? Events using it may need reassignment.`, [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => deleteMutation.mutate(id) },
-      ]);
+      confirmAction({
+        title: 'Delete event type',
+        message: `Delete "${name}"? This cannot be undone. Deletion is blocked while schedule events or rooms still reference this type — update those first.`,
+        confirmText: 'Delete type',
+        destructive: true,
+        onConfirm: () => deleteMutation.mutate(id),
+      });
     },
     [deleteMutation],
   );
@@ -108,6 +126,7 @@ export function useEventTypesWorkspace() {
     saveEdit: () => updateMutation.mutate(),
     confirmDelete,
     isSaving: createMutation.isPending || updateMutation.isPending || deleteMutation.isPending,
+    refetch: typesQuery.refetch,
   };
 }
 

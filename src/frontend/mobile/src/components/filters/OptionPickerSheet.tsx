@@ -5,6 +5,7 @@ import { BottomSheet } from '@/src/components/ui/BottomSheet';
 import { AppText, ClayView, Icon, type IconName } from '@/src/components/ui';
 import { PressClay } from '@/src/components/animations';
 import { useThemeColors } from '@/src/hooks';
+import type { WebOverlayAnchor } from '@/src/hooks/usePaneOverlayAnchor';
 
 export interface PickerOption<T> {
   value: T;
@@ -27,6 +28,7 @@ interface OptionPickerSheetProps<T> {
   /** Stack above another sheet (e.g. filters). Default 220. */
   zIndexBase?: number;
   contentInsetBottom?: number;
+  webAnchor?: WebOverlayAnchor | null;
 }
 
 /**
@@ -45,6 +47,7 @@ export function OptionPickerSheet<T>({
   allLabel = 'All',
   zIndexBase = 220,
   contentInsetBottom = 0,
+  webAnchor = null,
 }: OptionPickerSheetProps<T>) {
   const colors = useThemeColors();
 
@@ -86,6 +89,7 @@ export function OptionPickerSheet<T>({
       height={height}
       zIndexBase={zIndexBase}
       contentInsetBottom={contentInsetBottom}
+      webAnchor={webAnchor}
     >
       <View style={styles.sheetInner}>
         <View style={styles.header}>

@@ -7,4 +7,7 @@ public class CreateGroupRequest
     public Guid? ManagerId { get; set; }
     public Guid? ParentGroupId { get; set; }
     public string? ScheduleConfig { get; set; }
+
+    /// <summary>Academic year for stable cohort groups (e.g. 2025/26).</summary>
+    public string? AcademicYear { get; set; }
 }

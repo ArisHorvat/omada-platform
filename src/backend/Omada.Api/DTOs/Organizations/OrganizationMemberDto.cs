@@ -26,5 +26,10 @@ public class OrganizationMemberDto
     public required bool IsActive { get; set; }
 
     [Required]
+    public required bool RequiresAdminApproval { get; set; }
+
+    [Required]
     public required DateTime JoinedAt { get; set; }
+
+    public string? AvatarUrl { get; set; }
 }

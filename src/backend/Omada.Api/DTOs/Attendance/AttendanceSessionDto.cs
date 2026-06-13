@@ -27,4 +27,13 @@ public class AttendanceSessionDto
     public required int EnrolledCount { get; set; }
 
     public int? MaxCapacity { get; set; }
+
+    public Guid? OfferingId { get; set; }
+
+    public string? OfferingName { get; set; }
+
+    public string? EventTypeName { get; set; }
+
+    /// <summary>Occurrence date for roster (start date of this session).</summary>
+    public DateTime? InstanceDate { get; set; }
 }

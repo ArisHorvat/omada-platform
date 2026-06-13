@@ -15,6 +15,9 @@ public class OrganizationMemberConfiguration : IEntityTypeConfiguration<Organiza
         builder.HasOne(om => om.Role)
                .WithMany(r => r.Members)
                .HasForeignKey(om => om.RoleId)
-               .OnDelete(DeleteBehavior.Restrict); 
+               .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Property(om => om.RequiresAdminApproval)
+               .HasDefaultValue(false);
     }
 }

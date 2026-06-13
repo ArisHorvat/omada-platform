@@ -18,6 +18,7 @@ public interface IUserService
     Task<ServiceResponse<string>> UpdateProfileAsync(UpdateProfileRequest request);
     Task<ServiceResponse<string>> UpdateMyProfileAsync(UpdateMyProfileRequest request);
     Task<ServiceResponse<string>> UpdateSecurityAsync(UpdateSecurityRequest request);
+    Task<ServiceResponse<string>> ChangePasswordAsync(ChangePasswordRequest request);
     Task<ServiceResponse<string>> SoftDeleteMyAccountAsync();
     Task<ServiceResponse<byte[]>> ExportMyDataJsonAsync();
 }

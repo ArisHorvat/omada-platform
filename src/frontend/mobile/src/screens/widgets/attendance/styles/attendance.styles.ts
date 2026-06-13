@@ -10,13 +10,6 @@ export const createStyles = (colors: {
     container: {
       flex: 1,
       paddingHorizontal: 20,
-      paddingTop: 56,
-    },
-    headerRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 16,
-      gap: 12,
     },
     toggle: {
       paddingHorizontal: 12,

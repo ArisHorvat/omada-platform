@@ -15,6 +15,7 @@ import { usersApi, scheduleApi, unwrap } from '@/src/api';
 import { QUERY_KEYS } from '@/src/api/queryKeys';
 import { useAuth } from '@/src/context/AuthContext';
 import { BottomSheet } from '@/src/components/ui/BottomSheet';
+import type { WebOverlayAnchor } from '@/src/hooks/usePaneOverlayAnchor';
 import { ClayView, Icon, AppText } from '@/src/components/ui';
 import { useThemeColors, useTabContentBottomPadding } from '@/src/hooks';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -41,6 +42,7 @@ interface Props {
   onEditDetails: (event: ScheduleItemDto) => void;
   onSwapConfirm: (original: ScheduleItemDto, target: ScheduleItemWithCapacity) => Promise<void>;
   swapPending: boolean;
+  webAnchor?: WebOverlayAnchor | null;
 }
 
 export function EventBottomSheet({
@@ -53,6 +55,7 @@ export function EventBottomSheet({
   onEditDetails,
   onSwapConfirm,
   swapPending,
+  webAnchor = null,
 }: Props) {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
@@ -95,6 +98,7 @@ export function EventBottomSheet({
 
   const openMaps = () => {
     if (room?.buildingId) {
+      onClose();
       router.push({
         pathname: '/map/floorplan/[buildingId]',
         params: { buildingId: room.buildingId, roomId: room.id },
@@ -140,7 +144,12 @@ export function EventBottomSheet({
   const end = new Date(event.endTime);
 
   return (
-    <BottomSheet isVisible={visible} onClose={onClose} height={Dimensions.get('window').height * 0.78}>
+    <BottomSheet
+      isVisible={visible}
+      onClose={onClose}
+      height={Dimensions.get('window').height * 0.78}
+      webAnchor={webAnchor}
+    >
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingBottom: 28 + insets.bottom + tabBarPad }}

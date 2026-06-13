@@ -3,16 +3,19 @@ using Omada.Api.DTOs.Common;
 using Omada.Api.Data;
 using Omada.Api.Entities;
 using Omada.Api.Repositories.Interfaces;
+using Omada.Api.Services.Interfaces;
 
 namespace Omada.Api.Repositories;
 
 public class AttendanceRepository : IAttendanceRepository
 {
     private readonly ApplicationDbContext _context;
+    private readonly IGroupScopeService _groupScope;
 
-    public AttendanceRepository(ApplicationDbContext context)
+    public AttendanceRepository(ApplicationDbContext context, IGroupScopeService groupScope)
     {
         _context = context;
+        _groupScope = groupScope;
     }
 
     public async Task<IReadOnlyList<EventAttendance>> GetUserRecordsAsync(
@@ -39,7 +42,11 @@ public class AttendanceRepository : IAttendanceRepository
                 a.InstanceDate <= toUtc);
 
         if (groupId.HasValue)
-            query = query.Where(a => a.Event.GroupId == groupId.Value);
+        {
+            var scopeIds = await _groupScope.GetDescendantIdsAsync(
+                organizationId, groupId.Value, includeSelf: true);
+            query = query.Where(a => a.Event.GroupId.HasValue && scopeIds.Contains(a.Event.GroupId.Value));
+        }
 
         return await query
             .OrderByDescending(a => a.InstanceDate)
@@ -76,7 +83,11 @@ public class AttendanceRepository : IAttendanceRepository
             query = query.Where(a => a.UserId == userId.Value);
 
         if (groupId.HasValue)
-            query = query.Where(a => a.Event.GroupId == groupId.Value);
+        {
+            var scopeIds = await _groupScope.GetDescendantIdsAsync(
+                organizationId, groupId.Value, includeSelf: true);
+            query = query.Where(a => a.Event.GroupId.HasValue && scopeIds.Contains(a.Event.GroupId.Value));
+        }
 
         var total = await query.CountAsync(cancellationToken);
         var items = await query

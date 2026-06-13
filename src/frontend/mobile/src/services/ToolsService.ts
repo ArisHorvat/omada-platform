@@ -1,41 +1,46 @@
 import apiClient from '@/src/api/apiClient';
+import { appendImageUriToFormData } from '@/src/api/rnMultipart';
+
+interface ServiceEnvelope<T> {
+  isSuccess?: boolean;
+  data?: T;
+  error?: { message?: string };
+}
 
 export const ToolsService = {
-  extractColors: async (imageUri: string): Promise<string[]> => {
+  extractColors: async (
+    imageUri: string,
+    options?: { mimeType?: string; fileName?: string },
+  ): Promise<string[]> => {
     const formData = new FormData();
-    const filename = imageUri.split('/').pop() || 'logo.png';
-    const match = /\.(\w+)$/.exec(filename);
-    const type = match ? `image/${match[1]}` : 'image/png';
+    await appendImageUriToFormData(formData, 'file', imageUri, options);
 
-    // @ts-ignore: React Native specific FormData signature
-    formData.append('file', {
-      uri: imageUri,
-      name: filename,
-      type: type,
-    });
+    const response = await apiClient.post<ServiceEnvelope<string[]>>('/tools/extract-colors', formData);
 
-    // FIX: Await the response and return response.data!
-    const response = await apiClient.post('/tools/extract-colors', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    
-    return response.data.data; 
+    if (response.data?.isSuccess === false) {
+      throw new Error(response.data.error?.message || 'Could not extract colors from this image.');
+    }
+
+    return response.data?.data ?? [];
   },
 
-  uploadLogo: async (fileUri: string): Promise<string> => {
+  uploadLogo: async (
+    fileUri: string,
+    options?: { mimeType?: string; fileName?: string },
+  ): Promise<string> => {
     const formData = new FormData();
-    const filename = fileUri.split('/').pop() || 'logo.png';
-    const match = /\.(\w+)$/.exec(filename);
-    const type = match ? `image/${match[1]}` : 'image/png';
+    await appendImageUriToFormData(formData, 'file', fileUri, options);
 
-    // @ts-ignore
-    formData.append('file', { uri: fileUri, name: filename, type: type });
+    const response = await apiClient.post<ServiceEnvelope<{ url: string }>>('/files/upload', formData);
 
-    // Expecting the FileUploadResponse we created earlier
-    const response = await apiClient.post('/files/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    
-    return response.data.data.url; 
-  }
+    if (response.data?.isSuccess === false) {
+      throw new Error(response.data.error?.message || 'Logo upload failed.');
+    }
+
+    const url = response.data?.data?.url;
+    if (!url) {
+      throw new Error('Upload did not return a file URL.');
+    }
+    return url;
+  },
 };

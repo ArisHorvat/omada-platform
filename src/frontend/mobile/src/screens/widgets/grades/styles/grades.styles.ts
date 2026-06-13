@@ -3,12 +3,9 @@ import { StyleSheet } from 'react-native';
 export const createStyles = (colors: any) => StyleSheet.create({
   heroContainer: {
     width: '100%',
-    height: 300, // Taller header
-    // Retaining slight curve at bottom for modern feel, remove if you want perfectly flat
-    borderBottomLeftRadius: 36,
-    borderBottomRightRadius: 36,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
     overflow: 'hidden',
-    zIndex: 10,
   },
   heroPanel: {
     flex: 1,

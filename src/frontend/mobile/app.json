@@ -13,8 +13,13 @@
       "infoPlist": {
         "NSFaceIDUsageDescription": "Omada uses Face ID to confirm it’s you before unlocking the app or sensitive screens.",
         "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true,
           "NSExceptionDomains": {
             "192.168.72.240": {
+              "NSIncludesSubdomains": true,
+              "NSExceptionAllowsInsecureHTTPLoads": true
+            },
+            "localhost": {
               "NSIncludesSubdomains": true,
               "NSExceptionAllowsInsecureHTTPLoads": true
             }
@@ -65,7 +70,14 @@
       ],
       "expo-audio",
       "expo-font",
-      "@react-native-community/datetimepicker"
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Omada uses the camera to scan member Digital ID QR codes for verification and attendance.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

@@ -9,13 +9,14 @@ import {
   TouchableOpacity,
   TextInput,
   StyleSheet,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useScheduleLogic } from '../hooks/useScheduleLogic';
 import { createStyles } from '../styles/schedule.styles';
 import { PageContainer } from '@/src/components/layout/PageContainer';
 import { SplitPane } from '@/src/components/layout/SplitPane';
-import { useThemeColors, useTabContentBottomPadding, useBreakpoint, useAssignableGroups } from '@/src/hooks';
+import { useThemeColors, useTabContentBottomPadding, useBreakpoint, useAssignableGroups, useAssignableOfferings } from '@/src/hooks';
 import { mergeGroupOptions } from '@/src/utils/groupOptions';
 import { AnimatedItem, PressClay } from '@/src/components/animations';
 import { ClayView, Icon, AppText } from '@/src/components/ui';
@@ -33,6 +34,13 @@ import { MeetingBottomSheet } from './MeetingBottomSheet';
 import { mergeBusyIntervals } from '../utils/mergeBusyIntervals';
 import { deriveSubjectLabel } from '../utils/deriveEventTopic';
 import { buildOverlappingDaySegments } from '../utils/scheduleDayEventLayout';
+import {
+  firstEventScrollOffset,
+  SCHEDULE_DAY_HOUR_HEIGHT,
+  SCHEDULE_DAY_START_HOUR_OFFSET,
+} from '../utils/scheduleDayScroll';
+import { usePaneOverlayAnchor } from '@/src/hooks/usePaneOverlayAnchor';
+import { useFocusEffect } from 'expo-router';
 
 const scheduleSkeletonStyles = StyleSheet.create({
   bar: { height: 112, borderRadius: 16, width: '100%' },
@@ -61,6 +69,14 @@ export default function ScheduleScreenContent({
   const { isWideShell } = useBreakpoint();
   const insets = useSafeAreaInsets();
   const styles = createStyles(colors);
+  const useWebPaneOverlays = Platform.OS === 'web';
+  /** Tablet landscape uses a left column; web stacks header + timeline full width. */
+  const useScheduleSplitLayout = isWideShell && Platform.OS !== 'web';
+  const scheduleScrollRef = useRef<ScrollView>(null);
+  const timelineTopInScrollRef = useRef(0);
+  const scrollGenerationRef = useRef(0);
+  const { paneRef, anchor: webOverlayAnchor, onLayout: onMainPaneLayout, remeasure } =
+    usePaneOverlayAnchor(useWebPaneOverlays);
 
   const {
     events,
@@ -102,6 +118,20 @@ export default function ScheduleScreenContent({
   const [exploreKind, setExploreKind] = useState<ExploreFilterKind>('all');
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [selectedHostLabel, setSelectedHostLabel] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!useWebPaneOverlays) return;
+    if (isModalVisible || sheetEvent || meetingSheetEvent || filterSheetOpen) {
+      remeasure();
+    }
+  }, [
+    useWebPaneOverlays,
+    isModalVisible,
+    sheetEvent,
+    meetingSheetEvent,
+    filterSheetOpen,
+    remeasure,
+  ]);
 
   const roomDeepLinkApplied = useRef(false);
   useLayoutEffect(() => {
@@ -215,6 +245,48 @@ export default function ScheduleScreenContent({
 
   const showCorporateTabs = corporateWorkflow && dictionary.orgKind === 'Corporate';
 
+  const showsDayTimeline =
+    (showCorporateTabs && (corporateTab === 'my' || corporateTab === 'assistant')) ||
+    (!showCorporateTabs && isMySchedule);
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        setSheetEvent(null);
+        setMeetingSheetEvent(null);
+        setFilterSheetOpen(false);
+      };
+    }, []),
+  );
+
+  const scrollToFirstEvent = useCallback(() => {
+    const eventOffset = firstEventScrollOffset(events);
+    if (eventOffset == null) return;
+    const y = timelineTopInScrollRef.current + eventOffset;
+    scheduleScrollRef.current?.scrollTo({
+      y: Math.max(0, y),
+      animated: Platform.OS !== 'web',
+    });
+  }, [events]);
+
+  useEffect(() => {
+    scrollGenerationRef.current += 1;
+  }, [selectedDate]);
+
+  useEffect(() => {
+    if (!showsDayTimeline || loading || events.length === 0) return;
+
+    const generation = scrollGenerationRef.current;
+    const timers = [80, 250, 500].map((ms) =>
+      setTimeout(() => {
+        if (scrollGenerationRef.current !== generation) return;
+        scrollToFirstEvent();
+      }, ms),
+    );
+
+    return () => timers.forEach(clearTimeout);
+  }, [showsDayTimeline, loading, selectedDate, events, scrollToFirstEvent]);
+
   const applyExploreKind = useCallback(
     (kind: ExploreFilterKind) => {
       setExploreKind(kind);
@@ -243,6 +315,16 @@ export default function ScheduleScreenContent({
   );
 
   const assignableGroupsQuery = useAssignableGroups('schedule');
+  const assignableOfferingsQuery = useAssignableOfferings();
+  const offeringOptions = useMemo(
+    () =>
+      (assignableOfferingsQuery.data ?? []).map((o) => ({
+        id: o.id,
+        name: o.name,
+        subtitle: o.periodName ?? o.code ?? 'Course offering',
+      })),
+    [assignableOfferingsQuery.data],
+  );
 
   const groupOptionsFromEvents = useMemo(() => {
     const m = new Map<string, string>();
@@ -393,13 +475,18 @@ export default function ScheduleScreenContent({
     const sorted = [...(events.length ? events : [])].sort(
       (a, b) => +new Date(a.startTime) - +new Date(b.startTime),
     );
-    const hourHeight = 100;
+    const hourHeight = SCHEDULE_DAY_HOUR_HEIGHT;
     const totalHours = 24;
-    const startHourOffset = 0;
+    const startHourOffset = SCHEDULE_DAY_START_HOUR_OFFSET;
     const segmentLayout = buildOverlappingDaySegments(sorted, hourHeight, startHourOffset);
 
     return (
-      <View style={{ flex: 1, flexDirection: 'row', minHeight: totalHours * hourHeight }}>
+      <View
+        onLayout={(e) => {
+          timelineTopInScrollRef.current = e.nativeEvent.layout.y;
+        }}
+        style={{ flex: 1, flexDirection: 'row', minHeight: totalHours * hourHeight }}
+      >
         <View style={{ width: 50 }}>
           {Array.from({ length: totalHours }).map((_, i) => {
             const h = i + startHourOffset;
@@ -491,7 +578,7 @@ export default function ScheduleScreenContent({
             return segs.map((seg, si) => (
               <AnimatedItem
                 key={`${ev.id}-${si}-${String(ev.startTime)}`}
-                animation={ClayAnimations.SlideInFlow(index)}
+                animation={useWebPaneOverlays ? null : ClayAnimations.SlideInFlow(index)}
                 style={{
                   position: 'absolute',
                   top: seg.top,
@@ -691,6 +778,7 @@ export default function ScheduleScreenContent({
 
   const scheduleScroll = (
       <ScrollView
+        ref={scheduleScrollRef}
         style={{ flex: 1 }}
         contentContainerStyle={{
           paddingHorizontal: 16,
@@ -812,7 +900,7 @@ export default function ScheduleScreenContent({
   );
 
   const scheduleMain = (
-    <View style={{ flex: 1, minHeight: 0 }}>
+    <View ref={paneRef} onLayout={onMainPaneLayout} style={{ flex: 1, minHeight: 0 }}>
       {scheduleScroll}
       <AnimatedItem animation={ClayAnimations.FAB} style={{ position: 'absolute', bottom: tabBottomPad + 16, right: 20 }}>
         <PressClay onPress={startCreating}>
@@ -825,9 +913,9 @@ export default function ScheduleScreenContent({
   );
 
   return (
-    <PageContainer>
+    <PageContainer fullBleed={useWebPaneOverlays}>
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      {isWideShell ? (
+      {useScheduleSplitLayout ? (
         <SplitPane sidebar={scheduleControls}>{scheduleMain}</SplitPane>
       ) : (
         <>
@@ -849,6 +937,8 @@ export default function ScheduleScreenContent({
         rooms={rooms}
         searchHosts={searchHosts}
         groupOptions={groupOptions}
+        offeringOptions={offeringOptions}
+        webAnchor={webOverlayAnchor}
       />
 
       <EventBottomSheet
@@ -857,6 +947,7 @@ export default function ScheduleScreenContent({
         event={sheetEvent}
         rooms={rooms as RoomDto[]}
         dictionary={dictionary}
+        webAnchor={webOverlayAnchor}
         onSkipClass={async (e) => {
           await handleAttendance(e, AttendanceStatus.Declined);
         }}
@@ -872,6 +963,7 @@ export default function ScheduleScreenContent({
         onClose={() => setMeetingSheetEvent(null)}
         event={meetingSheetEvent}
         dictionary={dictionary}
+        webAnchor={webOverlayAnchor}
         onRsvp={async (ev: ScheduleItemDto, status: AttendanceStatus) => {
           await handleAttendance(ev, status);
         }}
@@ -880,6 +972,7 @@ export default function ScheduleScreenContent({
       <ScheduleExploreFiltersSheet
         visible={filterSheetOpen}
         onClose={() => setFilterSheetOpen(false)}
+        webAnchor={webOverlayAnchor}
         dictionary={dictionary}
         exploreKind={exploreKind}
         selectedHostLabel={selectedHostLabel}

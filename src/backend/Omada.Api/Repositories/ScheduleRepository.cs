@@ -2,12 +2,18 @@ using Microsoft.EntityFrameworkCore;
 using Omada.Api.Data;
 using Omada.Api.Entities;
 using Omada.Api.Repositories.Interfaces;
+using Omada.Api.Services.Interfaces;
 
 namespace Omada.Api.Repositories;
 
 public class ScheduleRepository : GenericRepository<Event>, IScheduleRepository
 {
-    public ScheduleRepository(ApplicationDbContext context) : base(context) { }
+    private readonly IGroupScopeService _groupScope;
+
+    public ScheduleRepository(ApplicationDbContext context, IGroupScopeService groupScope) : base(context)
+    {
+        _groupScope = groupScope;
+    }
 
     // 🚀 NEW: Optimized fetch for the Schedule Service
     // Fetches events that overlap the window OR have a recurrence rule (since they might expand into the window)
@@ -28,7 +34,9 @@ public class ScheduleRepository : GenericRepository<Event>, IScheduleRepository
             .Include(e => e.Attendances) // 🚀 Load Attendance Exceptions
             .Include(e => e.EventType) 
             .Include(e => e.Room)      
-            .Include(e => e.Group)     
+            .Include(e => e.Group)
+            .Include(e => e.Offering)
+            .Include(e => e.CohortGroup)
             .Include(e => e.Host)
             .AsNoTracking()
             .Where(e => e.OrganizationId == orgId && !e.IsDeleted);
@@ -39,26 +47,39 @@ public class ScheduleRepository : GenericRepository<Event>, IScheduleRepository
         // 🚀 NEW: "My Schedule" Logic
         if (myScheduleOnly && userId.HasValue)
         {
-            // Get the groups this user belongs to
-            var userGroupIds = _context.Set<GroupMember>()
+            var directGroupIds = await _context.Set<GroupMember>()
                 .AsNoTracking()
                 .Where(gm => gm.UserId == userId.Value)
                 .Select(gm => gm.GroupId)
+                .ToListAsync();
+
+            var userGroupIds = (await _groupScope.ExpandWithAncestorsAsync(orgId, directGroupIds)).ToList();
+
+            var enrolledOfferingIds = _context.OfferingEnrollments
+                .AsNoTracking()
+                .Where(e => e.UserId == userId.Value && !e.IsDeleted)
+                .Select(e => e.OfferingId)
                 .ToList();
 
-            query = query.Where(e => 
-                e.HostId == userId.Value || // I am the host
-                (e.GroupId.HasValue && userGroupIds.Contains(e.GroupId.Value)) || // My class is taking it
+            query = query.Where(e =>
+                e.HostId == userId.Value ||
+                (e.GroupId.HasValue && userGroupIds.Contains(e.GroupId.Value)) ||
+                (e.CohortGroupId.HasValue && userGroupIds.Contains(e.CohortGroupId.Value)) ||
+                (e.OfferingId.HasValue && enrolledOfferingIds.Contains(e.OfferingId.Value) &&
+                    (!e.CohortGroupId.HasValue || userGroupIds.Contains(e.CohortGroupId.Value))) ||
                 e.Attendances.Any(a => a.UserId == userId.Value &&
-                    (a.Status == AttendanceStatus.Added || a.Status == AttendanceStatus.Expected)) // enrolled / joined
-            );
+                    (a.Status == AttendanceStatus.Added || a.Status == AttendanceStatus.Expected)));
         }
 
         if (publicOnly)
             query = query.Where(e => e.IsPublic);
 
         if (hostId.HasValue) query = query.Where(e => e.HostId == hostId);
-        if (groupId.HasValue) query = query.Where(e => e.GroupId == groupId);
+        if (groupId.HasValue)
+        {
+            var scopeIds = await _groupScope.GetDescendantIdsAsync(orgId, groupId.Value, includeSelf: true);
+            query = query.Where(e => e.GroupId.HasValue && scopeIds.Contains(e.GroupId.Value));
+        }
         if (roomId.HasValue) query = query.Where(e => e.RoomId == roomId);
 
         return await query.ToListAsync();

@@ -1,5 +1,5 @@
 import React, { forwardRef, useImperativeHandle, useEffect } from 'react';
-import { ViewStyle, StyleProp } from 'react-native';
+import { Platform, ViewStyle, StyleProp } from 'react-native';
 import Animated, { 
   useSharedValue, 
   useAnimatedStyle, 
@@ -37,20 +37,24 @@ export const ShakeView = forwardRef<ShakeViewRef, ShakeViewProps>(({ children, s
   // 2. Add continuous jiggle effect when `isShaking` is true
   useEffect(() => {
     if (isShaking) {
-      const timingConfig = { duration: 120, easing: Easing.inOut(Easing.ease) };
-      
-      // Wiggle Rotation (-1.5 deg to 1.5 deg)
+      const isWeb = Platform.OS === 'web';
+      const timingConfig = {
+        duration: isWeb ? 320 : 120,
+        easing: Easing.inOut(Easing.ease),
+      };
+      const wiggleDeg = isWeb ? 0.65 : 1.5;
+      const wigglePx = isWeb ? 0.5 : 1;
+
       rotation.value = withRepeat(
-        withSequence(withTiming(-1.5, timingConfig), withTiming(1.5, timingConfig)),
-        -1, // Infinite repeat
-        true // Reverse
-      );
-      
-      // Slight translation
-      offset.value = withRepeat(
-        withSequence(withTiming(-1, timingConfig), withTiming(1, timingConfig)),
+        withSequence(withTiming(-wiggleDeg, timingConfig), withTiming(wiggleDeg, timingConfig)),
         -1,
-        true
+        true,
+      );
+
+      offset.value = withRepeat(
+        withSequence(withTiming(-wigglePx, timingConfig), withTiming(wigglePx, timingConfig)),
+        -1,
+        true,
       );
     } else {
       // Smoothly stop shaking

@@ -2,22 +2,21 @@ import type { TaskItemDto } from '@/src/api/generatedClient';
 
 import {
   formatCountdown,
+  formatDueKicker,
   getNextPendingTask,
   getTaskUrgency,
   type TaskUrgency,
 } from '../../tasks/utils/taskUrgency';
-import { getPendingAssignments } from './assignmentFilters';
+import { getPendingCoursework } from '../../tasks/utils/taskFilters';
 
-export { formatCountdown, getTaskUrgency, type TaskUrgency };
-
-const MS_DAY = 86400000;
+export { formatCountdown, formatDueKicker, getTaskUrgency, type TaskUrgency };
 
 export function getNextPendingAssignment(tasks: TaskItemDto[]): TaskItemDto | undefined {
-  return getNextPendingTask(getPendingAssignments(tasks));
+  return getNextPendingTask(getPendingCoursework(tasks));
 }
 
 export function sortAssignmentsByUrgency(tasks: TaskItemDto[]): TaskItemDto[] {
-  return getPendingAssignments(tasks)
+  return getPendingCoursework(tasks)
     .slice()
     .sort((a, b) => {
       const ua = getTaskUrgency(a);
@@ -30,26 +29,8 @@ export function sortAssignmentsByUrgency(tasks: TaskItemDto[]): TaskItemDto[] {
     });
 }
 
-/** Short label for cards: DUE TODAY, DUE TOMORROW, etc. */
-export function formatDueKicker(task: TaskItemDto): string {
-  if (!task.dueDate) return 'NO DUE DATE';
-  const due = new Date(task.dueDate);
-  const now = new Date();
-  const startToday = new Date(now);
-  startToday.setHours(0, 0, 0, 0);
-  const startDue = new Date(due);
-  startDue.setHours(0, 0, 0, 0);
-  const dayDiff = Math.round((startDue.getTime() - startToday.getTime()) / MS_DAY);
-
-  if (dayDiff < 0) return dayDiff === -1 ? 'OVERDUE • YESTERDAY' : 'OVERDUE';
-  if (dayDiff === 0) return 'DUE TODAY';
-  if (dayDiff === 1) return 'DUE TOMORROW';
-  if (dayDiff <= 7) return `DUE IN ${dayDiff} DAYS`;
-  return `DUE ${due.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
-}
-
 export function countDueSoonAssignments(tasks: TaskItemDto[]): number {
-  return getPendingAssignments(tasks).filter((t) => {
+  return getPendingCoursework(tasks).filter((t) => {
     const u = getTaskUrgency(t);
     return u === 'overdue' || u === 'dueSoon';
   }).length;

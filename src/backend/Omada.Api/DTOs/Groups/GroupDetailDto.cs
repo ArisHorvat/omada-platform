@@ -19,6 +19,11 @@ public class GroupDetailDto
     public string? ManagerName { get; set; }
     public string? ScheduleConfig { get; set; }
 
+    /// <summary>Members in this group only (not sub-groups).</summary>
+    [Required]
+    public int DirectMemberCount { get; set; }
+
+    /// <summary>Distinct members in this group and all nested sub-groups.</summary>
     [Required]
     public required int MemberCount { get; set; }
 

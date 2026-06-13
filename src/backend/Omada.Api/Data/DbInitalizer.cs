@@ -282,15 +282,12 @@ public static class DbInitializer
         // Shared widget sets — include digital-id for realistic mobile profile
         var uniStudentPerms = new Dictionary<string, AccessLevel>
         {
+            { WidgetKeys.Tasks, AccessLevel.View },
             { WidgetKeys.Grades, AccessLevel.View },
             { WidgetKeys.Assignments, AccessLevel.View },
             { WidgetKeys.Attendance, AccessLevel.View },
             { WidgetKeys.Map, AccessLevel.View },
-            { WidgetKeys.Transport, AccessLevel.View },
-            { WidgetKeys.Events, AccessLevel.View },
-            { WidgetKeys.Documents, AccessLevel.View },
             { WidgetKeys.Rooms, AccessLevel.View },
-            // Edit: room booking and personal events use POST /api/Schedule (same as schedule create).
             { WidgetKeys.Schedule, AccessLevel.Edit },
             { WidgetKeys.News, AccessLevel.View },
             { WidgetKeys.Chat, AccessLevel.View },
@@ -299,6 +296,7 @@ public static class DbInitializer
 
         var uniProfPerms = new Dictionary<string, AccessLevel>(uniStudentPerms)
         {
+            [WidgetKeys.Tasks] = AccessLevel.Edit,
             [WidgetKeys.Grades] = AccessLevel.Edit,
             [WidgetKeys.Assignments] = AccessLevel.Edit,
             [WidgetKeys.Attendance] = AccessLevel.Edit,
@@ -312,10 +310,8 @@ public static class DbInitializer
         {
             { WidgetKeys.News, AccessLevel.Edit },
             { WidgetKeys.Users, AccessLevel.Edit },
-            // Full org map admin: floors, pins, AI floorplan upload, and room CRUD from mapping tools.
             { WidgetKeys.Map, AccessLevel.Admin },
             { WidgetKeys.Rooms, AccessLevel.Edit },
-            { WidgetKeys.Finance, AccessLevel.View },
             { WidgetKeys.Schedule, AccessLevel.View },
             { WidgetKeys.DigitalId, AccessLevel.View }
         };
@@ -325,7 +321,6 @@ public static class DbInitializer
         {
             { WidgetKeys.Tasks, AccessLevel.View },
             { WidgetKeys.Documents, AccessLevel.View },
-            { WidgetKeys.Finance, AccessLevel.View },
             { WidgetKeys.Map, AccessLevel.View },
             { WidgetKeys.Rooms, AccessLevel.View },
             { WidgetKeys.Schedule, AccessLevel.Edit },
@@ -350,7 +345,6 @@ public static class DbInitializer
 
         var corpDirectorPerms = new Dictionary<string, AccessLevel>
         {
-            { WidgetKeys.Finance, AccessLevel.View },
             { WidgetKeys.News, AccessLevel.Edit },
             { WidgetKeys.Users, AccessLevel.View },
             { WidgetKeys.Documents, AccessLevel.Admin },

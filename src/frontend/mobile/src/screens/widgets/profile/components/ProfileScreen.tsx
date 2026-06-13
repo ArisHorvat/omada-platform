@@ -1,14 +1,5 @@
 import React, { useMemo } from 'react';
-import {
-  View,
-  ScrollView,
-  ActivityIndicator,
-  Modal,
-  FlatList,
-  TouchableOpacity,
-  Alert,
-  Platform,
-} from 'react-native';
+import { View, ScrollView, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -24,7 +15,8 @@ import { useThemeColors, useTabContentBottomPadding } from '@/src/hooks';
 import { createStyles } from '@/src/screens/widgets/profile/styles/profile.styles';
 import { useProfileLogic } from '@/src/screens/widgets/profile/hooks/useProfileLogic';
 import { resolveMediaUrl } from '@/src/utils/resolveMediaUrl';
-import { OrganizationType } from '@/src/api/generatedClient';
+import { alertAction } from '@/src/utils/confirmAction';
+import OrganizationPickerModal from '@/src/screens/auth/login/components/select-organization';
 
 export default function ProfileScreen() {
   const colors = useThemeColors();
@@ -40,9 +32,13 @@ export default function ProfileScreen() {
     myOrganizations,
     openOrgSwitcher,
     handleSwitchOrg,
+    handleJoinOrganization,
     handleLogout,
     email,
     role,
+    canAccessAdminConsole,
+    goToAdminConsole,
+    goToMemberApp,
   } = useProfileLogic();
 
   if (isLoading) {
@@ -144,6 +140,17 @@ export default function ProfileScreen() {
             style={{ alignSelf: 'stretch', marginTop: 8 }}
           />
 
+          {canAccessAdminConsole ? (
+            <AppButton
+              title="Admin console"
+              onPress={goToAdminConsole}
+              variant="secondary"
+              size="md"
+              icon="admin-panel-settings"
+              style={{ alignSelf: 'stretch', marginTop: 10 }}
+            />
+          ) : null}
+
           {(bioDisplay || phoneDisplay || addressDisplay) && (
             <View style={{ marginTop: 20, gap: 12 }}>
               {bioDisplay ? (
@@ -198,7 +205,16 @@ export default function ProfileScreen() {
         <ClayGroupedSection title="Menu">
           {menuRow('tune', 'Preferences', () => router.push('/settings'))}
           {menuRow('security', 'Security', () => router.push('/security'))}
-          {menuRow('info', 'About', () => Alert.alert('Omada', 'Campus & workplace companion.\nVersion 1.0.0'), true)}
+          {menuRow(
+            'info',
+            'About',
+            () =>
+              alertAction({
+                title: 'Omada',
+                message: 'Campus & workplace companion.\nVersion 1.0.0',
+              }),
+            true,
+          )}
         </ClayGroupedSection>
 
         <ClayGroupedSection title="Workspace">
@@ -209,93 +225,16 @@ export default function ProfileScreen() {
       </ScrollView>
       </PageContainer>
 
-      <Modal
+      <OrganizationPickerModal
         visible={showAccountSwitcher}
-        animationType="slide"
-        presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'fullScreen'}
-        onRequestClose={() => setShowAccountSwitcher(false)}
-      >
-        <SafeAreaView style={styles.orgSheetSafe} edges={['top', 'bottom', 'left', 'right']}>
-          <View style={styles.orgSheetHeader}>
-            <AppText variant="h3" weight="bold" style={{ flex: 1, color: colors.text }}>
-              Switch organization
-            </AppText>
-            <PressClay onPress={() => setShowAccountSwitcher(false)}>
-              <View style={{ padding: 8 }}>
-                <Icon name="close" size={26} color={colors.text} />
-              </View>
-            </PressClay>
-          </View>
-
-          <FlatList
-            data={myOrganizations}
-            keyExtractor={(item) => item.organizationId}
-            contentContainerStyle={styles.orgSheetList}
-            ListFooterComponent={
-              <PressClay
-                onPress={() => {
-                  setShowAccountSwitcher(false);
-                  router.push('/login-flow');
-                }}
-              >
-                <View style={styles.addAccountBtn}>
-                  <AppText variant="body" weight="bold" style={{ color: colors.primary }}>
-                    Add another account
-                  </AppText>
-                </View>
-              </PressClay>
-            }
-            renderItem={({ item }) => {
-              const rowLogoUri = resolveMediaUrl(item.logoUrl);
-              return (
-              <TouchableOpacity
-                style={styles.accountRow}
-                onPress={() => {
-                  if (!item.isCurrent) {
-                    handleSwitchOrg(
-                      item.organizationId,
-                      item.organizationName,
-                      item.logoUrl,
-                      String(item.organizationType),
-                      item.role
-                    );
-                  }
-                }}
-              >
-                <View style={styles.orgLogoBox}>
-                  {rowLogoUri ? (
-                    <ProgressiveImage
-                      source={{ uri: rowLogoUri }}
-                      style={{ width: '100%', height: '100%', borderRadius: 10 }}
-                      resizeMode="cover"
-                      borderWidth={1}
-                      borderColor={colors.border}
-                    />
-                  ) : (
-                    <Icon name="business" size={20} color={colors.subtle} />
-                  )}
-                </View>
-                <View style={styles.accountMeta}>
-                  <AppText
-                    variant="body"
-                    weight="medium"
-                    style={item.isCurrent ? { color: colors.primary } : undefined}
-                  >
-                    {item.organizationName}
-                  </AppText>
-                  <AppText variant="caption" style={{ marginTop: 4, color: colors.subtle }}>
-                    {item.role === 'Unknown' || !item.role ? 'Member' : item.role}
-                    {' · '}
-                    {item.organizationType === OrganizationType.University ? 'University' : 'Workspace'}
-                  </AppText>
-                </View>
-                {item.isCurrent ? <View style={styles.activeDot} /> : null}
-              </TouchableOpacity>
-              );
-            }}
-          />
-        </SafeAreaView>
-      </Modal>
+        organizations={myOrganizations}
+        onSelect={handleSwitchOrg}
+        onJoinOrganization={handleJoinOrganization}
+        onCancel={() => setShowAccountSwitcher(false)}
+        mode="switch"
+        title="Switch organization"
+        subtitle="Pick a workspace. You will see the same transition as when signing in."
+      />
     </SafeAreaView>
   );
 }

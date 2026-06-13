@@ -11,6 +11,10 @@ export const useEventForm = (initialDate: Date) => {
   const [hostName, setHostName] = useState<string | null>(null);
   const [groupId, setGroupId] = useState<string | null>(null);
   const [groupName, setGroupName] = useState<string | null>(null);
+  const [offeringId, setOfferingId] = useState<string | null>(null);
+  const [offeringName, setOfferingName] = useState<string | null>(null);
+  const [cohortGroupId, setCohortGroupId] = useState<string | null>(null);
+  const [cohortGroupName, setCohortGroupName] = useState<string | null>(null);
   const [eventTypeId, setEventTypeId] = useState<string>('');
   const [maxCapacityText, setMaxCapacityText] = useState('');
   const [isPublic, setIsPublic] = useState(false);
@@ -32,6 +36,8 @@ export const useEventForm = (initialDate: Date) => {
       setTitle(''); setDescription(''); setColor('#3b82f6');
       setRoomId(null); setHostId(null); setHostName(null);
       setGroupId(null); setGroupName(null);
+      setOfferingId(null); setOfferingName(null);
+      setCohortGroupId(null); setCohortGroupName(null);
       setEventTypeId('');
       setMaxCapacityText('');
       setIsPublic(false);
@@ -57,6 +63,10 @@ export const useEventForm = (initialDate: Date) => {
       setHostName(event.hostName || null);
       setGroupId(event.groupId || null);
       setGroupName(event.groupName || null);
+      setOfferingId((event as { offeringId?: string }).offeringId || null);
+      setOfferingName((event as { offeringName?: string }).offeringName || null);
+      setCohortGroupId((event as { cohortGroupId?: string }).cohortGroupId || null);
+      setCohortGroupName((event as { cohortGroupName?: string }).cohortGroupName || null);
       setEventTypeId(event.eventTypeId || '');
       setMaxCapacityText(
         event.maxCapacity != null && event.maxCapacity > 0 ? String(event.maxCapacity) : ''
@@ -127,18 +137,41 @@ export const useEventForm = (initialDate: Date) => {
 
     request.recurrenceRule = finalRule;
 
+    Object.assign(request as CreateEventRequest & { offeringId?: string; cohortGroupId?: string }, {
+      offeringId: offeringId ?? undefined,
+      cohortGroupId: cohortGroupId ?? undefined,
+    });
+
     return request;
+  };
+
+  const setStartDatePreservingSpan = (pickedDay: Date) => {
+    const durationMs = endDate.getTime() - startDate.getTime();
+    const nextStart = new Date(startDate);
+    nextStart.setFullYear(pickedDay.getFullYear(), pickedDay.getMonth(), pickedDay.getDate());
+    const roundedStart = roundToQuarterHour(nextStart);
+    setStartDate(roundedStart);
+    setEndDate(roundToQuarterHour(new Date(roundedStart.getTime() + Math.max(durationMs, 15 * 60 * 1000))));
+  };
+
+  const setRecEndCalendarDay = (pickedDay: Date) => {
+    const next = new Date(recEndDate);
+    next.setFullYear(pickedDay.getFullYear(), pickedDay.getMonth(), pickedDay.getDate());
+    next.setHours(23, 59, 59, 999);
+    setRecEndDate(next);
   };
 
   return {
       title, setTitle, description, setDescription, color, setColor,
       roomId, setRoomId, hostId, setHostId, hostName, setHostName,
       groupId, setGroupId, groupName, setGroupName,
+      offeringId, setOfferingId, offeringName, setOfferingName,
+      cohortGroupId, setCohortGroupId, cohortGroupName, setCohortGroupName,
       eventTypeId, setEventTypeId,
       maxCapacityText, setMaxCapacityText, isPublic, setIsPublic,
-      startDate, setStartDate, endDate, setEndDate,
+      startDate, setStartDate, setStartDatePreservingSpan, endDate, setEndDate,
       recFreq, setRecFreq, recInterval, setRecInterval, recEndMode, setRecEndMode,
-      recEndDate, setRecEndDate, recLabel, setRecLabel,
+      recEndDate, setRecEndDate, setRecEndCalendarDay, recLabel, setRecLabel,
       resetForm, loadEvent, getRequestObject
   };
 };

@@ -13,17 +13,27 @@ import type {
 export async function createFloorForBuildingMultipart(
   buildingId: string,
   levelNumber: number,
-  floorplanFile: FileParameter,
+  floorplanFile?: FileParameter | null,
 ): Promise<ServiceResponseOfFloorDto> {
   const form = new FormData();
   form.append('LevelNumber', String(levelNumber));
-  await appendFileParameterForReactNative(form, 'FloorplanFile', floorplanFile);
+  if (floorplanFile) {
+    await appendFileParameterForReactNative(form, 'FloorplanFile', floorplanFile);
+  }
 
   return apiClient
     .post<ServiceResponseOfFloorDto>(`buildings/${buildingId}/floors`, form, {
       headers: { Accept: 'application/json' },
     })
     .then((r) => r.data);
+}
+
+/** Create a floor level without a floorplan image (rooms can be added as a list). */
+export async function createFloorLevelOnly(
+  buildingId: string,
+  levelNumber: number,
+): Promise<ServiceResponseOfFloorDto> {
+  return createFloorForBuildingMultipart(buildingId, levelNumber, null);
 }
 
 /**

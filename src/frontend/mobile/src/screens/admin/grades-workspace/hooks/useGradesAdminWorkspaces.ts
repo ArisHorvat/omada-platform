@@ -4,87 +4,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { attendanceApi, gradesApi, orgAdminApi, unwrap } from '@/src/api';
 import { QUERY_KEYS } from '@/src/api/queryKeys';
-import { CreateGradeRequest, CreateOrganizationPeriodRequest, OrganizationType } from '@/src/api/generatedClient';
+import { CreateGradeRequest, OrganizationType } from '@/src/api/generatedClient';
 import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
 import { useDebounce } from '@/src/hooks';
-import { bumpOnboardingStep } from '../utils/onboarding';
-
-export function usePeriodsWorkspace() {
-  const queryClient = useQueryClient();
-  const { organization } = useCurrentOrganization();
-  const orgId = organization?.id ?? '';
-
-  const [newName, setNewName] = useState('');
-  const [newStart, setNewStart] = useState('');
-  const [newEnd, setNewEnd] = useState('');
-  const [markCurrent, setMarkCurrent] = useState(true);
-
-  const periodsQuery = useQuery({
-    queryKey: QUERY_KEYS.orgAdmin.periods(orgId),
-    queryFn: () => unwrap(orgAdminApi.getPeriods()),
-    enabled: !!orgId,
-  });
-
-  const invalidate = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.orgAdmin.periods(orgId) });
-  }, [orgId, queryClient]);
-
-  const createMutation = useMutation({
-    mutationFn: async () => {
-      const req = CreateOrganizationPeriodRequest.fromJS({
-        name: newName.trim(),
-        startDate: new Date(newStart).toISOString(),
-        endDate: new Date(newEnd).toISOString(),
-        isCurrent: markCurrent,
-      });
-      return unwrap(orgAdminApi.createPeriod(req));
-    },
-    onSuccess: async () => {
-      setNewName('');
-      setNewStart('');
-      setNewEnd('');
-      await invalidate();
-
-      const current = await unwrap(orgAdminApi.getCurrent());
-      await unwrap(
-        orgAdminApi.updateCurrent({
-          name: current.name,
-          primaryColor: current.primaryColor,
-          secondaryColor: current.secondaryColor,
-          tertiaryColor: current.tertiaryColor,
-          onboardingStep: bumpOnboardingStep(current.onboardingStep, 7),
-        } as never),
-      );
-    },
-    onError: (e: Error) => Alert.alert('Error', e.message),
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => unwrap(orgAdminApi.deletePeriod(id)),
-    onSuccess: invalidate,
-    onError: (e: Error) => Alert.alert('Error', e.message),
-  });
-
-  return {
-    periods: periodsQuery.data ?? [],
-    loading: periodsQuery.isLoading,
-    newName,
-    setNewName,
-    newStart,
-    setNewStart,
-    newEnd,
-    setNewEnd,
-    markCurrent,
-    setMarkCurrent,
-    createPeriod: () => createMutation.mutate(),
-    deletePeriod: (id: string, name: string) =>
-      Alert.alert('Delete period', `Remove "${name}"?`, [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => deleteMutation.mutate(id) },
-      ]),
-    isSaving: createMutation.isPending || deleteMutation.isPending,
-  };
-}
+import { bumpOnboardingStep } from '../../utils/onboarding';
+import { getPeriodCopy } from '../../periods-workspace/utils/periodLabels';
 
 export function useGradesWorkspace() {
   const queryClient = useQueryClient();
@@ -185,8 +109,10 @@ export function useGradesWorkspace() {
   };
 
   const memberSuggestions = memberSearchQuery.data?.items ?? [];
+  const periodCopy = getPeriodCopy(organization?.organizationType);
 
   return {
+    periodCopy,
     grades: gradesQuery.data?.items ?? [],
     totalCount: gradesQuery.data?.totalCount ?? 0,
     loading: gradesQuery.isLoading,

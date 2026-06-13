@@ -1,14 +1,19 @@
-import { useState } from 'react';
-import { Alert } from 'react-native';
+import { useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/src/context/AuthContext';
+import { useOrgAdminExperience } from '@/src/context/OrgAdminExperienceContext';
 import { authApi, orgApi, unwrap, usersApi } from '@/src/api';
 import { QUERY_KEYS } from '@/src/api/queryKeys';
+import { confirmAction } from '@/src/utils/confirmAction';
+import { buildChangeOrganizationParams } from '@/src/utils/organizationSwitchParams';
+import { canAccessOrgAdminConsole } from '@/src/utils/orgAdminAccess';
+import type { UserOrganizationDto } from '@/src/api/generatedClient';
 
 export const useProfileLogic = () => {
   const router = useRouter();
   const { activeSession, logout } = useAuth();
+  const { openAdminConsole, openMemberApp } = useOrgAdminExperience();
   const queryClient = useQueryClient();
   const [showAccountSwitcher, setShowAccountSwitcher] = useState(false);
 
@@ -30,44 +35,54 @@ export const useProfileLogic = () => {
     enabled: showAccountSwitcher,
   });
 
-  const openOrgSwitcher = () => setShowAccountSwitcher(true);
+  const openOrgSwitcher = () => {
+    void queryClient.invalidateQueries({ queryKey: QUERY_KEYS.myOrganizations });
+    setShowAccountSwitcher(true);
+  };
 
-  const handleSwitchOrg = (
-    targetOrgId: string,
-    targetOrgName: string,
-    targetLogoUrl?: string,
-    targetOrgType?: string,
-    targetRole?: string
-  ) => {
-    if (!targetOrgId) return;
+  const handleSwitchOrg = (target: UserOrganizationDto) => {
+    if (!target.organizationId || target.isCurrent) return;
+    setShowAccountSwitcher(false);
     router.push({
       pathname: '/change-organization',
-      params: {
-        targetOrgId,
-        targetOrgName: targetOrgName || 'Organization',
-        targetLogoUrl: targetLogoUrl || '',
-        targetOrgType: targetOrgType ?? '',
-        targetRole: targetRole ?? '',
-        currentOrgColor: organization?.primaryColor || '#000000',
-        currentOrgLogo: organization?.logoUrl || '',
-      },
+      params: buildChangeOrganizationParams(target, organization, { animate: true }),
     });
-    setTimeout(() => setShowAccountSwitcher(false), 400);
+  };
+
+  const handleJoinOrganization = () => {
+    setShowAccountSwitcher(false);
+    router.push('/join-organization?mode=open' as never);
   };
 
   const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Logout',
-        style: 'destructive',
-        onPress: () => {
-          queryClient.clear();
-          void logout();
-        },
+    confirmAction({
+      title: 'Log out',
+      message: 'Are you sure you want to log out?',
+      confirmText: 'Log out',
+      destructive: true,
+      onConfirm: () => {
+        queryClient.clear();
+        void logout().then(() => {
+          router.replace('/');
+        });
       },
-    ]);
+    });
   };
+
+  const canAccessAdminConsole = useMemo(
+    () => canAccessOrgAdminConsole(activeSession?.role, user?.widgetAccess),
+    [activeSession?.role, user?.widgetAccess],
+  );
+
+  const goToAdminConsole = useCallback(() => {
+    openAdminConsole();
+    router.replace('/org-dashboard' as never);
+  }, [openAdminConsole, router]);
+
+  const goToMemberApp = useCallback(() => {
+    openMemberApp();
+    router.replace('/profile' as never);
+  }, [openMemberApp, router]);
 
   return {
     user,
@@ -78,8 +93,12 @@ export const useProfileLogic = () => {
     myOrganizations,
     openOrgSwitcher,
     handleSwitchOrg,
+    handleJoinOrganization,
     handleLogout,
     role: activeSession?.role,
     email: activeSession?.email,
+    canAccessAdminConsole,
+    goToAdminConsole,
+    goToMemberApp,
   };
 };

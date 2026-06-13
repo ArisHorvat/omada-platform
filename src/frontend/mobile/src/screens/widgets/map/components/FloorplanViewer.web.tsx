@@ -15,30 +15,44 @@ import { FloorplanViewerMetricsContext } from './floorplanViewerMetrics';
 
 export { useFloorplanViewerMetrics } from './floorplanViewerMetrics';
 
+const MAX_CANVAS_PX = 2400;
+
 export interface FloorplanViewerProps {
   imageUrl: string | null | undefined;
   isDark: boolean;
   children?: React.ReactNode;
+  layoutWidth?: number;
+  layoutHeight?: number;
   heightRatio?: number;
   gesturesEnabled?: boolean;
   onTapNormalized?: (nx: number, ny: number) => void;
   vectorMode?: boolean;
+  fullBleed?: boolean;
 }
 
 /**
- * Web: Skia-free floorplan (expo-image + gestures). Dark mode uses CSS invert on the image layer.
+ * Web: Skia-free floorplan (expo-image + gestures). Sizes use the measured pane, not full window width.
  */
 export function FloorplanViewer({
   imageUrl,
   isDark,
   children,
+  layoutWidth: layoutWidthProp,
+  layoutHeight: layoutHeightProp,
   heightRatio = 0.72,
   gesturesEnabled = true,
   onTapNormalized,
   vectorMode = false,
+  fullBleed = false,
 }: FloorplanViewerProps) {
   const { width: windowWidth } = useWindowDimensions();
-  const height = windowWidth * heightRatio;
+  const canvasWidth = Math.min(Math.round(layoutWidthProp ?? windowWidth), MAX_CANVAS_PX);
+  const heightFromRatio = Math.min(Math.round(canvasWidth * heightRatio), MAX_CANVAS_PX);
+  const height =
+    layoutHeightProp != null && layoutHeightProp > 0
+      ? Math.min(Math.round(layoutHeightProp), MAX_CANVAS_PX)
+      : heightFromRatio;
+
   const resolved = resolveMediaUrl(imageUrl ?? undefined);
   const [imgLoaded, setImgLoaded] = useState(false);
   const [natural, setNatural] = useState({ w: 0, h: 0 });
@@ -56,15 +70,15 @@ export function FloorplanViewer({
   }, [resolved]);
 
   const contain = useMemo(
-    () => computeContainRect(windowWidth, height, natural.w, natural.h),
-    [windowWidth, height, natural.w, natural.h],
+    () => computeContainRect(canvasWidth, height, natural.w, natural.h),
+    [canvasWidth, height, natural.w, natural.h],
   );
   const metricsValue = useMemo(
     () => ({
-      contentWidth: contain.contentW > 0 ? contain.contentW : windowWidth,
+      contentWidth: contain.contentW > 0 ? contain.contentW : canvasWidth,
       contentHeight: contain.contentH > 0 ? contain.contentH : height,
     }),
-    [contain.contentW, contain.contentH, windowWidth, height],
+    [contain.contentW, contain.contentH, canvasWidth, height],
   );
 
   const scale = useSharedValue(1);
@@ -82,12 +96,12 @@ export function FloorplanViewer({
     savedTranslateX.value = 0;
     savedTranslateY.value = 0;
     setImgLoaded(false);
-  }, [resolved]);
+  }, [resolved, canvasWidth, height]);
 
   const rasterOpacity = useSharedValue(vectorMode ? 0 : 1);
   useEffect(() => {
     rasterOpacity.value = withTiming(vectorMode ? 0 : 1, { duration: 220 });
-  }, [vectorMode]);
+  }, [vectorMode, rasterOpacity]);
 
   const rasterFadeStyle = useAnimatedStyle(() => ({
     opacity: rasterOpacity.value,
@@ -149,11 +163,6 @@ export function FloorplanViewer({
 
   const wrapRef = useRef<View | null>(null);
 
-  /**
-   * Web: pinch/pan works on touch; on laptop, use Ctrl/Cmd/Alt + scroll wheel
-   * (trackpad “pinch zoom” is often emitted as wheel + ctrlKey in Chrome).
-   * Non-passive listener so preventDefault stops the page from zooming/scroll-stealing.
-   */
   useLayoutEffect(() => {
     if (Platform.OS !== 'web' || !gesturesEnabled) return;
     const target = wrapRef.current as unknown as HTMLElement | null;
@@ -173,31 +182,34 @@ export function FloorplanViewer({
 
     target.addEventListener('wheel', onWheelNonPassive, { passive: false });
     return () => target.removeEventListener('wheel', onWheelNonPassive);
-  }, [gesturesEnabled, resolved, scale, savedScale]);
+  }, [gesturesEnabled, resolved]);
 
-  const showSpinner = !!resolved && !imgLoaded;
+  const showSpinner = !!resolved && !vectorMode && !imgLoaded;
+  const showRaster = !!resolved && !vectorMode;
 
   const canvasInner = (
     <>
-      <Animated.View
-        style={[
-          styles.imageWrap,
-          { width: windowWidth, height },
-          isDark && ({ filter: 'invert(1)' } as object),
-          Platform.OS === 'web' && webNoSelect,
-          Platform.OS === 'web' && styles.imageWrapWebPassThrough,
-          rasterFadeStyle,
-        ]}
-      >
-        <ExpoImage
-          source={{ uri: resolved ?? undefined }}
-          style={[styles.image, { width: windowWidth, height }]}
-          contentFit="contain"
-          onLoad={() => setImgLoaded(true)}
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-        />
-      </Animated.View>
+      {showRaster ? (
+        <Animated.View
+          style={[
+            styles.imageWrap,
+            { width: canvasWidth, height },
+            isDark && ({ filter: 'invert(1)' } as object),
+            Platform.OS === 'web' && webNoSelect,
+            Platform.OS === 'web' && styles.imageWrapWebPassThrough,
+            rasterFadeStyle,
+          ]}
+        >
+          <ExpoImage
+            source={{ uri: resolved ?? undefined }}
+            style={[styles.image, { width: canvasWidth, height }]}
+            contentFit="contain"
+            onLoad={() => setImgLoaded(true)}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          />
+        </Animated.View>
+      ) : null}
       <FloorplanViewerMetricsContext.Provider value={metricsValue}>
         <View
           style={{
@@ -217,7 +229,7 @@ export function FloorplanViewer({
   );
 
   const canvasBody = (
-    <Animated.View style={[styles.canvasOuter, { width: windowWidth, height }, animatedStyle]}>
+    <Animated.View style={[styles.canvasOuter, { width: canvasWidth, height }, animatedStyle]}>
       {canvasInner}
     </Animated.View>
   );
@@ -225,7 +237,12 @@ export function FloorplanViewer({
   return (
     <View
       ref={wrapRef}
-      style={[styles.wrap, { height }, vectorMode && { backgroundColor: '#1E293B' }]}
+      style={[
+        styles.wrap,
+        fullBleed && styles.wrapFullBleed,
+        { height, maxHeight: height, width: '100%' },
+        vectorMode && { backgroundColor: '#1E293B' },
+      ]}
     >
       {showSpinner && (
         <View style={styles.loading}>
@@ -240,7 +257,6 @@ export function FloorplanViewer({
   );
 }
 
-/** Avoid browser image drag / long-press selection highlight while using overlays & handles. */
 const webNoSelect =
   Platform.OS === 'web'
     ? ({
@@ -257,13 +273,16 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: 'rgba(0,0,0,0.04)',
   },
+  wrapFullBleed: {
+    borderRadius: 0,
+    backgroundColor: 'transparent',
+  },
   canvasOuter: {
     alignSelf: 'center',
   },
   imageWrap: {
     overflow: 'hidden',
   },
-  /** Web: do not let the floorplan <img> steal drags / show selection; gestures + overlay sit above or receive pass-through. */
   imageWrapWebPassThrough: {
     pointerEvents: 'none',
   },

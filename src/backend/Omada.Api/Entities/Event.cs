@@ -14,6 +14,15 @@ public class Event : BaseEntity, IOrganizationScoped
     public string? ColorHex { get; set; }
     public Guid? RoomId { get; set; }
     public Guid? GroupId { get; set; }
+
+    public Guid? PeriodId { get; set; }
+
+    /// <summary>Term offering this session belongs to (university timetable).</summary>
+    public Guid? OfferingId { get; set; }
+
+    /// <summary>When set with <see cref="OfferingId"/>, limits visibility to members of this stable cohort.</summary>
+    public Guid? CohortGroupId { get; set; }
+
     /// <summary>Host (presenter, instructor, PM, etc.) — links to <see cref="User"/>; naming avoids uni-only &quot;teacher&quot;.</summary>
     public Guid? HostId { get; set; }
 
@@ -29,6 +38,12 @@ public class Event : BaseEntity, IOrganizationScoped
     public virtual Organization Organization { get; set; } = null!;
     public Room? Room { get; set; } // Navigation Property
     public Group? Group { get; set; }
+
+    public OrganizationPeriod? Period { get; set; }
+
+    public CourseOffering? Offering { get; set; }
+
+    public Group? CohortGroup { get; set; }
     
     public virtual ICollection<EventOverride> Overrides { get; set; } = new List<EventOverride>();
     public virtual ICollection<EventAssociation> Associations { get; set; } = new List<EventAssociation>();

@@ -58,6 +58,44 @@ export async function appendFileParameterForReactNative(
   form.append(fieldName, d as never, name);
 }
 
+const IMAGE_MIME_BY_EXT: Record<string, string> = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+  gif: 'image/gif',
+  heic: 'image/heic',
+  heif: 'image/heif',
+  bmp: 'image/bmp',
+};
+
+export function inferImageMimeType(uri: string, fallback = 'image/png'): string {
+  const filename = uri.split('/').pop()?.split('?')[0] ?? '';
+  const ext = /\.(\w+)$/.exec(filename)?.[1]?.toLowerCase();
+  if (ext && IMAGE_MIME_BY_EXT[ext]) return IMAGE_MIME_BY_EXT[ext];
+  return fallback;
+}
+
+export function inferImageFileName(uri: string, fallback = 'logo.png'): string {
+  const fromUri = uri.split('/').pop()?.split('?')[0]?.trim();
+  return fromUri && fromUri.length > 0 ? fromUri : fallback;
+}
+
+/** Builds multipart FormData with a single image field — works on native and Expo web. */
+export async function appendImageUriToFormData(
+  form: FormData,
+  fieldName: string,
+  uri: string,
+  options?: { mimeType?: string; fileName?: string },
+): Promise<void> {
+  const fileName = options?.fileName?.trim() || inferImageFileName(uri);
+  const mimeType = options?.mimeType?.trim() || inferImageMimeType(uri);
+  await appendFileParameterForReactNative(form, fieldName, {
+    data: { uri, type: mimeType, name: fileName },
+    fileName,
+  });
+}
+
 /** Builds an NSwag-compatible `FileParameter` whose `data` is a React Native / Expo Web image descriptor. */
 export function fileParameterFromPickedImage(asset: {
   uri: string;

@@ -1,8 +1,8 @@
 import React from 'react';
 import { ActivityIndicator, ScrollView, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
+import { ScreenHeader } from '@/src/components/navigation/ScreenHeader';
 import { PageContainer } from '@/src/components/layout/PageContainer';
 import { AppButton, AppText, ClayView, WidgetEmptyState, WidgetErrorState } from '@/src/components/ui';
 import { useAssignableGroups, useThemeColors } from '@/src/hooks';
@@ -45,107 +45,103 @@ export default function AttendanceWorkspaceScreen() {
     setPage(1);
   };
 
+  const title = isCorporateKind(organizationKind) ? 'Participation records' : 'Attendance records';
+  const subtitle = `Organization-wide records from the last 60 days · ${totalCount} record${totalCount === 1 ? '' : 's'}`;
+
   if (!permissionsLoading && !canViewAll) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top }}>
-        <PageContainer>
-          <ClayBackButton />
-          <View style={{ flex: 1, justifyContent: 'center', paddingVertical: 24 }}>
-            <WidgetEmptyState
-              title="Attendance admin unavailable"
-              description="You need attendance edit access to review organization-wide records."
-              icon="lock"
-            />
-          </View>
-        </PageContainer>
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+          <PageContainer fullBleed>
+            <ScreenHeader title={title} />
+            <View style={{ flex: 1, justifyContent: 'center', paddingVertical: 24 }}>
+              <WidgetEmptyState
+                title="Attendance admin unavailable"
+                description="You need attendance edit access to review organization-wide records."
+                icon="lock"
+              />
+            </View>
+          </PageContainer>
+        </SafeAreaView>
       </View>
     );
   }
 
-  const title = isCorporateKind(organizationKind) ? 'Participation records' : 'Attendance records';
-
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top }}>
-      <PageContainer>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-          <ClayBackButton />
-          <AppText variant="h3" weight="bold">
-            {title}
-          </AppText>
-        </View>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+        <PageContainer fullBleed>
+          <ScreenHeader title={title} subtitle={subtitle} />
 
-        <AppText variant="caption" style={{ color: colors.subtle, marginBottom: 12 }}>
-          Organization-wide records from the last 60 days · {totalCount} record{totalCount === 1 ? '' : 's'}
-        </AppText>
+          <GradesFilterChips
+            chips={groupChips}
+            activeId={groupId}
+            onSelect={onGroupChange}
+            allLabel="All groups"
+          />
 
-        <GradesFilterChips
-          chips={groupChips}
-          activeId={groupId}
-          onSelect={onGroupChange}
-          allLabel="All groups"
-        />
-
-        <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
-          {loading ? (
-            <ActivityIndicator color={colors.primary} />
-          ) : isError ? (
-            <WidgetErrorState message="Could not load attendance records." onRetry={() => void refetch()} />
-          ) : !records.length ? (
-            <WidgetEmptyState
-              title="No records yet"
-              description="Members mark attendance from schedule sessions. Try another group filter."
-              icon="history"
-            />
-          ) : (
-            records.map((record) => (
-              <ClayView
-                key={record.id}
-                depth={2}
-                color={colors.card}
-                style={{ borderRadius: 12, padding: 14, marginBottom: 10 }}
-              >
-                <AppText weight="bold">{record.studentName}</AppText>
-                <AppText variant="body">{record.eventTitle}</AppText>
-                <AppText variant="caption" style={{ color: colors.subtle, marginTop: 4 }}>
-                  {new Date(record.instanceDate).toLocaleString(undefined, {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                  {record.groupName ? ` · ${record.groupName}` : ''}
-                </AppText>
-                <AppText variant="caption" weight="bold" style={{ color: colors.primary, marginTop: 6 }}>
-                  {attendanceStatusLabel(record.status, organizationKind)}
-                </AppText>
-              </ClayView>
-            ))
-          )}
-
-          {totalPages > 1 ? (
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 8 }}>
-              <AppButton
-                title="Previous"
-                variant="secondary"
-                size="sm"
-                disabled={page <= 1 || loading}
-                onPress={() => setPage((p) => Math.max(1, p - 1))}
+          <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
+            {loading ? (
+              <ActivityIndicator color={colors.primary} />
+            ) : isError ? (
+              <WidgetErrorState message="Could not load attendance records." onRetry={() => void refetch()} />
+            ) : !records.length ? (
+              <WidgetEmptyState
+                title="No records yet"
+                description="Members mark attendance from schedule sessions. Try another group filter."
+                icon="history"
               />
-              <AppText variant="caption" style={{ color: colors.subtle }}>
-                Page {page} of {totalPages}
-              </AppText>
-              <AppButton
-                title="Next"
-                variant="secondary"
-                size="sm"
-                disabled={page >= totalPages || loading}
-                onPress={() => setPage((p) => Math.min(totalPages, p + 1))}
-              />
-            </View>
-          ) : null}
-        </ScrollView>
-      </PageContainer>
+            ) : (
+              records.map((record) => (
+                <ClayView
+                  key={record.id}
+                  depth={2}
+                  color={colors.card}
+                  style={{ borderRadius: 12, padding: 14, marginBottom: 10 }}
+                >
+                  <AppText weight="bold">{record.studentName}</AppText>
+                  <AppText variant="body">{record.eventTitle}</AppText>
+                  <AppText variant="caption" style={{ color: colors.subtle, marginTop: 4 }}>
+                    {new Date(record.instanceDate).toLocaleString(undefined, {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                    {record.groupName ? ` · ${record.groupName}` : ''}
+                  </AppText>
+                  <AppText variant="caption" weight="bold" style={{ color: colors.primary, marginTop: 6 }}>
+                    {attendanceStatusLabel(record.status, organizationKind)}
+                  </AppText>
+                </ClayView>
+              ))
+            )}
+
+            {totalPages > 1 ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 8 }}>
+                <AppButton
+                  title="Previous"
+                  variant="secondary"
+                  size="sm"
+                  disabled={page <= 1 || loading}
+                  onPress={() => setPage((p) => Math.max(1, p - 1))}
+                />
+                <AppText variant="caption" style={{ color: colors.subtle }}>
+                  Page {page} of {totalPages}
+                </AppText>
+                <AppButton
+                  title="Next"
+                  variant="secondary"
+                  size="sm"
+                  disabled={page >= totalPages || loading}
+                  onPress={() => setPage((p) => Math.min(totalPages, p + 1))}
+                />
+              </View>
+            ) : null}
+          </ScrollView>
+        </PageContainer>
+      </SafeAreaView>
     </View>
   );
 }

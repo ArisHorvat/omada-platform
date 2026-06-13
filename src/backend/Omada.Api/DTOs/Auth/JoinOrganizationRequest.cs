@@ -7,4 +7,7 @@ public class JoinOrganizationRequest
     public string LastName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
+
+    /// <summary>Optional setup token from the invite email link.</summary>
+    public string? SetupToken { get; set; }
 }

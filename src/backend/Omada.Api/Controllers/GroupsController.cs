@@ -106,9 +106,10 @@ public class GroupsController : ControllerBase
     [HasPermission(WidgetKeys.Groups, nameof(AccessLevel.Edit))]
     public async Task<ActionResult<ServiceResponse<bool>>> RemoveMember(
         [FromRoute] Guid id,
-        [FromRoute] Guid userId)
+        [FromRoute] Guid userId,
+        [FromQuery] Guid? placementGroupId = null)
     {
-        var response = await _groupService.RemoveGroupMemberAsync(id, userId);
+        var response = await _groupService.RemoveGroupMemberAsync(id, userId, placementGroupId);
         return response.IsSuccess ? Ok(response) : NotFound(response);
     }
 

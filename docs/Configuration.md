@@ -51,8 +51,8 @@ Non-secret defaults shared by the team:
 | `Gemini` | Model name; **ApiKey** empty (optional spider fallback) |
 | `Spider` | Fallback schedule URL if org DB fields empty |
 | `AppConfig:BaseUrl` | Public API URL for media links — default `http://localhost:5069` |
-| `AppConfig:PublicAppUrl` | Public app URL for invite links — default `http://localhost:8081` |
-| `DigitalId` | QR token lifetime and scanner key |
+| `AppConfig:PublicAppUrl` | Public app URL for invite links **and password reset links** — default `http://localhost:8081` |
+| `DigitalId` | `TokenLifetimeSeconds` (default 60), `QrAudience`, optional `ScannerApiKey` for `POST /api/DigitalId/validate` — see [`DigitalId.md`](DigitalId.md) |
 
 ---
 
@@ -79,8 +79,13 @@ ROBOFLOW_API_KEY=your-roboflow-key
 # 🌐 Optional — LAN IP when phones need to reach your PC
 # AppConfig__BaseUrl=http://192.168.1.10:5069
 
-# 🔗 Optional — public app URL for invite links
+# 🔗 Optional — public app URL for invite links and password reset emails (Expo web)
 # AppConfig__PublicAppUrl=http://192.168.1.10:8081
+
+# 📧 Optional — Brevo transactional email (member invites, password reset, 2FA sign-in codes)
+# BREVO_API_KEY=
+# BREVO_SENDER_EMAIL=
+# BREVO_SENDER_NAME=Omada
 
 # ✨ Optional — web spider AI fallback
 # Gemini__ApiKey=
@@ -91,7 +96,11 @@ ROBOFLOW_API_KEY=your-roboflow-key
 # ROBOFLOW_ELEMENTS_MODEL_ID=cubicasa5k-2-qpmsa/6
 ```
 
-**ASP.NET nesting syntax:** use `__` for nested keys, e.g. `Roboflow__ApiKey`, `ConnectionStrings__DefaultConnection`.
+**ASP.NET nesting syntax:** use `__` for nested keys, e.g. `Roboflow__ApiKey`, `ConnectionStrings__DefaultConnection`, `Brevo__ApiKey`.
+
+**Brevo (transactional email):** Set `BREVO_API_KEY` and a verified **`BREVO_SENDER_EMAIL`** in `src/backend/Omada.Api/.env` (or `Brevo:*` in appsettings). Used for **member invites**, **password reset links**, and **2FA sign-in codes**. Without these, email bodies are logged to the API console only.
+
+**Password reset on device:** Set **`AppConfig__PublicAppUrl`** to the same host/port as Expo web (e.g. `http://192.168.x.x:8081`) so reset links open the app. See [`AccountSecurity.md`](AccountSecurity.md).
 
 **Legacy aliases** (from former Python service) mapped when `Roboflow:ApiKey` is empty:
 
@@ -126,6 +135,8 @@ Roboflow **API key** also accepts `ROBOFLOW_API_KEY` when `Roboflow:ApiKey` is b
 - ✅ Use host environment variables, Azure Key Vault, etc.
 - ✅ Strong `Jwt:Key` + real `ConnectionStrings:DefaultConnection`
 - ✅ Set `Roboflow:ApiKey` or `ROBOFLOW_API_KEY`
+- ✅ Set `Brevo:ApiKey` + verified sender for invite, **password reset**, and **2FA** email (or accept console-only in dev)
+- ✅ Set `AppConfig:PublicAppUrl` for invite and reset links on real devices
 - ✅ Secure Hangfire dashboard
 
 ---
@@ -187,13 +198,15 @@ Output: `src/api/generatedClient.ts` — **never edit by hand**.
 
 ## 🎯 Feature-specific config
 
-### 🗺️ Floorplan AI (map admin)
+### 🗺️ Locations, maps & floorplan AI
 
 | What | Where |
 |------|-------|
-| API key | `ROBOFLOW_API_KEY` in backend `.env` |
+| Campus pins | `Building.Latitude` / `Longitude` — set in **Locations & maps** admin |
+| Levels without image | `POST /api/buildings/{id}/floors` with **`LevelNumber` only** — **`FloorplanFile` optional** |
+| Floorplan AI | `ROBOFLOW_API_KEY` in backend `.env` (optional — only when using AI extraction) |
 | Models | `appsettings.json` → `Roboflow:ModelId`, `ElementsModelId` |
-| Flow | Mobile upload → `POST /api/floorplans/...` → Roboflow → GeoJSON on `Floorplan` |
+| Upload flow | Admin upload → `POST /api/floorplans/...` → Roboflow → GeoJSON on `Floorplan` |
 
 No separate Python service — all in `Omada.Api`.
 
@@ -214,6 +227,8 @@ No separate Python service — all in `Omada.Api`.
 ```text
 □ Copy src/backend/Omada.Api/.env.example → .env
 □ Set ROBOFLOW_API_KEY (if using floorplan AI)
+□ Optional: BREVO_API_KEY + BREVO_SENDER_EMAIL (invites, password reset, 2FA codes)
+□ Optional: AppConfig__PublicAppUrl = Expo LAN URL (reset links on phone)
 □ SQL: LocalDB (Development) or ConnectionStrings__DefaultConnection in .env
 □ dotnet run in Omada.Api → Swagger loads at :5069
 □ Copy src/frontend/mobile/.env.example → .env
@@ -233,3 +248,4 @@ No separate Python service — all in `Omada.Api`.
 | [`Frontend.md`](Frontend.md) | Mobile structure |
 | [`WebSpider.md`](WebSpider.md) | Crawling & sync |
 | [`Architecture.md`](Architecture.md) | System design |
+| [`AccountSecurity.md`](AccountSecurity.md) | Password & 2FA flows |

@@ -1,10 +1,10 @@
 import { useCallback } from 'react';
-import { Alert } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 
 import { useAuth } from '@/src/context/AuthContext';
-import { orgAdminApi, unwrap } from '@/src/api';
+import { orgAdminApi, usersApi, unwrap } from '@/src/api';
 import { QUERY_KEYS } from '@/src/api/queryKeys';
+import { confirmAction } from '@/src/utils/confirmAction';
 
 export const useOrgAdminDashboardLogic = () => {
   const { activeSession, logout } = useAuth();
@@ -17,25 +17,40 @@ export const useOrgAdminDashboardLogic = () => {
   });
 
   const membersQuery = useQuery({
-    queryKey: QUERY_KEYS.orgAdmin.members(orgId, '', null),
+    queryKey: QUERY_KEYS.orgAdmin.memberCount(orgId),
     queryFn: () => unwrap(orgAdminApi.getMembers(1, 1, null, null, undefined)),
+    enabled: !!orgId,
+  });
+
+  const userQuery = useQuery({
+    queryKey: QUERY_KEYS.userProfile,
+    queryFn: () => unwrap(usersApi.getMe()),
     enabled: !!orgId,
   });
 
   const org = orgQuery.data ?? null;
   const memberCount = membersQuery.data?.totalCount ?? 0;
+  const user = userQuery.data;
 
   const handleLogout = useCallback(() => {
-    Alert.alert('Logout', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Logout', style: 'destructive', onPress: logout },
-    ]);
+    confirmAction({
+      title: 'Log out',
+      message: 'Are you sure you want to log out?',
+      confirmText: 'Log out',
+      destructive: true,
+      onConfirm: () => {
+        void logout();
+      },
+    });
   }, [logout]);
 
   return {
     org,
     memberCount,
+    user,
+    role: activeSession?.role,
     loading: orgQuery.isLoading,
+    userLoading: userQuery.isLoading,
     handleLogout,
     refetch: orgQuery.refetch,
   };

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, FlatList, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
+import { ScreenHeader } from '@/src/components/navigation/ScreenHeader';
 import { useThemeColors } from '@/src/hooks';
 import { MaterialIcons } from '@expo/vector-icons';
 import { createStyles } from '@/src/screens/widgets/users/styles/users.styles';
@@ -16,10 +16,9 @@ export default function UsersScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <ClayBackButton />
-      
       <ScreenTransition style={{ flex: 1 }} >
-        <SafeAreaView style={[styles.container, { flex: 1, paddingTop: 60 }]}>
+        <SafeAreaView style={[styles.container, { flex: 1 }]} edges={['top']}>
+          <ScreenHeader title="Users" />
           <View style={[styles.searchBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <MaterialIcons name="search" size={24} color={colors.subtle} />
             <TextInput 

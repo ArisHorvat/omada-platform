@@ -1,45 +1,77 @@
 import React, { useState } from 'react';
-import { View, TextInput, TextInputProps, StyleSheet, TouchableOpacity, ViewStyle, StyleProp } from 'react-native';
+import {
+  View,
+  TextInput,
+  TextInputProps,
+  StyleSheet,
+  TouchableOpacity,
+  ViewStyle,
+  StyleProp,
+} from 'react-native';
 import { useThemeColors } from '@/src/hooks';
+import { inputTextStyle } from '@/src/styles/typography';
 import { Icon, IconName } from './Icon';
 
 interface IconInputProps extends Omit<TextInputProps, 'style'> {
-  icon?: IconName; // Left icon
-  rightIcon?: IconName; // Right icon (e.g. 'close' or 'visibility')
+  icon?: IconName;
+  rightIcon?: IconName;
   onRightIconPress?: () => void;
   error?: boolean;
   style?: StyleProp<ViewStyle>;
 }
 
-export const IconInput = ({ icon, rightIcon, onRightIconPress, error, style, ...props }: IconInputProps) => {
+export const IconInput = ({
+  icon,
+  rightIcon,
+  onRightIconPress,
+  error,
+  style,
+  onFocus,
+  onBlur,
+  ...props
+}: IconInputProps) => {
   const colors = useThemeColors();
   const [isFocused, setIsFocused] = useState(false);
 
   return (
-    <View style={[
-      styles.container, 
-      { 
-        backgroundColor: colors.card, // Or a slightly lighter/darker background 
-        borderColor: error ? 'red' : (isFocused ? colors.primary : colors.border),
-      },
-      style
-    ]}>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: colors.card,
+          borderColor: error ? colors.error : isFocused ? colors.primary : colors.border,
+          borderWidth: isFocused || error ? 2 : 1,
+        },
+        style,
+      ]}
+    >
       {icon && (
         <View style={styles.leftIcon}>
           <Icon name={icon} size={20} color={colors.subtle || '#888'} />
         </View>
       )}
-      
+
       <TextInput
-        style={[styles.input, { color: colors.text }]}
+        style={[styles.input, inputTextStyle(), { color: colors.text }]}
         placeholderTextColor={colors.subtle || '#999'}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
+        onFocus={(event) => {
+          setIsFocused(true);
+          onFocus?.(event);
+        }}
+        onBlur={(event) => {
+          setIsFocused(false);
+          onBlur?.(event);
+        }}
         {...props}
       />
 
       {rightIcon && (
-        <TouchableOpacity onPress={onRightIconPress} style={styles.rightIcon}>
+        <TouchableOpacity
+          onPress={onRightIconPress}
+          style={styles.rightIcon}
+          accessibilityRole="button"
+          hitSlop={8}
+        >
           <Icon name={rightIcon} size={20} color={colors.subtle || '#888'} />
         </TouchableOpacity>
       )}
@@ -51,16 +83,14 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 50,
+    minHeight: 50,
     borderRadius: 12,
-    borderWidth: 1,
     paddingHorizontal: 12,
   },
   input: {
     flex: 1,
-    height: '100%',
-    fontFamily: 'Inter-Regular', // Use your custom font
-    fontSize: 16,
+    minHeight: 48,
+    paddingVertical: 12,
   },
   leftIcon: { marginRight: 10 },
   rightIcon: { marginLeft: 10 },

@@ -81,6 +81,15 @@ public class UsersController : ControllerBase
         return response.IsSuccess ? Ok(response) : BadRequest(response);
     }
 
+    [HttpPost("me/change-password")]
+    public async Task<ActionResult<ServiceResponse<string>>> ChangePassword([FromBody] ChangePasswordRequest request)
+    {
+        var response = await _userService.ChangePasswordAsync(request);
+        if (!response.IsSuccess && response.Error?.Code == ErrorCodes.NotFound)
+            return NotFound(response);
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
+    }
+
     [HttpGet("directory")]
     [HasPermission(WidgetKeys.Users, nameof(AccessLevel.View))]
     public async Task<ActionResult<ServiceResponse<PagedResponse<UserDirectoryItemDto>>>> GetDirectory(

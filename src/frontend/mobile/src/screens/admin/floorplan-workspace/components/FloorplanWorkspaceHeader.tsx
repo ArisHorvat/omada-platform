@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, TouchableOpacity, View } from 'react-native';
 import { AppButton, AppText, Icon } from '@/src/components/ui';
 import type { FloorplanWorkspaceModel } from '@/src/screens/admin/floorplan-workspace/hooks/useFloorplanWorkspace';
+import { LOCATION_WORKSPACE_COPY } from '@/src/screens/admin/floorplan-workspace/utils/locationLabels';
 
 type Props = {
   model: FloorplanWorkspaceModel;
@@ -15,6 +16,7 @@ export function FloorplanWorkspaceHeader({ model }: Props) {
     savingGeo,
     publishingRooms,
     activeFloor,
+    activeBuilding,
     geoDoc,
     hasUnsavedChanges,
     handleSaveGeoJsonAndPublishRooms,
@@ -26,17 +28,24 @@ export function FloorplanWorkspaceHeader({ model }: Props) {
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         <Pressable
           onPress={goToWorkflowChoice}
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 }}
           hitSlop={12}
         >
           <Icon name="arrow-back" size={22} color={colors.text} />
-          <AppText variant="h2" weight="bold" numberOfLines={1} style={{ flexShrink: 1 }}>
-            Floorplan extraction
-          </AppText>
+          <View style={{ flexShrink: 1 }}>
+            <AppText variant="h2" weight="bold" numberOfLines={1}>
+              Floorplan editor
+            </AppText>
+            {activeBuilding && activeFloor ? (
+              <AppText variant="caption" style={{ color: colors.subtle }} numberOfLines={1}>
+                {activeBuilding.name} · Level {activeFloor.levelNumber}
+              </AppText>
+            ) : null}
+          </View>
         </Pressable>
         <TouchableOpacity onPress={goToWorkflowChoice} hitSlop={12} style={{ paddingVertical: 4 }}>
           <AppText variant="caption" style={{ color: colors.primary }}>
-            Workflow
+            {LOCATION_WORKSPACE_COPY.mapEditorBack}
           </AppText>
         </TouchableOpacity>
         <View style={{ flex: 1 }} />
@@ -50,8 +59,7 @@ export function FloorplanWorkspaceHeader({ model }: Props) {
         />
       </View>
       <AppText variant="caption" style={{ color: colors.subtle }}>
-        Run AI on a clear exported image, then refine rooms and pins — workspace tabs below (mobile) or on the left
-        (tablet).
+        Refine rooms and pins for this level. Use Setup to change the image or run AI.
       </AppText>
     </View>
   );

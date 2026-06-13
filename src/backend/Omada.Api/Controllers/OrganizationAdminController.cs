@@ -5,6 +5,7 @@ using Omada.Api.DTOs.Common;
 using Omada.Api.DTOs.Organizations;
 using Omada.Api.Entities;
 using Omada.Api.Infrastructure;
+using Omada.Api.Infrastructure.Security;
 using Omada.Api.Services.Interfaces;
 
 namespace Omada.Api.Controllers;
@@ -75,6 +76,14 @@ public class OrganizationAdminController : ControllerBase
         return response.IsSuccess ? Ok(response) : BadRequest(response);
     }
 
+    [HttpDelete("members/{userId:guid}")]
+    [HasPermission(WidgetKeys.Users, nameof(AccessLevel.Admin))]
+    public async Task<ActionResult<ServiceResponse<bool>>> DeleteMember(Guid userId)
+    {
+        var response = await _adminService.DeleteMemberAsync(userId);
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
+    }
+
     [HttpGet("roles")]
     [HasPermission(WidgetKeys.Settings, nameof(AccessLevel.View))]
     public async Task<ActionResult<ServiceResponse<IEnumerable<OrganizationRoleDto>>>> GetRoles()
@@ -129,7 +138,7 @@ public class OrganizationAdminController : ControllerBase
     }
 
     [HttpGet("periods")]
-    [HasPermission(WidgetKeys.Settings, nameof(AccessLevel.View))]
+    [RequiresOrgAdmin]
     public async Task<ActionResult<ServiceResponse<IEnumerable<OrganizationPeriodDto>>>> GetPeriods()
     {
         var response = await _adminService.GetPeriodsAsync();
@@ -137,7 +146,7 @@ public class OrganizationAdminController : ControllerBase
     }
 
     [HttpPost("periods")]
-    [HasPermission(WidgetKeys.Settings, nameof(AccessLevel.Edit))]
+    [RequiresOrgAdmin]
     public async Task<ActionResult<ServiceResponse<OrganizationPeriodDto>>> CreatePeriod(
         [FromBody] CreateOrganizationPeriodRequest request)
     {
@@ -146,7 +155,7 @@ public class OrganizationAdminController : ControllerBase
     }
 
     [HttpPut("periods/{periodId:guid}")]
-    [HasPermission(WidgetKeys.Settings, nameof(AccessLevel.Edit))]
+    [RequiresOrgAdmin]
     public async Task<ActionResult<ServiceResponse<OrganizationPeriodDto>>> UpdatePeriod(
         Guid periodId,
         [FromBody] UpdateOrganizationPeriodRequest request)
@@ -156,7 +165,7 @@ public class OrganizationAdminController : ControllerBase
     }
 
     [HttpDelete("periods/{periodId:guid}")]
-    [HasPermission(WidgetKeys.Settings, nameof(AccessLevel.Admin))]
+    [RequiresOrgAdmin]
     public async Task<ActionResult<ServiceResponse<bool>>> DeletePeriod(Guid periodId)
     {
         var response = await _adminService.DeletePeriodAsync(periodId);

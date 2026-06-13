@@ -131,10 +131,291 @@ namespace Omada.Api.Migrations
                     b.ToTable("Buildings", (string)null);
                 });
 
+            modelBuilder.Entity("Omada.Api.Entities.CourseOffering", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Code")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Credits")
+                        .HasPrecision(6, 2)
+                        .HasColumnType("decimal(6,2)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<Guid?>("HostId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("PeriodId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ProgramGroupId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal?>("RequiredAttendancePercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<Guid?>("SubjectCatalogGroupId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("TimetablePublishedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TimetablePublishedEventIdsJson")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("WeeklySessionPlanJson")
+                        .HasMaxLength(8000)
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HostId");
+
+                    b.HasIndex("PeriodId");
+
+                    b.HasIndex("ProgramGroupId");
+
+                    b.HasIndex("SubjectCatalogGroupId");
+
+                    b.HasIndex("OrganizationId", "PeriodId", "Name");
+
+                    b.ToTable("CourseOfferings", (string)null);
+                });
+
+            modelBuilder.Entity("Omada.Api.Entities.CourseOfferingPackage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId", "Name");
+
+                    b.ToTable("CourseOfferingPackages", (string)null);
+                });
+
+            modelBuilder.Entity("Omada.Api.Entities.CourseOfferingPackageItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Code")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("DefaultHostId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("InstructorsJson")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("PackageId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("WeeklySessionPlanJson")
+                        .HasMaxLength(8000)
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DefaultHostId");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex("PackageId");
+
+                    b.ToTable("CourseOfferingPackageItems", (string)null);
+                });
+
+            modelBuilder.Entity("Omada.Api.Entities.CourseOfferingPackageItemProgram", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("PackageItemId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ProgramGroupId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex("ProgramGroupId");
+
+                    b.HasIndex("PackageItemId", "ProgramGroupId")
+                        .IsUnique();
+
+                    b.ToTable("CourseOfferingPackageItemPrograms", (string)null);
+                });
+
+            modelBuilder.Entity("Omada.Api.Entities.CourseOfferingPackageProgram", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("PackageId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ProgramGroupId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex("ProgramGroupId");
+
+                    b.HasIndex("PackageId", "ProgramGroupId")
+                        .IsUnique();
+
+                    b.ToTable("CourseOfferingPackagePrograms", (string)null);
+                });
+
+            modelBuilder.Entity("Omada.Api.Entities.CourseOfferingProgram", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("OfferingId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ProgramGroupId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex("ProgramGroupId");
+
+                    b.HasIndex("OfferingId", "ProgramGroupId")
+                        .IsUnique();
+
+                    b.ToTable("CourseOfferingPrograms", (string)null);
+                });
+
             modelBuilder.Entity("Omada.Api.Entities.Event", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("CohortGroupId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("ColorHex")
@@ -169,7 +450,13 @@ namespace Omada.Api.Migrations
                     b.Property<int?>("MaxCapacity")
                         .HasColumnType("int");
 
+                    b.Property<Guid?>("OfferingId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("PeriodId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("RecurrenceRule")
@@ -192,13 +479,19 @@ namespace Omada.Api.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CohortGroupId");
+
                     b.HasIndex("EventTypeId");
 
                     b.HasIndex("GroupId");
 
                     b.HasIndex("HostId");
 
+                    b.HasIndex("OfferingId");
+
                     b.HasIndex("OrganizationId");
+
+                    b.HasIndex("PeriodId");
 
                     b.HasIndex("RoomId");
 
@@ -474,8 +767,11 @@ namespace Omada.Api.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
-                        .HasDefaultValueSql("NEWSEQUENTIALID()");
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AcademicYear")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -488,7 +784,8 @@ namespace Omada.Api.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<Guid>("OrganizationId")
                         .HasColumnType("uniqueidentifier");
@@ -500,11 +797,13 @@ namespace Omada.Api.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("ScheduleConfig")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
 
                     b.Property<string>("Type")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -688,6 +987,133 @@ namespace Omada.Api.Migrations
                     b.ToTable("News", (string)null);
                 });
 
+            modelBuilder.Entity("Omada.Api.Entities.OfferingEnrollment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("CohortGroupId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("OfferingId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CohortGroupId");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("OfferingId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("OfferingEnrollments", (string)null);
+                });
+
+            modelBuilder.Entity("Omada.Api.Entities.OfferingGradeCategory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsBonus")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<Guid>("OfferingId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Weight")
+                        .HasPrecision(6, 4)
+                        .HasColumnType("decimal(6,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex("OfferingId", "SortOrder");
+
+                    b.ToTable("OfferingGradeCategories", (string)null);
+                });
+
+            modelBuilder.Entity("Omada.Api.Entities.OfferingInstructor", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("OfferingId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("OfferingId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("OfferingInstructors", (string)null);
+                });
+
             modelBuilder.Entity("Omada.Api.Entities.Organization", b =>
                 {
                     b.Property<Guid>("Id")
@@ -723,6 +1149,10 @@ namespace Omada.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("OnboardingCompletedStepsJson")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
 
                     b.Property<int>("OnboardingStep")
                         .HasColumnType("int");
@@ -777,6 +1207,11 @@ namespace Omada.Api.Migrations
 
                     b.Property<DateTime>("JoinedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<bool>("RequiresAdminApproval")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
 
                     b.Property<Guid>("RoleId")
                         .HasColumnType("uniqueidentifier");
@@ -1181,6 +1616,9 @@ namespace Omada.Api.Migrations
                     b.Property<Guid>("AssigneeId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("AssignmentBatchId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -1197,16 +1635,29 @@ namespace Omada.Api.Migrations
                     b.Property<int?>("Grade")
                         .HasColumnType("int");
 
+                    b.Property<Guid?>("GradeCategoryId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<bool>("IsCompleted")
                         .HasColumnType("bit");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<string>("MaterialsJson")
+                        .HasMaxLength(8000)
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int?>("MaxScore")
                         .HasColumnType("int");
 
+                    b.Property<Guid?>("OfferingId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("PeriodId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<byte?>("Priority")
@@ -1221,6 +1672,10 @@ namespace Omada.Api.Migrations
 
                     b.Property<Guid?>("SubjectId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("SubmissionAttachmentsJson")
+                        .HasMaxLength(8000)
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("SubmissionUrl")
                         .HasMaxLength(2048)
@@ -1248,7 +1703,14 @@ namespace Omada.Api.Migrations
 
                     b.HasIndex("CreatedByUserId");
 
-                    b.HasIndex("OrganizationId");
+                    b.HasIndex("GradeCategoryId");
+
+                    b.HasIndex("OfferingId");
+
+                    b.HasIndex("PeriodId");
+
+                    b.HasIndex("OrganizationId", "AssignmentBatchId")
+                        .HasFilter("[AssignmentBatchId] IS NOT NULL AND [IsDeleted] = 0");
 
                     b.ToTable("TaskItems", (string)null);
                 });
@@ -1320,6 +1782,10 @@ namespace Omada.Api.Migrations
                     b.Property<DateTime?>("PasswordResetTokenExpires")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("PasswordResetTokenPurpose")
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
                     b.Property<string>("PhoneNumber")
                         .HasColumnType("nvarchar(max)");
 
@@ -1336,6 +1802,17 @@ namespace Omada.Api.Migrations
                     b.Property<string>("Title")
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("TwoFactorCode")
+                        .HasMaxLength(6)
+                        .HasColumnType("nvarchar(6)");
+
+                    b.Property<DateTime?>("TwoFactorCodeExpires")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TwoFactorPendingSessionToken")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -1379,6 +1856,49 @@ namespace Omada.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("UserNewsReads", (string)null);
+                });
+
+            modelBuilder.Entity("Omada.Api.Entities.WorkTimeEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("BreakMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ClockInUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ClockOutUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("WorkDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("OrganizationId", "UserId", "WorkDate")
+                        .IsUnique();
+
+                    b.ToTable("WorkTimeEntries", (string)null);
                 });
 
             modelBuilder.Entity("EventTypeRoom", b =>
@@ -1426,8 +1946,171 @@ namespace Omada.Api.Migrations
                     b.Navigation("Organization");
                 });
 
+            modelBuilder.Entity("Omada.Api.Entities.CourseOffering", b =>
+                {
+                    b.HasOne("Omada.Api.Entities.User", "Host")
+                        .WithMany()
+                        .HasForeignKey("HostId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Omada.Api.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Omada.Api.Entities.OrganizationPeriod", "Period")
+                        .WithMany()
+                        .HasForeignKey("PeriodId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Omada.Api.Entities.Group", "ProgramGroup")
+                        .WithMany()
+                        .HasForeignKey("ProgramGroupId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Omada.Api.Entities.Group", "SubjectCatalogGroup")
+                        .WithMany()
+                        .HasForeignKey("SubjectCatalogGroupId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Host");
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("Period");
+
+                    b.Navigation("ProgramGroup");
+
+                    b.Navigation("SubjectCatalogGroup");
+                });
+
+            modelBuilder.Entity("Omada.Api.Entities.CourseOfferingPackage", b =>
+                {
+                    b.HasOne("Omada.Api.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Organization");
+                });
+
+            modelBuilder.Entity("Omada.Api.Entities.CourseOfferingPackageItem", b =>
+                {
+                    b.HasOne("Omada.Api.Entities.User", "DefaultHost")
+                        .WithMany()
+                        .HasForeignKey("DefaultHostId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Omada.Api.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Omada.Api.Entities.CourseOfferingPackage", "Package")
+                        .WithMany("Items")
+                        .HasForeignKey("PackageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("DefaultHost");
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("Package");
+                });
+
+            modelBuilder.Entity("Omada.Api.Entities.CourseOfferingPackageItemProgram", b =>
+                {
+                    b.HasOne("Omada.Api.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Omada.Api.Entities.CourseOfferingPackageItem", "PackageItem")
+                        .WithMany("Programs")
+                        .HasForeignKey("PackageItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Omada.Api.Entities.Group", "ProgramGroup")
+                        .WithMany()
+                        .HasForeignKey("ProgramGroupId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("PackageItem");
+
+                    b.Navigation("ProgramGroup");
+                });
+
+            modelBuilder.Entity("Omada.Api.Entities.CourseOfferingPackageProgram", b =>
+                {
+                    b.HasOne("Omada.Api.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Omada.Api.Entities.CourseOfferingPackage", "Package")
+                        .WithMany("Programs")
+                        .HasForeignKey("PackageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Omada.Api.Entities.Group", "ProgramGroup")
+                        .WithMany()
+                        .HasForeignKey("ProgramGroupId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("Package");
+
+                    b.Navigation("ProgramGroup");
+                });
+
+            modelBuilder.Entity("Omada.Api.Entities.CourseOfferingProgram", b =>
+                {
+                    b.HasOne("Omada.Api.Entities.CourseOffering", "Offering")
+                        .WithMany("Programs")
+                        .HasForeignKey("OfferingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Omada.Api.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Omada.Api.Entities.Group", "ProgramGroup")
+                        .WithMany()
+                        .HasForeignKey("ProgramGroupId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Offering");
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("ProgramGroup");
+                });
+
             modelBuilder.Entity("Omada.Api.Entities.Event", b =>
                 {
+                    b.HasOne("Omada.Api.Entities.Group", "CohortGroup")
+                        .WithMany()
+                        .HasForeignKey("CohortGroupId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Omada.Api.Entities.EventType", "EventType")
                         .WithMany()
                         .HasForeignKey("EventTypeId")
@@ -1444,16 +2127,28 @@ namespace Omada.Api.Migrations
                         .HasForeignKey("HostId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("Omada.Api.Entities.CourseOffering", "Offering")
+                        .WithMany()
+                        .HasForeignKey("OfferingId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Omada.Api.Entities.Organization", "Organization")
                         .WithMany("Events")
                         .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Omada.Api.Entities.OrganizationPeriod", "Period")
+                        .WithMany()
+                        .HasForeignKey("PeriodId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Omada.Api.Entities.Room", "Room")
                         .WithMany()
                         .HasForeignKey("RoomId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("CohortGroup");
 
                     b.Navigation("EventType");
 
@@ -1461,7 +2156,11 @@ namespace Omada.Api.Migrations
 
                     b.Navigation("Host");
 
+                    b.Navigation("Offering");
+
                     b.Navigation("Organization");
+
+                    b.Navigation("Period");
 
                     b.Navigation("Room");
                 });
@@ -1666,6 +2365,86 @@ namespace Omada.Api.Migrations
                     b.Navigation("Organization");
                 });
 
+            modelBuilder.Entity("Omada.Api.Entities.OfferingEnrollment", b =>
+                {
+                    b.HasOne("Omada.Api.Entities.Group", "CohortGroup")
+                        .WithMany()
+                        .HasForeignKey("CohortGroupId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Omada.Api.Entities.CourseOffering", "Offering")
+                        .WithMany("Enrollments")
+                        .HasForeignKey("OfferingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Omada.Api.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Omada.Api.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CohortGroup");
+
+                    b.Navigation("Offering");
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Omada.Api.Entities.OfferingGradeCategory", b =>
+                {
+                    b.HasOne("Omada.Api.Entities.CourseOffering", "Offering")
+                        .WithMany()
+                        .HasForeignKey("OfferingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Omada.Api.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Offering");
+
+                    b.Navigation("Organization");
+                });
+
+            modelBuilder.Entity("Omada.Api.Entities.OfferingInstructor", b =>
+                {
+                    b.HasOne("Omada.Api.Entities.CourseOffering", "Offering")
+                        .WithMany("Instructors")
+                        .HasForeignKey("OfferingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Omada.Api.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Omada.Api.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Offering");
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Omada.Api.Entities.OrganizationMember", b =>
                 {
                     b.HasOne("Omada.Api.Entities.Organization", "Organization")
@@ -1842,17 +2621,38 @@ namespace Omada.Api.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Omada.Api.Entities.OfferingGradeCategory", "GradeCategory")
+                        .WithMany()
+                        .HasForeignKey("GradeCategoryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Omada.Api.Entities.CourseOffering", "Offering")
+                        .WithMany()
+                        .HasForeignKey("OfferingId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Omada.Api.Entities.Organization", "Organization")
                         .WithMany()
                         .HasForeignKey("OrganizationId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Omada.Api.Entities.OrganizationPeriod", "Period")
+                        .WithMany()
+                        .HasForeignKey("PeriodId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Assignee");
 
                     b.Navigation("Creator");
 
+                    b.Navigation("GradeCategory");
+
+                    b.Navigation("Offering");
+
                     b.Navigation("Organization");
+
+                    b.Navigation("Period");
                 });
 
             modelBuilder.Entity("Omada.Api.Entities.User", b =>
@@ -1884,11 +2684,51 @@ namespace Omada.Api.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Omada.Api.Entities.WorkTimeEntry", b =>
+                {
+                    b.HasOne("Omada.Api.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Omada.Api.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Omada.Api.Entities.Building", b =>
                 {
                     b.Navigation("Floors");
 
                     b.Navigation("Rooms");
+                });
+
+            modelBuilder.Entity("Omada.Api.Entities.CourseOffering", b =>
+                {
+                    b.Navigation("Enrollments");
+
+                    b.Navigation("Instructors");
+
+                    b.Navigation("Programs");
+                });
+
+            modelBuilder.Entity("Omada.Api.Entities.CourseOfferingPackage", b =>
+                {
+                    b.Navigation("Items");
+
+                    b.Navigation("Programs");
+                });
+
+            modelBuilder.Entity("Omada.Api.Entities.CourseOfferingPackageItem", b =>
+                {
+                    b.Navigation("Programs");
                 });
 
             modelBuilder.Entity("Omada.Api.Entities.Event", b =>

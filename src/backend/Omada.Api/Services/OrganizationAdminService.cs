@@ -4,6 +4,7 @@ using Omada.Api.DTOs.Common;
 using Omada.Api.DTOs.Organizations;
 using Omada.Api.Entities;
 using Omada.Api.Infrastructure;
+using Omada.Api.Infrastructure.Constants;
 using Omada.Api.Infrastructure.Security;
 using Omada.Api.Repositories.Interfaces;
 using Omada.Api.Services.Interfaces;
@@ -19,6 +20,7 @@ public class OrganizationAdminService : IOrganizationAdminService
     private readonly IEmailService _emailService;
     private readonly IPermissionCacheInvalidator _permissionCacheInvalidator;
     private readonly IAuditLogService _auditLogService;
+    private readonly ILogger<OrganizationAdminService> _logger;
 
     public OrganizationAdminService(
         IUnitOfWork uow,
@@ -27,7 +29,8 @@ public class OrganizationAdminService : IOrganizationAdminService
         IInviteLinkBuilder inviteLinks,
         IEmailService emailService,
         IPermissionCacheInvalidator permissionCacheInvalidator,
-        IAuditLogService auditLogService)
+        IAuditLogService auditLogService,
+        ILogger<OrganizationAdminService> logger)
     {
         _uow = uow;
         _userContext = userContext;
@@ -36,6 +39,7 @@ public class OrganizationAdminService : IOrganizationAdminService
         _emailService = emailService;
         _permissionCacheInvalidator = permissionCacheInvalidator;
         _auditLogService = auditLogService;
+        _logger = logger;
     }
 
     public async Task<ServiceResponse<OrganizationDetailsDto>> GetCurrentAsync()
@@ -63,6 +67,7 @@ public class OrganizationAdminService : IOrganizationAdminService
             org.LogoUrl = string.IsNullOrWhiteSpace(request.LogoUrl) ? null : request.LogoUrl.Trim();
         if (request.OnboardingStep.HasValue)
             org.OnboardingStep = request.OnboardingStep.Value;
+        OrganizationOnboardingProgress.MergeCompletedSteps(org, request.CompletedOnboardingSteps);
         if (request.OrganizationType.HasValue)
             org.OrganizationType = request.OrganizationType.Value;
         if (request.IsActive.HasValue)
@@ -111,11 +116,18 @@ public class OrganizationAdminService : IOrganizationAdminService
         var pageSize = request.PageSize <= 0 ? 20 : Math.Min(request.PageSize, 100);
         var lowered = string.IsNullOrWhiteSpace(q) ? null : q.Trim().ToLowerInvariant();
 
+        var roleQuery = _uow.Repository<Role>().GetQueryable()
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(r => !r.IsDeleted);
+
         var query =
             from m in _uow.Repository<OrganizationMember>().GetQueryable().AsNoTracking()
             join u in _uow.Repository<User>().GetQueryable().AsNoTracking() on m.UserId equals u.Id
-            join r in _uow.Repository<Role>().GetQueryable().AsNoTracking() on m.RoleId equals r.Id
+            join r in roleQuery on m.RoleId equals r.Id
             where m.OrganizationId == orgId
+                  && r.Name != RoleNames.Admin
+                  && r.Name != "SuperAdmin"
             select new { Member = m, User = u, Role = r };
 
         if (roleId.HasValue)
@@ -159,6 +171,10 @@ public class OrganizationAdminService : IOrganizationAdminService
 
         foreach (var item in request.Members)
         {
+            if (item.RoleName.Equals(RoleNames.Admin, StringComparison.OrdinalIgnoreCase)
+                || item.RoleName.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase))
+                return Fail<int>(ErrorCodes.InvalidInput, $"Role '{item.RoleName}' cannot be assigned via invite.");
+
             if (!roleByName.ContainsKey(item.RoleName))
                 return Fail<int>(ErrorCodes.InvalidInput, $"Role '{item.RoleName}' does not exist.");
         }
@@ -174,15 +190,17 @@ public class OrganizationAdminService : IOrganizationAdminService
 
         var inviteLink = _inviteLinks.BuildJoinLink(org.InviteCode);
         var invitedCount = 0;
+        var emailFailures = 0;
 
         foreach (var item in request.Members)
         {
             var email = item.Email.Trim();
             var role = roleByName[item.RoleName];
+            string? setupToken = null;
 
             if (!existingUsers.TryGetValue(email, out var user))
             {
-                var token = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+                setupToken = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
                 var emailLocal = email.Split('@')[0];
                 user = new User
                 {
@@ -190,33 +208,86 @@ public class OrganizationAdminService : IOrganizationAdminService
                     LastName = string.IsNullOrWhiteSpace(item.LastName) ? "Member" : item.LastName.Trim(),
                     Email = email,
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword("Welcome123!"),
-                    PasswordResetToken = token,
-                    PasswordResetTokenExpires = DateTime.UtcNow.AddDays(7)
+                    PasswordResetToken = setupToken,
+                    PasswordResetTokenExpires = DateTime.UtcNow.AddDays(7),
+                    PasswordResetTokenPurpose = PasswordResetTokenPurposes.InviteSetup
                 };
                 await _uow.Repository<User>().AddAsync(user);
                 await _uow.CompleteAsync();
                 existingUsers[email] = user;
-
-                _ = _emailService.SendInvitationEmailAsync(
-                    user.Email, user.FirstName, org.Name, inviteLink, org.InviteCode, token);
             }
 
             if (existingMembers.Contains(user.Id))
+            {
+                var pendingMember = (await _uow.Repository<OrganizationMember>()
+                        .FindAsync(m => m.OrganizationId == orgId && m.UserId == user.Id))
+                    .FirstOrDefault();
+
+                if (pendingMember?.IsActive == true)
+                    continue;
+
+                if (pendingMember != null && !pendingMember.IsActive)
+                {
+                    var needsPasswordSetup = !string.IsNullOrEmpty(user.PasswordResetToken)
+                        && !string.Equals(user.PasswordResetTokenPurpose, PasswordResetTokenPurposes.PasswordReset, StringComparison.Ordinal);
+                    if (needsPasswordSetup)
+                    {
+                        setupToken = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+                        user.PasswordResetToken = setupToken;
+                        user.PasswordResetTokenExpires = DateTime.UtcNow.AddDays(7);
+                        user.PasswordResetTokenPurpose = PasswordResetTokenPurposes.InviteSetup;
+                        _uow.Repository<User>().Update(user);
+                    }
+
+                    var resendResult = await _emailService.SendInvitationEmailAsync(
+                        user.Email, user.FirstName, org.Name, inviteLink, org.InviteCode, setupToken);
+
+                    if (!resendResult.IsSuccess)
+                        emailFailures++;
+                    else
+                        invitedCount++;
+
+                    continue;
+                }
+
                 continue;
+            }
 
             await _uow.Repository<OrganizationMember>().AddAsync(new OrganizationMember
             {
                 OrganizationId = orgId,
                 UserId = user.Id,
                 RoleId = role.Id,
-                IsActive = true
+                IsActive = false,
+                RequiresAdminApproval = false
             });
             existingMembers.Add(user.Id);
             invitedCount++;
+
+            var emailResult = await _emailService.SendInvitationEmailAsync(
+                user.Email, user.FirstName, org.Name, inviteLink, org.InviteCode, setupToken);
+
+            if (!emailResult.IsSuccess)
+            {
+                emailFailures++;
+                _logger.LogWarning(
+                    "Invite email failed for {Email}: {Message}",
+                    user.Email,
+                    emailResult.Error?.Message ?? "Unknown error");
+            }
         }
 
-        if (invitedCount > 0 && org.OnboardingStep < 1)
-            org.OnboardingStep = 1;
+        if (emailFailures > 0 && invitedCount > 0)
+        {
+            return Fail<int>(
+                ErrorCodes.OperationFailed,
+                invitedCount == emailFailures
+                    ? "Members were added but invitation emails could not be sent. Check API logs and Brevo sender settings."
+                    : $"Added {invitedCount} member(s), but {emailFailures} invitation email(s) failed to send.");
+        }
+
+        if (invitedCount > 0)
+            OrganizationOnboardingProgress.MarkComplete(org, OrganizationOnboardingProgress.StepIds.Invite);
 
         await _uow.CompleteAsync();
         await _permissionCacheInvalidator.InvalidateOrganizationAsync(orgId);
@@ -244,16 +315,27 @@ public class OrganizationAdminService : IOrganizationAdminService
         if (member == null)
             return Fail<OrganizationMemberDto>(ErrorCodes.NotFound, "Member not found.");
 
+        var memberRole = await GetRoleByIdCrossOrgAsync(member.RoleId);
+        if (memberRole != null && IsProtectedMemberRole(memberRole.Name))
+            return Fail<OrganizationMemberDto>(ErrorCodes.Forbidden, "Organization admins cannot be modified from this screen.");
+
         if (request.RoleId.HasValue)
         {
             var role = await _uow.Repository<Role>().GetByIdAsync(request.RoleId.Value);
             if (role == null || role.OrganizationId != orgId)
                 return Fail<OrganizationMemberDto>(ErrorCodes.InvalidInput, "Invalid role.");
+            if (role.Name.Equals(RoleNames.Admin, StringComparison.OrdinalIgnoreCase)
+                || role.Name.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase))
+                return Fail<OrganizationMemberDto>(ErrorCodes.InvalidInput, "The Admin role cannot be assigned from this screen.");
             member.RoleId = role.Id;
         }
 
         if (request.IsActive.HasValue)
+        {
+            if (request.IsActive.Value && member.RequiresAdminApproval)
+                member.RequiresAdminApproval = false;
             member.IsActive = request.IsActive.Value;
+        }
 
         _uow.Repository<OrganizationMember>().Update(member);
         await _uow.CompleteAsync();
@@ -273,6 +355,55 @@ public class OrganizationAdminService : IOrganizationAdminService
             return Fail<OrganizationMemberDto>(ErrorCodes.NotFound, "Member not found.");
 
         return Ok(MapMemberDto(member, user, roleEntity));
+    }
+
+    public async Task<ServiceResponse<bool>> DeleteMemberAsync(Guid userId)
+    {
+        var orgId = _userContext.OrganizationId;
+
+        if (userId == _userContext.UserId)
+            return Fail<bool>(ErrorCodes.Forbidden, "You cannot remove yourself from the organization.");
+
+        var member = (await _uow.Repository<OrganizationMember>()
+                .FindAsync(m => m.OrganizationId == orgId && m.UserId == userId))
+            .FirstOrDefault();
+
+        if (member == null)
+            return Fail<bool>(ErrorCodes.NotFound, "Member not found.");
+
+        var role = await GetRoleByIdCrossOrgAsync(member.RoleId);
+        if (role != null && IsProtectedMemberRole(role.Name))
+            return Fail<bool>(ErrorCodes.Forbidden, "Organization admins cannot be removed from this screen.");
+
+        var groupIds = await _uow.Repository<Group>().GetQueryable()
+            .AsNoTracking()
+            .Where(g => g.OrganizationId == orgId && !g.IsDeleted)
+            .Select(g => g.Id)
+            .ToListAsync();
+
+        if (groupIds.Count > 0)
+        {
+            var groupMemberships = await _uow.Repository<GroupMember>().GetQueryable()
+                .Where(gm => gm.UserId == userId && groupIds.Contains(gm.GroupId))
+                .ToListAsync();
+
+            foreach (var gm in groupMemberships)
+                _uow.Repository<GroupMember>().Remove(gm);
+        }
+
+        _uow.Repository<OrganizationMember>().Remove(member);
+        await _uow.CompleteAsync();
+        await _permissionCacheInvalidator.InvalidateOrganizationAsync(orgId);
+
+        await _auditLogService.RecordAsync(
+            orgId,
+            _userContext.UserId,
+            "member.delete",
+            $"Removed member {userId}",
+            entityType: "OrganizationMember",
+            entityId: userId);
+
+        return Ok(true);
     }
 
     public async Task<ServiceResponse<IEnumerable<OrganizationRoleDto>>> GetRolesAsync()
@@ -352,27 +483,66 @@ public class OrganizationAdminService : IOrganizationAdminService
     {
         var orgId = _userContext.OrganizationId;
         var role = await _uow.Repository<Role>().GetQueryable()
-            .Include(r => r.Members)
+            .AsNoTracking()
             .FirstOrDefaultAsync(r => r.Id == roleId && r.OrganizationId == orgId && !r.IsDeleted);
 
         if (role == null)
             return Fail<bool>(ErrorCodes.NotFound, "Role not found.");
 
-        if (role.Name.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+        if (role.Name.Equals(RoleNames.Admin, StringComparison.OrdinalIgnoreCase))
             return Fail<bool>(ErrorCodes.Forbidden, "The Admin role cannot be deleted.");
 
-        if (role.Members.Any())
-            return Fail<bool>(ErrorCodes.InvalidInput, "Remove all members from this role before deleting it.");
+        var memberCount = await _uow.Repository<OrganizationMember>().GetQueryable()
+            .CountAsync(m => m.OrganizationId == orgId && m.RoleId == roleId);
 
-        _uow.Repository<Role>().Remove(role);
-        await _uow.CompleteAsync();
+        Role? reassignmentRole = null;
+        if (memberCount > 0)
+        {
+            reassignmentRole = await ResolveOrCreateHoldingRoleAsync(orgId, roleId, role.Name);
+            await _uow.CompleteAsync();
+
+            await _uow.Repository<OrganizationMember>().GetQueryable()
+                .Where(m => m.OrganizationId == orgId && m.RoleId == roleId)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(m => m.RoleId, reassignmentRole.Id));
+
+            _logger.LogInformation(
+                "Reassigned {MemberCount} member(s) from role {RoleName} ({RoleId}) to {TargetRoleName} ({TargetRoleId})",
+                memberCount,
+                role.Name,
+                roleId,
+                reassignmentRole.Name,
+                reassignmentRole.Id);
+        }
+
+        var roleToDelete = await _uow.Repository<Role>().GetQueryable()
+            .FirstOrDefaultAsync(r => r.Id == roleId && r.OrganizationId == orgId && !r.IsDeleted);
+
+        if (roleToDelete == null)
+            return Fail<bool>(ErrorCodes.NotFound, "Role not found.");
+
+        _uow.Repository<Role>().Remove(roleToDelete);
+
+        try
+        {
+            await _uow.CompleteAsync();
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Failed to delete role {RoleId} in org {OrgId}", roleId, orgId);
+            return Fail<bool>(ErrorCodes.InvalidInput, "Could not delete this role. Try again or reassign members manually in Members.");
+        }
+
         await _permissionCacheInvalidator.InvalidateOrganizationAsync(orgId);
+
+        var auditMessage = reassignmentRole == null
+            ? $"Deleted role {role.Name}"
+            : $"Deleted role {role.Name}; reassigned {memberCount} member(s) to {reassignmentRole.Name}";
 
         await _auditLogService.RecordAsync(
             orgId,
             _userContext.UserId,
             "role.delete",
-            $"Deleted role {role.Name}",
+            auditMessage,
             entityType: "Role",
             entityId: roleId);
 
@@ -390,21 +560,22 @@ public class OrganizationAdminService : IOrganizationAdminService
         if (role == null)
             return Fail<OrganizationRoleDetailDto>(ErrorCodes.NotFound, "Role not found.");
 
-        var validKeys = WidgetRegistry.AvailableWidgets
-            .Where(w => !w.IsCoreFeature)
-            .Select(w => w.Key)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
         var org = await LoadCurrentOrganizationAsync();
         if (org == null)
             return Fail<OrganizationRoleDetailDto>(ErrorCodes.NotFound, "Organization not found.");
 
-        var enabledKeys = OrganizationWidgetKeys.GetEffectiveEnabledKeys(org);
+        var validKeys = WidgetRegistry.AvailableWidgets
+            .Where(OrganizationWidgetKeys.IsRoleAssignable)
+            .Where(w => OrganizationWidgetKeys.MatchesAudience(w, org.OrganizationType))
+            .Select(w => w.Key)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         role.Permissions.Clear();
         foreach (var perm in request.Permissions.DistinctBy(p => p.WidgetKey, StringComparer.OrdinalIgnoreCase))
         {
-            if (!validKeys.Contains(perm.WidgetKey) || !enabledKeys.Contains(perm.WidgetKey))
+            if (!validKeys.Contains(perm.WidgetKey))
+                continue;
+            if (!OrganizationWidgetKeys.IsPermissionAllowedForOrg(org, perm.WidgetKey))
                 continue;
             if (!Enum.TryParse<AccessLevel>(perm.AccessLevel, true, out var level))
                 continue;
@@ -414,8 +585,7 @@ public class OrganizationAdminService : IOrganizationAdminService
 
         ApplyAdminSafetyNet(role);
 
-        if (org.OnboardingStep < 2)
-            org.OnboardingStep = 2;
+        OrganizationOnboardingProgress.MarkComplete(org, OrganizationOnboardingProgress.StepIds.Roles);
 
         _uow.Repository<Role>().Update(role);
         _uow.Repository<Organization>().Update(org);
@@ -436,12 +606,12 @@ public class OrganizationAdminService : IOrganizationAdminService
     public async Task<ServiceResponse<IEnumerable<WidgetCatalogItemDto>>> GetWidgetCatalogAsync()
     {
         var org = await LoadCurrentOrganizationAsync();
-        var enabledKeys = org == null
-            ? OrganizationWidgetKeys.GetConfigurableKeys()
-            : OrganizationWidgetKeys.GetEffectiveEnabledKeys(org);
+        if (org == null)
+            return Ok<IEnumerable<WidgetCatalogItemDto>>(Array.Empty<WidgetCatalogItemDto>());
 
         var items = WidgetRegistry.AvailableWidgets
-            .Where(w => !w.IsCoreFeature)
+            .Where(OrganizationWidgetKeys.IsRoleAssignable)
+            .Where(w => OrganizationWidgetKeys.MatchesAudience(w, org.OrganizationType))
             .Select(w => new WidgetCatalogItemDto
             {
                 Key = w.Key,
@@ -450,7 +620,9 @@ public class OrganizationAdminService : IOrganizationAdminService
                 Icon = w.Icon,
                 DefaultAccessLevel = w.DefaultAccessLevel.ToString().ToLowerInvariant(),
                 IsCoreFeature = w.IsCoreFeature,
-                IsEnabledForOrganization = enabledKeys.Contains(w.Key)
+                IsAlwaysEnabled = w.IsAlwaysEnabled,
+                IsInOrgCatalog = w.IsInOrgCatalog,
+                IsEnabledForOrganization = OrganizationWidgetKeys.IsPermissionAllowedForOrg(org, w.Key)
             })
             .ToList();
 
@@ -464,20 +636,25 @@ public class OrganizationAdminService : IOrganizationAdminService
         if (org == null)
             return Fail<OrganizationDetailsDto>(ErrorCodes.NotFound, "Organization not found.");
 
-        var configurable = OrganizationWidgetKeys.GetConfigurableKeys();
+        var catalogKeys = OrganizationWidgetKeys.GetCatalogKeys(org);
         var requested = request.EnabledWidgetKeys
             .Where(k => !string.IsNullOrWhiteSpace(k))
             .Select(k => k.Trim())
-            .Where(configurable.Contains)
+            .Where(catalogKeys.Contains)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         if (requested.Count == 0)
-            return Fail<OrganizationDetailsDto>(ErrorCodes.InvalidInput, "At least one widget must remain enabled.");
+        {
+            org.EnabledWidgetKeysJson = "[]";
+        }
+        else
+        {
+            org.EnabledWidgetKeysJson = OrganizationWidgetKeys.SerializeStoredKeys(org, requested);
+        }
 
-        org.EnabledWidgetKeysJson = OrganizationWidgetKeys.SerializeStoredKeys(requested);
-        if (org.OnboardingStep < 9)
-            org.OnboardingStep = 9;
+        if (requested.Count > 0)
+            OrganizationOnboardingProgress.MarkComplete(org, OrganizationOnboardingProgress.StepIds.Widgets);
 
         _uow.Repository<Organization>().Update(org);
         await _uow.CompleteAsync();
@@ -626,6 +803,7 @@ public class OrganizationAdminService : IOrganizationAdminService
             InviteCode = org.InviteCode,
             InviteLink = _inviteLinks.BuildJoinLink(org.InviteCode),
             OnboardingStep = org.OnboardingStep,
+            CompletedOnboardingSteps = OrganizationOnboardingProgress.GetCompletedSteps(org),
             IsActive = org.IsActive,
             EnabledWidgets = OrganizationWidgetKeys.GetEffectiveEnabledKeys(org).OrderBy(k => k).ToList()
         };
@@ -633,7 +811,7 @@ public class OrganizationAdminService : IOrganizationAdminService
         return Task.FromResult(dto);
     }
 
-    private static OrganizationMemberDto MapMemberDto(OrganizationMember member, User user, Role role) =>
+    private OrganizationMemberDto MapMemberDto(OrganizationMember member, User user, Role role) =>
         new()
         {
             UserId = user.Id,
@@ -643,7 +821,9 @@ public class OrganizationAdminService : IOrganizationAdminService
             RoleId = role.Id,
             RoleName = role.Name,
             IsActive = member.IsActive,
-            JoinedAt = member.JoinedAt
+            RequiresAdminApproval = member.RequiresAdminApproval,
+            JoinedAt = member.JoinedAt,
+            AvatarUrl = _mediaUrls.ToPublicUrl(user.AvatarUrl)
         };
 
     private static OrganizationRoleDto MapRoleSummary(Role role) =>
@@ -681,6 +861,7 @@ public class OrganizationAdminService : IOrganizationAdminService
             { WidgetKeys.Settings, AccessLevel.Admin },
             { WidgetKeys.News, AccessLevel.Admin },
             { WidgetKeys.Schedule, AccessLevel.View },
+            { WidgetKeys.Groups, AccessLevel.Admin },
             { WidgetKeys.Admin, AccessLevel.Admin }
         };
 
@@ -694,6 +875,37 @@ public class OrganizationAdminService : IOrganizationAdminService
                 existing.AccessLevel = level;
         }
     }
+
+    private async Task<Role> ResolveOrCreateHoldingRoleAsync(Guid orgId, Guid excludeRoleId, string deletedRoleName)
+    {
+        var orgRoles = await _uow.Repository<Role>().GetQueryable()
+            .Where(r => r.OrganizationId == orgId && !r.IsDeleted)
+            .ToListAsync();
+
+        var existing = RoleResolution.ResolveExistingHoldingRole(orgRoles, excludeRoleId);
+        if (existing != null)
+            return existing;
+
+        var roleName = RoleResolution.ResolveHoldingRoleNameToCreate(deletedRoleName);
+        var role = new Role
+        {
+            Id = Guid.NewGuid(),
+            OrganizationId = orgId,
+            Name = roleName,
+        };
+        await _uow.Repository<Role>().AddAsync(role);
+        return role;
+    }
+
+    private Task<Role?> GetRoleByIdCrossOrgAsync(Guid roleId) =>
+        _uow.Repository<Role>().GetQueryable()
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(r => r.Id == roleId && !r.IsDeleted);
+
+    private static bool IsProtectedMemberRole(string roleName) =>
+        roleName.Equals(RoleNames.Admin, StringComparison.OrdinalIgnoreCase)
+        || roleName.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase);
 
     private static ServiceResponse<T> Ok<T>(T data) => new(true, data);
     private static ServiceResponse<T> Fail<T>(string code, string message) =>

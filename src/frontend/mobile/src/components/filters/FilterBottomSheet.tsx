@@ -1,9 +1,10 @@
 import React from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 
 import { BottomSheet } from '@/src/components/ui/BottomSheet';
-import { AppButton, AppText, ClayView, Divider } from '@/src/components/ui';
+import { AppButton, AppText, Divider } from '@/src/components/ui';
 import { useThemeColors } from '@/src/hooks';
+import type { WebOverlayAnchor } from '@/src/hooks/usePaneOverlayAnchor';
 
 interface FilterBottomSheetProps {
   isVisible: boolean;
@@ -16,6 +17,7 @@ interface FilterBottomSheetProps {
   height?: number;
   /** Clears floating tab bar when opened from tab screens. */
   contentInsetBottom?: number;
+  webAnchor?: WebOverlayAnchor | null;
   children: React.ReactNode;
 }
 
@@ -34,20 +36,33 @@ export function FilterBottomSheet({
   resetLabel = 'Reset',
   height,
   contentInsetBottom = 0,
+  webAnchor = null,
   children,
 }: FilterBottomSheetProps) {
   const colors = useThemeColors();
+
+  const sheetHeight =
+    webAnchor && Platform.OS === 'web'
+      ? Math.round(webAnchor.height * 0.88)
+      : height;
 
   return (
     <BottomSheet
       isVisible={isVisible}
       onClose={onClose}
-      height={height}
+      height={sheetHeight}
       contentInsetBottom={contentInsetBottom}
+      webAnchor={webAnchor}
+      contentPadding={12}
     >
-      <View style={{ flex: 1, minHeight: 0 }}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={Platform.OS === 'web'}
+      >
         <View style={styles.headerRow}>
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: 1, minWidth: 0 }}>
             <AppText variant="h3" weight="bold">
               {title}
             </AppText>
@@ -63,19 +78,10 @@ export function FilterBottomSheet({
           </View>
         </View>
 
-        <Divider margin={16} />
+        <Divider margin={12} />
 
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ flexGrow: 1, paddingBottom: 4 }}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <ClayView depth={6} puffy={10} color={colors.background} style={styles.bodyCard}>
-            {children}
-          </ClayView>
-        </ScrollView>
-      </View>
+        {children}
+      </ScrollView>
     </BottomSheet>
   );
 }
@@ -92,9 +98,9 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     alignItems: 'center',
   },
-  bodyCard: {
-    borderRadius: 20,
-    padding: 14,
+  scrollContent: {
+    paddingBottom: 8,
+    gap: 0,
   },
 });
 

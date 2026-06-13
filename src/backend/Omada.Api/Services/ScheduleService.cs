@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Omada.Api.Abstractions;
+using Omada.Api.Data;
 using Omada.Api.DTOs.Schedule;
 using Omada.Api.Entities;
 using Omada.Api.Repositories.Interfaces;
@@ -15,19 +16,22 @@ public class ScheduleService : IScheduleService
     private readonly IScheduleRepository _scheduleRepo;
     private readonly IRoomRepository _roomRepo;
     private readonly IPublicMediaUrlResolver _mediaUrls;
+    private readonly ApplicationDbContext _context;
 
     public ScheduleService(
         IUnitOfWork uow, 
         IUserContext userContext, 
         IScheduleRepository scheduleRepo,
         IRoomRepository roomRepo,
-        IPublicMediaUrlResolver mediaUrls)
+        IPublicMediaUrlResolver mediaUrls,
+        ApplicationDbContext context)
     {
         _uow = uow;
         _userContext = userContext;
         _scheduleRepo = scheduleRepo;
         _roomRepo = roomRepo;
         _mediaUrls = mediaUrls;
+        _context = context;
     }
 
     // 1. GET SCHEDULE
@@ -227,6 +231,9 @@ public class ScheduleService : IScheduleService
             RoomId = request.RoomId,
             HostId = request.HostId,
             GroupId = request.GroupId,
+            PeriodId = request.PeriodId,
+            OfferingId = request.OfferingId,
+            CohortGroupId = request.CohortGroupId,
             RecurrenceRule = request.RecurrenceRule,
             MaxCapacity = request.MaxCapacity,
             IsPublic = request.IsPublic
@@ -278,6 +285,9 @@ public class ScheduleService : IScheduleService
         eventEntity.RoomId = request.RoomId;
         eventEntity.HostId = request.HostId;
         eventEntity.GroupId = request.GroupId;
+        eventEntity.PeriodId = request.PeriodId;
+        eventEntity.OfferingId = request.OfferingId;
+        eventEntity.CohortGroupId = request.CohortGroupId;
         eventEntity.RecurrenceRule = request.RecurrenceRule;
         eventEntity.MaxCapacity = request.MaxCapacity;
 
@@ -290,10 +300,12 @@ public class ScheduleService : IScheduleService
         return new ServiceResponse<ScheduleItemDto>(true, MapToDto(eventEntity, eventEntity.StartTime, eventEntity.EndTime));
     }
 
-    public async Task<ServiceResponse<bool>> UpdateAttendanceAsync(Guid eventId, UpdateAttendanceRequest request)
+    public Task<ServiceResponse<bool>> UpdateAttendanceAsync(Guid eventId, UpdateAttendanceRequest request) =>
+        ApplyAttendanceForUserAsync(eventId, _userContext.UserId, request);
+
+    public async Task<ServiceResponse<bool>> ApplyAttendanceForUserAsync(Guid eventId, Guid userId, UpdateAttendanceRequest request)
     {
         var orgId = _userContext.OrganizationId;
-        var userId = _userContext.UserId;
 
         if (request.Status == AttendanceStatus.None)
             return new ServiceResponse<bool>(false, false, new AppError("INVALID_INPUT", "Attendance status cannot be None."));
@@ -536,6 +548,12 @@ public class ScheduleService : IScheduleService
         if (e.GroupId.HasValue)
             e.Group = await _uow.Repository<Group>().GetByIdAsync(e.GroupId.Value);
 
+        if (e.OfferingId.HasValue)
+            e.Offering = await _context.CourseOfferings.FirstOrDefaultAsync(o => o.Id == e.OfferingId.Value);
+
+        if (e.CohortGroupId.HasValue)
+            e.CohortGroup = await _uow.Repository<Group>().GetByIdAsync(e.CohortGroupId.Value);
+
         if (e.HostId.HasValue)
             e.Host = await _uow.Repository<User>().GetByIdAsync(e.HostId.Value);
     }
@@ -658,6 +676,11 @@ public class ScheduleService : IScheduleService
             
             GroupId = e.GroupId,
             GroupName = e.Group?.Name,
+            PeriodId = e.PeriodId,
+            OfferingId = e.OfferingId,
+            OfferingName = e.Offering?.Name,
+            CohortGroupId = e.CohortGroupId,
+            CohortGroupName = e.CohortGroup?.Name,
             
             RecurrenceRule = e.RecurrenceRule,
             MaxCapacity = e.MaxCapacity,

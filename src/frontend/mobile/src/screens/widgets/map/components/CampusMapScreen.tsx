@@ -2,22 +2,17 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { MaterialIcons } from '@expo/vector-icons';
-import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
+import { ScreenHeader } from '@/src/components/navigation/ScreenHeader';
 import { AppText, AppButton } from '@/src/components/ui';
 import { BottomSheet } from '@/src/components/ui/BottomSheet';
 import { WidgetPageShell } from '@/src/components/layout';
 import { useThemeColors } from '@/src/hooks';
 import { ScreenTransition } from '@/src/components/animations';
+import { BUILDING_MARKER_SIZE } from '../utils/buildingMarkerStyle';
 import { createStyles } from '../styles/campus.styles';
 import { fitCoordinatesFromBuildings, useCampusMap } from '../hooks/useCampusMap';
+import { DEFAULT_CAMPUS_MAP_REGION } from '../utils/campusMapConstants';
 import type { BuildingDto } from '@/src/api/generatedClient';
-
-const DEFAULT_REGION = {
-  latitude: 46.7699,
-  longitude: 23.6062,
-  latitudeDelta: 0.06,
-  longitudeDelta: 0.06,
-};
 
 export default function CampusMapScreen() {
   const colors = useThemeColors();
@@ -43,7 +38,7 @@ export default function CampusMapScreen() {
   return (
     <WidgetPageShell fullBleed>
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <ClayBackButton absolute style={{ backgroundColor: colors.card, borderRadius: 22 }} />
+      <ScreenHeader overlay title="Campus map" />
 
       <ScreenTransition style={styles.container}>
         {buildingsQuery.isLoading && (
@@ -62,7 +57,7 @@ export default function CampusMapScreen() {
           <MapView
             ref={mapRef}
             style={styles.map}
-            initialRegion={DEFAULT_REGION}
+            initialRegion={DEFAULT_CAMPUS_MAP_REGION}
             showsUserLocation
             showsMyLocationButton
             userInterfaceStyle={isDarkMap ? 'dark' : 'light'}
@@ -76,8 +71,25 @@ export default function CampusMapScreen() {
                   anchor={{ x: 0.5, y: 1 }}
                   onPress={() => setSelected(b)}
                 >
-                  <View style={styles.markerBubble}>
-                    <MaterialIcons name="apartment" size={22} color={colors.primary} />
+                  <View
+                    style={[
+                      styles.markerBubble,
+                      {
+                        width: BUILDING_MARKER_SIZE,
+                        height: BUILDING_MARKER_SIZE,
+                        borderRadius: BUILDING_MARKER_SIZE / 2,
+                        backgroundColor: colors.primary,
+                        borderWidth: 2,
+                        borderColor: '#FFFFFF',
+                        shadowColor: '#0f172a',
+                        shadowOffset: { width: 0, height: 3 },
+                        shadowOpacity: 0.35,
+                        shadowRadius: 5,
+                        elevation: 4,
+                      },
+                    ]}
+                  >
+                    <MaterialIcons name="apartment" size={22} color="#FFFFFF" />
                   </View>
                 </Marker>
               );

@@ -20,13 +20,21 @@ public class UpdateTaskRequest
 
     public Guid? SubjectId { get; set; }
 
+    public Guid? OfferingId { get; set; }
+
+    public Guid? GradeCategoryId { get; set; }
+
     public int? MaxScore { get; set; }
 
     public decimal? Weight { get; set; }
 
     public string? ReferenceUrl { get; set; }
 
+    public List<TaskAttachmentDto>? Materials { get; set; }
+
     public string? SubmissionUrl { get; set; }
+
+    public List<TaskAttachmentDto>? SubmissionAttachments { get; set; }
 
     public string? TeacherFeedback { get; set; }
 

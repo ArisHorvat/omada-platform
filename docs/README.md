@@ -13,6 +13,12 @@ Welcome to the Omada documentation! This folder is your **single source of truth
 | ⚙️ **Work on the API / backend** | [`Backend.md`](Backend.md) |
 | 📱 **Work on the mobile app** | [`Frontend.md`](Frontend.md) |
 | 🕷️ **Configure web crawling** | [`WebSpider.md`](WebSpider.md) |
+| 🔐 **Password, reset & 2FA** | [`AccountSecurity.md`](AccountSecurity.md) |
+| 🪪 **Digital ID pass & scanner** | [`DigitalId.md`](DigitalId.md) |
+| 📚 **Curriculum packages & term offerings** | [`CurriculumOfferings.md`](CurriculumOfferings.md) |
+| 📝 **Coursework — post, turn-in, grade** | [`Coursework.md`](Coursework.md) |
+| 📊 **Grades — standing, transcript, gradebook** | [`Grades.md`](Grades.md) |
+| 🗺️ **Set up locations, maps & rooms** | [`Frontend.md`](Frontend.md) (Locations & maps workspace) · rules **`domain-map-rooms-admin.mdc`** |
 | 👤 **Learn user flows (registration, invites)** | [`../src/frontend/mobile/TUTORIAL.md`](../src/frontend/mobile/TUTORIAL.md) |
 | 🌍 **Product overview** | [`../README.md`](../README.md) |
 
@@ -27,7 +33,12 @@ Welcome to the Omada documentation! This folder is your **single source of truth
 | [`Architecture.md`](Architecture.md) | 🏗️ | System design, tenancy, permissions, data flow, vertical slices |
 | [`Configuration.md`](Configuration.md) | 🔧 | `.env`, `appsettings`, mobile env vars, setup checklist |
 | [`Backend.md`](Backend.md) | ⚙️ | `Omada.Api` folder map, controllers, services, entities, migrations |
-| [`Frontend.md`](Frontend.md) | 📱 | Expo Router, Clay UI, widgets, admin workspaces, API layer |
+| [`Frontend.md`](Frontend.md) | 📱 | Expo Router, Clay UI, widgets, org admin workspaces (`fullBleed`, groups, event types, periods, offerings, **locations & maps**), API layer |
+| [`AccountSecurity.md`](AccountSecurity.md) | 🔐 | Change password, forgot/reset email links, email OTP 2FA at sign-in |
+| [`DigitalId.md`](DigitalId.md) | 🪪 | Rotating QR pass, staff scanner, attendance + manual roll, Clay section pattern |
+| [`CurriculumOfferings.md`](CurriculumOfferings.md) | 📚 | Academic periods, curriculum packages, apply/revert, instructor pickers |
+| [`Coursework.md`](Coursework.md) | 📝 | Tasks widget, batches, teaching workspace, grading, grade plan (host-only edit) |
+| [`Grades.md`](Grades.md) | 📊 | Coursework standing (1–10), transcript + credits, teacher gradebook, filter panel patterns |
 | [`WebSpider.md`](WebSpider.md) | 🕷️ | HTML crawling, Hangfire sync, Gemini fallback, admin API |
 
 ### Project READMEs (quick entry points)
@@ -66,8 +77,16 @@ Welcome to the Omada documentation! This folder is your **single source of truth
 |---------|---------|----------|
 | **Tenant** | `OrganizationId` in JWT + EF filters | Active org in `CurrentOrganizationContext` |
 | **Permissions** | `[HasPermission(widget, level)]` | `PermissionContext.can(capability)` |
-| **Widgets** | `WidgetKeys` + `RolePermission` | `permissions.config.ts` + dashboard registry |
+| **Widgets** | `WidgetRegistry` + `OrganizationWidgetKeys` | `permissions.config.ts` + `orgEnabledWidgets.ts` + dashboard registry |
+| **Org registration** | `OrganizationService` — `EnabledWidgetKeysJson = "[]"` on create | `(auth)/register-flow/` — 3 steps + `registrationSuccessFlow.ts` |
+| **Org admin mode** | Admin role or `admin` widget Admin on profile | `OrgAdminExperienceContext` + profile toggle buttons |
 | **API contract** | DTOs + Swagger | `generatedClient.ts` (NSwag) |
+| **Account security** | Change password, forgot/reset, email OTP 2FA | Settings → Security; `(auth)/forgot-password`, `reset-password`; login 2FA panel — see [`AccountSecurity.md`](AccountSecurity.md) |
+| **Digital ID** | Pass JWT + scan + record attendance | Profile → Digital ID; scanner for `attendance.take` / `digital-id.manage` — see [`DigitalId.md`](DigitalId.md) |
+| **Curriculum offerings** | Packages + apply to period — **`[RequiresOrgAdmin]`** | University **`/offerings-workspace`** + **`/periods-workspace`** — see [`CurriculumOfferings.md`](CurriculumOfferings.md) |
+| **Coursework** | Batches + `PATCH /submission`; grade plan host-only | **`tasks`** widget — **`/coursework-teaching`**, **`/assignments-workspace`**, **`/coursework-batch/[id]`** — see [`Coursework.md`](Coursework.md) |
+| **Grades** | Gradebook on **`OfferingsController`**; **`CourseOffering.Credits`**; formal **`Grade`** rows | **`/(widgets)/grades`** — My grades + Teaching; **`filterPickerRow.ts`** — see [`Grades.md`](Grades.md) |
+| **Universal search** | `GET /api/Search` — widget-access filter; **`IServiceScopeFactory`** per bucket | Dashboard **`SearchBar`** → **`/(modals)/search`**; **`useUniversalSearch`** + `searchApi` |
 | **Theme** | Org branding on `Organization` | `OrganizationThemeContext` + Clay colors |
 
 ---
@@ -90,7 +109,7 @@ Welcome to the Omada documentation! This folder is your **single source of truth
 2. Route in `src/app/(app)/(widgets)/`
 3. Screen folder in `src/screens/` with `hooks/`, `styles/`
 4. Register dashboard widget if applicable
-5. Update `permissions.config.ts` if new capabilities
+5. Update `permissions.config.ts` and `orgEnabledWidgets.ts` (catalog keys by org type) if new capabilities
 
 ### Change environment variables
 

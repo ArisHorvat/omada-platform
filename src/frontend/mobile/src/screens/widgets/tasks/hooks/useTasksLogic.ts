@@ -1,142 +1,182 @@
-import { useState, type Dispatch, type SetStateAction } from 'react';
-import { useTasksApi } from './useTasksApi';
-import { useTasksFilter } from './useTasksFilter';
-import { CreateTaskRequest, UpdateTaskRequest, TaskItemDto } from '@/src/api/generatedClient';
-import { useAuth } from '@/src/context/AuthContext';
-import { useAssignableGroups } from '@/src/hooks';
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 
-export type TasksViewMode = 'creator' | 'viewer';
+import { TaskItemDto } from '@/src/api/generatedClient';
+import { useAssignableGroups, useAssignableOfferings, useMyOfferings } from '@/src/hooks';
+import { useAuth } from '@/src/context/AuthContext';
+import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
+import { usePermission } from '@/src/context/PermissionContext';
+
+import { useTasksApi } from './useTasksApi';
+import {
+  filterCourseworkTasks,
+  filterTasksForScreen,
+  type TasksListMode,
+  type TasksTimeFilter,
+} from '../utils/taskFilters';
+import { computeCourseworkStats } from '../utils/courseworkStats';
+import { isUniversityOrg, resolveTasksInboxMode, type TasksInboxMode } from '../utils/taskLabels';
+import {
+  buildCorporateScopeOptions,
+  buildUniversityScopeOptions,
+  parseScopeSelection,
+  scopeSelectionKey,
+  type TasksScopeOption,
+  type TasksScopeSelection,
+} from '../utils/taskScopeOptions';
 
 export interface UseTasksLogicResult {
   tasks: TaskItemDto[];
+  allTasks: TaskItemDto[];
+  courseworkStats: ReturnType<typeof computeCourseworkStats>;
   loading: boolean;
   isError: boolean;
   refetchTasks: () => void;
-  viewMode: TasksViewMode;
-  canCreateTasks: boolean;
-  newTaskTitle: string;
-  setNewTaskTitle: Dispatch<SetStateAction<string>>;
-  showCompleted: boolean;
-  setShowCompleted: Dispatch<SetStateAction<boolean>>;
-  activeList: string;
-  setActiveList: Dispatch<SetStateAction<string>>;
-  activeGroupId: string | null;
-  setActiveGroupId: Dispatch<SetStateAction<string | null>>;
-  assignableGroups: ReturnType<typeof useAssignableGroups>['data'];
-  subjectGroupId: string | null;
-  setSubjectGroupId: Dispatch<SetStateAction<string | null>>;
-  showDatePicker: boolean;
-  setShowDatePicker: Dispatch<SetStateAction<boolean>>;
-  selectedDate: Date | null;
-  setSelectedDate: Dispatch<SetStateAction<Date | null>>;
-  editingTask: TaskItemDto | null;
-  startEditing: (task: TaskItemDto) => void;
-  cancelEditing: () => void;
-  handleAddTask: () => void;
+  inboxMode: TasksInboxMode;
+  listMode: TasksListMode;
+  setListMode: Dispatch<SetStateAction<TasksListMode>>;
+  timeFilter: TasksTimeFilter;
+  setTimeFilter: Dispatch<SetStateAction<TasksTimeFilter>>;
+  isCourseworkInbox: boolean;
+  canSubmitCoursework: boolean;
+  activeScopeKey: string | null;
+  setActiveScopeKey: (key: string | null) => void;
+  scopeOptions: TasksScopeOption[];
   toggleTask: (task: TaskItemDto) => void;
-  deleteTask: (id: string) => void;
 }
 
 export const useTasksScreenLogic = (): UseTasksLogicResult => {
-  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
-  const [subjectGroupId, setSubjectGroupId] = useState<string | null>(null);
+  const { organization } = useCurrentOrganization();
+  const { can } = usePermission();
+  const orgType = organization?.organizationType;
+
+  const [listMode, setListMode] = useState<TasksListMode>('open');
+  const [timeFilter, setTimeFilter] = useState<TasksTimeFilter>('all');
+  const [activeScopeKey, setActiveScopeKey] = useState<string | null>(null);
 
   const assignableQuery = useAssignableGroups('assignment');
-  const tasksRemote = useTasksApi({ page: 1, pageSize: 100, groupId: activeGroupId });
+  const offeringsQuery = useAssignableOfferings();
+  const myOfferingsQuery = useMyOfferings();
   const { activeSession } = useAuth();
 
-  const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [showCompleted, setShowCompleted] = useState(false);
-  const [activeList, setActiveList] = useState('All');
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [editingTask, setEditingTask] = useState<TaskItemDto | null>(null);
-
-  const filteredTasks = useTasksFilter(tasksRemote.tasks, activeList, showCompleted);
   const role = (activeSession?.role || '').toLowerCase();
-  const viewMode: TasksViewMode =
-    role === 'teacher' || role === 'admin' || role === 'superadmin' ? 'creator' : 'viewer';
+  const isStaffRole =
+    can('assignments.grade') ||
+    role === 'teacher' ||
+    role === 'professor' ||
+    role === 'admin' ||
+    role === 'superadmin';
 
-  const handleAddTask = () => {
-    if (!newTaskTitle.trim()) return;
-
-    const titleToSave = newTaskTitle;
-    const dateToSave = selectedDate || undefined;
-
-    setNewTaskTitle('');
-    setSelectedDate(null);
-    setSubjectGroupId(null);
-    setShowDatePicker(false);
-
-    if (editingTask) {
-      tasksRemote.updateTask.mutate({
-        id: editingTask.id,
-        request: new UpdateTaskRequest({
-          title: titleToSave,
-          dueDate: dateToSave,
-          isCompleted: editingTask.isCompleted,
-          subjectId: subjectGroupId ?? undefined,
-        }),
-      });
-      setEditingTask(null);
-    } else {
-      tasksRemote.createTask.mutate(
-        new CreateTaskRequest({
-          title: titleToSave,
-          dueDate: dateToSave,
-          subjectId: subjectGroupId ?? undefined,
-        }),
-      );
+  const enrolledOrTeachingOfferings = useMemo(() => {
+    const mine = myOfferingsQuery.data ?? [];
+    if (!isStaffRole) return mine;
+    const byId = new Map<string, (typeof mine)[number]>();
+    for (const o of [...(offeringsQuery.data ?? []), ...mine]) {
+      byId.set(o.id, o);
     }
-  };
+    return [...byId.values()];
+  }, [isStaffRole, myOfferingsQuery.data, offeringsQuery.data]);
 
-  const startEditing = (task: TaskItemDto) => {
-    setEditingTask(task);
-    setNewTaskTitle(task.title);
-    setSelectedDate(task.dueDate ? new Date(task.dueDate) : null);
-    setSubjectGroupId(task.subjectId ?? null);
-  };
+  const activeScope: TasksScopeSelection = useMemo(() => {
+    return parseScopeSelection(activeScopeKey, []);
+  }, [activeScopeKey]);
 
-  const cancelEditing = () => {
-    setEditingTask(null);
-    setNewTaskTitle('');
-    setSelectedDate(null);
-    setSubjectGroupId(null);
-  };
+  const tasksRemote = useTasksApi({
+    page: 1,
+    pageSize: 100,
+    groupId: activeScope?.filterKind === 'group' ? activeScope.id : null,
+    offeringId: activeScope?.filterKind === 'offering' ? activeScope.id : null,
+  });
+
+  const inboxMode = useMemo(() => {
+    if (isUniversityOrg(orgType)) return 'coursework' as const;
+    if (myOfferingsQuery.isLoading && !myOfferingsQuery.isFetched) {
+      return 'coursework' as const;
+    }
+    return resolveTasksInboxMode(
+      orgType,
+      enrolledOrTeachingOfferings.length,
+      filterCourseworkTasks(tasksRemote.tasks).length,
+    );
+  }, [
+    orgType,
+    enrolledOrTeachingOfferings.length,
+    tasksRemote.tasks,
+    myOfferingsQuery.isLoading,
+    myOfferingsQuery.isFetched,
+  ]);
+
+  const isCourseworkInbox = inboxMode === 'coursework';
+
+  const scopeOptionsWithTasks = useMemo(() => {
+    if (isCourseworkInbox) {
+      return buildUniversityScopeOptions(enrolledOrTeachingOfferings, tasksRemote.tasks);
+    }
+    return buildCorporateScopeOptions(assignableQuery.data);
+  }, [isCourseworkInbox, enrolledOrTeachingOfferings, tasksRemote.tasks, assignableQuery.data]);
+
+  const activeScopeResolved: TasksScopeSelection = useMemo(
+    () => parseScopeSelection(activeScopeKey, scopeOptionsWithTasks),
+    [activeScopeKey, scopeOptionsWithTasks],
+  );
+
+  const canSubmitCoursework =
+    can('assignments.submit') || can('tasks.create') || can('tasks.assign') || isStaffRole;
+
+  const filteredTasks = useMemo(
+    () => filterTasksForScreen(tasksRemote.tasks, inboxMode, listMode, timeFilter),
+    [tasksRemote.tasks, inboxMode, listMode, timeFilter],
+  );
+
+  const courseworkStats = useMemo(
+    () => computeCourseworkStats(tasksRemote.tasks),
+    [tasksRemote.tasks],
+  );
 
   const toggleTask = (task: TaskItemDto) => {
     tasksRemote.toggleTaskCompletion.mutate(task);
   };
 
-  const deleteTask = (id: string) => tasksRemote.deleteTask.mutate(id);
+  useEffect(() => {
+    setListMode('open');
+    setTimeFilter('all');
+    setActiveScopeKey(null);
+  }, [orgType, inboxMode]);
+
+  useEffect(() => {
+    if (!activeScopeKey) return;
+    const stillValid = scopeOptionsWithTasks.some(
+      (o) => scopeSelectionKey({ filterKind: o.filterKind, id: o.id }) === activeScopeKey,
+    );
+    if (!stillValid) {
+      setActiveScopeKey(null);
+    }
+  }, [activeScopeKey, scopeOptionsWithTasks]);
 
   return {
     tasks: filteredTasks,
-    loading: tasksRemote.isLoading || tasksRemote.isMutating,
-    isError: tasksRemote.isError,
-    refetchTasks: () => void tasksRemote.tasksQuery.refetch(),
-    viewMode,
-    canCreateTasks: viewMode === 'creator',
-    newTaskTitle,
-    setNewTaskTitle,
-    showCompleted,
-    setShowCompleted,
-    activeList,
-    setActiveList,
-    activeGroupId,
-    setActiveGroupId,
-    assignableGroups: assignableQuery.data,
-    subjectGroupId,
-    setSubjectGroupId,
-    showDatePicker,
-    setShowDatePicker,
-    selectedDate,
-    setSelectedDate,
-    editingTask,
-    startEditing,
-    cancelEditing,
-    handleAddTask,
+    allTasks: tasksRemote.tasks,
+    courseworkStats,
+    loading:
+      tasksRemote.isLoading ||
+      tasksRemote.isMutating ||
+      myOfferingsQuery.isLoading ||
+      (isStaffRole && offeringsQuery.isLoading),
+    isError: tasksRemote.isError || myOfferingsQuery.isError,
+    refetchTasks: () => {
+      void tasksRemote.tasksQuery.refetch();
+      void myOfferingsQuery.refetch();
+      if (isStaffRole) void offeringsQuery.refetch();
+    },
+    inboxMode,
+    listMode,
+    setListMode,
+    timeFilter,
+    setTimeFilter,
+    isCourseworkInbox,
+    canSubmitCoursework,
+    activeScopeKey,
+    setActiveScopeKey,
+    scopeOptions: scopeOptionsWithTasks,
     toggleTask,
-    deleteTask,
   };
 };

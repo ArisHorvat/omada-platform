@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
 
-import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
+import { ScreenHeader } from '@/src/components/navigation/ScreenHeader';
 import { ScreenTransition } from '@/src/components/animations';
 import { PressClay } from '@/src/components/animations/PressClay';
 import {
@@ -128,16 +128,7 @@ export default function DirectoryScreen() {
 
   const directoryList = (
     <View style={[styles.inner, isWideShell && { paddingHorizontal: 12 }]}>
-          <View style={styles.header}>
-            {!isWideShell ? <ClayBackButton /> : null}
-            <AppText
-              variant="h2"
-              weight="bold"
-              style={[styles.headerTitle, { color: colors.text }, !isWideShell && { marginLeft: 10 }]}
-            >
-              Directory
-            </AppText>
-          </View>
+          <ScreenHeader title="Directory" />
 
           <AppText variant="caption" style={[styles.helper, { color: colors.subtle }]}>
             Search by name or email, then optionally narrow the list to one department.
@@ -254,15 +245,6 @@ const makeStyles = (_colors: any) =>
   StyleSheet.create({
     root: { flex: 1 },
     inner: { flex: 1, paddingHorizontal: 16 },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingBottom: 8,
-      gap: 4,
-    },
-    headerTitle: {
-      flex: 1,
-    },
     helper: {
       marginBottom: 14,
       lineHeight: 18,

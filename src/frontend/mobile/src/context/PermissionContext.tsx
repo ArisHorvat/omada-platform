@@ -1,7 +1,11 @@
 import React, { createContext, useContext } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from './AuthContext';
-import { PERMISSION_MAP, Capability, AccessLevel } from '@/src/config/permissions.config';
+import {
+  PERMISSION_MAP,
+  getEffectiveWidgetAccessLevel,
+  type Capability,
+} from '@/src/config/permissions.config';
 import { usersApi, unwrap } from '@/src/api'; 
 import { QUERY_KEYS } from '@/src/api/queryKeys';
 
@@ -32,7 +36,7 @@ export const PermissionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (r === 'SuperAdmin' || r === 'Super Admin' || r === 'Admin') return true;
 
     const widgetKey = capability.split('.')[0];
-    const userLevel = widgetAccess[widgetKey] as AccessLevel;
+    const userLevel = getEffectiveWidgetAccessLevel(widgetKey, widgetAccess);
     if (!userLevel) return false;
 
     const allowedCapabilities = PERMISSION_MAP[widgetKey as keyof typeof PERMISSION_MAP]?.[userLevel];

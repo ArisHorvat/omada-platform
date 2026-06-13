@@ -11,6 +11,13 @@ public class CreateEventRequest
     public string? ColorHex { get; set; }
     public Guid EventTypeId { get; set; }
     public Guid? GroupId { get; set; }
+
+    public Guid? PeriodId { get; set; }
+
+    public Guid? OfferingId { get; set; }
+
+    public Guid? CohortGroupId { get; set; }
+
     public Guid? RoomId { get; set; }
     public Guid? HostId { get; set; }
     

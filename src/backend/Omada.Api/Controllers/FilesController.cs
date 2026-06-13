@@ -49,6 +49,32 @@ public class FilesController : ControllerBase
 
             relativePath = $"/news/{segment}/{fileName}";
         }
+        else if (string.Equals(scope, "coursework", StringComparison.OrdinalIgnoreCase))
+        {
+            const long maxBytes = 15 * 1024 * 1024;
+            if (file.Length > maxBytes)
+            {
+                return BadRequest(new ServiceResponse(false,
+                    new AppError(ErrorCodes.InvalidInput, "Coursework files must be 15 MB or smaller.")));
+            }
+
+            targetDir = Path.Combine(webRoot, "coursework", "documents");
+            if (!Directory.Exists(targetDir))
+                Directory.CreateDirectory(targetDir);
+
+            var ext = Path.GetExtension(file.FileName);
+            if (string.IsNullOrWhiteSpace(ext))
+                ext = ".bin";
+
+            var fileName = $"{Guid.NewGuid()}{ext}";
+            var filePath = Path.Combine(targetDir, fileName);
+            await using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            relativePath = $"/coursework/documents/{fileName}";
+        }
         else
         {
             var avatarsPath = Path.Combine(webRoot, "images", "avatars");

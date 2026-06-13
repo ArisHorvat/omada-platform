@@ -49,7 +49,7 @@ public class RoomsController : ControllerBase
     public async Task<ActionResult<ServiceResponse<RoomDto>>> Create([FromBody] CreateRoomRequest request)
     {
         var response = await _roomService.CreateRoomAsync(request);
-        return response.IsSuccess ? CreatedAtAction(nameof(GetById), new { id = response.Data!.Id }, response) : BadRequest(response);
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
     }
 
     [HttpPut("{id:guid}")]

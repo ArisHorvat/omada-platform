@@ -8,17 +8,19 @@ import {
   findNodeHandle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 
 import { WidgetPageShell } from '@/src/components/layout';
 import { useThemeColors, useTabContentBottomPadding } from '@/src/hooks';
 import { createStyles } from '@/src/screens/widgets/profile/styles/edit-profile.styles';
 import { useEditProfileLogic } from '@/src/screens/widgets/profile/hooks/useEditProfileLogic';
 import { AppFormField, ProgressiveImage, AppText } from '@/src/components/ui';
-import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
+import { ScreenHeader } from '@/src/components/navigation/ScreenHeader';
 import { PressClay } from '@/src/components/animations/PressClay';
 
-export default function EditProfileScreen() {
+export default function EditProfileScreen({ adminConsole = false }: { adminConsole?: boolean }) {
   const colors = useThemeColors();
+  const router = useRouter();
   const bottomPad = useTabContentBottomPadding(32);
   const styles = useMemo(() => createStyles(colors), [colors]);
   const {
@@ -34,7 +36,9 @@ export default function EditProfileScreen() {
     isSaving,
     pickImage,
     handleSave,
-  } = useEditProfileLogic();
+  } = useEditProfileLogic({
+    afterSave: adminConsole ? () => router.replace('/admin-profile' as never) : undefined,
+  });
 
   if (isLoading) {
     return (
@@ -71,15 +75,13 @@ export default function EditProfileScreen() {
   };
 
   return (
-    <WidgetPageShell>
+    <WidgetPageShell fullBleed={adminConsole}>
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      <View style={styles.header}>
-        <ClayBackButton />
-        <AppText variant="h3" weight="bold" style={styles.headerTitle}>
-          Edit profile
-        </AppText>
-        <View style={{ width: 44 }} />
-      </View>
+      <ScreenHeader
+        title="Edit profile"
+        showBack
+        onBack={adminConsole ? () => router.replace('/admin-profile' as never) : undefined}
+      />
 
       <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={0}>
         <ScrollView

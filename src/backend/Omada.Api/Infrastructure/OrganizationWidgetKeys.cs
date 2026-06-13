@@ -11,17 +11,43 @@ public static class OrganizationWidgetKeys
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
-    public static HashSet<string> GetConfigurableKeys()
+    public static bool MatchesAudience(WidgetInfo widget, OrganizationType orgType)
     {
-        return WidgetRegistry.AvailableWidgets
-            .Where(w => !w.IsCoreFeature)
+        return widget.Audience switch
+        {
+            WidgetAudience.All => true,
+            WidgetAudience.University => orgType == OrganizationType.University,
+            WidgetAudience.Corporate => orgType == OrganizationType.Corporate,
+            _ => true
+        };
+    }
+
+    public static IEnumerable<WidgetInfo> GetCatalogWidgets(Organization org) =>
+        WidgetRegistry.AvailableWidgets
+            .Where(w => w.IsInOrgCatalog && !w.IsCoreFeature && !w.IsAlwaysEnabled)
+            .Where(w => MatchesAudience(w, org.OrganizationType));
+
+    public static HashSet<string> GetCatalogKeys(Organization org) =>
+        GetCatalogWidgets(org).Select(w => w.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Keys admins may toggle in the org widget catalog (all org types, for validation helpers).</summary>
+    public static HashSet<string> GetConfigurableKeys() =>
+        WidgetRegistry.AvailableWidgets
+            .Where(w => w.IsInOrgCatalog && !w.IsCoreFeature && !w.IsAlwaysEnabled)
             .Select(w => w.Key)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
-    }
 
     public static bool IsCoreWidget(string widgetKey) =>
         WidgetRegistry.AvailableWidgets.Any(w =>
             w.Key.Equals(widgetKey, StringComparison.OrdinalIgnoreCase) && w.IsCoreFeature);
+
+    public static bool IsAlwaysEnabledWidget(string widgetKey) =>
+        WidgetRegistry.AvailableWidgets.Any(w =>
+            w.Key.Equals(widgetKey, StringComparison.OrdinalIgnoreCase) && w.IsAlwaysEnabled);
+
+    public static bool IsRoleAssignable(WidgetInfo widget) =>
+        !widget.IsCoreFeature
+        && (widget.IsInOrgCatalog || widget.IsAlwaysEnabled || widget.Key == WidgetKeys.Groups);
 
     public static HashSet<string>? ParseStoredKeys(string? json)
     {
@@ -31,7 +57,7 @@ public static class OrganizationWidgetKeys
         try
         {
             var keys = JsonSerializer.Deserialize<List<string>>(json, JsonOptions);
-            if (keys == null || keys.Count == 0)
+            if (keys == null)
                 return null;
 
             return keys
@@ -45,17 +71,21 @@ public static class OrganizationWidgetKeys
         }
     }
 
-    public static string? SerializeStoredKeys(IEnumerable<string> keys)
+    public static string? SerializeStoredKeys(Organization org, IEnumerable<string> keys)
     {
+        var catalogKeys = GetCatalogKeys(org);
         var normalized = keys
             .Where(k => !string.IsNullOrWhiteSpace(k))
             .Select(k => k.Trim())
-            .Where(k => GetConfigurableKeys().Contains(k))
+            .Where(catalogKeys.Contains)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(k => k, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        if (normalized.Count == 0 || normalized.Count == GetConfigurableKeys().Count)
+        if (normalized.Count == 0)
+            return "[]";
+
+        if (normalized.Count == catalogKeys.Count)
             return null;
 
         return JsonSerializer.Serialize(normalized, JsonOptions);
@@ -63,14 +93,35 @@ public static class OrganizationWidgetKeys
 
     public static HashSet<string> GetEffectiveEnabledKeys(Organization org)
     {
+        var catalogKeys = GetCatalogKeys(org);
         var stored = ParseStoredKeys(org.EnabledWidgetKeysJson);
-        return stored ?? GetConfigurableKeys();
+
+        var enabled = stored == null
+            ? new HashSet<string>(catalogKeys, StringComparer.OrdinalIgnoreCase)
+            : stored.Where(catalogKeys.Contains).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var widget in WidgetRegistry.AvailableWidgets.Where(w => w.IsAlwaysEnabled))
+            enabled.Add(widget.Key);
+
+        return enabled;
+    }
+
+    public static bool IsPermissionAllowedForOrg(Organization org, string widgetKey)
+    {
+        if (IsCoreWidget(widgetKey) || IsAlwaysEnabledWidget(widgetKey))
+            return true;
+
+        if (widgetKey.Equals(WidgetKeys.Groups, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return GetEffectiveEnabledKeys(org).Contains(widgetKey);
     }
 
     public static IEnumerable<string> FilterWidgetKeys(Organization org, IEnumerable<string> widgetKeys)
     {
         var enabled = GetEffectiveEnabledKeys(org);
-        return widgetKeys.Where(k => IsCoreWidget(k) || enabled.Contains(k));
+        return widgetKeys.Where(k =>
+            IsCoreWidget(k) || IsAlwaysEnabledWidget(k) || enabled.Contains(k));
     }
 
     public static Dictionary<string, List<string>> FilterRoleWidgetMappings(

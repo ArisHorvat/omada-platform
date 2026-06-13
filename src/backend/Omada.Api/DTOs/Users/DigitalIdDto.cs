@@ -16,8 +16,21 @@ public class DigitalIdDto
     [Required]
     public required string OrganizationName { get; set; }
 
+    public string? OrganizationShortName { get; set; }
+
+    public string? OrganizationLogoUrl { get; set; }
+
     [Required]
     public required Guid OrganizationId { get; set; }
+
+    [Required]
+    public required string PrimaryColor { get; set; }
+
+    [Required]
+    public required string SecondaryColor { get; set; }
+
+    [Required]
+    public required string TertiaryColor { get; set; }
 
     public string? AvatarUrl { get; set; }
 

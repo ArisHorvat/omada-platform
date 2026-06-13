@@ -8,6 +8,8 @@ public class OrganizationMember
     public Guid RoleId { get; set; } 
     public DateTime JoinedAt { get; set; } = DateTime.UtcNow;
     public bool IsActive { get; set; } = true;
+    /// <summary>True when the user requested access via org code (needs admin approval).</summary>
+    public bool RequiresAdminApproval { get; set; }
 
     // EF Core Navigation Properties
     public virtual Organization Organization { get; set; } = null!;

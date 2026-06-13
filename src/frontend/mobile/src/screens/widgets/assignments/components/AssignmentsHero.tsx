@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { useRouter } from 'expo-router';
 
 import {
   AppText,
@@ -9,8 +10,9 @@ import {
   WidgetEmptyState,
   WidgetErrorState,
 } from '@/src/components/ui';
-import { useThemeColors } from '@/src/hooks';
+import { PressClay } from '@/src/components/animations';
 import { useAssignmentsWidgetLogic } from '../hooks/useAssignmentsWidgetLogic';
+import { openAssignmentDetail } from '../../tasks/utils/assignmentNavigation';
 import {
   formatCountdown,
   formatDueKicker,
@@ -23,9 +25,8 @@ interface AssignmentsHeroProps {
 }
 
 export const AssignmentsHero: React.FC<AssignmentsHeroProps> = ({ accentColor }) => {
-  const colors = useThemeColors();
-  const { assignments, isLoading, isError, tasksQuery, toggleTaskCompletion } =
-    useAssignmentsWidgetLogic();
+  const router = useRouter();
+  const { assignments, isLoading, isError, tasksQuery } = useAssignmentsWidgetLogic();
 
   const focus = useMemo(() => getNextPendingAssignment(assignments), [assignments]);
   const urgency = focus ? getTaskUrgency(focus) : 'normal';
@@ -64,6 +65,7 @@ export const AssignmentsHero: React.FC<AssignmentsHeroProps> = ({ accentColor })
   const due = focus.dueDate ? new Date(focus.dueDate) : null;
 
   return (
+    <PressClay onPress={() => openAssignmentDetail(router, focus)}>
     <ClayView depth={12} puffy={16} color={surfaceTint} style={styles.hero}>
       <AppText variant="caption" weight="bold" style={[styles.kicker, { color: accentColor }]}>
         {formatDueKicker(focus)}
@@ -80,21 +82,21 @@ export const AssignmentsHero: React.FC<AssignmentsHeroProps> = ({ accentColor })
         {due ? formatCountdown(due) : 'No due date set'}
       </AppText>
       {focus.grade != null ? (
-        <View style={[styles.pill, { borderColor: colors.secondary }]}>
-          <AppText variant="caption" weight="bold" style={{ color: colors.secondary }}>
+        <View style={[styles.pill, { borderColor: accentColor }]}>
+          <AppText variant="caption" weight="bold" style={{ color: accentColor }}>
             Graded: {focus.grade}
             {focus.maxScore != null ? ` / ${focus.maxScore}` : ''}
           </AppText>
         </View>
       ) : null}
       <AppButton
-        title="Mark submitted"
-        onPress={() => toggleTaskCompletion.mutate(focus)}
-        loading={toggleTaskCompletion.isPending}
-        icon="check"
+        title="Open assignment"
+        onPress={() => openAssignmentDetail(router, focus)}
+        icon="chevron-right"
         style={styles.cta}
       />
     </ClayView>
+    </PressClay>
   );
 };
 

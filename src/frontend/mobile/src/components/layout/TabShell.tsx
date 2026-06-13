@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 
 import { SidebarNav } from '@/src/components/navigation/SidebarNav';
 import { useBreakpoint } from '@/src/hooks/useBreakpoint';
@@ -9,12 +9,16 @@ interface TabShellProps {
   children: React.ReactNode;
 }
 
-/** Wide layout: sidebar + main area. Compact: children only (bottom tab bar stays in Tabs). */
+/**
+ * Wide native (tablet): sidebar + tab content.
+ * Wide web uses `AppShell` at `(app)` so widgets keep the same rail.
+ */
 export function TabShell({ children }: TabShellProps) {
   const colors = useThemeColors();
   const { isWideShell } = useBreakpoint();
+  const showNativeSidebar = isWideShell && Platform.OS !== 'web';
 
-  if (!isWideShell) {
+  if (!showNativeSidebar) {
     return <>{children}</>;
   }
 

@@ -45,4 +45,19 @@ public class DigitalIdController : ControllerBase
         var response = await _digitalIdService.ValidateQrTokenAsync(request.Token);
         return Ok(response);
     }
+
+    /// <summary>
+    /// Staff scan in the app: verifies a member QR and returns identity for the active organization.
+    /// Requires <c>attendance</c> Edit or <c>digital-id</c> Edit on the caller's role.
+    /// </summary>
+    [HttpPost("scan")]
+    [Authorize]
+    public async Task<ActionResult<ServiceResponse<DigitalIdScanResultDto>>> Scan(
+        [FromBody] ValidateDigitalIdRequest request)
+    {
+        var response = await _digitalIdService.ScanQrTokenAsync(request.Token);
+        if (!response.IsSuccess && response.Error?.Code == ErrorCodes.Forbidden)
+            return StatusCode(403, response);
+        return Ok(response);
+    }
 }

@@ -1,13 +1,13 @@
 import React from 'react';
 import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AppText, ClayView, Icon, IconName } from '@/src/components/ui';
+import { AppButton, AppText, ClayView, Icon, IconName } from '@/src/components/ui';
 import { WidgetPageShell } from '@/src/components/layout';
 import { useThemeColors } from '@/src/hooks';
 import { AnimatedItem, PressScale } from '@/src/components/animations';
-import { ClayBackButton } from '@/src/components/navigation/ClayBackButton';
+import { ScreenHeader } from '@/src/components/navigation/ScreenHeader';
 import { Divider } from '@/src/components/ui/Divider';
 import { useDashboardLogic } from '@/src/screens/widgets/dashboard/hooks/useDashboardLogic';
 import { ClayAnimations } from '@/src/constants/animations';
@@ -15,7 +15,6 @@ import { ClayAnimations } from '@/src/constants/animations';
 export default function ManageFavoritesScreen() {
   const router = useRouter();
   const colors = useThemeColors();
-  const insets = useSafeAreaInsets();
   
   // 1. Get the data from your hook
   const { data, config, user } = useDashboardLogic();
@@ -44,20 +43,28 @@ export default function ManageFavoritesScreen() {
     user.updateFavorites(newOrder);
   };
 
+  const closeScreen = () => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace('/dashboard');
+  };
+
   // Filter available widgets
   const availableWidgets = (data.allWidgets || []).filter(id => !user.favorites.includes(id));
 
   return (
     <WidgetPageShell>
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
       
-      {/* HEADER */}
       <AnimatedItem animation={ClayAnimations.Header} layout={null}>
-        <View style={[styles.header, { paddingTop: insets.top }]}>
-            <ClayBackButton />
-            <AppText variant="h3" weight="bold">Customize Dashboard</AppText>
-            <View style={{ width: 44 }} /> 
-        </View>
+        <ScreenHeader
+          title="Customize Dashboard"
+          showBack
+          onBack={closeScreen}
+          right={<AppButton title="Done" size="sm" variant="outline" onPress={closeScreen} />}
+        />
       </AnimatedItem>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 100, paddingHorizontal: 20 }}>
@@ -149,19 +156,12 @@ export default function ManageFavoritesScreen() {
         </View>
 
       </ScrollView>
-    </View>
+    </SafeAreaView>
     </WidgetPageShell>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',

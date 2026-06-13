@@ -45,6 +45,16 @@ public class ScheduleItemDto
     public Guid? GroupId { get; set; }
     public string? GroupName { get; set; }
 
+    public Guid? PeriodId { get; set; }
+
+    public Guid? OfferingId { get; set; }
+
+    public string? OfferingName { get; set; }
+
+    public Guid? CohortGroupId { get; set; }
+
+    public string? CohortGroupName { get; set; }
+
     /// <summary>RSVP / seat count for this occurrence (Added, Expected, Accepted, Tentative).</summary>
     public int CurrentRSVPCount { get; set; }
 

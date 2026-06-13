@@ -9,6 +9,7 @@ import {
   UpdateRolePermissionsRequest,
   WidgetPermissionDto,
 } from '@/src/api/generatedClient';
+import { useAuth } from '@/src/context/AuthContext';
 import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
 import type { PermissionLevel } from '@/src/constants/permissions';
 
@@ -16,8 +17,9 @@ const LEVELS: PermissionLevel[] = ['view', 'edit', 'admin'];
 
 export const useRolesWorkspace = () => {
   const queryClient = useQueryClient();
+  const { activeSession } = useAuth();
   const { organization, refreshOrganization } = useCurrentOrganization();
-  const orgId = organization?.id ?? '';
+  const orgId = activeSession?.orgId ?? '';
 
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
   const [newRoleName, setNewRoleName] = useState('');
@@ -44,6 +46,16 @@ export const useRolesWorkspace = () => {
   const roles = rolesQuery.data ?? [];
   const widgets = widgetsQuery.data ?? [];
   const selectedRole = roles.find((r) => r.id === selectedRoleId);
+
+  useEffect(() => {
+    if (roles.length === 0) {
+      setSelectedRoleId(null);
+      return;
+    }
+    if (!selectedRoleId || !roles.some((r) => r.id === selectedRoleId)) {
+      setSelectedRoleId(roles[0]?.id ?? null);
+    }
+  }, [roles, selectedRoleId]);
 
   useEffect(() => {
     if (!roleDetailQuery.data?.permissions) return;
@@ -131,6 +143,12 @@ export const useRolesWorkspace = () => {
     savePermissions: () => savePermissionsMutation.mutate(),
     deleteRole: (roleId: string) => deleteRoleMutation.mutate(roleId),
     isSaving: savePermissionsMutation.isPending,
-    isLoading: rolesQuery.isLoading || roleDetailQuery.isLoading,
+    isCreating: createRoleMutation.isPending,
+    isDeleting: deleteRoleMutation.isPending,
+    isLoading: rolesQuery.isLoading || widgetsQuery.isLoading,
+    isRoleDetailLoading: roleDetailQuery.isLoading,
+    refetch: async () => {
+      await Promise.all([rolesQuery.refetch(), widgetsQuery.refetch(), roleDetailQuery.refetch()]);
+    },
   };
 };

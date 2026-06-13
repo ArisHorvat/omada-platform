@@ -2,6 +2,8 @@
 export * from './AppText';
 export * from './AppButton';
 export * from './ClayView';
+export * from './ClayHorizontalScroll';
+export * from './ConfirmDialog';
 export * from './ImageScrimGradient';
 export * from './ClayGroupedSection';
 export * from './Divider';
@@ -16,6 +18,7 @@ export * from './RadioButton';
 export * from './StarRating';
 export * from './ChipGroup';
 export * from './AppFormField';
+export * from './AdminTextField';
 export * from './ClayDatePicker';
 
 // Data Display
