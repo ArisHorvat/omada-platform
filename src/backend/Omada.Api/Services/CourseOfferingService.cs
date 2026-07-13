@@ -116,7 +116,7 @@ public class CourseOfferingService : ICourseOfferingService
             Name = request.Name.Trim(),
             Code = string.IsNullOrWhiteSpace(request.Code) ? null : request.Code.Trim(),
             Description = request.Description,
-            ProgramGroupId = programIds.FirstOrDefault(),
+            ProgramGroupId = programIds.Count > 0 ? programIds[0] : null,
             SubjectCatalogGroupId = request.SubjectCatalogGroupId,
             HostId = request.HostId,
             WeeklySessionPlanJson = OfferingSessionPlanJson.Serialize(request.WeeklySessions),
@@ -129,6 +129,7 @@ public class CourseOfferingService : ICourseOfferingService
 
         await SyncOfferingProgramsAsync(orgId, entity.Id, programIds);
         await SyncOfferingInstructorsAsync(orgId, entity.Id, request.Instructors, request.HostId);
+        await SyncGradeCategoriesFromSessionPlanAsync(orgId, entity.Id, entity.WeeklySessionPlanJson);
         await _uow.CompleteAsync();
 
         return new ServiceResponse<CourseOfferingDto>(true, await MapOfferingAsync(entity.Id, 0));
@@ -158,9 +159,8 @@ public class CourseOfferingService : ICourseOfferingService
         entity.Name = request.Name.Trim();
         entity.Code = string.IsNullOrWhiteSpace(request.Code) ? null : request.Code.Trim();
         entity.Description = request.Description;
-        entity.ProgramGroupId = programIds.FirstOrDefault();
+        entity.ProgramGroupId = programIds.Count > 0 ? programIds[0] : null;
         entity.SubjectCatalogGroupId = request.SubjectCatalogGroupId;
-        entity.HostId = request.HostId;
         entity.Credits = request.Credits;
         entity.RequiredAttendancePercent = request.RequiredAttendancePercent;
         if (request.WeeklySessions != null)
@@ -168,7 +168,39 @@ public class CourseOfferingService : ICourseOfferingService
 
         _uow.Repository<CourseOffering>().Update(entity);
         await SyncOfferingProgramsAsync(orgId, entity.Id, programIds);
-        await SyncOfferingInstructorsAsync(orgId, entity.Id, request.Instructors, request.HostId);
+
+        if (request.Instructors != null)
+        {
+            await SyncOfferingInstructorsAsync(orgId, entity.Id, request.Instructors, request.HostId);
+        }
+        else if (request.WeeklySessions != null)
+        {
+            var derivedInstructors = OfferingSessionPlanSync.DeriveInstructorInputs(
+                request.WeeklySessions,
+                request.HostId ?? entity.HostId);
+            if (derivedInstructors.Count > 0)
+                await SyncOfferingInstructorsAsync(orgId, entity.Id, derivedInstructors, request.HostId ?? entity.HostId);
+            else if (request.HostId.HasValue)
+                entity.HostId = request.HostId;
+        }
+        else if (request.HostId.HasValue)
+        {
+            entity.HostId = request.HostId;
+        }
+
+        if (request.WeeklySessions != null)
+            await SyncGradeCategoriesFromSessionPlanAsync(orgId, entity.Id, entity.WeeklySessionPlanJson);
+
+        if (request.WeeklySessions != null)
+        {
+            await OfferingPackageActivitySync.SyncMatchingPackageItemsAsync(
+                _context,
+                orgId,
+                entity.Name,
+                request.WeeklySessions,
+                entity.Code);
+        }
+
         await _uow.CompleteAsync();
 
         var count = await _context.OfferingEnrollments.CountAsync(e => e.OfferingId == offeringId && !e.IsDeleted);
@@ -276,6 +308,72 @@ public class CourseOfferingService : ICourseOfferingService
         }
 
         return new ServiceResponse<int>(true, total);
+    }
+
+    public async Task<ServiceResponse<int>> UnenrollUserAsync(
+        Guid periodId,
+        Guid offeringId,
+        UnenrollUserRequest request)
+    {
+        var orgId = _userContext.OrganizationId;
+        if (!await OfferingExistsAsync(orgId, periodId, offeringId))
+            return FailCount(ErrorCodes.NotFound, "Offering not found.");
+
+        if (request.UserId == Guid.Empty)
+            return FailCount(ErrorCodes.InvalidInput, "User is required.");
+
+        var rows = await _context.OfferingEnrollments
+            .Where(e => e.OfferingId == offeringId && e.OrganizationId == orgId && e.UserId == request.UserId && !e.IsDeleted)
+            .ToListAsync();
+
+        if (rows.Count == 0)
+            return new ServiceResponse<int>(true, 0);
+
+        foreach (var row in rows)
+        {
+            row.IsDeleted = true;
+            row.UpdatedAt = DateTime.UtcNow;
+            _uow.Repository<OfferingEnrollment>().Update(row);
+        }
+
+        await _uow.CompleteAsync();
+        return new ServiceResponse<int>(true, rows.Count);
+    }
+
+    public async Task<ServiceResponse<int>> UnenrollCohortAsync(
+        Guid periodId,
+        Guid offeringId,
+        UnenrollCohortRequest request)
+    {
+        var orgId = _userContext.OrganizationId;
+        if (!await OfferingExistsAsync(orgId, periodId, offeringId))
+            return FailCount(ErrorCodes.NotFound, "Offering not found.");
+
+        if (request.CohortGroupId == Guid.Empty)
+            return FailCount(ErrorCodes.InvalidInput, "Cohort group is required.");
+
+        var memberIds = (await _groupScope.GetMemberUserIdsInScopeAsync(orgId, request.CohortGroupId)).ToHashSet();
+
+        var rows = await _context.OfferingEnrollments
+            .Where(e =>
+                e.OfferingId == offeringId
+                && e.OrganizationId == orgId
+                && !e.IsDeleted
+                && (e.CohortGroupId == request.CohortGroupId || memberIds.Contains(e.UserId)))
+            .ToListAsync();
+
+        if (rows.Count == 0)
+            return new ServiceResponse<int>(true, 0);
+
+        foreach (var row in rows)
+        {
+            row.IsDeleted = true;
+            row.UpdatedAt = DateTime.UtcNow;
+            _uow.Repository<OfferingEnrollment>().Update(row);
+        }
+
+        await _uow.CompleteAsync();
+        return new ServiceResponse<int>(true, rows.Count);
     }
 
     public async Task<ServiceResponse<SetupProgramTermResultDto>> SetupProgramTermAsync(
@@ -694,7 +792,7 @@ public class CourseOfferingService : ICourseOfferingService
             Id = entity.Id,
             OrganizationId = entity.OrganizationId,
             PeriodId = entity.PeriodId,
-            ProgramGroupId = programIds.FirstOrDefault(),
+            ProgramGroupId = programIds.Count > 0 ? programIds[0] : null,
             ProgramGroupName = programNames.FirstOrDefault(),
             ProgramGroupIds = programIds,
             ProgramGroupNames = programNames,
@@ -736,6 +834,48 @@ public class CourseOfferingService : ICourseOfferingService
                 string.IsNullOrWhiteSpace(session.EventTypeName))
             {
                 session.EventTypeName = typeName;
+            }
+        }
+
+        var hostIds = sessions
+            .SelectMany(s =>
+            {
+                var ids = new List<Guid>();
+                if (s.HostId.HasValue) ids.Add(s.HostId.Value);
+                if (s.CohortAssignments != null)
+                {
+                    foreach (var a in s.CohortAssignments)
+                        if (a.HostId.HasValue) ids.Add(a.HostId.Value);
+                }
+                return ids;
+            })
+            .Distinct()
+            .ToList();
+        if (hostIds.Count > 0)
+        {
+            var hostNames = await _context.Users.AsNoTracking()
+                .Where(u => hostIds.Contains(u.Id))
+                .ToDictionaryAsync(u => u.Id, u => $"{u.FirstName} {u.LastName}".Trim());
+
+            foreach (var session in sessions)
+            {
+                if (session.HostId.HasValue &&
+                    hostNames.TryGetValue(session.HostId.Value, out var hostName) &&
+                    string.IsNullOrWhiteSpace(session.HostName))
+                {
+                    session.HostName = hostName;
+                }
+
+                if (session.CohortAssignments == null) continue;
+                foreach (var assignment in session.CohortAssignments)
+                {
+                    if (assignment.HostId.HasValue &&
+                        hostNames.TryGetValue(assignment.HostId.Value, out var blockHostName) &&
+                        string.IsNullOrWhiteSpace(assignment.HostName))
+                    {
+                        assignment.HostName = blockHostName;
+                    }
+                }
             }
         }
 
@@ -793,40 +933,7 @@ public class CourseOfferingService : ICourseOfferingService
         List<OfferingInstructorInputDto>? instructors,
         Guid? legacyHostId)
     {
-        var existing = await _context.OfferingInstructors
-            .Where(i => i.OfferingId == offeringId)
-            .ToListAsync();
-        _context.OfferingInstructors.RemoveRange(existing);
-
-        var inputs = instructors?.Where(i => i.UserId != Guid.Empty).ToList() ?? new List<OfferingInstructorInputDto>();
-        if (inputs.Count == 0 && legacyHostId.HasValue)
-        {
-            inputs.Add(new OfferingInstructorInputDto { UserId = legacyHostId.Value, Role = OfferingInstructorRoles.Primary });
-        }
-
-        var hasPrimary = inputs.Any(i => OfferingInstructorRoles.Normalize(i.Role) == OfferingInstructorRoles.Primary);
-        for (var idx = 0; idx < inputs.Count; idx++)
-        {
-            var input = inputs[idx];
-            var role = OfferingInstructorRoles.Normalize(input.Role);
-            if (!hasPrimary && idx == 0)
-                role = OfferingInstructorRoles.Primary;
-
-            await _context.OfferingInstructors.AddAsync(new OfferingInstructor
-            {
-                OrganizationId = orgId,
-                OfferingId = offeringId,
-                UserId = input.UserId,
-                Role = role
-            });
-        }
-
-        var offering = await _context.CourseOfferings.FirstAsync(o => o.Id == offeringId);
-        offering.HostId = await _context.OfferingInstructors.AsNoTracking()
-            .Where(i => i.OfferingId == offeringId && i.Role == OfferingInstructorRoles.Primary)
-            .Select(i => (Guid?)i.UserId)
-            .FirstOrDefaultAsync() ?? legacyHostId;
-        _context.CourseOfferings.Update(offering);
+        await OfferingInstructorSync.SyncAsync(_context, orgId, offeringId, instructors, legacyHostId);
     }
 
     private async Task<List<Guid>> GetLinkedProgramIdsAsync(Guid offeringId)
@@ -856,6 +963,49 @@ public class CourseOfferingService : ICourseOfferingService
         CohortGroupId = e.CohortGroupId,
         CohortGroupName = e.CohortGroup?.Name
     };
+
+    /// <summary>
+    /// Ensures grade-plan categories exist for each activity type in the weekly session plan (links coursework to timetable activities).
+    /// </summary>
+    private async Task SyncGradeCategoriesFromSessionPlanAsync(Guid orgId, Guid offeringId, string? planJson)
+    {
+        var sessions = OfferingSessionPlanJson.Parse(planJson)
+            .Where(s => s.EventTypeId.HasValue)
+            .ToList();
+        if (sessions.Count == 0)
+            return;
+
+        var typeIds = sessions.Select(s => s.EventTypeId!.Value).Distinct().ToList();
+        var typeNames = await _context.EventTypes.AsNoTracking()
+            .Where(t => typeIds.Contains(t.Id))
+            .ToDictionaryAsync(t => t.Id, t => t.Name);
+
+        var existing = await _context.OfferingGradeCategories
+            .Where(c => c.OfferingId == offeringId && !c.IsDeleted)
+            .ToListAsync();
+
+        var sort = existing.Count > 0 ? existing.Max(c => c.SortOrder) + 1 : 0;
+        foreach (var group in sessions.GroupBy(s => s.EventTypeId!.Value))
+        {
+            var name = typeNames.GetValueOrDefault(group.Key)
+                ?? group.First().EventTypeName
+                ?? "Activity";
+            if (existing.Any(c => string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase)))
+                continue;
+
+            var entity = new OfferingGradeCategory
+            {
+                OrganizationId = orgId,
+                OfferingId = offeringId,
+                Name = name.Trim(),
+                Weight = 0,
+                SortOrder = sort++,
+                IsBonus = false
+            };
+            await _uow.Repository<OfferingGradeCategory>().AddAsync(entity);
+            existing.Add(entity);
+        }
+    }
 
     private static ServiceResponse<IEnumerable<CourseOfferingDto>> FailOfferings(string code, string message) =>
         new(false, null, new AppError(code, message));

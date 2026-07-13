@@ -31,7 +31,7 @@ const UNIVERSITY_COPY: PeriodCopy = {
   screenSubtitle: 'Semesters and date ranges for the academic year',
   heroTitle: 'Terms for your academic calendar',
   heroHint:
-    'Each period is a labeled date range. Apply curriculum packages from the Course offerings workspace when a term starts.',
+    'Each period is a labeled date range. Add courses, credits, and attendance rules in Course offerings; build and publish schedules in Timetables.',
   nameLabel: 'Period name',
   namePlaceholder: 'e.g. Fall 2026, Spring 2027',
   nameExamples: ['Fall 2026', 'Spring 2027', 'Summer 2026'],
@@ -51,7 +51,7 @@ const UNIVERSITY_COPY: PeriodCopy = {
   deleteTitle: 'Delete period',
   setCurrentButton: 'Set as current term',
   infoNote:
-    'Only one period can be current at a time. Manage course offerings and enrollments in the Course offerings workspace. Deleting a period does not remove existing grade rows that already use its name.',
+    'Only one period can be current at a time. Term courses and schedules are managed in Course offerings and Timetables — not here. Deleting a period does not remove existing grade rows that already use its name.',
 };
 
 const CORPORATE_COPY: PeriodCopy = {

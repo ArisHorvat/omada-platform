@@ -1,19 +1,30 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Omada.Api.Entities;
 using Omada.Api.Infrastructure;
+using Omada.Api.Infrastructure.Constants;
 
 namespace Omada.Api.Data;
 
 /// <summary>
-/// Development / demo seed data: multi-tenant orgs, memberships, map, schedule, news, tasks, grades.
-/// Idempotent: runs only when the Users table is empty.
+/// Development / thesis demo seed: two tenants (university + corporate), curriculum, floorplans,
+/// documents, work-time, published timetables, announcements, tasks, and grades.
+/// Runs once when <c>Users</c> is empty.
 /// </summary>
-public static class DbInitializer
+/// <remarks>
+/// Demo logins (password for all: <c>Password123!</c>):
+/// <list type="bullet">
+/// <item><c>admin@omada.com</c> — SuperAdmin in both orgs (admin console demo).</item>
+/// <item><c>alex.jordan@omada.com</c> — member showcase in both orgs (all catalog widgets except Rooms).</item>
+/// </list>
+/// Orgs: <b>Demo University</b> (<c>DEMOUNI</c>) · <b>Demo Corp</b> (<c>DEMOCORP</c>).
+/// </remarks>
+public static partial class DbInitializer
 {
     private const string DefaultPasswordPlaintext = "Password123!";
 
-    public static async Task SeedAsync(ApplicationDbContext context)
+    public static async Task SeedAsync(ApplicationDbContext context, IWebHostEnvironment env)
     {
         if (await context.Users.AnyAsync())
             return;
@@ -21,8 +32,11 @@ public static class DbInitializer
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(DefaultPasswordPlaintext);
         var now = DateTime.UtcNow;
         var tomorrow8Am = now.Date.AddDays(1).AddHours(8);
+        // Published weekly timetable: June → September (demo term window).
+        var termScheduleStart = new DateTime(2026, 6, 1, 8, 0, 0, DateTimeKind.Utc);
 
         var state = new SeedState();
+        state.Cs101BatchId = Guid.NewGuid();
 
         await SeedUsersAsync(context, state, passwordHash);
         await ApplyDirectoryHierarchyAsync(context, state);
@@ -36,12 +50,15 @@ public static class DbInitializer
         await SeedBuildingsFloorsMapPinsAndRoomsAsync(context, state);
         await SeedGroupsAndMembersAsync(context, state);
 
+        await SeedUniversityCurriculumAsync(context, state, termScheduleStart);
+        await SeedDemoGradeCategoriesAsync(context, state);
+
         await SeedScheduleEventsAsync(context, state, tomorrow8Am);
-        await SeedAttendanceAsync(context, state, tomorrow8Am);
-        await SeedNewsAsync(context, state);
+        await SeedAttendanceAsync(context, state, termScheduleStart, now);
+        await SeedAnnouncementsDemoAsync(context, state);
         await SeedTasksAsync(context, state, now);
         await SeedGradesAsync(context, state);
-        await SeedMessagesAsync(context, state);
+        await SeedDemoPresentationDataAsync(context, state, env, now, tomorrow8Am);
     }
 
     // -------------------------------------------------------------------------
@@ -51,11 +68,10 @@ public static class DbInitializer
     private static async Task SeedUsersAsync(ApplicationDbContext context, SeedState s, string passwordHash)
     {
         // Preferences: notification / UI toggles (matches typical client shape)
-        static string Prefs(bool news, bool chat, bool compact, string digest) =>
+        static string Prefs(bool announcements, bool compact, string digest) =>
             JsonSerializer.Serialize(new Dictionary<string, object?>
             {
-                ["newsAlerts"] = news,
-                ["chatMessages"] = chat,
+                ["announcementAlerts"] = announcements,
                 ["compactSchedule"] = compact,
                 ["emailDigest"] = digest
             });
@@ -74,7 +90,7 @@ public static class DbInitializer
                 ThemePreference = "system",
                 LanguagePreference = "en",
                 IsPublicInDirectory = true,
-                PreferencesJson = Prefs(true, true, false, "daily")
+                PreferencesJson = Prefs(true, false, "daily")
             },
             new User
             {
@@ -88,7 +104,7 @@ public static class DbInitializer
                 ThemePreference = "light",
                 LanguagePreference = "en",
                 Bio = "Algorithms, distributed systems.",
-                PreferencesJson = Prefs(true, true, true, "off")
+                PreferencesJson = Prefs(true, true, "off")
             },
             new User
             {
@@ -101,7 +117,7 @@ public static class DbInitializer
                 AvatarUrl = "/images/avatars/user3.jpg",
                 ThemePreference = "dark",
                 LanguagePreference = "en",
-                PreferencesJson = Prefs(true, false, false, "weekly")
+                PreferencesJson = Prefs(true, false, "weekly")
             },
             new User
             {
@@ -115,7 +131,7 @@ public static class DbInitializer
                 ThemePreference = "system",
                 LanguagePreference = "en",
                 IsPublicInDirectory = true,
-                PreferencesJson = Prefs(true, true, false, "daily")
+                PreferencesJson = Prefs(true, false, "daily")
             },
             new User
             {
@@ -128,7 +144,7 @@ public static class DbInitializer
                 AvatarUrl = "/images/avatars/user5.jpg",
                 ThemePreference = "light",
                 LanguagePreference = "ro",
-                PreferencesJson = Prefs(false, true, true, "off")
+                PreferencesJson = Prefs(false, true, "off")
             },
             new User
             {
@@ -141,7 +157,7 @@ public static class DbInitializer
                 AvatarUrl = "/images/avatars/user6.jpg",
                 ThemePreference = "dark",
                 LanguagePreference = "en",
-                PreferencesJson = Prefs(true, true, false, "weekly")
+                PreferencesJson = Prefs(true, false, "weekly")
             },
             new User
             {
@@ -154,7 +170,7 @@ public static class DbInitializer
                 AvatarUrl = "/images/avatars/user7.jpg",
                 ThemePreference = "system",
                 LanguagePreference = "en",
-                PreferencesJson = Prefs(true, true, true, "daily")
+                PreferencesJson = Prefs(true, true, "daily")
             },
             new User
             {
@@ -167,7 +183,7 @@ public static class DbInitializer
                 AvatarUrl = "/images/avatars/user8.jpg",
                 ThemePreference = "light",
                 LanguagePreference = "en",
-                PreferencesJson = Prefs(true, true, false, "off")
+                PreferencesJson = Prefs(true, false, "off")
             },
             new User
             {
@@ -180,7 +196,7 @@ public static class DbInitializer
                 AvatarUrl = "/images/avatars/user9.jpg",
                 ThemePreference = "system",
                 LanguagePreference = "en",
-                PreferencesJson = Prefs(true, false, false, "weekly")
+                PreferencesJson = Prefs(true, false, "weekly")
             },
             new User
             {
@@ -193,8 +209,8 @@ public static class DbInitializer
                 AvatarUrl = "/images/avatars/user10.jpg",
                 ThemePreference = "dark",
                 LanguagePreference = "en",
-                Bio = "CS major; software intern at Nexus.",
-                PreferencesJson = Prefs(true, true, false, "daily")
+                Bio = "Demo member — university student and corporate intern (all widgets except room booking).",
+                PreferencesJson = Prefs(true, false, "daily")
             }
         ];
 
@@ -243,30 +259,35 @@ public static class DbInitializer
     {
         s.OrgUni = new Organization
         {
-            Name = "Omada University",
+            Name = "Demo University",
             OrganizationType = OrganizationType.University,
-            ShortName = "OmadaU",
+            ShortName = "DemoU",
             EmailDomain = "univ.edu",
             LogoUrl = "/images/orgs/omada-university.png",
             PrimaryColor = "#7f1d1d",
             SecondaryColor = "#fbbf24",
             TertiaryColor = "#0ea5e9",
             IsActive = true,
-            InviteCode = "OMADAUNI"
+            InviteCode = "DEMOUNI",
+            EnabledWidgetKeysJson = null,
+            OnboardingCompletedStepsJson = DemoOnboardingJson,
+            SpiderSchedulePageUrl = DemoSpiderScheduleUrl,
         };
 
         s.OrgCorp = new Organization
         {
-            Name = "Nexus Solutions",
+            Name = "Demo Corp",
             OrganizationType = OrganizationType.Corporate,
-            ShortName = "Nexus",
+            ShortName = "DemoCorp",
             EmailDomain = "nexus.corp",
             LogoUrl = "/images/orgs/nexus-solutions.png",
             PrimaryColor = "#0f172a",
             SecondaryColor = "#38bdf8",
             TertiaryColor = "#a78bfa",
             IsActive = true,
-            InviteCode = "NEXUSCORP"
+            InviteCode = "DEMOCORP",
+            EnabledWidgetKeysJson = null,
+            OnboardingCompletedStepsJson = DemoOnboardingJson,
         };
 
         await context.Organizations.AddRangeAsync(s.OrgUni, s.OrgCorp);
@@ -284,13 +305,11 @@ public static class DbInitializer
         {
             { WidgetKeys.Tasks, AccessLevel.View },
             { WidgetKeys.Grades, AccessLevel.View },
-            { WidgetKeys.Assignments, AccessLevel.View },
             { WidgetKeys.Attendance, AccessLevel.View },
             { WidgetKeys.Map, AccessLevel.View },
             { WidgetKeys.Rooms, AccessLevel.View },
-            { WidgetKeys.Schedule, AccessLevel.Edit },
-            { WidgetKeys.News, AccessLevel.View },
-            { WidgetKeys.Chat, AccessLevel.View },
+            { WidgetKeys.Schedule, AccessLevel.View },
+            { WidgetKeys.Announcements, AccessLevel.View },
             { WidgetKeys.DigitalId, AccessLevel.View }
         };
 
@@ -298,17 +317,59 @@ public static class DbInitializer
         {
             [WidgetKeys.Tasks] = AccessLevel.Edit,
             [WidgetKeys.Grades] = AccessLevel.Edit,
-            [WidgetKeys.Assignments] = AccessLevel.Edit,
             [WidgetKeys.Attendance] = AccessLevel.Edit,
             [WidgetKeys.Users] = AccessLevel.View,
             [WidgetKeys.Schedule] = AccessLevel.Edit,
-            [WidgetKeys.Chat] = AccessLevel.Edit,
-            [WidgetKeys.DigitalId] = AccessLevel.View
+            [WidgetKeys.Announcements] = AccessLevel.Edit,
+        };
+
+        var memberPerms = new Dictionary<string, AccessLevel>(uniStudentPerms);
+
+        // Demo member showcase — every catalog widget at View except room booking (Rooms omitted).
+        var uniShowcasePerms = new Dictionary<string, AccessLevel>
+        {
+            { WidgetKeys.Users, AccessLevel.View },
+            { WidgetKeys.Announcements, AccessLevel.View },
+            { WidgetKeys.Schedule, AccessLevel.View },
+            { WidgetKeys.Tasks, AccessLevel.View },
+            { WidgetKeys.Grades, AccessLevel.View },
+            { WidgetKeys.Attendance, AccessLevel.View },
+            { WidgetKeys.Map, AccessLevel.View },
+            { WidgetKeys.DigitalId, AccessLevel.View },
+        };
+
+        var corpShowcasePerms = new Dictionary<string, AccessLevel>
+        {
+            { WidgetKeys.Users, AccessLevel.View },
+            { WidgetKeys.Announcements, AccessLevel.View },
+            { WidgetKeys.Schedule, AccessLevel.View },
+            { WidgetKeys.Tasks, AccessLevel.View },
+            { WidgetKeys.Documents, AccessLevel.View },
+            { WidgetKeys.Attendance, AccessLevel.View },
+            { WidgetKeys.Map, AccessLevel.View },
+            { WidgetKeys.DigitalId, AccessLevel.View },
+        };
+
+        var unassignedPerms = new Dictionary<string, AccessLevel>();
+
+        var adminPerms = new Dictionary<string, AccessLevel>
+        {
+            { WidgetKeys.Users, AccessLevel.Admin },
+            { WidgetKeys.Settings, AccessLevel.Admin },
+            { WidgetKeys.Announcements, AccessLevel.Admin },
+            { WidgetKeys.Schedule, AccessLevel.Admin },
+            { WidgetKeys.Tasks, AccessLevel.Admin },
+            { WidgetKeys.Grades, AccessLevel.Admin },
+            { WidgetKeys.Attendance, AccessLevel.Admin },
+            { WidgetKeys.Map, AccessLevel.Admin },
+            { WidgetKeys.Rooms, AccessLevel.Admin },
+            { WidgetKeys.Documents, AccessLevel.Admin },
+            { WidgetKeys.DigitalId, AccessLevel.View },
         };
 
         var uniDeanPerms = new Dictionary<string, AccessLevel>
         {
-            { WidgetKeys.News, AccessLevel.Edit },
+            { WidgetKeys.Announcements, AccessLevel.Edit },
             { WidgetKeys.Users, AccessLevel.Edit },
             { WidgetKeys.Map, AccessLevel.Admin },
             { WidgetKeys.Rooms, AccessLevel.Edit },
@@ -324,8 +385,7 @@ public static class DbInitializer
             { WidgetKeys.Map, AccessLevel.View },
             { WidgetKeys.Rooms, AccessLevel.View },
             { WidgetKeys.Schedule, AccessLevel.Edit },
-            { WidgetKeys.Chat, AccessLevel.View },
-            { WidgetKeys.News, AccessLevel.View },
+            { WidgetKeys.Announcements, AccessLevel.View },
             { WidgetKeys.DigitalId, AccessLevel.View },
             { WidgetKeys.Users, AccessLevel.View },
             { WidgetKeys.Attendance, AccessLevel.Edit }
@@ -337,7 +397,7 @@ public static class DbInitializer
             [WidgetKeys.Documents] = AccessLevel.Edit,
             [WidgetKeys.Users] = AccessLevel.View,
             [WidgetKeys.Schedule] = AccessLevel.Edit,
-            [WidgetKeys.Chat] = AccessLevel.Edit,
+            [WidgetKeys.Announcements] = AccessLevel.Edit,
             [WidgetKeys.DigitalId] = AccessLevel.View,
             [WidgetKeys.Map] = AccessLevel.Admin,
             [WidgetKeys.Rooms] = AccessLevel.Edit,
@@ -345,7 +405,7 @@ public static class DbInitializer
 
         var corpDirectorPerms = new Dictionary<string, AccessLevel>
         {
-            { WidgetKeys.News, AccessLevel.Edit },
+            { WidgetKeys.Announcements, AccessLevel.Edit },
             { WidgetKeys.Users, AccessLevel.View },
             { WidgetKeys.Documents, AccessLevel.Admin },
             { WidgetKeys.Schedule, AccessLevel.View },
@@ -356,7 +416,7 @@ public static class DbInitializer
         {
             { WidgetKeys.Users, AccessLevel.Admin },
             { WidgetKeys.Documents, AccessLevel.Admin },
-            { WidgetKeys.News, AccessLevel.Edit },
+            { WidgetKeys.Announcements, AccessLevel.Edit },
             { WidgetKeys.DigitalId, AccessLevel.View }
         };
 
@@ -365,24 +425,29 @@ public static class DbInitializer
             { WidgetKeys.Users, AccessLevel.Admin },
             { WidgetKeys.Schedule, AccessLevel.Admin },
             { WidgetKeys.Rooms, AccessLevel.Admin },
-            { WidgetKeys.Groups, AccessLevel.Admin },
             { WidgetKeys.DigitalId, AccessLevel.Admin },
             { WidgetKeys.Map, AccessLevel.Admin },
         };
 
-        s.RUniStudent = CreateRole(s.OrgUni.Id, "Student", uniStudentPerms);
+        s.RUniStudent = CreateRole(s.OrgUni.Id, RoleNames.Member, memberPerms);
+        s.RUniDemoShowcase = CreateRole(s.OrgUni.Id, "Demo Showcase", uniShowcasePerms);
         s.RUniProf = CreateRole(s.OrgUni.Id, "Professor", uniProfPerms);
         s.RUniDean = CreateRole(s.OrgUni.Id, "Dean", uniDeanPerms);
-        s.RCorpEmployee = CreateRole(s.OrgCorp.Id, "Employee", corpEmployeePerms);
+        s.RUniAdmin = CreateRole(s.OrgUni.Id, RoleNames.Admin, adminPerms);
+        s.RUniUnassigned = CreateRole(s.OrgUni.Id, RoleNames.Unassigned, unassignedPerms);
+        s.RCorpEmployee = CreateRole(s.OrgCorp.Id, RoleNames.Member, corpEmployeePerms);
+        s.RCorpDemoShowcase = CreateRole(s.OrgCorp.Id, "Demo Showcase", corpShowcasePerms);
         s.RCorpPm = CreateRole(s.OrgCorp.Id, "Project Manager", corpPmPerms);
         s.RCorpDirector = CreateRole(s.OrgCorp.Id, "Director", corpDirectorPerms);
         s.RCorpHr = CreateRole(s.OrgCorp.Id, "HR Manager", corpHrPerms);
+        s.RCorpAdmin = CreateRole(s.OrgCorp.Id, RoleNames.Admin, adminPerms);
+        s.RCorpUnassigned = CreateRole(s.OrgCorp.Id, RoleNames.Unassigned, unassignedPerms);
         s.RSysAdminUni = CreateRole(s.OrgUni.Id, "Super Admin", superAdminPerms);
         s.RSysAdminCorp = CreateRole(s.OrgCorp.Id, "Super Admin", superAdminPerms);
 
         await context.Roles.AddRangeAsync(
-            s.RUniStudent, s.RUniProf, s.RUniDean,
-            s.RCorpEmployee, s.RCorpPm, s.RCorpDirector, s.RCorpHr,
+            s.RUniAdmin, s.RUniStudent, s.RUniDemoShowcase, s.RUniUnassigned, s.RUniProf, s.RUniDean,
+            s.RCorpAdmin, s.RCorpEmployee, s.RCorpDemoShowcase, s.RCorpUnassigned, s.RCorpPm, s.RCorpDirector, s.RCorpHr,
             s.RSysAdminUni, s.RSysAdminCorp);
         await context.SaveChangesAsync();
     }
@@ -401,8 +466,8 @@ public static class DbInitializer
             new() { OrganizationId = s.OrgCorp.Id, UserId = s.CorpPm.Id, RoleId = s.RCorpPm.Id },
             new() { OrganizationId = s.OrgCorp.Id, UserId = s.CorpDev.Id, RoleId = s.RCorpEmployee.Id },
             new() { OrganizationId = s.OrgCorp.Id, UserId = s.CorpHr.Id, RoleId = s.RCorpHr.Id },
-            new() { OrganizationId = s.OrgUni.Id, UserId = s.DualUser.Id, RoleId = s.RUniStudent.Id },
-            new() { OrganizationId = s.OrgCorp.Id, UserId = s.DualUser.Id, RoleId = s.RCorpEmployee.Id }
+            new() { OrganizationId = s.OrgUni.Id, UserId = s.DualUser.Id, RoleId = s.RUniDemoShowcase.Id },
+            new() { OrganizationId = s.OrgCorp.Id, UserId = s.DualUser.Id, RoleId = s.RCorpDemoShowcase.Id }
         };
 
         await context.OrganizationMembers.AddRangeAsync(memberships);
@@ -692,44 +757,7 @@ public static class DbInitializer
     }
 
     // -------------------------------------------------------------------------
-    // 6. Groups
-    // -------------------------------------------------------------------------
-
-    private static async Task SeedGroupsAndMembersAsync(ApplicationDbContext context, SeedState s)
-    {
-        s.GrpCs101 = new Group
-        {
-            Name = "CS101 — Introduction to Programming",
-            Type = "Class",
-            OrganizationId = s.OrgUni.Id,
-            ManagerId = s.UniProf.Id
-        };
-        s.GrpEng = new Group
-        {
-            Name = "Platform Engineering",
-            Type = "Department",
-            OrganizationId = s.OrgCorp.Id,
-            ManagerId = s.CorpPm.Id
-        };
-
-        await context.Groups.AddRangeAsync(s.GrpCs101, s.GrpEng);
-        await context.SaveChangesAsync();
-
-        var gm = new List<GroupMember>
-        {
-            new() { GroupId = s.GrpCs101.Id, UserId = s.UniStudent1.Id, RoleInGroup = "Student" },
-            new() { GroupId = s.GrpCs101.Id, UserId = s.UniStudent2.Id, RoleInGroup = "Student" },
-            new() { GroupId = s.GrpCs101.Id, UserId = s.DualUser.Id, RoleInGroup = "Student" },
-            new() { GroupId = s.GrpEng.Id, UserId = s.CorpDev.Id, RoleInGroup = "Developer" },
-            new() { GroupId = s.GrpEng.Id, UserId = s.CorpPm.Id, RoleInGroup = "Engineering Manager" },
-            new() { GroupId = s.GrpEng.Id, UserId = s.DualUser.Id, RoleInGroup = "Intern" }
-        };
-        await context.GroupMembers.AddRangeAsync(gm);
-        await context.SaveChangesAsync();
-    }
-
-    // -------------------------------------------------------------------------
-    // 7. Schedule — overlapping blocks, hosts, rooms
+    // 7. Schedule — corporate + public uni events (term offerings seeded separately)
     // -------------------------------------------------------------------------
 
     private static async Task SeedScheduleEventsAsync(ApplicationDbContext context, SeedState s, DateTime tomorrow8Am)
@@ -737,35 +765,6 @@ public static class DbInitializer
         var t0 = tomorrow8Am;
         var events = new List<Event>
         {
-            // UNI: Large lecture (uses lecture hall)
-            new()
-            {
-                Title = "CS101 — Algorithms & Data Structures",
-                Description = "Week 5: graphs, BFS/DFS.",
-                StartTime = t0,
-                EndTime = t0.AddHours(2),
-                OrganizationId = s.OrgUni.Id,
-                EventTypeId = s.UniEventTypes[0].Id,
-                RoomId = s.RoomLectureHall.Id,
-                GroupId = s.GrpCs101.Id,
-                HostId = s.UniProf.Id,
-                RecurrenceRule = "FREQ=WEEKLY;BYDAY=MO,WE,FR",
-                IsPublic = false
-            },
-            // UNI: Overlapping — office hours in lab while lecture runs (9:30–11 overlaps 8–10 until 10:00)
-            new()
-            {
-                Title = "CS101 Office Hours",
-                Description = "Walk-in help; overlaps last 30m of lecture block.",
-                StartTime = t0.AddHours(1).AddMinutes(30),
-                EndTime = t0.AddHours(3),
-                OrganizationId = s.OrgUni.Id,
-                EventTypeId = s.UniEventTypes[3].Id,
-                RoomId = s.RoomComputerLab.Id,
-                HostId = s.UniProf.Id,
-                IsPublic = false
-            },
-            // UNI: Seminar same day afternoon (different room)
             new()
             {
                 Title = "Grad Seminar — Distributed Consensus",
@@ -833,116 +832,83 @@ public static class DbInitializer
         await context.Events.AddRangeAsync(events);
         await context.SaveChangesAsync();
 
-        s.EventCs101 = events[0];
-        s.EventStandup = events[3];
+        s.EventStandup = events[1];
     }
 
-    private static async Task SeedAttendanceAsync(ApplicationDbContext context, SeedState s, DateTime anchor)
+    private static void AddWeeklyAttendanceHistory(
+        ICollection<EventAttendance> rows,
+        Event ev,
+        Guid userId,
+        DateTime historyThrough,
+        int absentEveryNthWeek)
+    {
+        var week = 0;
+        for (var instance = ev.StartTime; instance < historyThrough; instance = instance.AddDays(7), week++)
+        {
+            var status = absentEveryNthWeek > 0 && week % absentEveryNthWeek == 0
+                ? AttendanceStatus.Declined
+                : AttendanceStatus.Added;
+
+            rows.Add(new EventAttendance
+            {
+                EventId = ev.Id,
+                UserId = userId,
+                InstanceDate = instance,
+                Status = status,
+            });
+        }
+    }
+
+    private static async Task SeedAttendanceAsync(
+        ApplicationDbContext context,
+        SeedState s,
+        DateTime termScheduleStart,
+        DateTime now)
     {
         if (s.EventCs101 == null || s.EventStandup == null)
             return;
 
+        var historyThrough = now.Date.AddDays(1);
         var rows = new List<EventAttendance>();
-        for (var i = 1; i <= 5; i++)
+
+        AddWeeklyAttendanceHistory(rows, s.EventCs101, s.UniStudent1.Id, historyThrough, absentEveryNthWeek: 3);
+        AddWeeklyAttendanceHistory(rows, s.EventCs101, s.UniStudent2.Id, historyThrough, absentEveryNthWeek: 4);
+
+        // Alex (demo showcase) — ongoing term attendance across CS101 + CS201 for demo screens
+        AddWeeklyAttendanceHistory(rows, s.EventCs101, s.DualUser.Id, historyThrough, absentEveryNthWeek: 5);
+        if (s.EventCs101Lab != null)
+            AddWeeklyAttendanceHistory(rows, s.EventCs101Lab, s.DualUser.Id, historyThrough, absentEveryNthWeek: 6);
+        if (s.EventCs101Seminar != null)
+            AddWeeklyAttendanceHistory(rows, s.EventCs101Seminar, s.DualUser.Id, historyThrough, absentEveryNthWeek: 8);
+        if (s.EventCs201Lecture != null)
+            AddWeeklyAttendanceHistory(rows, s.EventCs201Lecture, s.DualUser.Id, historyThrough, absentEveryNthWeek: 7);
+
+        // Corporate standup RSVPs — weekdays since term start
+        for (var day = termScheduleStart.Date; day < historyThrough; day = day.AddDays(1))
         {
-            var instance = anchor.AddDays(-i * 2);
+            if (day.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+                continue;
+
             rows.Add(new EventAttendance
             {
-                EventId = s.EventCs101.Id,
-                UserId = s.UniStudent1.Id,
-                InstanceDate = instance,
-                Status = i == 2 ? AttendanceStatus.Declined : AttendanceStatus.Expected
+                EventId = s.EventStandup.Id,
+                UserId = s.CorpDev.Id,
+                InstanceDate = day.AddHours(10),
+                Status = day.DayOfWeek == DayOfWeek.Wednesday
+                    ? AttendanceStatus.Tentative
+                    : AttendanceStatus.Accepted,
+            });
+
+            rows.Add(new EventAttendance
+            {
+                EventId = s.EventStandup.Id,
+                UserId = s.DualUser.Id,
+                InstanceDate = day.AddHours(10),
+                Status = AttendanceStatus.Accepted,
             });
         }
 
-        rows.Add(new EventAttendance
-        {
-            EventId = s.EventCs101.Id,
-            UserId = s.UniStudent2.Id,
-            InstanceDate = anchor.AddDays(-2),
-            Status = AttendanceStatus.Expected
-        });
-
-        rows.Add(new EventAttendance
-        {
-            EventId = s.EventStandup.Id,
-            UserId = s.CorpDev.Id,
-            InstanceDate = anchor.AddDays(-1),
-            Status = AttendanceStatus.Accepted
-        });
-        rows.Add(new EventAttendance
-        {
-            EventId = s.EventStandup.Id,
-            UserId = s.CorpDev.Id,
-            InstanceDate = anchor.AddDays(-2),
-            Status = AttendanceStatus.Tentative
-        });
-
         await context.Set<EventAttendance>().AddRangeAsync(rows);
-        await context.SaveChangesAsync();
-    }
-
-    // -------------------------------------------------------------------------
-    // 8. News
-    // -------------------------------------------------------------------------
-
-    private static async Task SeedNewsAsync(ApplicationDbContext context, SeedState s)
-    {
-        var items = new List<NewsItem>
-        {
-            new()
-            {
-                OrganizationId = s.OrgUni.Id,
-                AuthorId = s.UniDean.Id,
-                Title = "Network maintenance tonight",
-                Content = "Campus Wi‑Fi core upgrade 23:00–02:00 UTC. Eduroam may flap briefly.",
-                Type = NewsType.Alert,
-                Category = NewsCategory.Urgent,
-                CoverImageUrl = "/images/news/cover1.jpg"
-            },
-            new()
-            {
-                OrganizationId = s.OrgUni.Id,
-                AuthorId = s.UniProf.Id,
-                Title = "Midterm review sessions posted",
-                Content = "TA-led reviews for CS101 and CS201 will run in SEC next week. See schedule widget.",
-                Type = NewsType.Announcement,
-                Category = NewsCategory.Academic,
-                CoverImageUrl = "/images/news/cover2.jpg"
-            },
-            new()
-            {
-                OrganizationId = s.OrgUni.Id,
-                AuthorId = s.UniDean.Id,
-                Title = "Welcome back — spring checklist",
-                Content = "Registration holds, immunization uploads, and parking renewals.",
-                Type = NewsType.Info,
-                Category = NewsCategory.General,
-                CoverImageUrl = "/images/news/cover3.jpg"
-            },
-            new()
-            {
-                OrganizationId = s.OrgCorp.Id,
-                AuthorId = s.CorpHr.Id,
-                Title = "Benefits enrollment closes Friday",
-                Content = "Complete medical and HSA elections in the portal; HR office hours 12–2pm.",
-                Type = NewsType.Alert,
-                Category = NewsCategory.PeopleAndCulture,
-                CoverImageUrl = "/images/news/cover4.jpg"
-            },
-            new()
-            {
-                OrganizationId = s.OrgCorp.Id,
-                AuthorId = s.CorpPm.Id,
-                Title = "Release 24.3 cutover",
-                Content = "Freeze starts Thursday; deploy window Saturday 06:00 UTC.",
-                Type = NewsType.Announcement,
-                Category = NewsCategory.OperationsAndBusiness,
-                CoverImageUrl = "/images/news/cover5.jpg"
-            }
-        };
-
-        await context.News.AddRangeAsync(items);
         await context.SaveChangesAsync();
     }
 
@@ -963,9 +929,13 @@ public static class DbInitializer
                 Description = "Implement Dijkstra; submit PDF + code zip.",
                 DueDate = now.AddDays(5),
                 IsCompleted = false,
-                SubjectId = null,
+                SubjectId = s.OfferingProgramming?.Id,
+                OfferingId = s.OfferingProgramming?.Id,
+                PeriodId = s.PeriodSpring2026?.Id,
+                AssignmentBatchId = s.Cs101BatchId,
+                GradeCategoryId = s.CatHomework?.Id,
                 MaxScore = 100,
-                Weight = 0.20m,
+                Weight = 0.50m,
                 Priority = null
             },
             new()
@@ -973,12 +943,107 @@ public static class DbInitializer
                 OrganizationId = s.OrgUni.Id,
                 AssigneeId = s.UniStudent2.Id,
                 CreatedByUserId = s.UniProf.Id,
-                Title = "Lab safety quiz",
-                DueDate = now.AddDays(-5),
+                Title = "CS101 — Homework 4 (Graphs)",
+                Description = "Implement Dijkstra; submit PDF + code zip.",
+                DueDate = now.AddDays(5),
                 IsCompleted = false,
+                SubjectId = s.OfferingProgramming?.Id,
+                OfferingId = s.OfferingProgramming?.Id,
+                PeriodId = s.PeriodSpring2026?.Id,
+                AssignmentBatchId = s.Cs101BatchId,
+                GradeCategoryId = s.CatHomework?.Id,
+                MaxScore = 100,
+                Weight = 0.50m,
+                Priority = null
+            },
+            new()
+            {
+                OrganizationId = s.OrgUni.Id,
+                AssigneeId = s.UniStudent1.Id,
+                CreatedByUserId = s.UniProf.Id,
+                Title = "CS101 — Lab safety quiz",
+                DueDate = now.AddDays(-5),
+                IsCompleted = true,
+                Grade = 18,
+                TeacherFeedback = "Good awareness of lab protocols.",
+                SubjectId = s.OfferingProgramming?.Id,
+                OfferingId = s.OfferingProgramming?.Id,
+                PeriodId = s.PeriodSpring2026?.Id,
+                GradeCategoryId = s.CatLab?.Id,
                 Priority = null,
                 MaxScore = 20,
-                Weight = 0.05m
+                Weight = 1.0m
+            },
+            new()
+            {
+                OrganizationId = s.OrgUni.Id,
+                AssigneeId = s.DualUser.Id,
+                CreatedByUserId = s.UniProf.Id,
+                Title = "CS101 — Homework 4 (Graphs)",
+                Description = "Implement Dijkstra; submit PDF + code zip.",
+                DueDate = now.AddDays(5),
+                IsCompleted = false,
+                SubjectId = s.OfferingProgramming?.Id,
+                OfferingId = s.OfferingProgramming?.Id,
+                PeriodId = s.PeriodSpring2026?.Id,
+                AssignmentBatchId = s.Cs101BatchId,
+                GradeCategoryId = s.CatHomework?.Id,
+                MaxScore = 100,
+                Weight = 0.50m,
+                Priority = null
+            },
+            new()
+            {
+                OrganizationId = s.OrgUni.Id,
+                AssigneeId = s.DualUser.Id,
+                CreatedByUserId = s.UniProf.Id,
+                Title = "CS101 — Lab safety quiz",
+                DueDate = now.AddDays(-7),
+                IsCompleted = true,
+                Grade = 19,
+                TeacherFeedback = "Excellent lab safety awareness.",
+                SubjectId = s.OfferingProgramming?.Id,
+                OfferingId = s.OfferingProgramming?.Id,
+                PeriodId = s.PeriodSpring2026?.Id,
+                GradeCategoryId = s.CatLab?.Id,
+                MaxScore = 20,
+                Weight = 1.0m,
+                Priority = null
+            },
+            new()
+            {
+                OrganizationId = s.OrgUni.Id,
+                AssigneeId = s.DualUser.Id,
+                CreatedByUserId = s.UniProf.Id,
+                Title = "CS101 — Midterm exam",
+                Description = "In-class written exam — algorithms fundamentals.",
+                DueDate = now.AddDays(-14),
+                IsCompleted = true,
+                Grade = 8,
+                TeacherFeedback = "Strong on recursion; review graph proofs.",
+                SubjectId = s.OfferingProgramming?.Id,
+                OfferingId = s.OfferingProgramming?.Id,
+                PeriodId = s.PeriodSpring2026?.Id,
+                GradeCategoryId = s.CatExam?.Id,
+                MaxScore = 10,
+                Weight = 1.0m,
+                Priority = null
+            },
+            new()
+            {
+                OrganizationId = s.OrgUni.Id,
+                AssigneeId = s.DualUser.Id,
+                CreatedByUserId = s.UniProf.Id,
+                Title = "CS201 — Problem set 2 (Trees)",
+                Description = "Balanced BST insert/delete analysis.",
+                DueDate = now.AddDays(4),
+                IsCompleted = false,
+                SubjectId = s.OfferingAlgorithms?.Id,
+                OfferingId = s.OfferingAlgorithms?.Id,
+                PeriodId = s.PeriodSpring2026?.Id,
+                MaxScore = 50,
+                Weight = 0.15m,
+                Priority = null
             },
             new()
             {
@@ -986,13 +1051,17 @@ public static class DbInitializer
                 AssigneeId = s.DualUser.Id,
                 CreatedByUserId = s.UniProf.Id,
                 Title = "Readings — Chapter 7",
-                DueDate = now.AddDays(1),
+                DueDate = now.AddDays(-3),
                 IsCompleted = true,
                 Grade = 10,
                 TeacherFeedback = "Solid notes.",
-                Priority = null,
+                SubjectId = s.OfferingProgramming?.Id,
+                OfferingId = s.OfferingProgramming?.Id,
+                PeriodId = s.PeriodSpring2026?.Id,
+                GradeCategoryId = s.CatHomework?.Id,
                 MaxScore = 10,
-                Weight = 0.02m
+                Weight = 0.10m,
+                Priority = null
             },
             new()
             {
@@ -1045,12 +1114,12 @@ public static class DbInitializer
             {
                 OrganizationId = s.OrgUni.Id,
                 UserId = s.UniStudent1.Id,
-                GroupId = s.GrpCs101.Id,
+                GroupId = s.CsG1Sub1?.Id,
                 CourseName = "CS101 — Intro to Programming",
                 Score = 88,
                 Credits = 4,
                 LetterGrade = "B+",
-                Semester = "Fall 2025"
+                Semester = "Spring 2026"
             },
             new()
             {
@@ -1060,7 +1129,7 @@ public static class DbInitializer
                 Score = 92,
                 Credits = 4,
                 LetterGrade = "A-",
-                Semester = "Fall 2025"
+                Semester = "Spring 2026"
             },
             new()
             {
@@ -1070,19 +1139,19 @@ public static class DbInitializer
                 Score = 81,
                 Credits = 3,
                 LetterGrade = "B",
-                Semester = "Fall 2025"
+                Semester = "Spring 2026"
             },
             // Emily
             new()
             {
                 OrganizationId = s.OrgUni.Id,
                 UserId = s.UniStudent2.Id,
-                GroupId = s.GrpCs101.Id,
+                GroupId = s.CsG1Sub1?.Id,
                 CourseName = "CS101 — Intro to Programming",
                 Score = 94,
                 Credits = 4,
                 LetterGrade = "A",
-                Semester = "Fall 2025"
+                Semester = "Spring 2026"
             },
             new()
             {
@@ -1092,19 +1161,19 @@ public static class DbInitializer
                 Score = 87,
                 Credits = 4,
                 LetterGrade = "B+",
-                Semester = "Fall 2025"
+                Semester = "Spring 2026"
             },
             // Alex (dual) — uni transcript
             new()
             {
                 OrganizationId = s.OrgUni.Id,
                 UserId = s.DualUser.Id,
-                GroupId = s.GrpCs101.Id,
+                GroupId = s.CsG1Sub1?.Id,
                 CourseName = "CS101 — Intro to Programming",
                 Score = 90,
                 Credits = 4,
                 LetterGrade = "A-",
-                Semester = "Fall 2025"
+                Semester = "Spring 2026"
             },
             new()
             {
@@ -1123,30 +1192,6 @@ public static class DbInitializer
     }
 
     // -------------------------------------------------------------------------
-    // 11. Chat sample messages
-    // -------------------------------------------------------------------------
-
-    private static async Task SeedMessagesAsync(ApplicationDbContext context, SeedState s)
-    {
-        await context.Messages.AddRangeAsync(
-            new Message
-            {
-                OrganizationId = s.OrgUni.Id,
-                UserId = s.UniStudent1.Id,
-                UserName = "Michael Brown",
-                Content = "Is the computer lab open until midnight during finals week?"
-            },
-            new Message
-            {
-                OrganizationId = s.OrgCorp.Id,
-                UserId = s.CorpDev.Id,
-                UserName = "David Anderson",
-                Content = "Deploy pipeline is green for release/24.3 — who owns the smoke tests?"
-            });
-        await context.SaveChangesAsync();
-    }
-
-    // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
 
@@ -1159,7 +1204,7 @@ public static class DbInitializer
     }
 
     /// <summary>Mutable holder for entities created during seed (keeps SeedAsync readable).</summary>
-    private sealed class SeedState
+    private sealed partial class SeedState
     {
         public List<User> Users { get; set; } = [];
 
@@ -1178,12 +1223,18 @@ public static class DbInitializer
         public Organization OrgCorp { get; set; } = null!;
 
         public Role RUniStudent { get; set; } = null!;
+        public Role RUniDemoShowcase { get; set; } = null!;
         public Role RUniProf { get; set; } = null!;
         public Role RUniDean { get; set; } = null!;
+        public Role RUniAdmin { get; set; } = null!;
+        public Role RUniUnassigned { get; set; } = null!;
         public Role RCorpEmployee { get; set; } = null!;
+        public Role RCorpDemoShowcase { get; set; } = null!;
         public Role RCorpPm { get; set; } = null!;
         public Role RCorpDirector { get; set; } = null!;
         public Role RCorpHr { get; set; } = null!;
+        public Role RCorpAdmin { get; set; } = null!;
+        public Role RCorpUnassigned { get; set; } = null!;
         public Role RSysAdminUni { get; set; } = null!;
         public Role RSysAdminCorp { get; set; } = null!;
 
@@ -1205,9 +1256,45 @@ public static class DbInitializer
         public Room RoomBoard { get; set; } = null!;
         public Room RoomHuddle { get; set; } = null!;
 
-        public Group GrpCs101 { get; set; } = null!;
         public Group GrpEng { get; set; } = null!;
         public Event EventCs101 { get; set; } = null!;
+        public Event? EventCs101Lab { get; set; }
+        public Event? EventCs101Seminar { get; set; }
+        public Event? EventCs201Lecture { get; set; }
         public Event EventStandup { get; set; } = null!;
+    }
+
+    private sealed partial class SeedState
+    {
+        public OrganizationPeriod? PeriodSpring2026 { get; set; }
+        public Group? CsFaculty { get; set; }
+        public Group? CsDepartment { get; set; }
+        public Group? CsProgram { get; set; }
+        public Group? SeProgram { get; set; }
+        public Group? CsYear1 { get; set; }
+        public Group? SeYear1 { get; set; }
+        public Group? CsGroup1 { get; set; }
+        public Group? CsGroup2 { get; set; }
+        public Group? CsGroup3 { get; set; }
+        public Group? CsGroup4 { get; set; }
+        public Group? CsG1Sub1 { get; set; }
+        public Group? CsG1Sub2 { get; set; }
+        public Group? CsG2Sub1 { get; set; }
+        public Group? CsG2Sub2 { get; set; }
+        public Group? SeGroupA { get; set; }
+        public Group? SeGroupB { get; set; }
+        public Group? CorpDivision { get; set; }
+        public Group? CorpDepartment { get; set; }
+        public Group? CorpTeam { get; set; }
+        public Group? CorpSquad { get; set; }
+        public CourseOffering? OfferingProgramming { get; set; }
+        public CourseOffering? OfferingAlgorithms { get; set; }
+        public AnnouncementChannel? AnnouncementChannelGeneral { get; set; }
+        public AnnouncementChannel? AnnouncementChannelCourse { get; set; }
+        public OrganizationPeriod? PeriodCorpQ1 { get; set; }
+        public OfferingGradeCategory? CatHomework { get; set; }
+        public OfferingGradeCategory? CatExam { get; set; }
+        public OfferingGradeCategory? CatLab { get; set; }
+        public Guid Cs101BatchId { get; set; }
     }
 }

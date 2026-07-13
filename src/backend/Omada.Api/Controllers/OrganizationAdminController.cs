@@ -52,9 +52,10 @@ public class OrganizationAdminController : ControllerBase
     public async Task<ActionResult<ServiceResponse<PagedResponse<OrganizationMemberDto>>>> GetMembers(
         [FromQuery] PagedRequest request,
         [FromQuery] string? q,
-        [FromQuery] Guid? roleId)
+        [FromQuery] Guid? roleId,
+        [FromQuery] bool includeAdmins = false)
     {
-        var response = await _adminService.GetMembersAsync(request, q, roleId);
+        var response = await _adminService.GetMembersAsync(request, q, roleId, includeAdmins);
         return Ok(response);
     }
 
@@ -188,5 +189,37 @@ public class OrganizationAdminController : ControllerBase
     {
         var response = await _adminService.GetAuditLogsAsync(request);
         return Ok(response);
+    }
+
+    [HttpGet("scraped-host-aliases")]
+    [HasPermission(WidgetKeys.Users, nameof(AccessLevel.View))]
+    public async Task<ActionResult<ServiceResponse<IReadOnlyList<ScrapedHostAliasDto>>>> GetScrapedHostAliases(
+        [FromServices] IScrapedHostAliasService aliasService,
+        CancellationToken cancellationToken)
+    {
+        var response = await aliasService.GetAliasesAsync(cancellationToken);
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
+    }
+
+    [HttpPut("scraped-host-aliases")]
+    [HasPermission(WidgetKeys.Users, nameof(AccessLevel.Edit))]
+    public async Task<ActionResult<ServiceResponse<IReadOnlyList<ScrapedHostAliasDto>>>> SaveScrapedHostAliases(
+        [FromBody] SaveScrapedHostAliasesRequest request,
+        [FromServices] IScrapedHostAliasService aliasService,
+        CancellationToken cancellationToken)
+    {
+        var response = await aliasService.SaveAliasesAsync(request, cancellationToken);
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
+    }
+
+    [HttpPost("scraped-host-aliases/link")]
+    [HasPermission(WidgetKeys.Users, nameof(AccessLevel.Edit))]
+    public async Task<ActionResult<ServiceResponse<IReadOnlyList<ScrapedHostAliasDto>>>> LinkScrapedHostAlias(
+        [FromBody] LinkScrapedHostAliasRequest request,
+        [FromServices] IScrapedHostAliasService aliasService,
+        CancellationToken cancellationToken)
+    {
+        var response = await aliasService.LinkHostAliasAsync(request, cancellationToken);
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
     }
 }

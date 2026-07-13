@@ -20,6 +20,7 @@ export function FloorplanWorkspaceHeader({ model }: Props) {
     geoDoc,
     hasUnsavedChanges,
     handleSaveGeoJsonAndPublishRooms,
+    savePublishNotice,
   } = model;
   const savePublishBusy = savingGeo || publishingRooms;
 
@@ -61,6 +62,15 @@ export function FloorplanWorkspaceHeader({ model }: Props) {
       <AppText variant="caption" style={{ color: colors.subtle }}>
         Refine rooms and pins for this level. Use Setup to change the image or run AI.
       </AppText>
+      {savePublishNotice ? (
+        <AppText
+          variant="caption"
+          weight="bold"
+          style={{ color: colors.primary, marginTop: 8, lineHeight: 18 }}
+        >
+          {savePublishNotice}
+        </AppText>
+      ) : null}
     </View>
   );
 }

@@ -64,7 +64,7 @@ From **`/org-dashboard`**, use the checklist and workspaces:
 | 🧩 Enable optional widgets | **Widget catalog** — new orgs start with **none** enabled (schedule, tasks, digital ID stay on) |
 | 🔐 Roles & permissions | **Roles workspace** |
 | 🎨 Branding tweaks | **Branding workspace** |
-| 📅 Periods, groups, maps, spider | Respective workspaces |
+| 📅 Periods, timetables, groups, maps, spider | Respective workspaces — timetables: build patterns, preview, publish to member Schedule |
 | 👥 Invite team | **Members workspace** — email invites or share org code/link |
 
 > 📧 Configure **Brevo** (`BREVO_API_KEY`, verified `BREVO_SENDER_EMAIL`) for real invite emails; otherwise the API logs email bodies to the console.
@@ -108,7 +108,7 @@ From **`/org-dashboard`**, use the checklist and workspaces:
 |---------|----------|
 | **Layout** | Changes based on widgets enabled by Admin |
 | **Theme** | Entire app colored with org's palette (buttons, headers, icons) |
-| **Widgets** | Bento grid with news, schedule, tasks, map, and more |
+| **Widgets** | Bento grid with announcements, schedule, tasks, map, and more |
 | **Search** | Dashboard **`SearchBar`** → **`/search`** modal — cross-widget results (people, rooms, news, tasks, schedule, groups, grades) scoped to your permissions |
 
 ### 📌 Custom Tab Bar
@@ -133,6 +133,19 @@ Every org includes **Digital ID** (with schedule and tasks) — it is not toggle
 
 > 🔆 On mobile, brightness is raised while the pass is open to help scanners read the QR.
 
+### 📣 Announcements (replaces Chat & News)
+
+When your org enables **Announcements**, the tab shows **channels** — org-wide, your **groups**, and **courses** you teach or take.
+
+| Action | Who | How |
+|--------|-----|-----|
+| **Read posts** | Everyone with access | Open a channel; unread badge clears when you enter |
+| **Comment** | Same | Expand a post → add a comment |
+| **Post** | Editors (`announcements` Edit) | Compose at top of channel — title + body |
+| **Live updates** | Everyone | New posts and comments appear while the app is open; after backgrounding, pull-to-refresh or reopen the tab |
+
+> Legacy **Chat** and **News** tabs redirect here. One stream per channel — posts with comments, not free-form chat messages.
+
 > 🏢 The pass is valid for your **current organization** only — switch org in profile if you belong to more than one.
 
 Details: [`../../docs/DigitalId.md`](../../docs/DigitalId.md)
@@ -146,7 +159,7 @@ Details: [`../../docs/DigitalId.md`](../../docs/DigitalId.md)
 
 | Scenario | Behavior |
 |----------|----------|
-| 📵 No signal | View cached data (schedule, news) |
+| 📵 No signal | View cached data (schedule, announcements) |
 | ✏️ Edit while offline | Added to **Offline Queue** |
 | 📶 Back online | Queue processes automatically |
 
@@ -164,7 +177,7 @@ The hub shows a progress checklist (each step tracked separately in the backend)
 
 ```text
 Widgets → Roles → Branding → Periods → Groups
-  → Locations & maps → Spider → Invite team
+  → Locations & maps → Invite team
 ```
 
 - **Widgets** — toggle optional features on (new orgs start with catalog **empty**)
@@ -179,9 +192,9 @@ Widgets → Roles → Branding → Periods → Groups
 | 🎨 **Branding** | Name, short name, logo, color palettes, org type (Corporate/University), active status — discard or save |
 | 🧩 **Widget catalog** | Enable/disable **optional** features by org type (starts **empty** on new orgs); schedule, tasks, digital ID always on |
 | 📅 **Periods** | Reporting periods — semesters, quarters, or cycles (edit, set current) |
+| 📅 **Timetables** | Weekly session patterns, conflict preview, publish to member Schedule; **Import schedule** tab (scrape, map wizard, apply) |
 | 📝 **Audit log** | Review admin actions |
-| 📐 **Floorplan** | Upload floorplans, AI room extraction, publish & configure bookable rooms |
-| 🕷️ **Web spider** | Import timetable/news from your website |
+| 📐 **Locations & maps** | Sites, levels, rooms, optional floorplans; assign **unassigned rooms** created during timetable import |
 | 👥 **Groups** | Departments, teams, classes — always in admin nav (org structure; not a member catalog widget) |
 | 🏷️ **Event types** | Schedule event types and colors |
 

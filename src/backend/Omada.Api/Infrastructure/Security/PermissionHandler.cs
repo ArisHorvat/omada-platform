@@ -97,6 +97,9 @@ public class PermissionHandler : AuthorizationHandler<PermissionRequirement>
         {
             [WidgetKeys.Tasks] = new[] { WidgetKeys.Tasks, WidgetKeys.Assignments },
             [WidgetKeys.Assignments] = new[] { WidgetKeys.Assignments, WidgetKeys.Tasks },
+            [WidgetKeys.Announcements] = new[] { WidgetKeys.Announcements, WidgetKeys.Chat, WidgetKeys.News },
+            [WidgetKeys.Chat] = new[] { WidgetKeys.Chat, WidgetKeys.Announcements, WidgetKeys.News },
+            [WidgetKeys.News] = new[] { WidgetKeys.News, WidgetKeys.Announcements, WidgetKeys.Chat },
         };
 
     private static int GetEffectiveRank(List<string> userPermissions, string widget)

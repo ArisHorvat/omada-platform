@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Omada.Api.Data;
 using Omada.Api.DTOs.Scraping;
+using Omada.Api.Infrastructure;
+using Omada.Api.Infrastructure.Scraping;
 using Omada.Api.Services.Interfaces;
 
 namespace Omada.Api.Services;
@@ -14,15 +16,20 @@ public sealed class ScrapedEntityResolutionService : IScrapedEntityResolutionSer
 {
     private readonly ApplicationDbContext _db;
     private readonly IMemoryCache _cache;
+    private readonly IScrapedHostAliasService _hostAliases;
 
     private static readonly Regex Honorifics = new(
         @"\b(dr\.?|prof\.?|professor|associate|asst\.?|assistant|lecturer|conf\.?|universitar|univ\.?)\b",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
-    public ScrapedEntityResolutionService(ApplicationDbContext db, IMemoryCache cache)
+    public ScrapedEntityResolutionService(
+        ApplicationDbContext db,
+        IMemoryCache cache,
+        IScrapedHostAliasService hostAliases)
     {
         _db = db;
         _cache = cache;
+        _hostAliases = hostAliases;
     }
 
     public async Task<ScrapedEventResolutionMaps> BuildMapsAsync(
@@ -37,18 +44,30 @@ public sealed class ScrapedEntityResolutionService : IScrapedEntityResolutionSer
 
         var userRows = await GetOrgUserRowsCachedAsync(organizationId, cancellationToken);
         var roomRows = await GetOrgRoomRowsCachedAsync(organizationId, cancellationToken);
+        var hostAliases = ScrapedHostAliasJson.IndexByLabel(
+            await _hostAliases.GetAliasesForOrgAsync(organizationId, cancellationToken));
 
         var hostMap = new Dictionary<string, Guid?>(StringComparer.OrdinalIgnoreCase);
         var roomMap = new Dictionary<string, Guid?>(StringComparer.OrdinalIgnoreCase);
 
         var profGroups = dtos
-            .Select(d => (Key: NormalizeKeyPart(d.Professor), Raw: d.Professor))
+            .SelectMany(d => ScrapedScheduleRowEnricher.SplitProfessorLabels(d.Professor)
+                .Select(part => (Key: NormalizeKeyPart(part), Raw: (string?)part)))
             .Where(x => !string.IsNullOrEmpty(x.Key))
             .GroupBy(x => x.Key, StringComparer.OrdinalIgnoreCase);
 
         foreach (var g in profGroups)
         {
             var raw = g.First().Raw;
+            if (!string.IsNullOrWhiteSpace(raw)
+                && hostAliases.TryGetValue(raw.Trim(), out var alias)
+                && alias.HostUserId is { } aliasHostId
+                && aliasHostId != Guid.Empty)
+            {
+                hostMap[g.Key] = aliasHostId;
+                continue;
+            }
+
             hostMap[g.Key] = MatchProfessor(raw, userRows);
         }
 

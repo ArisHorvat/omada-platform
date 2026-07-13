@@ -17,6 +17,8 @@ type Props = {
   placeholder?: string;
   pickerTitle?: string;
   excludeIds?: string[];
+  /** When set, limits picks to this list (e.g. course teaching team) instead of directory search. */
+  options?: { value: string; label: string; subtitle?: string }[];
 };
 
 export function StaffMultiSelectField({
@@ -27,6 +29,7 @@ export function StaffMultiSelectField({
   placeholder = 'Select staff',
   pickerTitle = 'Teaching team',
   excludeIds = [],
+  options: fixedOptions,
 }: Props) {
   const colors = useThemeColors();
   const [open, setOpen] = useState(false);
@@ -36,8 +39,8 @@ export function StaffMultiSelectField({
   const debouncedQuery = useDebounce(query, 300);
 
   const { groupOptions, groupFilterLabel, staffOptions, allStaffOptions, loading } = useGroupStaffPicker(
-    groupFilterId,
-    open ? debouncedQuery : '',
+    fixedOptions ? null : groupFilterId,
+    open && !fixedOptions ? debouncedQuery : '',
   );
 
   useEffect(() => {
@@ -47,19 +50,27 @@ export function StaffMultiSelectField({
     }
   }, [open]);
 
-  const available = useMemo(
-    () => staffOptions.filter((o) => !excludeIds.includes(o.value)),
-    [excludeIds, staffOptions],
-  );
+  const lookupOptions = fixedOptions ?? allStaffOptions;
+
+  const available = useMemo(() => {
+    const base = fixedOptions ?? staffOptions;
+    const q = debouncedQuery.trim().toLowerCase();
+    return base
+      .filter((o) => !excludeIds.includes(o.value))
+      .filter((o) => {
+        if (!fixedOptions || !q) return true;
+        return o.label.toLowerCase().includes(q) || (o.subtitle ?? '').toLowerCase().includes(q);
+      });
+  }, [debouncedQuery, excludeIds, fixedOptions, staffOptions]);
 
   const summary = useMemo(() => {
     if (selectedIds.length === 0) return placeholder;
     const labels = selectedIds
-      .map((id) => allStaffOptions.find((o) => o.value === id)?.label)
+      .map((id) => lookupOptions.find((o) => o.value === id)?.label)
       .filter(Boolean);
     if (labels.length <= 2) return labels.join(', ');
     return `${labels.slice(0, 2).join(', ')} +${labels.length - 2}`;
-  }, [allStaffOptions, placeholder, selectedIds]);
+  }, [lookupOptions, placeholder, selectedIds]);
 
   const toggle = (id: string) => {
     onChange(selectedIds.includes(id) ? selectedIds.filter((x) => x !== id) : [...selectedIds, id]);
@@ -105,27 +116,29 @@ export function StaffMultiSelectField({
           </View>
 
           <AppText variant="caption" style={{ color: colors.subtle, marginBottom: 6 }}>
-            Filter by group
+            {fixedOptions ? 'Teaching team' : 'Filter by group'}
           </AppText>
-          <PressClay onPress={() => setGroupPickerOpen(true)}>
-            <ClayView depth={2} color={colors.card} style={styles.selectField}>
-              <Icon name="account-tree" size={18} color={colors.primary} style={{ marginRight: 8 }} />
-              <AppText variant="body" numberOfLines={1} style={{ flex: 1 }}>
-                {groupFilterLabel}
-              </AppText>
-              <Icon name="expand-more" size={22} color={colors.subtle} />
-            </ClayView>
-          </PressClay>
+          {fixedOptions ? null : (
+            <PressClay onPress={() => setGroupPickerOpen(true)}>
+              <ClayView depth={2} color={colors.card} style={styles.selectField}>
+                <Icon name="account-tree" size={18} color={colors.primary} style={{ marginRight: 8 }} />
+                <AppText variant="body" numberOfLines={1} style={{ flex: 1 }}>
+                  {groupFilterLabel}
+                </AppText>
+                <Icon name="expand-more" size={22} color={colors.subtle} />
+              </ClayView>
+            </PressClay>
+          )}
 
           <AppFormField
             value={query}
             onChangeText={setQuery}
-            placeholder="Search staff…"
+            placeholder={fixedOptions ? 'Search team…' : 'Search staff…'}
             icon="search"
             style={{ marginBottom: 10 }}
           />
 
-          {loading ? (
+          {loading && !fixedOptions ? (
             <ActivityIndicator color={colors.primary} style={{ marginVertical: 16 }} />
           ) : (
             <ScrollView keyboardShouldPersistTaps="handled">
@@ -171,18 +184,20 @@ export function StaffMultiSelectField({
         </View>
       </BottomSheet>
 
-      <SearchableOptionPickerSheet
-        isVisible={groupPickerOpen}
-        onClose={() => setGroupPickerOpen(false)}
-        title="Filter by group"
-        searchPlaceholder="Search faculty, department, program…"
-        options={groupOptions}
-        selected={groupFilterId}
-        onSelect={setGroupFilterId}
-        allLabel="All staff"
-        height={480}
-        zIndexBase={290}
-      />
+      {fixedOptions ? null : (
+        <SearchableOptionPickerSheet
+          isVisible={groupPickerOpen}
+          onClose={() => setGroupPickerOpen(false)}
+          title="Filter by group"
+          searchPlaceholder="Search faculty, department, program…"
+          options={groupOptions}
+          selected={groupFilterId}
+          onSelect={setGroupFilterId}
+          allLabel="All staff"
+          height={480}
+          zIndexBase={290}
+        />
+      )}
     </>
   );
 }

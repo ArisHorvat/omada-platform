@@ -7,6 +7,7 @@ import { ClayView, Icon, IconName, ProgressiveImage } from '@/src/components/ui'
 import { PressClay } from '@/src/components/animations/PressClay'; 
 import { useOrganizationTheme } from '@/src/context/OrganizationThemeContext';
 import { useThemeColors } from '@/src/hooks';
+import { useAnnouncementsTabEnabled } from '@/src/hooks/useAnnouncementsTabEnabled';
 import { AnimatedItem } from '@/src/components/animations';
 import { ClayAnimations } from '@/src/constants/animations';
 
@@ -14,7 +15,8 @@ const { width } = Dimensions.get('window');
 
 const ROUTE_ICONS: Record<string, IconName> = {
   tasks: 'check-circle',
-  chat: 'chat',
+  announcements: 'campaign',
+  chat: 'campaign',
   dashboard: 'dashboard',
   schedule: 'calendar-today',
   profile: 'person',
@@ -24,6 +26,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
   const { primary, logoUrl } = useOrganizationTheme();
+  const showAnnouncementsTab = useAnnouncementsTabEnabled();
   
   // --- CONFIGURATION ---
   const BAR_HEIGHT = 70;
@@ -87,7 +90,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             >
                 <View style={styles.gridContainer}>
                     {renderTab('tasks')}
-                    {renderTab('chat')}
+                    {showAnnouncementsTab ? renderTab('announcements') : <View style={styles.slot} />}
                     <View style={[ { width: FAB_SIZE }]} /> 
                     {renderTab('schedule')}
                     {renderTab('profile')}

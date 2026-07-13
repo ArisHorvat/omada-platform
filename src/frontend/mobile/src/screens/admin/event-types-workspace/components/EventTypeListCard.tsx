@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
-import { TextInput, View } from 'react-native';
+import { View } from 'react-native';
 
 import { AppButton, AppText, ClayView, Icon } from '@/src/components/ui';
+import { AdminTextInput } from '@/src/screens/admin/components/AdminTextInput';
 import { normalizeEventTypeColor } from '@/src/constants/eventTypeColors';
 import { useThemeColors } from '@/src/hooks';
 import type { EventTypeDto } from '@/src/api/generatedClient';
@@ -48,12 +49,10 @@ export function EventTypeListCard({
           <AppText variant="label" style={styles.sectionLabel}>
             EDIT TYPE
           </AppText>
-          <TextInput
+          <AdminTextInput
             value={editName}
             onChangeText={onEditNameChange}
             placeholder="Name"
-            placeholderTextColor={colors.subtle}
-            style={styles.input}
           />
           <AppText variant="label" style={[styles.sectionLabel, { marginBottom: 8 }]}>
             COLOR

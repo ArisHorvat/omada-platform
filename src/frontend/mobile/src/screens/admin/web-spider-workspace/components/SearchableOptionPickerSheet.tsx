@@ -20,6 +20,10 @@ type Props<T> = {
   searchPlaceholder?: string;
   zIndexBase?: number;
   webAnchor?: WebOverlayAnchor | null;
+  /** Shown as a button beside close — for “create new” flows instead of a list row. */
+  createAction?: { label: string; onPress: () => void };
+  /** Extra header actions (e.g. pending host / invite) shown above the search field. */
+  headerActions?: { label: string; onPress: () => void }[];
 };
 
 export function SearchableOptionPickerSheet<T extends string>({
@@ -35,6 +39,8 @@ export function SearchableOptionPickerSheet<T extends string>({
   searchPlaceholder = 'Search…',
   zIndexBase = 220,
   webAnchor = null,
+  createAction,
+  headerActions,
 }: Props<T>) {
   const colors = useThemeColors();
   const [query, setQuery] = useState('');
@@ -76,12 +82,39 @@ export function SearchableOptionPickerSheet<T extends string>({
           <AppText variant="h3" weight="bold" style={{ flex: 1 }}>
             {title}
           </AppText>
-          <PressClay onPress={onClose}>
-            <ClayView depth={4} color={colors.card} style={styles.closeBtn}>
-              <Icon name="close" size={22} color={colors.subtle} />
-            </ClayView>
-          </PressClay>
+          <View style={styles.headerActions}>
+            {createAction ? (
+              <PressClay onPress={createAction.onPress}>
+                <ClayView depth={4} color={colors.card} style={styles.createBtn}>
+                  <Icon name="add" size={20} color={colors.primary} />
+                  <AppText variant="caption" weight="bold" style={{ color: colors.primary }}>
+                    {createAction.label}
+                  </AppText>
+                </ClayView>
+              </PressClay>
+            ) : null}
+            <PressClay onPress={onClose}>
+              <ClayView depth={4} color={colors.card} style={styles.closeBtn}>
+                <Icon name="close" size={22} color={colors.subtle} />
+              </ClayView>
+            </PressClay>
+          </View>
         </View>
+
+        {headerActions?.length ? (
+          <View style={{ gap: 8, marginBottom: 12 }}>
+            {headerActions.map((action) => (
+              <PressClay key={action.label} onPress={action.onPress}>
+                <ClayView depth={4} color={colors.card} style={styles.headerActionBtn}>
+                  <Icon name="add" size={18} color={colors.primary} />
+                  <AppText variant="caption" weight="bold" style={{ color: colors.primary, flex: 1 }}>
+                    {action.label}
+                  </AppText>
+                </ClayView>
+              </PressClay>
+            ))}
+          </View>
+        ) : null}
 
         <AppFormField
           value={query}
@@ -179,6 +212,23 @@ const styles = StyleSheet.create({
   sheetInner: { flex: 1, minHeight: 0 },
   listScroll: { flex: 1, minHeight: 0 },
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 8 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  createBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+  },
+  headerActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+  },
   closeBtn: { padding: 8, borderRadius: 12 },
   rowInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   rowText: { flex: 1 },

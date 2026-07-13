@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Omada.Api.Data;
 using Omada.Api.Entities;
+using Omada.Api.Infrastructure;
 using Omada.Api.Repositories.Interfaces;
 using Omada.Api.Services.Interfaces;
 
@@ -27,62 +28,112 @@ public class ScheduleRepository : GenericRepository<Event>, IScheduleRepository
         Guid? roomId = null,
         Guid? userId = null,
         bool myScheduleOnly = false,
-        bool publicOnly = false)
+        bool publicOnly = false,
+        Guid? periodId = null,
+        Guid? offeringId = null,
+        Guid? programGroupId = null)
     {
         var query = _context.Events
+            .AsNoTracking()
+            .AsSplitQuery()
             .Include(e => e.Overrides)
-            .Include(e => e.Attendances) // 🚀 Load Attendance Exceptions
-            .Include(e => e.EventType) 
-            .Include(e => e.Room)      
+            .Include(e => e.EventType)
+            .Include(e => e.Room)
             .Include(e => e.Group)
             .Include(e => e.Offering)
             .Include(e => e.CohortGroup)
             .Include(e => e.Host)
-            .AsNoTracking()
             .Where(e => e.OrganizationId == orgId && !e.IsDeleted);
 
-        // Apply Time Window 
-        query = query.Where(e => (e.StartTime < to && e.EndTime > from) || e.RecurrenceRule != null);
-
-        // 🚀 NEW: "My Schedule" Logic
         if (myScheduleOnly && userId.HasValue)
         {
-            var directGroupIds = await _context.Set<GroupMember>()
-                .AsNoTracking()
-                .Where(gm => gm.UserId == userId.Value)
-                .Select(gm => gm.GroupId)
-                .ToListAsync();
-
-            var userGroupIds = (await _groupScope.ExpandWithAncestorsAsync(orgId, directGroupIds)).ToList();
-
-            var enrolledOfferingIds = _context.OfferingEnrollments
-                .AsNoTracking()
-                .Where(e => e.UserId == userId.Value && !e.IsDeleted)
-                .Select(e => e.OfferingId)
-                .ToList();
-
-            query = query.Where(e =>
-                e.HostId == userId.Value ||
-                (e.GroupId.HasValue && userGroupIds.Contains(e.GroupId.Value)) ||
-                (e.CohortGroupId.HasValue && userGroupIds.Contains(e.CohortGroupId.Value)) ||
-                (e.OfferingId.HasValue && enrolledOfferingIds.Contains(e.OfferingId.Value) &&
-                    (!e.CohortGroupId.HasValue || userGroupIds.Contains(e.CohortGroupId.Value))) ||
-                e.Attendances.Any(a => a.UserId == userId.Value &&
-                    (a.Status == AttendanceStatus.Added || a.Status == AttendanceStatus.Expected)));
+            query = query.Include(e => e.Attendances.Where(a =>
+                a.UserId == userId.Value ||
+                a.Status == AttendanceStatus.Added ||
+                a.Status == AttendanceStatus.Expected ||
+                a.Status == AttendanceStatus.Accepted ||
+                a.Status == AttendanceStatus.Tentative ||
+                a.Status == AttendanceStatus.Declined));
         }
+        else
+        {
+            query = query.Include(e => e.Attendances);
+        }
+
+        // Apply Time Window 
+        query = query.Where(e =>
+            (e.StartTime < to && e.EndTime > from) ||
+            (e.RecurrenceRule != null && e.StartTime < to));
 
         if (publicOnly)
             query = query.Where(e => e.IsPublic);
+
+        if (periodId.HasValue)
+            query = query.Where(e => e.PeriodId == periodId.Value);
+
+        if (offeringId.HasValue)
+            query = query.Where(e => e.OfferingId == offeringId.Value);
+
+        if (programGroupId.HasValue)
+        {
+            var programOfferingIds = _context.CourseOfferingPrograms
+                .AsNoTracking()
+                .Where(p => p.OrganizationId == orgId && p.ProgramGroupId == programGroupId.Value)
+                .Select(p => p.OfferingId);
+            query = query.Where(e => e.OfferingId.HasValue && programOfferingIds.Contains(e.OfferingId.Value));
+        }
 
         if (hostId.HasValue) query = query.Where(e => e.HostId == hostId);
         if (groupId.HasValue)
         {
             var scopeIds = await _groupScope.GetDescendantIdsAsync(orgId, groupId.Value, includeSelf: true);
-            query = query.Where(e => e.GroupId.HasValue && scopeIds.Contains(e.GroupId.Value));
+            query = query.Where(e =>
+                (e.GroupId.HasValue && scopeIds.Contains(e.GroupId.Value)) ||
+                (e.CohortGroupId.HasValue && scopeIds.Contains(e.CohortGroupId.Value)));
         }
         if (roomId.HasValue) query = query.Where(e => e.RoomId == roomId);
 
+        // "My Schedule" — filter in memory so offering audience matches timetable publish rules.
+        if (myScheduleOnly && userId.HasValue)
+        {
+            var visibility = await LoadUserVisibilityContextAsync(orgId, userId.Value);
+            var list = await query.ToListAsync();
+            return list.Where(visibility.IsEventVisible).ToList();
+        }
+
         return await query.ToListAsync();
+    }
+
+    private async Task<ScheduleUserVisibilityContext> LoadUserVisibilityContextAsync(Guid orgId, Guid userId)
+    {
+        var userGroupIds = await _groupScope.GetUserEffectiveGroupIdsAsync(orgId, userId);
+
+        var enrollments = await _context.OfferingEnrollments
+            .AsNoTracking()
+            .Where(e => e.UserId == userId && e.OrganizationId == orgId && !e.IsDeleted)
+            .Select(e => new { e.OfferingId, e.CohortGroupId })
+            .ToListAsync();
+
+        var enrolledOfferingIds = enrollments.Select(e => e.OfferingId).ToHashSet();
+        var enrollmentCohortsByOffering = enrollments
+            .Where(e => e.CohortGroupId.HasValue)
+            .GroupBy(e => e.OfferingId)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.CohortGroupId!.Value).ToHashSet());
+
+        var teachingOfferingIds = await _context.OfferingInstructors
+            .AsNoTracking()
+            .Where(i => i.UserId == userId && i.OrganizationId == orgId && !i.IsDeleted)
+            .Select(i => i.OfferingId)
+            .ToListAsync();
+
+        return new ScheduleUserVisibilityContext
+        {
+            UserId = userId,
+            UserGroupIds = userGroupIds,
+            EnrolledOfferingIds = enrolledOfferingIds,
+            EnrollmentCohortIdsByOffering = enrollmentCohortsByOffering,
+            TeachingOfferingIds = teachingOfferingIds.ToHashSet()
+        };
     }
 
     public async Task<Event?> GetConflictAsync(Guid orgId, DateTime start, DateTime end, Guid? roomId, Guid? hostId)

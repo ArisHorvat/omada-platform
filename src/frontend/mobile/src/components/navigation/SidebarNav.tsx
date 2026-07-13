@@ -10,13 +10,14 @@ import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext
 import { useOrganizationTheme } from '@/src/context/OrganizationThemeContext';
 import { SIDEBAR_WIDTH } from '@/src/constants/layout';
 import { useThemeColors } from '@/src/hooks/useThemeColors';
+import { useAnnouncementsTabEnabled } from '@/src/hooks/useAnnouncementsTabEnabled';
 
-type TabRouteName = 'dashboard' | 'tasks' | 'chat' | 'schedule' | 'profile';
+type TabRouteName = 'dashboard' | 'tasks' | 'announcements' | 'schedule' | 'profile';
 
 const NAV_ITEMS: { name: TabRouteName; href: Href; icon: IconName; label: string }[] = [
   { name: 'dashboard', href: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
   { name: 'tasks', href: '/tasks', icon: 'check-circle', label: 'Tasks' },
-  { name: 'chat', href: '/chat', icon: 'chat', label: 'Chat' },
+  { name: 'announcements', href: '/announcements', icon: 'campaign', label: 'Announcements' },
   { name: 'schedule', href: '/schedule', icon: 'calendar-today', label: 'Schedule' },
   { name: 'profile', href: '/profile', icon: 'person', label: 'Profile' },
 ];
@@ -33,6 +34,11 @@ export function SidebarNav() {
   const { primary, logoUrl } = useOrganizationTheme();
   const { organization } = useCurrentOrganization();
   const orgName = organization?.name?.trim() || 'Organization';
+  const showAnnouncementsTab = useAnnouncementsTabEnabled();
+
+  const navItems = NAV_ITEMS.filter(
+    (item) => item.name !== 'announcements' || showAnnouncementsTab,
+  );
 
   const onDashboard = isRouteActive(pathname, 'dashboard');
   const isWeb = Platform.OS === 'web';
@@ -97,7 +103,7 @@ export function SidebarNav() {
       </PressClay>
 
       <View style={styles.navList}>
-        {NAV_ITEMS.map((item) => {
+        {navItems.map((item) => {
           const active = isRouteActive(pathname, item.name);
           return (
             <PressClay key={item.name} onPress={() => goTo(item.href)}>

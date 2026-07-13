@@ -24,6 +24,32 @@ function rosterStatusForPresent(isPresent: boolean) {
   return isPresent ? AttendanceStatus.Added : AttendanceStatus.Declined;
 }
 
+function isMarkedPresent(status: AttendanceStatus) {
+  return status === AttendanceStatus.Added || status === AttendanceStatus.Accepted;
+}
+
+function isMarkedAbsent(status: AttendanceStatus) {
+  return status === AttendanceStatus.Declined;
+}
+
+function normalizeRosterStatus(status: AttendanceStatus | string | number | undefined | null): AttendanceStatus {
+  if (status == null) return AttendanceStatus.None;
+  if (status === AttendanceStatus.None || status === 'None' || status === 0) return AttendanceStatus.None;
+  if (status === AttendanceStatus.Expected || status === 'Expected') return AttendanceStatus.None;
+  if (status === AttendanceStatus.Added || status === 'Added' || status === 1) return AttendanceStatus.Added;
+  if (status === AttendanceStatus.Declined || status === 'Declined' || status === 2) return AttendanceStatus.Declined;
+  if (status === AttendanceStatus.Accepted || status === 'Accepted') return AttendanceStatus.Accepted;
+  return status as AttendanceStatus;
+}
+
+function rosterQueryKey(instanceDate: string) {
+  const parsed = new Date(instanceDate);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toISOString().slice(0, 10);
+  }
+  return instanceDate.slice(0, 10);
+}
+
 export default function AttendanceSessionRosterScreen() {
   const router = useRouter();
   const colors = useThemeColors();
@@ -34,10 +60,11 @@ export default function AttendanceSessionRosterScreen() {
   const params = useLocalSearchParams<{ eventId: string; instanceDate?: string }>();
   const eventId = params.eventId ?? '';
   const instanceDate =
-    params.instanceDate ?? new Date().toISOString().slice(0, 10);
+    params.instanceDate ?? new Date().toISOString();
+  const instanceKey = rosterQueryKey(instanceDate);
 
   const query = useQuery({
-    queryKey: QUERY_KEYS.attendance.roster(orgId, eventId, instanceDate),
+    queryKey: QUERY_KEYS.attendance.roster(orgId, eventId, instanceKey),
     queryFn: () => unwrapAttendanceExtendedAxios(attendanceExtendedApi.getSessionRoster(eventId, instanceDate)),
     enabled: !!orgId && !!eventId,
   });
@@ -48,35 +75,30 @@ export default function AttendanceSessionRosterScreen() {
 
   const effectiveStatus = (m: AttendanceRosterMemberDto): AttendanceStatus => {
     if (draft[m.userId] != null) return draft[m.userId];
-    if (m.status === AttendanceStatus.None || m.status === 'None') return AttendanceStatus.None;
-    return m.status as AttendanceStatus;
+    return normalizeRosterStatus(m.status as AttendanceStatus);
   };
 
-  const dirtyRows = useMemo(() => {
-    return members.filter((m) => {
-      const next = draft[m.userId];
-      if (next == null) return false;
-      const current =
-        m.status === AttendanceStatus.None || m.status === 'None'
-          ? AttendanceStatus.None
-          : (m.status as AttendanceStatus);
-      return next !== current;
-    });
-  }, [members, draft]);
+  const roster = query.data;
+  const canonicalInstanceDate = roster?.instanceDate ?? instanceDate;
 
   const saveMutation = useMutation({
     mutationFn: async () => {
       const rows = members
-        .map((m) => {
-          const status = effectiveStatus(m);
-          if (status === AttendanceStatus.None) return null;
-          return { userId: m.userId, status };
-        })
-        .filter(Boolean) as { userId: string; status: AttendanceStatus }[];
+        .map((m) => ({
+          userId: m.userId,
+          status: effectiveStatus(m),
+          original: normalizeRosterStatus(m.status as AttendanceStatus),
+        }))
+        .filter(
+          (m) =>
+            m.status !== AttendanceStatus.None ||
+            m.original !== AttendanceStatus.None,
+        )
+        .map(({ userId, status }) => ({ userId, status }));
 
       return unwrapAttendanceExtendedAxios(
         attendanceExtendedApi.bulkMarkRoster(eventId, {
-          instanceDate,
+          instanceDate: canonicalInstanceDate,
           rows,
         }),
       );
@@ -84,15 +106,19 @@ export default function AttendanceSessionRosterScreen() {
     onSuccess: async () => {
       setDraft({});
       await queryClient.invalidateQueries({
-        queryKey: QUERY_KEYS.attendance.roster(orgId, eventId, instanceDate),
+        queryKey: QUERY_KEYS.attendance.roster(orgId, eventId, instanceKey),
       });
       await queryClient.invalidateQueries({ queryKey: ['attendance', orgId] });
+      await query.refetch();
       alertAction({ title: 'Saved', message: 'Attendance updated for this session.' });
     },
     onError: (e: Error) => alertAction({ title: 'Save failed', message: e.message }),
   });
 
-  const roster = query.data;
+  const markedCount = useMemo(
+    () => members.filter((m) => effectiveStatus(m) !== AttendanceStatus.None).length,
+    [members, draft],
+  );
 
   return (
     <WidgetPageShell>
@@ -105,7 +131,12 @@ export default function AttendanceSessionRosterScreen() {
           <WidgetErrorState message="Could not load roster." onRetry={() => void query.refetch()} />
         ) : roster ? (
           <>
-            <ClayView depth={6} puffy={12} color={colors.card} style={{ marginBottom: 12, gap: 4 }}>
+            <ClayView
+              depth={4}
+              contentOverflow="visible"
+              color={colors.card}
+              style={{ marginBottom: 12, padding: 14, borderRadius: 16, gap: 4 }}
+            >
               <AppText variant="body" weight="bold" style={{ color: colors.text }}>
                 {roster.title}
               </AppText>
@@ -121,24 +152,25 @@ export default function AttendanceSessionRosterScreen() {
                   endTime: new Date(roster.endTime),
                 } as never)}
               </AppText>
+              <AppText variant="caption" style={{ color: colors.primary, marginTop: 4 }}>
+                {markedCount}/{members.length} marked · others start neutral until you choose Present or Absent
+              </AppText>
             </ClayView>
 
             <ScrollView contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
               {members.map((m) => {
                 const status = effectiveStatus(m);
-                const present =
-                  status === AttendanceStatus.Added ||
-                  status === AttendanceStatus.Expected ||
-                  status === AttendanceStatus.Accepted;
-                const absent = status === AttendanceStatus.Declined;
+                const present = isMarkedPresent(status);
+                const absent = isMarkedAbsent(status);
+                const neutral = !present && !absent;
 
                 return (
                   <ClayView
                     key={m.userId}
                     depth={4}
-                    puffy={10}
+                    contentOverflow="visible"
                     color={colors.card}
-                    style={{ marginBottom: 8, gap: 8 }}
+                    style={{ marginBottom: 10, padding: 14, borderRadius: 16, gap: 8 }}
                   >
                     <AppText variant="body" weight="bold" style={{ color: colors.text }}>
                       {m.displayName}
@@ -148,7 +180,7 @@ export default function AttendanceSessionRosterScreen() {
                         {m.cohortGroupName}
                       </AppText>
                     ) : null}
-                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                       <PressClay
                         onPress={() =>
                           setDraft((d) => ({
@@ -159,8 +191,9 @@ export default function AttendanceSessionRosterScreen() {
                       >
                         <ClayView
                           depth={present ? 6 : 2}
-                          puffy={8}
+                          contentOverflow="visible"
                           color={present ? colors.success + '30' : colors.background}
+                          style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12 }}
                         >
                           <AppText
                             variant="caption"
@@ -181,8 +214,9 @@ export default function AttendanceSessionRosterScreen() {
                       >
                         <ClayView
                           depth={absent ? 6 : 2}
-                          puffy={8}
+                          contentOverflow="visible"
                           color={absent ? colors.error + '30' : colors.background}
+                          style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12 }}
                         >
                           <AppText
                             variant="caption"
@@ -193,6 +227,27 @@ export default function AttendanceSessionRosterScreen() {
                           </AppText>
                         </ClayView>
                       </PressClay>
+                      {!neutral ? (
+                        <PressClay
+                          onPress={() =>
+                            setDraft((d) => ({
+                              ...d,
+                              [m.userId]: AttendanceStatus.None,
+                            }))
+                          }
+                        >
+                          <ClayView
+                            depth={2}
+                            contentOverflow="visible"
+                            color={colors.background}
+                            style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12 }}
+                          >
+                            <AppText variant="caption" weight="bold" style={{ color: colors.subtle }}>
+                              Clear
+                            </AppText>
+                          </ClayView>
+                        </PressClay>
+                      ) : null}
                     </View>
                   </ClayView>
                 );

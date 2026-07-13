@@ -114,6 +114,10 @@ export default function PeriodsWorkspaceScreen() {
 
   } = usePeriodsWorkspace();
 
+  const openTermCourses = (periodId: string) => {
+    router.push(`/offerings-workspace?periodId=${periodId}` as never);
+  };
+
 
 
   return (
@@ -156,17 +160,45 @@ export default function PeriodsWorkspaceScreen() {
 
                 {isUniversity ? (
 
-                  <AppButton
+                  <AppText variant="caption" style={[styles.sectionHint, { marginBottom: 10 }]}>
 
-                    title="Manage course offerings"
+                    Periods are date ranges only. Manage term courses, credits, and attendance rules in Course offerings. Build activities and publish in Timetables.
 
-                    variant="outline"
+                  </AppText>
 
-                    onPress={() => router.push('/offerings-workspace')}
+                ) : null}
 
-                    style={{ alignSelf: 'flex-start', marginBottom: 14 }}
 
-                  />
+
+                {isUniversity ? (
+
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+
+                    <AppButton
+
+                      title="Course offerings"
+
+                      variant="outline"
+
+                      onPress={() => router.push('/offerings-workspace')}
+
+                      style={{ minWidth: 0 }}
+
+                    />
+
+                    <AppButton
+
+                      title="Timetables"
+
+                      variant="outline"
+
+                      onPress={() => router.push('/timetables-workspace')}
+
+                      style={{ minWidth: 0 }}
+
+                    />
+
+                  </View>
 
                 ) : null}
 
@@ -305,6 +337,8 @@ export default function PeriodsWorkspaceScreen() {
                   onSetCurrent={() => setAsCurrent(period)}
 
                   onDelete={() => confirmDelete(period.id!, period.name ?? 'period')}
+
+                  onManageCourses={isUniversity ? openTermCourses : undefined}
 
                 />
 

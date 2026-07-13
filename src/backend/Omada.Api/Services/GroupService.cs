@@ -3,6 +3,7 @@ using Omada.Api.Repositories.Interfaces;
 using Omada.Api.Services.Interfaces;
 using Omada.Api.DTOs.Groups;
 using Omada.Api.DTOs.Common;
+using Omada.Api.DTOs.Users;
 using Omada.Api.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Omada.Api.Data;
@@ -406,6 +407,36 @@ public class GroupService : IGroupService
             .ToListAsync();
 
         return new ServiceResponse<IEnumerable<DepartmentSummaryDto>>(true, departments);
+    }
+
+    public async Task<ServiceResponse<IReadOnlyList<DirectoryGroupOptionDto>>> GetDirectoryFilterGroupsAsync()
+    {
+        var treeResult = await GetGroupTreeAsync();
+        if (!treeResult.IsSuccess)
+            return new ServiceResponse<IReadOnlyList<DirectoryGroupOptionDto>>(false, null, treeResult.Error);
+
+        var flat = new List<DirectoryGroupOptionDto>();
+        AppendDirectoryGroupOptions(treeResult.Data ?? [], flat, 0);
+        return new ServiceResponse<IReadOnlyList<DirectoryGroupOptionDto>>(true, flat);
+    }
+
+    private static void AppendDirectoryGroupOptions(
+        IEnumerable<GroupTreeNodeDto> nodes,
+        List<DirectoryGroupOptionDto> flat,
+        int depth)
+    {
+        foreach (var node in nodes.OrderBy(n => n.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            flat.Add(new DirectoryGroupOptionDto
+            {
+                Id = node.Id,
+                Name = node.Name,
+                Type = node.Type,
+                Depth = depth,
+                MemberCount = node.MemberCount,
+            });
+            AppendDirectoryGroupOptions(node.Children, flat, depth + 1);
+        }
     }
 
     public async Task<ServiceResponse<PagedResponse<GroupMemberDto>>> GetGroupMembersAsync(

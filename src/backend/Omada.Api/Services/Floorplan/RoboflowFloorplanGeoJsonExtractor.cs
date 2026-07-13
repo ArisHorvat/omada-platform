@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Options;
+using Omada.Api.Infrastructure.Floorplans;
 using Omada.Api.Infrastructure.Options;
 using Omada.Api.Services.Interfaces;
 using SixLabors.ImageSharp;
@@ -212,7 +213,10 @@ public sealed class RoboflowFloorplanGeoJsonExtractor : IFloorplanGeoJsonExtract
         if (pred.TryGetProperty("points", out var ptsRaw) && ptsRaw.ValueKind == JsonValueKind.Array && ptsRaw.GetArrayLength() > 0)
         {
             var pts = ParsePointsArray(ptsRaw);
-            var ring = PointsToNormalizedClosedRing(pts, imgW, imgH);
+            var ring = FloorplanCoordinateNormalizer.PointsToNormalizedClosedRing(
+                pts.Select(p => (p["x"], p["y"])).ToList(),
+                imgW,
+                imgH);
             if (ring == null)
                 return null;
             return new FloorplanFeatureResult(ring, ConfidenceFromPrediction(pred), ClassNameFromPrediction(pred));
@@ -221,7 +225,13 @@ public sealed class RoboflowFloorplanGeoJsonExtractor : IFloorplanGeoJsonExtract
         if (pred.TryGetProperty("x", out _) && pred.TryGetProperty("y", out _)
             && pred.TryGetProperty("width", out _) && pred.TryGetProperty("height", out _))
         {
-            var ring = BboxXywhToNormalizedRectRing(pred, imgW, imgH);
+            if (!TryToDouble(pred.GetProperty("x"), out var cx)
+                || !TryToDouble(pred.GetProperty("y"), out var cy)
+                || !TryToDouble(pred.GetProperty("width"), out var bw)
+                || !TryToDouble(pred.GetProperty("height"), out var bh))
+                return null;
+
+            var ring = FloorplanCoordinateNormalizer.BboxXywhToNormalizedRectRing(cx, cy, bw, bh, imgW, imgH);
             if (ring == null)
                 return null;
             return new FloorplanFeatureResult(ring, ConfidenceFromPrediction(pred), ClassNameFromPrediction(pred));
@@ -256,76 +266,6 @@ public sealed class RoboflowFloorplanGeoJsonExtractor : IFloorplanGeoJsonExtract
             return true;
         value = 0;
         return false;
-    }
-
-    private static List<List<double>>? PointsToNormalizedClosedRing(
-        List<Dictionary<string, double>> points,
-        int imgW,
-        int imgH)
-    {
-        if (imgW <= 0 || imgH <= 0 || points.Count < 3)
-            return null;
-
-        var ring = new List<List<double>>();
-        foreach (var pt in points)
-        {
-            if (!pt.TryGetValue("x", out var px) || !pt.TryGetValue("y", out var py))
-                continue;
-            ring.Add([px / imgW, py / imgH]);
-        }
-
-        if (ring.Count < 3)
-            return null;
-
-        var ax = ring[0][0];
-        var ay = ring[0][1];
-        var bx = ring[^1][0];
-        var by = ring[^1][1];
-        if (Math.Abs(ax - bx) > 1e-9 || Math.Abs(ay - by) > 1e-9)
-            ring.Add([ax, ay]);
-
-        return ring;
-    }
-
-    private static List<List<double>>? BboxXywhToNormalizedRectRing(JsonElement pred, int imgW, int imgH)
-    {
-        if (!TryToDouble(pred.GetProperty("x"), out var cx)
-            || !TryToDouble(pred.GetProperty("y"), out var cy)
-            || !TryToDouble(pred.GetProperty("width"), out var bw)
-            || !TryToDouble(pred.GetProperty("height"), out var bh))
-            return null;
-
-        if (bw <= 0 || bh <= 0)
-            return null;
-
-        var (pcx, pcy, pbw, pbh) = PixelXywhIfNormalized(cx, cy, bw, bh, imgW, imgH);
-        var halfW = pbw / 2.0;
-        var halfH = pbh / 2.0;
-        var x1 = pcx - halfW;
-        var y1 = pcy - halfH;
-        var x2 = pcx + halfW;
-        var y2 = pcy + halfH;
-
-        double Nxp(double px) => px / imgW;
-        double Nyp(double py) => py / imgH;
-
-        return
-        [
-            [Nxp(x1), Nyp(y1)],
-            [Nxp(x2), Nyp(y1)],
-            [Nxp(x2), Nyp(y2)],
-            [Nxp(x1), Nyp(y2)],
-            [Nxp(x1), Nyp(y1)]
-        ];
-    }
-
-    private static (double cx, double cy, double bw, double bh) PixelXywhIfNormalized(
-        double cx, double cy, double bw, double bh, int imgW, int imgH)
-    {
-        var maxDim = Math.Max(Math.Max(Math.Abs(cx), Math.Abs(cy)), Math.Max(Math.Abs(bw), Math.Abs(bh)));
-        if (maxDim <= 1.0 + 1e-9 && imgW > 1 && imgH > 1)
-            return (cx * imgW, cy * imgH, bw * imgW, bh * imgH);
-        return (cx, cy, bw, bh);
     }
 
     private static double ConfidenceFromPrediction(JsonElement pred)

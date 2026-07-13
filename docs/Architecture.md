@@ -2,7 +2,7 @@
 
 A visual, practical guide to how Omada is designed — from login to database rows to dashboard widgets.
 
-**Related:** [`Backend.md`](Backend.md) · [`Frontend.md`](Frontend.md) · [`Configuration.md`](Configuration.md) · [`AccountSecurity.md`](AccountSecurity.md) · [`DigitalId.md`](DigitalId.md)
+**Related:** [`Backend.md`](Backend.md) · [`Frontend.md`](Frontend.md) · [`Configuration.md`](Configuration.md) · [`AccountSecurity.md`](AccountSecurity.md) · [`DigitalId.md`](DigitalId.md) · [`Timetables.md`](Timetables.md)
 
 ---
 
@@ -134,7 +134,7 @@ flowchart LR
     Intersect --> User["User's WidgetAccess\non GET /api/users/me"]
 ```
 
-- **Org type** filters catalog options: university (grades) vs corporate (documents) vs shared (chat, news, map, rooms, …). **Coursework** uses always-on **`tasks`** (roles UI: **Tasks**) — see [`Coursework.md`](Coursework.md). **Grades widget** — coursework standing + teacher gradebook — see [`Grades.md`](Grades.md).
+- **Org type** filters catalog options: university (grades) vs corporate (documents) vs shared (**announcements**, map, rooms, …). **Coursework** uses always-on **`tasks`** (roles UI: **Tasks**) — see [`Coursework.md`](Coursework.md). **Grades widget** — coursework standing + teacher gradebook — see [`Grades.md`](Grades.md). **Announcements** — replaces chat/news — see [`Announcements.md`](Announcements.md).
 - **Removed** from member catalog: events, transport, finance. **Groups** = admin RBAC only.
 
 | Access level | Can do |
@@ -257,7 +257,7 @@ flowchart TB
     REG --> DASH
 ```
 
-**Dashboard widgets (9):** `news`, `schedule`, `tasks`, `map`, `users`, `attendance`, `chat`, `grades`, `rooms` — university **coursework** is under always-on **`tasks`**, not a separate catalog widget
+**Dashboard widgets (9):** `announcements`, `schedule`, `tasks`, `map`, `users`, `attendance`, `grades`, `rooms` — university **coursework** is under always-on **`tasks`**, not a separate catalog widget. Legacy **`news`** / **`chat`** bento keys map to **`announcements`**.
 
 **Admin catalog:** toggleable per org type; **always on:** schedule, tasks, digital-id. **Not in catalog:** events, transport, finance. **Groups:** admin permissions only.
 
@@ -268,15 +268,15 @@ flowchart TB
 | Domain | Key entities | API surface |
 |--------|--------------|-------------|
 | 🏢 Tenancy | `Organization`, `User`, `OrganizationMember`, `Role` | Auth, Orgs, Users |
-| 📅 Schedule | `Event`, `EventType`, `ScrapedClassEvent` | Schedule, EventTypes, WebSpider |
-| 📰 Content | `NewsItem`, `TaskItem`, `Grade`, `Message` | News, Tasks, Grades, Chat |
+| 📅 Schedule | `Event`, `EventType`, `CourseOffering.WeeklySessionPlanJson`, `ScrapedClassEvent` | Schedule, EventTypes, **PeriodTimetableAdmin**, WebSpider |
+| 📰 Content | `NewsItem`, `TaskItem`, `Grade`, `Message`, **`AnnouncementChannel`**, **`AnnouncementPost`**, **`AnnouncementComment`** | News (legacy), Tasks, Grades, Chat (legacy), **Announcements** |
 | 🗺️ Map | `Building`, `Floor`, `Room`, `Floorplan`, `MapPin` | Buildings, Maps, Floorplans, Rooms |
 
 **Map coordinates:** campus **`Building.Latitude/Longitude`** (outdoor markers) vs indoor **`Room.CoordinateX/Y`** normalized on floorplan images. Admin: **`/floorplan-workspace`** (Locations & maps) — levels may exist without floorplan; optional Roboflow AI. See **`domain-map-rooms-admin.mdc`**.
 | 🕷️ Spider | `ScrapedClassEvent`, `SpiderSyncRun` | WebSpider |
 | 📋 Admin | `AuditLog`, `OrganizationPeriod` | OrgAdmin, SuperAdmin |
 
-> ⚠️ **Important:** In-app calendar (`Event`) and scraped timetable (`ScrapedClassEvent`) are **separate models**. Spider sync fills `ScrapedClassEvent` via Hangfire — not the user calendar directly.
+> ⚠️ **Important:** In-app calendar (`Event`) and scraped timetable (`ScrapedClassEvent`) are **separate models**. Optional spider **sync** fills `ScrapedClassEvent` via Hangfire. **Import map & apply** writes **`WeeklySessionPlanJson`** on offerings (`ScrapedScheduleApplyService`) — members still need **native publish** (`OfferingTimetableService`) for Schedule. See [`Timetables.md`](Timetables.md) · [`WebSpider.md`](WebSpider.md).
 
 ---
 
@@ -354,4 +354,5 @@ omada-platform/
 | API folders & controllers | [`Backend.md`](Backend.md) |
 | Mobile routes & components | [`Frontend.md`](Frontend.md) |
 | Environment setup | [`Configuration.md`](Configuration.md) |
+| Native timetables | [`Timetables.md`](Timetables.md) |
 | Web crawling | [`WebSpider.md`](WebSpider.md) |

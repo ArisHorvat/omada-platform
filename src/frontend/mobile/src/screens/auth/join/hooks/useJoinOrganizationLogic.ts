@@ -95,7 +95,7 @@ export const useJoinOrganizationLogic = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
 
   const profileQuery = useQuery({
-    queryKey: QUERY_KEYS.userProfile,
+    queryKey: QUERY_KEYS.userProfile(activeSession?.orgId ?? ''),
     queryFn: () => unwrap(usersApi.getMe()),
     enabled: isSignedIn,
   });

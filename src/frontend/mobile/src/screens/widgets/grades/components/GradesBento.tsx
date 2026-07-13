@@ -33,7 +33,7 @@ export const GradesBento: React.FC<GradesBentoProps> = ({ accentColor, size }) =
   } = useGradesWidgetLogic();
 
   const isLarge = size === 'large' || size === 'wide';
-  const fontSize = isLarge ? 72 : 44;
+  const fontSize = isLarge ? 48 : 30;
   const latest = useMemo(() => getLatestGrade(grades), [grades]);
   const trend = useMemo(() => computeSemesterGpaTrend(grades), [grades]);
 
@@ -103,10 +103,10 @@ export const GradesBento: React.FC<GradesBentoProps> = ({ accentColor, size }) =
 };
 
 const styles = StyleSheet.create({
-  center: { alignItems: 'center', justifyContent: 'center', minHeight: 140 },
-  clay: { borderRadius: 20, minHeight: 120, alignItems: 'center', justifyContent: 'center' },
-  clayLarge: { minHeight: 160 },
-  large: { borderRadius: 20, minHeight: 160 },
+  center: { alignItems: 'center', justifyContent: 'center', flex: 1, minHeight: 0 },
+  clay: { borderRadius: 16, flex: 1, minHeight: 0, alignItems: 'center', justifyContent: 'center', paddingVertical: 4 },
+  clayLarge: { paddingVertical: 6 },
+  large: { borderRadius: 16, flex: 1, minHeight: 0, paddingVertical: 6 },
   kicker: { marginBottom: 4, letterSpacing: 0.6 },
   gpa: { textAlign: 'center' },
   meta: { marginTop: 8, opacity: 0.75, textAlign: 'center' },

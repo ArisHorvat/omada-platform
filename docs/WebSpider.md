@@ -1,282 +1,288 @@
-# 🕷️ Omada Web Spider
+# Schedule import (web spider)
 
-> Crawl public HTML, extract **timetable rows** and **news articles**, merge into the database, and manage everything from the mobile admin workspace.
+> Crawl public HTML timetable pages, **normalize day/time/frequency**, preview on a Mon–Fri week grid, **map scraped labels to Omada entities**, and optionally write **`WeeklySessionPlanJson`** on a term offering (Build tab) or sync rows into **`ScrapedClassEvent`** for reference.
 
-**Related:** [`Configuration.md`](Configuration.md) · [`Backend.md`](Backend.md) · [`Architecture.md`](Architecture.md)
+**Admin route:** Timetables → **Import schedule** (`/timetables-workspace?tab=import`) only — there is **no** separate **Integrations / Web spider** item in admin nav or onboarding. Legacy URL `/web-spider-workspace` **redirects** to the Import tab.
 
----
-
-## 🎯 Purpose
-
-| Capability | What it does |
-|------------|--------------|
-| 📅 **Schedule discovery** | BFS crawl of same-host links; classify pages as menu vs schedule |
-| 📊 **Schedule extraction** | Parse timetable `<table>` grids (rowspan/colspan) → `ScrapedEventDto` |
-| 🌐 **Site / hub crawl** | Index pages → enqueue same-directory `.html` links (e.g. UBB tabelar) |
-| 📰 **News discovery** | Crawl with news heuristics (paths, `<article>`, archives) |
-| 📝 **News extraction** | Strip boilerplate, extract title + body; optional Gemini categorization |
-| 💾 **Persistence & merge** | Hangfire → upsert `ScrapedClassEvent` by natural key + SHA-256 hash |
-| 🎯 **Entity resolution** | Match professor → `HostId`, room text → `RoomId` |
-| 👁️ **Admin preview** | Preview scrape, discover links, enqueue sync — no server file edits |
-
-> ⚠️ In-app calendar = **`Event`**. Spider timetable = **`ScrapedClassEvent`**. **Separate tables!**
+**Related:** [`Timetables.md`](Timetables.md) · [`Configuration.md`](Configuration.md) · [`Backend.md`](Backend.md)
 
 ---
 
-## 🏗️ Architecture
+## Purpose (two outcomes)
+
+| Outcome | Storage | Member Schedule? |
+|---------|---------|------------------|
+| **Map & apply to offering** | `CourseOffering.WeeklySessionPlanJson` | After **Build → publish** → `Event` |
+| **Sync to DB (optional)** | `ScrapedClassEvent` | No — admin reference / migration only |
+
+> ⚠️ **In-app calendar = `Event`.** Spider store = **`ScrapedClassEvent`**. Scraping alone does **not** fill member Schedule. Use **native timetables publish** ([`Timetables.md`](Timetables.md)) after patterns are on offerings.
+
+> **News crawling removed from admin** — schedule import only. The News **widget** is unchanged; spider-based news sync/endpoints were removed from the admin API and UI.
+
+---
+
+## Admin import flow (Import tab)
+
+```mermaid
+flowchart LR
+    A[Paste URL] --> B[Preview scrape]
+    B --> C{Large index?}
+    C -->|Yes ≥120 rows| D[Pick program page + study group]
+    C -->|No| E[Scoped rows]
+    D --> E
+    E --> F[Week grid + session list]
+    F --> G[Toggle sessions on/off]
+    G --> H[Map & apply panel]
+    H --> I[Preview apply]
+    I --> J[Apply to offering pattern]
+    J --> K[Build & publish tab → publish → Schedule]
+```
+
+### 1. Scrape scope
+
+| Source page | Typical use |
+|-------------|-------------|
+| **Full index** (~2000+ rows) | Must narrow: pick **program/year page** (e.g. IE3) + **study group** (934, 935, 934/1) |
+| **Year page** | Fewer rows; may still need group filter on large programs |
+| **Group page** | Rows for one study group |
+| **Single offering page** | Rows often show **activity only** (Curs, Laborator) — **course name is in the page title**, not each row |
+
+**Dedup:** exact duplicate rows (same cells) are removed client-side. **Different subgroups** (934 vs 934/1) stay separate — do not merge cross-group rows.
+
+### 2. Week grid preview
+
+- **Mon–Fri only** — Saturday/Sunday parsed rows appear in the session list with stats (`weekend` count), not on the grid.
+- Each scraped row gets its own grid block (no merge by day/time alone).
+- Stats line example: `8 on week grid · 2 unparsed · 2 weekend (not on grid)`.
+- **Reporting period** picker ties import to the term used for offering mapping.
+
+**Frontend:** `ImportScheduleWeekPreview`, `utils/scrapedDisplaySlots.ts`, `utils/scrapedScheduleTiming.ts`.
+
+### 3. Session toggles
+
+- **Sessions** list: tap a row to **include/exclude** from import; **All / None** shortcuts.
+- Only **enabled** sessions feed the week grid (filtered), mapping resolution, preview, and apply.
+
+**Frontend:** `ImportScheduleSessionList`, `utils/scrapedSessionKey.ts`.
+
+### 4. Map & apply (import wizard)
+
+The Import tab uses a **step wizard** (`import-wizard/`) after scrape + scope:
+
+| Step | Purpose |
+|------|---------|
+| **Context** | Import target (single course, study group, multi-course, etc.) |
+| **Mapping** | Map scraped labels per section (subjects, activities, rooms, groups, professors); combo nav shows **unmapped counts** |
+| **Review** | Preview apply across **all mapped offerings** (batch) before writing patterns |
+
+**Create while mapping:** header actions on picker sheets (**New event type**, **New room**, **New group**, **Add course**) — not inline list options. Bottom sheets use **`importWizardSheetLayout.ts`** for scroll + height on web.
+
+**Add course (unmapped subject):** **`ImportScheduleCreateOfferingSheet`** + **`importOfferingViaPackage.ts`** — adds course to a curriculum package and applies to the current period:
+
+| Package mode | Program picker |
+|--------------|----------------|
+| **Existing package** | **Hidden** — uses programs already linked on the package |
+| **Create new package** | **Required** — same program group as Offerings workspace |
+
+Before writing the weekly pattern, admins review mappings:
+
+| Scraped label | Maps to | Create new? |
+|---------------|---------|-------------|
+| **Activity** (Curs, Laborator, Seminar) | **Event type** | Yes — e.g. create "Lecture" |
+| **Teacher / professor** | **Host** (org member) | Pick from full directory |
+| **Room** | **Room** | Yes |
+| **Study group** (934, IE3, 934/1) | **Program / series / group / subgroup** | Yes — choose type on create |
+| **Course name** (multi-course imports) | **Term offering** | Pick from period catalog |
+| **Target offering** | One **`CourseOffering`** for this apply | Required |
+
+**Single-course pages:** enable **All rows → this offering** (auto-suggested when rows look activity-only). Backend **`ScrapedScheduleRowEnricher`** fills `ClassName` from page heading / offering name / implicit course hint — **only** when the row has no real discipline or is an exact activity label (`Curs`, `Laborator`, …).
+
+**Multi-course group/year pages** (e.g. `IE3.html` with a **Disciplina** column): each row keeps its **Disciplina** text. Do **not** replace with the page code (`IE3`). See **Row enrichment pitfalls** below.
+
+**Pickers:** full org catalogs (event types, hosts, rooms, groups, offerings) with **suggested matches** at the top. **Create & use** opens inline sheet for new event type, group (with type), or room.
+
+**Frontend:** `ImportScheduleApplyPanel`, `ImportScheduleCreateEntitySheet`, `hooks/useImportScheduleMappingCatalogs.ts`.
+
+**API client:** `WebSpiderClient.resolveImportMappings`, `previewApplyScrapedToOffering`, `applyScrapedToOffering` in `generatedClient.ts`. Temporary wrappers: `scrapedScheduleImportApi.ts`, `scrapedScheduleApplyApi.ts` — use path **`/web-spider/...`** with `apiClient` (base URL already includes `/api`; do **not** double-prefix `/api/api/...`).
+
+---
+
+## Architecture
 
 ```mermaid
 flowchart TB
-    subgraph Admin["🛡️ Admin HTTP"]
+    subgraph Admin["Admin HTTP"]
         WC[WebSpiderController]
         WAS[WebSpiderAdminService]
+        RES[ScrapedScheduleImportResolutionService]
+        APP[ScrapedScheduleApplyService]
     end
 
-    subgraph Jobs["⏰ Background Jobs"]
+    subgraph Jobs["Background"]
         HF[Hangfire ScheduleSyncJobs]
     end
 
-    subgraph Services["⚙️ Services"]
+    subgraph Services["Services"]
         WSS[WebSpiderService]
         SSS[ScheduleSpiderSyncService]
-        NSS[NewsSpiderSyncService]
-        SUR[SpiderUrlResolver]
         SER[ScrapedEntityResolutionService]
         GEM[GeminiService]
     end
 
-    subgraph Data["💾 Data"]
-        UOW[UnitOfWork]
-        DB[(SQL Server)]
-    end
-
     WC --> WAS
+    WC --> RES
+    WC --> APP
     WAS --> WSS
-    WAS --> SUR
+    RES --> SER
+    APP --> SER
     HF --> SSS
-    HF --> NSS
     SSS --> WSS
-    SSS --> SUR
-    SSS --> GEM
-    WSS --> GEM
-    SSS --> UOW
-    SUR --> DB
 ```
 
 | Service | Role |
 |---------|------|
-| `WebSpiderService` | HTTP fetch, HtmlAgilityPack parsing, discovery, extraction |
-| `WebSpiderAdminService` | Org-scoped preview/discover/sync orchestration |
-| `SpiderUrlResolver` | DB URLs first → appsettings fallback (schedule only) |
-| `ScheduleSpiderSyncService` | Site extraction → hash upsert → resolution |
-| `NewsSpiderSyncService` | News crawl → `NewsItem` (dedup by source URL/hash) |
-| `GeminiService` | AI fallback for news categories + schedule JSON |
+| `WebSpiderService` | HTTP fetch, HtmlAgilityPack, table parse, page course heading, group heading |
+| `WebSpiderAdminService` | Preview/discover/sync orchestration |
+| `ScrapedScheduleImportResolutionService` | Suggestions: subjects, activities, professors, rooms, study groups |
+| `ScrapedScheduleApplyService` | Preview/apply scoped rows → `WeeklySessionPlanJson` with user mappings |
+| `ScrapedEntityResolutionService` | Professor → host, room text → room id |
+| `ScheduleSpiderSyncService` | Hangfire merge → `ScrapedClassEvent` |
+| `ScrapedScheduleRowEnricher` | Single-offering pages: activity-only rows → page/offering course hint; **never** substring-match discipline names (e.g. *Proiect de cercetare*) |
+| `ScrapedScheduleNormalizer` + `ScheduleTimeParser` | `dayOfWeek`, `startTimeLocal`, `hoursPerSession`, `frequency` (`sapt1`, `sapt. 1`, `sapt. 2`, …) |
 
 ---
 
-## 🔗 URL configuration
+## Admin HTTP API
 
-### 🗄️ Database (preferred)
+**Base:** `/api/web-spider`
 
-| Column | Purpose |
-|--------|---------|
-| `SpiderSchedulePageUrl` | Timetable index or year page |
-| `SpiderNewsStartUrl` | News site entry URL |
+| Method | Route | Auth | Behavior |
+|--------|-------|------|----------|
+| `GET` | `/config` | `admin` Admin | Org spider config (resolved URLs) |
+| `PUT` | `/config` | `admin` Admin | Save schedule URL on Organization |
+| `POST` | `/schedule/preview` | `admin` Admin | Site extraction (max 80 pages) |
+| `POST` | `/schedule/discover` | `admin` Admin | Link map only |
+| `POST` | `/schedule/sync` | `admin` Admin | Enqueue Hangfire schedule sync |
+| `GET` | `/sync/history` | `admin` Admin | `SpiderSyncRun` history |
+| `GET` | `/schedule/unresolved` | `admin` Admin | Rows with unresolved host/room |
+| `POST` | `/schedule/import-resolution` | **Org Admin** | Mapping suggestions for scraped labels |
+| `POST` | `/schedule/apply-to-offering/preview` | **Org Admin** | Preview weekly pattern from scoped rows |
+| `POST` | `/schedule/apply-to-offering` | **Org Admin** | Write pattern to offering (Build tab) |
 
-Saved via **`PUT /api/web-spider/config`**. Mobile **Web crawling** workspace calls this.
+**Apply request highlights:** `periodId`, `offeringId`, `events[]`, `studyGroupLabel`, `replaceExistingSessions`, `importAllScopedRows`, `implicitCourseName`, `mappings` (`ScrapedImportMappingsDto`).
 
-### 📄 appsettings.json (fallback — schedule only)
-
-```json
-{
-  "Spider": {
-    "DefaultSchedulePageUrl": "https://example.edu/orar",
-    "Organizations": {
-      "00000000-0000-0000-0000-000000000001": {
-        "SchedulePageUrl": "https://org-specific/orar"
-      }
-    }
-  },
-  "Gemini": {
-    "ApiKey": "",
-    "Model": "gemini-2.0-flash"
-  }
-}
-```
-
-**News URLs** must be in the database — not appsettings.
-
-Gemini key: `Gemini:ApiKey`, `Gemini__ApiKey`, or `GEMINI_API_KEY` in `.env`. See [`Configuration.md`](Configuration.md).
+Responses: **`ServiceResponse<T>`** + **`AppError`**.
 
 ---
 
-## 🌐 Admin HTTP API
+## Crawler behavior
 
-**Base:** `/api/web-spider` · **Auth:** `admin` widget + **Admin** permission
-
-| Method | Route | Behavior |
-|--------|-------|----------|
-| `GET` | `/config` | Org spider config (resolved URLs) |
-| `PUT` | `/config` | Save schedule/news URLs on Organization |
-| `POST` | `/schedule/preview` | Site extraction (max 80 pages) |
-| `POST` | `/schedule/discover` | Link map only, no row extraction |
-| `POST` | `/schedule/sync` | Enqueue Hangfire schedule sync |
-| `POST` | `/news/preview` | Fetch one article, return preview |
-| `POST` | `/news/discover` | News link discovery |
-| `POST` | `/news/sync` | Enqueue news sync into `NewsItem` |
-| `GET` | `/sync/history` | Paginated `SpiderSyncRun` history |
-| `GET` | `/schedule/unresolved` | Rows with unresolved host/room matches |
-
-Responses: **`ServiceResponse<T>`** + **`AppError`**
-
----
-
-## 🔍 Crawler API (`IWebSpiderService`)
-
-| Method | Behavior |
-|--------|----------|
-| `DiscoverLinksAsync` | BFS same-host, classify pages, cap ~250 |
-| `ExtractScheduleFromTableAsync` | Parse table on one page; Gemini fallback if structure changed |
-| `ExtractScheduleFromSiteAsync` | Multi-page hub crawl; default cap 32, preview **80**, sync **120** |
-| `FetchSchedulePageHtmlAsync` | GET HTML |
-| `DiscoverNewsLinksAsync` | News BFS, cap ~200 |
-| `ExtractNewsArticleAsync` | Title + body + optional Gemini category |
-
-### 📂 Hub / index pages (e.g. UBB)
-
-Typical flow for `.../tabelar/index.html`:
+### Hub / index pages (e.g. UBB tabelar)
 
 1. Fetch index — if no rows, collect same-folder `.html` links
-2. Visit each linked page until page cap
-3. Each row gets **`SourcePageUrl`** and **`ActivityType`** (Curs, Laborator, Seminar)
+2. Visit linked pages until page cap
+3. **Leaf tables only** — nested wrapper tables skipped to avoid duplicate rows
+4. **Group heading** — nearest preceding `h1–h4` containing "grupa"
+5. **Course heading** — nearest preceding heading that is not a group/year label (single-offering pages). **Reject** short program/year codes (`IE3`, `I1`, `M2`, …) via **`IsProgramOrGroupPageCode`**.
+6. **Column map** — UBB-style headers: **Disciplina** → `ClassName`, **Tipul** → `ActivityType`. Time column matches **`orele`** or whole-cell **`ora`** — not the **`ora`** substring inside words like *Laborator*.
+7. Each row: **`SourcePageUrl`**, **`ActivityType`**, **`GroupNumber`**
 
-> ⚠️ If **`WasTruncated`** is true, use a **single year URL** for full coverage.
+> ⚠️ If **`WasTruncated`** is true, use a **single year** or **group/offering URL** for full coverage.
+
+### Time normalization
+
+`ScheduleTimeParser` + frontend mirror in `scrapedScheduleTiming.ts` — Romanian/English day tokens, time ranges, biweekly hints.
+
+**Frequency tokens:** `sapt1` / `sapt. 1` / `sapt 1` (week 1), `sapt2` / `sapt. 2` / `sapt 2` (week 2) → weekly or biweekly as appropriate.
+
+### Row enrichment pitfalls (`ScrapedScheduleRowEnricher`)
+
+| Pitfall | Correct behavior |
+|---------|------------------|
+| Discipline contains *proiect*, *seminar*, *laborator*, *curs* | **`IsActivityOnlyLabel`** = **exact** match on activity tokens only — *Proiect de cercetare* is a course name, not activity-only |
+| Page title / URL is program code (`IE3`) | **`IsProgramOrGroupPageCode`** — never use as `ClassName` on multi-course tables |
+| ≥2 distinct discipline names in scrape | **`ResolveImplicitCourseNameAsync`** returns null — no single implicit course from URL |
+| Single-offering page, row is only `Laborator` | Enricher moves activity to **`ActivityType`**, fills **`ClassName`** from page heading / selected offering |
 
 ---
 
-## 📋 Key DTOs (`DTOs/Scraping/`)
+## Key DTOs (`DTOs/Scraping/`)
 
 | Type | Purpose |
 |------|---------|
-| `ScrapedEventDto` | ClassName, Time, Room, Professor, GroupNumber, ActivityType, SourcePageUrl |
-| `SpiderPreviewScheduleResultDto` | Preview: events + page summaries + truncation flags |
-| `SpiderConfigDto` / `SaveSpiderConfigRequest` | Org URL config |
-| `SpiderDiscoveryResult` | Schedule link discovery |
-| `ExtractedNewsArticleDto` | News preview body + category |
-| `SpiderSyncEnqueueResultDto` | Hangfire jobId + message |
+| `ScrapedEventDto` | ClassName, Time, Room, Professor, GroupNumber, ActivityType, SourcePageUrl, normalized time fields |
+| `ScrapedImportResolutionRequest/ResultDto` | Mapping suggestions per label |
+| `ScrapedImportMappingsDto` | User-confirmed maps (activity→event type, professor→host, room, study group) |
+| `ApplyScrapedScheduleRequest` | Apply/preview payload |
+| `SpiderPreviewScheduleResultDto` | Preview: events + pages + truncation |
+| `SpiderConfigDto` | Org URL config |
 
 ---
 
-## 🔄 Schedule merge pipeline
+## Schedule merge pipeline (Hangfire sync)
 
 ```text
-1. 🔗 Resolve URL (SpiderUrlResolver — DB → appsettings)
-2. 🕷️ Extract (ExtractScheduleFromSiteAsync, max 120 pages)
-3. #️⃣ Hash each row (ScrapedEventHasher — SHA-256)
-4. 🔑 Natural key: ClassName + Time + GroupNumber
-5. 🎯 Resolve HostId / RoomId (ScrapedEntityResolutionService)
-6. 💾 Upsert / update on hash change / delete missing rows
-7. ✅ SaveChanges via UnitOfWork
+1. Resolve URL (SpiderUrlResolver — DB → appsettings)
+2. Extract (ExtractScheduleFromSiteAsync)
+3. Hash each row (ScrapedEventHasher)
+4. Natural key: ClassName + Time + GroupNumber
+5. Resolve HostId / RoomId
+6. Upsert ScrapedClassEvent
 ```
 
-**Tenancy:** Hangfire runs without HTTP user — queries use explicit `OrganizationId` filters.
+Tenancy: Hangfire uses explicit `OrganizationId` — no HTTP user context.
 
 ---
 
-## ✨ Gemini behavior
-
-| Use case | Behavior |
-|----------|----------|
-| 📰 News categorization | Prompt lists `NewsCategory` values → parsed to enum |
-| 📅 Schedule fallback | When DOM parsing fails → JSON array of event objects |
-| ⚙️ Config | `Gemini:ApiKey` or `GEMINI_API_KEY`, model e.g. `gemini-2.0-flash` |
-
----
-
-## 📱 Mobile admin UI
+## Mobile file map
 
 | Path | Purpose |
 |------|---------|
-| `app/(app)/(admin)/web-spider-workspace.tsx` | Expo route |
-| `screens/admin/web-spider-workspace/` | Screen, hooks, tabs, preview |
-| `screens/admin/components/org-dashboard.tsx` | **Web crawling** entry |
-
-### Workspace features
-
-| Tab | Features |
-|-----|----------|
-| 📅 **Schedule** | Save URLs, preview, discover, sync, history, unresolved matches |
-| 📰 **News** | News URL, article preview, discover, sync, history |
-| 🔍 **Preview** | Grouped collapsible sections, filter sheet (group, program, teacher, day) |
-
-**API client:** `WebSpiderClient` in `generatedClient.ts` — regen with `npm run generate-api`.
+| `screens/admin/timetables-workspace/components/TimetablesImportTab.tsx` | Import tab shell |
+| `ImportScheduleScopePanel.tsx` | Large-scrape program + group picker |
+| `ImportScheduleWeekPreview.tsx` | Week grid + period picker |
+| `ImportScheduleSessionList.tsx` | Rows + include/exclude toggles |
+| `ImportScheduleApplyPanel.tsx` | Legacy map & apply (superseded by wizard where enabled) |
+| `ImportScheduleCreateOfferingSheet.tsx` | Add course via package during mapping |
+| `import-wizard/` | Context · Mapping · Review steps; **`importOfferingViaPackage.ts`** |
+| `ImportScheduleCreateEntitySheet.tsx` | Create event type / group / room from mapping pickers |
+| `utils/importScheduleScope.ts` | Scope catalog + filters |
+| `utils/scrapedEventDedup.ts` | Exact row dedup |
+| `utils/scrapedDisplaySlots.ts` | Grid slots + parse stats |
+| `utils/scrapedSessionKey.ts` | Per-row toggle keys |
+| `screens/admin/web-spider-workspace/` | Shared scrape UI (`WebSpiderScheduleTab`, discovery list) |
 
 ---
 
-## 📂 Backend file inventory
-
-### Core
+## Backend file map
 
 | File | Purpose |
 |------|---------|
-| `Services/WebSpiderService.cs` | Crawls, parsing, extraction |
+| `Services/WebSpiderService.cs` | Crawl + table extraction + headings |
 | `Services/WebSpiderAdminService.cs` | Admin orchestration |
+| `Services/ScrapedScheduleImportResolutionService.cs` | Import mapping suggestions |
+| `Services/ScrapedScheduleApplyService.cs` | Apply to `WeeklySessionPlanJson` |
+| `Services/ScrapedEntityResolutionService.cs` | Host/room fuzzy match |
+| `Infrastructure/Scraping/ScrapedScheduleRowEnricher.cs` | Single-course enrichment; **`IsProgramOrGroupPageCode`**; exact **`IsActivityOnlyLabel`** |
+| `Infrastructure/Scraping/ScheduleTimeParser.cs` | Day/time/frequency parse (`sapt. 1`, `sapt. 2`, …) |
+| `Infrastructure/Scraping/ScrapedScheduleDedup.cs` | Server-side dedup helpers |
 | `Controllers/WebSpiderController.cs` | HTTP surface |
-| `Services/SpiderUrlResolver.cs` | URL resolution |
+| `Services/ScheduleSpiderSyncService.cs` | Hangfire → `ScrapedClassEvent` |
 
-### Sync & AI
-
-| File | Purpose |
-|------|---------|
-| `Services/ScheduleSpiderSyncService.cs` | Hash merge → `ScrapedClassEvent` |
-| `Services/NewsSpiderSyncService.cs` | News → `NewsItem` |
-| `Services/ScrapedEntityResolutionService.cs` | Host/room resolution |
-| `Services/GeminiService.cs` | AI fallbacks |
-| `Infrastructure/Hangfire/ScheduleSyncJobs.cs` | Hangfire entry |
-| `Infrastructure/Scraping/ScrapedEventHasher.cs` | SHA-256 change detection |
-
-### Persistence
-
-| File | Purpose |
-|------|---------|
-| `Entities/ScrapedClassEvent.cs` | Org-scoped scraped rows |
-| `Entities/SpiderSyncRun.cs` | Per-run status, counts, errors |
-| `Repositories/ScrapedClassEventRepository.cs` | Data access |
+Registered in `Program.cs`: `IScrapedScheduleApplyService`, `IScrapedScheduleImportResolutionService`.
 
 ---
 
-## ⚙️ Dependency injection
-
-Registered in `Program.cs`:
-
-- `AddHttpClient<IWebSpiderService, WebSpiderService>` — 45s timeout
-- `AddHttpClient<IGeminiService, GeminiService>`
-- `AddScoped<IWebSpiderAdminService, WebSpiderAdminService>`
-- `AddScoped<IScheduleSpiderSyncService, ScheduleSpiderSyncService>`
-- Hangfire SQL storage + dashboard at **`/hangfire`**
-
----
-
-## 📋 Operational notes
+## Operational notes
 
 | Topic | Guidance |
 |-------|----------|
-| ⏰ **Hangfire dashboard** | Monitor jobs at `/hangfire` after **Sync to DB** |
-| 🤝 **Rate limits** | Crawl caps + timeouts — use only authorized institutional pages |
-| ✂️ **Truncation** | Large indexes hit page caps — prefer specific year URLs |
-| 🔄 **NSwag** | Regenerate mobile client after DTO/endpoint changes |
-| 🗺️ **Floorplan AI** | Separate subsystem — Roboflow in `Omada.Api`, not spider |
+| **Member Schedule** | Apply → **Build & publish** → **publish** per offering |
+| **404 on import API** | Restart API after deploy; frontend must call `/web-spider/...` via `apiClient`, not `/api/web-spider/...` |
+| **NSwag** | Regenerate after DTO/route changes: `cd src/frontend/mobile && npm run generate-api` |
+| **Hangfire** | Optional **Sync to DB** at `/hangfire` — separate from map & apply |
+| **Rate limits** | Crawl caps + timeouts — use only authorized institutional pages |
 
 ---
 
-## 📈 Evolution timeline
-
-```text
-ScrapedClassEvent → Hangfire → hash merge → host/room resolution
-  → Gemini fallbacks → admin API + DB URLs → hub crawl
-  → ActivityType / SourcePageUrl → mobile admin workspace
-```
-
----
-
-*Update this file when adding spider endpoints, DTO fields, crawl behavior, or admin UI flows.*
+*Update this file when adding spider endpoints, import mapping fields, crawl behavior, or admin UI flows.*

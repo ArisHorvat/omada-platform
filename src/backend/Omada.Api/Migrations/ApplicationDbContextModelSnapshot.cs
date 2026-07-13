@@ -37,6 +37,146 @@ namespace Omada.Api.Migrations
                     b.ToTable("RoomAllowedEventTypes", (string)null);
                 });
 
+            modelBuilder.Entity("Omada.Api.Entities.AnnouncementChannel", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("CourseOfferingId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid?>("GroupId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<byte>("Kind")
+                        .HasColumnType("tinyint");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CourseOfferingId");
+
+                    b.HasIndex("GroupId");
+
+                    b.HasIndex("OrganizationId", "CourseOfferingId")
+                        .IsUnique()
+                        .HasFilter("[CourseOfferingId] IS NOT NULL AND [IsDeleted] = 0");
+
+                    b.HasIndex("OrganizationId", "GroupId")
+                        .IsUnique()
+                        .HasFilter("[GroupId] IS NOT NULL AND [IsDeleted] = 0");
+
+                    b.HasIndex("OrganizationId", "Kind")
+                        .IsUnique()
+                        .HasFilter("[Kind] = 0 AND [IsDeleted] = 0");
+
+                    b.ToTable("AnnouncementChannels", (string)null);
+                });
+
+            modelBuilder.Entity("Omada.Api.Entities.AnnouncementComment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AuthorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("PostId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuthorId");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex("PostId", "CreatedAt");
+
+                    b.ToTable("AnnouncementComments", (string)null);
+                });
+
+            modelBuilder.Entity("Omada.Api.Entities.AnnouncementPost", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AuthorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ChannelId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(8000)
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CoverImageUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuthorId");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex("ChannelId", "CreatedAt");
+
+                    b.ToTable("AnnouncementPosts", (string)null);
+                });
+
             modelBuilder.Entity("Omada.Api.Entities.AuditLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -186,6 +326,10 @@ namespace Omada.Api.Migrations
                         .HasMaxLength(4000)
                         .HasColumnType("nvarchar(4000)");
 
+                    b.Property<string>("TimetablePublishedPlanJson")
+                        .HasMaxLength(8000)
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -254,6 +398,10 @@ namespace Omada.Api.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Credits")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
 
                     b.Property<Guid?>("DefaultHostId")
                         .HasColumnType("uniqueidentifier");
@@ -415,6 +563,10 @@ namespace Omada.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("AudienceCohortGroupIdsJson")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
                     b.Property<Guid?>("CohortGroupId")
                         .HasColumnType("uniqueidentifier");
 
@@ -437,6 +589,10 @@ namespace Omada.Api.Migrations
 
                     b.Property<Guid?>("GroupId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("HostDisplayName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<Guid?>("HostId")
                         .HasColumnType("uniqueidentifier");
@@ -1164,6 +1320,9 @@ namespace Omada.Api.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("ScrapedHostAliasesJson")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("SecondaryColor")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -1192,6 +1351,72 @@ namespace Omada.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("Organizations");
+                });
+
+            modelBuilder.Entity("Omada.Api.Entities.OrganizationDocument", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<long>("ByteSize")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)")
+                        .HasDefaultValue("general");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("OriginalFileName")
+                        .IsRequired()
+                        .HasMaxLength(260)
+                        .HasColumnType("nvarchar(260)");
+
+                    b.Property<string>("StorageRelativePath")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UploadedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UploadedByUserId");
+
+                    b.HasIndex("OrganizationId", "Category");
+
+                    b.HasIndex("OrganizationId", "CreatedAt");
+
+                    b.ToTable("OrganizationDocuments", (string)null);
                 });
 
             modelBuilder.Entity("Omada.Api.Entities.OrganizationMember", b =>
@@ -1824,6 +2049,45 @@ namespace Omada.Api.Migrations
                     b.ToTable("Users", (string)null);
                 });
 
+            modelBuilder.Entity("Omada.Api.Entities.UserAnnouncementChannelRead", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ChannelId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("LastReadAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("OrganizationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChannelId");
+
+                    b.HasIndex("OrganizationId");
+
+                    b.HasIndex("UserId", "ChannelId")
+                        .IsUnique();
+
+                    b.ToTable("UserAnnouncementChannelReads", (string)null);
+                });
+
             modelBuilder.Entity("Omada.Api.Entities.UserNewsRead", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1914,6 +2178,85 @@ namespace Omada.Api.Migrations
                         .HasForeignKey("SupportedRoomsId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Omada.Api.Entities.AnnouncementChannel", b =>
+                {
+                    b.HasOne("Omada.Api.Entities.CourseOffering", "CourseOffering")
+                        .WithMany()
+                        .HasForeignKey("CourseOfferingId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Omada.Api.Entities.Group", "Group")
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Omada.Api.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CourseOffering");
+
+                    b.Navigation("Group");
+
+                    b.Navigation("Organization");
+                });
+
+            modelBuilder.Entity("Omada.Api.Entities.AnnouncementComment", b =>
+                {
+                    b.HasOne("Omada.Api.Entities.User", "Author")
+                        .WithMany()
+                        .HasForeignKey("AuthorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Omada.Api.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Omada.Api.Entities.AnnouncementPost", "Post")
+                        .WithMany()
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Author");
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("Post");
+                });
+
+            modelBuilder.Entity("Omada.Api.Entities.AnnouncementPost", b =>
+                {
+                    b.HasOne("Omada.Api.Entities.User", "Author")
+                        .WithMany()
+                        .HasForeignKey("AuthorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Omada.Api.Entities.AnnouncementChannel", "Channel")
+                        .WithMany("Posts")
+                        .HasForeignKey("ChannelId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Omada.Api.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Author");
+
+                    b.Navigation("Channel");
+
+                    b.Navigation("Organization");
                 });
 
             modelBuilder.Entity("Omada.Api.Entities.AuditLog", b =>
@@ -2445,6 +2788,25 @@ namespace Omada.Api.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Omada.Api.Entities.OrganizationDocument", b =>
+                {
+                    b.HasOne("Omada.Api.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Omada.Api.Entities.User", "UploadedBy")
+                        .WithMany()
+                        .HasForeignKey("UploadedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("UploadedBy");
+                });
+
             modelBuilder.Entity("Omada.Api.Entities.OrganizationMember", b =>
                 {
                     b.HasOne("Omada.Api.Entities.Organization", "Organization")
@@ -2665,6 +3027,33 @@ namespace Omada.Api.Migrations
                     b.Navigation("Manager");
                 });
 
+            modelBuilder.Entity("Omada.Api.Entities.UserAnnouncementChannelRead", b =>
+                {
+                    b.HasOne("Omada.Api.Entities.AnnouncementChannel", "Channel")
+                        .WithMany()
+                        .HasForeignKey("ChannelId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("Omada.Api.Entities.Organization", "Organization")
+                        .WithMany()
+                        .HasForeignKey("OrganizationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Omada.Api.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Channel");
+
+                    b.Navigation("Organization");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Omada.Api.Entities.UserNewsRead", b =>
                 {
                     b.HasOne("Omada.Api.Entities.NewsItem", "NewsItem")
@@ -2701,6 +3090,11 @@ namespace Omada.Api.Migrations
                     b.Navigation("Organization");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Omada.Api.Entities.AnnouncementChannel", b =>
+                {
+                    b.Navigation("Posts");
                 });
 
             modelBuilder.Entity("Omada.Api.Entities.Building", b =>

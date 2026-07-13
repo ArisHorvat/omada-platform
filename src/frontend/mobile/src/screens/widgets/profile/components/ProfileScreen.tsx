@@ -203,7 +203,6 @@ export default function ProfileScreen() {
         </ClayGroupedSection>
 
         <ClayGroupedSection title="Menu">
-          {menuRow('tune', 'Preferences', () => router.push('/settings'))}
           {menuRow('security', 'Security', () => router.push('/security'))}
           {menuRow(
             'info',

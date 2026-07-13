@@ -519,3 +519,4 @@ Thumbs.db
 *.zip
 /images
 /src/backend/Omada.Api/wwwroot/images
+/src/backend/Omada.Api/storage/

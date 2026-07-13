@@ -3,7 +3,8 @@ import { TextInput, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { AppButton, AppText, ClayView, Skeleton } from '@/src/components/ui';
-import { AnimatedItem, ClayAnimations } from '@/src/components/animations';
+import { AnimatedItem } from '@/src/components/animations';
+import { ClayAnimations } from '@/src/constants/animations';
 import { attendanceExtendedApi, unwrapAttendanceExtendedAxios } from '@/src/api/attendanceExtendedApi';
 import { QUERY_KEYS } from '@/src/api/queryKeys';
 import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
@@ -78,7 +79,12 @@ export function WorkTimeClockPanel() {
 
   return (
     <View style={{ gap: 12, marginBottom: 16 }}>
-      <ClayView depth={6} puffy={14} color={colors.card} style={{ gap: 10 }}>
+      <ClayView
+        depth={6}
+        contentOverflow="visible"
+        color={colors.card}
+        style={{ gap: 10, padding: 14, borderRadius: 16 }}
+      >
         <AppText variant="caption" weight="bold" style={{ color: colors.secondary }}>
           TODAY&apos;S WORKDAY
         </AppText>
@@ -171,7 +177,12 @@ export function WorkTimeClockPanel() {
           </AppText>
           {recent.slice(0, 10).map((row, index) => (
             <AnimatedItem key={row.id} animation={ClayAnimations.SlideInFlow(index)}>
-              <ClayView depth={4} puffy={10} color={colors.card} style={{ marginBottom: 8 }}>
+              <ClayView
+                depth={4}
+                contentOverflow="visible"
+                color={colors.card}
+                style={{ marginBottom: 8, padding: 14, borderRadius: 16 }}
+              >
                 <AppText variant="body" weight="bold" style={{ color: colors.text }}>
                   {new Date(row.workDate).toLocaleDateString(undefined, {
                     weekday: 'short',

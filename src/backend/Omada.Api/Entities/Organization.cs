@@ -31,6 +31,9 @@ public class Organization : BaseEntity
     /// </summary>
     public string? EnabledWidgetKeysJson { get; set; }
 
+    /// <summary>JSON array of scraped schedule professor labels mapped to org members (import reuse).</summary>
+    public string? ScrapedHostAliasesJson { get; set; }
+
     // EF Core Navigation Properties
     public virtual ICollection<OrganizationMember> Members { get; set; } = new List<OrganizationMember>();
     public virtual ICollection<Role> Roles { get; set; } = new List<Role>();

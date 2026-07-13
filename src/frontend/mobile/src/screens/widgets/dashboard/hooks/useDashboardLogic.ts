@@ -7,7 +7,7 @@ import { useDashboardConfig } from './useDashboardConfig';
 import { BASE_WIDGETS } from '@/src/constants/widgets';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
-import { NewsItemDto, ScheduleItemDto, TaskItemDto } from '@/src/api/generatedClient';
+import { ScheduleItemDto, TaskItemDto } from '@/src/api/generatedClient';
 
 export const useDashboardLogic = (highlightDay?: Date) => {
   const [defaultHighlightDay] = useState(() => startOfDay(new Date()));
@@ -36,6 +36,7 @@ export const useDashboardLogic = (highlightDay?: Date) => {
   const highlights = useMemo(() => {
     const orgId = currentOrg?.id;
     const available = new Set(widgets);
+    const isCorporate = (currentOrg?.organizationType ?? '').toLowerCase() === 'corporate';
     const result: string[] = [];
 
     const dayStart = startOfDay(dayAnchor);
@@ -79,20 +80,16 @@ export const useDashboardLogic = (highlightDay?: Date) => {
       result.push('tasks');
     }
 
-    const newsRows = orgId
-      ? queryClient.getQueriesData<{ items?: NewsItemDto[] } | NewsItemDto[]>({ queryKey: ['news', orgId] })
+    const feedRows = orgId
+      ? queryClient.getQueriesData<{ items?: { id: string }[] }>({
+          queryKey: ['announcements', orgId, 'feed-preview'],
+        })
       : [];
-    const newsItems = newsRows.flatMap(([, data]) => {
-      if (Array.isArray(data)) return data;
-      if (data && Array.isArray((data as { items?: NewsItemDto[] }).items)) {
-        return (data as { items?: NewsItemDto[] }).items || [];
-      }
-      return [];
-    });
+    const feedItems = feedRows.flatMap(([, data]) => data?.items ?? []);
 
-    const hasUnreadNews = newsItems.length > 0;
-    if (hasUnreadNews && available.has('news') && !result.includes('news')) {
-      result.push('news');
+    const hasRecentAnnouncements = feedItems.length > 0;
+    if (hasRecentAnnouncements && available.has('announcements') && !result.includes('announcements')) {
+      result.push('announcements');
     }
 
     // Favorites are independent of highlights. When the cache has no schedule/tasks/news yet,
@@ -100,11 +97,12 @@ export const useDashboardLogic = (highlightDay?: Date) => {
     const MAX_HIGHLIGHTS = 5;
     for (const id of sortedWidgets) {
       if (result.length >= MAX_HIGHLIGHTS) break;
+      if (id === 'documents' && !isCorporate) continue;
       if (!result.includes(id)) result.push(id);
     }
 
     return result;
-  }, [currentOrg?.id, dayAnchor, queryClient, widgets, sortedWidgets]);
+  }, [currentOrg?.id, currentOrg?.organizationType, dayAnchor, queryClient, widgets, sortedWidgets]);
 
   // 4. Return GROUPED API (The Facade Structure)
   return {

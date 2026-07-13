@@ -1,5 +1,6 @@
 using Omada.Api.DTOs.Common;
 using Omada.Api.DTOs.Groups;
+using Omada.Api.DTOs.Users;
 using Omada.Api.Abstractions;
 
 namespace Omada.Api.Services.Interfaces;
@@ -16,6 +17,7 @@ public interface IGroupService
     Task<ServiceResponse<AttendanceConfigDto>> GetAttendanceConfigAsync();
     Task<string> GetOrganizationKindAsync(Guid organizationId, CancellationToken cancellationToken = default);
     Task<ServiceResponse<IEnumerable<DepartmentSummaryDto>>> GetDepartmentsAsync();
+    Task<ServiceResponse<IReadOnlyList<DirectoryGroupOptionDto>>> GetDirectoryFilterGroupsAsync();
     Task<ServiceResponse<PagedResponse<GroupMemberDto>>> GetGroupMembersAsync(Guid groupId, PagedRequest request, string? q);
     Task<ServiceResponse<int>> AddGroupMembersAsync(Guid groupId, AddGroupMembersRequest request);
     Task<ServiceResponse<bool>> RemoveGroupMemberAsync(Guid scopeGroupId, Guid userId, Guid? placementGroupId = null);

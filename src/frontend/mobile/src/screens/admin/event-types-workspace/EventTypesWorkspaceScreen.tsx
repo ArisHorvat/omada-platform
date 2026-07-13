@@ -1,11 +1,12 @@
 import React, { useMemo } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, TextInput, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ScreenHeader } from '@/src/components/navigation/ScreenHeader';
 import { PageContainer } from '@/src/components/layout/PageContainer';
 import { AppButton, AppText, ClayView, Icon, WidgetEmptyState } from '@/src/components/ui';
 import { useThemeColors } from '@/src/hooks';
+import { AdminTextInput } from '@/src/screens/admin/components/AdminTextInput';
 import { EventTypeColorPicker } from './components/EventTypeColorPicker';
 import { EventTypeListCard } from './components/EventTypeListCard';
 import { EventTypeUsagePreview } from './components/EventTypeUsagePreview';
@@ -60,12 +61,10 @@ export default function EventTypesWorkspaceScreen() {
                 <AppText variant="label" style={styles.sectionLabel}>
                   NEW TYPE
                 </AppText>
-                <TextInput
+                <AdminTextInput
                   value={newName}
                   onChangeText={setNewName}
                   placeholder="Name (e.g. Laboratory, Client meeting)"
-                  placeholderTextColor={colors.subtle}
-                  style={styles.input}
                   maxLength={50}
                 />
 

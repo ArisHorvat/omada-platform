@@ -9,3 +9,4 @@ export * from './NumberTicker';
 export * from './FlipCard';
 export * from './AnimatedItem';
 export * from './ScreenTransition';
+export { ClayAnimations } from '@/src/constants/animations';

@@ -3,6 +3,7 @@ import { View } from 'react-native';
 import { AdminCompactField, AdminTextField, AppButton, AppText, ClayView } from '@/src/components/ui';
 import type { FloorplanWorkspaceModel } from '@/src/screens/admin/floorplan-workspace/hooks/useFloorplanWorkspace';
 import { LocationFloorRoomsPanel } from '@/src/screens/admin/floorplan-workspace/components/LocationFloorRoomsPanel';
+import { LocationUnassignedRoomsPanel } from '@/src/screens/admin/floorplan-workspace/components/LocationUnassignedRoomsPanel';
 import { LocationPinField } from '@/src/screens/admin/floorplan-workspace/components/LocationPinField';
 import { LOCATION_WORKSPACE_COPY } from '@/src/screens/admin/floorplan-workspace/utils/locationLabels';
 
@@ -243,6 +244,12 @@ export function LocationDetailPanel({ model }: Props) {
                   style={{ alignSelf: 'flex-start' }}
                 />
               </ClayView>
+              <LocationUnassignedRoomsPanel
+                model={model}
+                buildingId={selectedBuildingId}
+                floorId={selectedFloorId}
+                levelNumber={activeFloor.levelNumber}
+              />
               <LocationFloorRoomsPanel
                 model={model}
                 buildingId={selectedBuildingId}

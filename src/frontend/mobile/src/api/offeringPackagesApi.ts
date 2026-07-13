@@ -21,6 +21,7 @@ export interface CourseOfferingPackageItemDto {
   programGroupIds: string[];
   programGroupNames: string[];
   weeklySessions?: OfferingWeeklySession[];
+  credits?: number;
 }
 
 export interface CourseOfferingPackageDto {

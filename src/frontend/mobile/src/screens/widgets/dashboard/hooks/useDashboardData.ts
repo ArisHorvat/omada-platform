@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/src/context/AuthContext';
 import { orgApi, unwrap } from '@/src/api';
 import { QUERY_KEYS } from '@/src/api/queryKeys';
+import { normalizeDashboardWidgets } from '@/src/screens/admin/utils/orgEnabledWidgets';
 
 export const useDashboardData = () => {
   const { activeSession } = useAuth();
@@ -25,7 +26,7 @@ export const useDashboardData = () => {
     else list = allWidgets;
 
     // Digital ID and Groups are not dashboard widgets.
-    return list.filter((w) => w !== 'digital-id' && w !== 'groups');
+    return normalizeDashboardWidgets(list).filter((w) => w !== 'digital-id' && w !== 'groups');
   }, [organization, activeSession?.role]);
 
   return {

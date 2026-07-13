@@ -28,7 +28,7 @@ export const useSettingsPreferencesLogic = () => {
   const mutation = useMutation({
     mutationFn: async (req: UpdateMyProfileRequest) => await unwrap(usersApi.updateMe(req)),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.userProfile });
+      queryClient.invalidateQueries({ queryKey: ['userProfile'] });
     },
     onError: (e: Error) => {
       Alert.alert('Update failed', e.message || 'Could not save settings.');

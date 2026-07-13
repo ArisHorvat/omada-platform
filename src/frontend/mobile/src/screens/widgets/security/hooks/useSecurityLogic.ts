@@ -26,8 +26,10 @@ export const useSecurityLogic = () => {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [changePasswordBusy, setChangePasswordBusy] = useState(false);
 
+  const orgId = activeSession?.orgId ?? '';
+
   const { data: profile } = useQuery({
-    queryKey: QUERY_KEYS.userProfile,
+    queryKey: QUERY_KEYS.userProfile(orgId),
     queryFn: async () => await unwrap(usersApi.getMe()),
     enabled: !!activeSession,
   });
@@ -41,7 +43,7 @@ export const useSecurityLogic = () => {
   const updateSecurityMutation = useMutation({
     mutationFn: async (req: UpdateSecurityRequest) => await unwrap(usersApi.updateSecurity(req)),
     onError: () => {
-      const cached = queryClient.getQueryData<UserProfileDto>(QUERY_KEYS.userProfile);
+      const cached = queryClient.getQueryData<UserProfileDto>(QUERY_KEYS.userProfile(orgId));
       setIs2FAEnabled(!!cached?.isTwoFactorEnabled);
       Alert.alert('Error', 'Failed to update settings.');
     },
@@ -88,7 +90,7 @@ export const useSecurityLogic = () => {
     setIs2FAEnabled(value);
     updateSecurityMutation.mutate(new UpdateSecurityRequest({ isTwoFactorEnabled: value }), {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.userProfile });
+        queryClient.invalidateQueries({ queryKey: ['userProfile'] });
         Alert.alert(
           value ? 'Two-factor enabled' : 'Two-factor disabled',
           value

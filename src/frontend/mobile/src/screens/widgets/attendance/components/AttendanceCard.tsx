@@ -5,6 +5,7 @@ import { AppText, ClayView, Skeleton, WidgetEmptyState, WidgetErrorState } from 
 import { useThemeColors } from '@/src/hooks';
 import { useAttendanceWidgetLogic } from '../hooks/useAttendanceWidgetLogic';
 import {
+  isAttendancePresent,
   isCorporateKind,
   presentRateLabel,
   streakLabel,
@@ -40,7 +41,21 @@ export const AttendanceCard: React.FC<AttendanceCardProps> = ({ accentColor }) =
       ) : (
         <View style={styles.wrap}>
           <View style={[styles.bigCircle, { borderColor: accentColor + '33' }]}>
-            <AppText variant="display" weight="bold" style={{ color: accentColor }}>
+            <AppText
+              variant="h3"
+              weight="bold"
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.65}
+              style={{
+                color: accentColor,
+                fontSize: 22,
+                lineHeight: 26,
+                textAlign: 'center',
+                width: '100%',
+                paddingHorizontal: 4,
+              }}
+            >
               {summary.ratePercent.toFixed(0)}%
             </AppText>
           </View>
@@ -55,7 +70,15 @@ export const AttendanceCard: React.FC<AttendanceCardProps> = ({ accentColor }) =
             ) : null}
             {latest ? (
               <ClayView depth={3} puffy={8} color={`${accentColor}10`} style={styles.latest}>
-                <AppText variant="caption" weight="bold" style={{ color: accentColor }}>
+                <AppText
+                  variant="caption"
+                  weight="bold"
+                  style={{
+                    color: isAttendancePresent(latest.status, latest.statusLabel)
+                      ? colors.success
+                      : accentColor,
+                  }}
+                >
                   Latest · {latest.statusLabel}
                 </AppText>
                 <AppText variant="caption" numberOfLines={1} style={{ color: colors.subtle }}>
@@ -71,12 +94,12 @@ export const AttendanceCard: React.FC<AttendanceCardProps> = ({ accentColor }) =
 };
 
 const styles = StyleSheet.create({
-  wrap: { flexDirection: 'row', alignItems: 'center', minHeight: 120 },
+  wrap: { flexDirection: 'row', alignItems: 'center', flex: 1, minHeight: 0 },
   bigCircle: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    borderWidth: 6,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 5,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,

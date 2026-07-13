@@ -199,12 +199,21 @@ export default function AssignmentDetailScreen() {
                 ) : null}
 
                 {status === 'graded' || task.grade != null ? (
-                  <ClayView depth={8} puffy={12} color={`${colors.primary}14`} style={styles.section}>
+                  <ClayView
+                    depth={8}
+                    contentOverflow="visible"
+                    color={`${colors.primary}14`}
+                    style={styles.section}
+                  >
                     <AppText variant="label" weight="bold" style={styles.sectionTitle}>
                       Your grade
                     </AppText>
                     <View style={styles.gradeDisplay}>
-                      <AppText variant="display" weight="bold" style={{ color: colors.primary, fontSize: 48 }}>
+                      <AppText
+                        variant="display"
+                        weight="bold"
+                        style={{ color: colors.primary, fontSize: 44, lineHeight: 52 }}
+                      >
                         {task.grade}
                       </AppText>
                       {task.maxScore != null ? (
@@ -281,13 +290,13 @@ export default function AssignmentDetailScreen() {
                       onChange={setSubmissionAttachments}
                       attachmentKind="submission"
                     />
-                    <View style={styles.rowActions}>
+                    <View style={styles.stackedActions}>
                       <AppButton
                         title="Turn in"
                         icon="upload"
                         onPress={saveSubmission}
                         loading={isMutating}
-                        style={{ flex: 1 }}
+                        style={styles.actionFull}
                       />
                       <AppButton
                         title="Mark done"
@@ -295,6 +304,7 @@ export default function AssignmentDetailScreen() {
                         icon="check"
                         onPress={markSubmitted}
                         loading={isMutating}
+                        style={styles.actionFull}
                       />
                     </View>
                   </ClayView>
@@ -339,13 +349,13 @@ export default function AssignmentDetailScreen() {
                       numberOfLines={4}
                       icon="chat-bubble-outline"
                     />
-                    <View style={styles.rowActions}>
+                    <View style={task.isCompleted || task.grade != null ? styles.stackedActions : styles.rowActions}>
                       <AppButton
                         title="Save grade"
                         icon="save"
                         onPress={saveGrade}
                         loading={isMutating}
-                        style={{ flex: 1 }}
+                        style={task.isCompleted || task.grade != null ? styles.actionFull : { flex: 1 }}
                       />
                       {task.isCompleted || task.grade != null ? (
                         <AppButton
@@ -353,6 +363,7 @@ export default function AssignmentDetailScreen() {
                           variant="secondary"
                           onPress={reopenAssignment}
                           loading={isMutating}
+                          style={styles.actionFull}
                         />
                       ) : null}
                     </View>

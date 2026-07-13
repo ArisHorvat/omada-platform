@@ -4,7 +4,7 @@
 
 **Quick start:** [`Configuration.md`](Configuration.md) · **Run:** `cd src/backend/Omada.Api` → copy `.env.example` → `.env` → `dotnet run` → Swagger at `http://localhost:5069/swagger`
 
-**See also:** [`Architecture.md`](Architecture.md) · [`Frontend.md`](Frontend.md) · [`WebSpider.md`](WebSpider.md) · [`AccountSecurity.md`](AccountSecurity.md) · [`CurriculumOfferings.md`](CurriculumOfferings.md) · [`Coursework.md`](Coursework.md) · [`Grades.md`](Grades.md)
+**See also:** [`Architecture.md`](Architecture.md) · [`Frontend.md`](Frontend.md) · [`WebSpider.md`](WebSpider.md) · [`AccountSecurity.md`](AccountSecurity.md) · [`Announcements.md`](Announcements.md) · [`CurriculumOfferings.md`](CurriculumOfferings.md) · [`Timetables.md`](Timetables.md) · [`Coursework.md`](Coursework.md) · [`Grades.md`](Grades.md)
 
 ---
 
@@ -103,21 +103,24 @@ Thin HTTP layer — business logic lives in services. No broad try/catch (use ex
 | 👥 `GroupsController` | `api/Groups` | `GroupService` | `groups` |
 | 📅 `ScheduleController` | `api/Schedule` | `ScheduleService` | `schedule` |
 | 🏷️ `EventTypesController` | `api/EventTypes` | `EventTypeService` | `schedule` |
-| 📰 `NewsController` | `api/News` | `NewsService` | `news` |
+| 📰 `NewsController` | `api/News` | `NewsService` | `news` (legacy — member UI merged into announcements) |
+| 📣 `AnnouncementsController` | `api/announcements` | `AnnouncementService` | `announcements` — channels, posts, comments, read cursors, SignalR |
 | ✅ `TasksController` | `api/Tasks` | `TaskService` | `tasks` — personal tasks + **coursework batches**, `PATCH /submission` (View), batch grade (Edit) |
 | 📊 `GradesController` | `api/Grades` | `GradeService` | Formal transcript — `grades` widget (`/me`, admin CRUD) |
 | 📋 `AttendanceController` | `api/Attendance` | `AttendanceService` | `attendance` |
-| 💬 `ChatController` | `api/organizations/{orgId}/chat` | `ChatService` | `chat` |
+| 💬 `ChatController` | `api/organizations/{orgId}/chat` | `ChatService` | `chat` (legacy — merged into announcements) |
 | 🚪 `RoomsController` | `api/Rooms` | `RoomService` | `rooms` |
 | 🏗️ `BuildingsController` | `api/Buildings` | `MapService` | `map` |
 | 🗺️ `MapsController` | `api` | `MapService` | `map` |
 | 📐 `FloorplansController` | `api/floorplans` | `FloorplanProcessingService` | `map` (Admin upload) |
-| 📎 `FilesController` | `api/Files` | File storage | — |
+| 📎 `FilesController` | `api/Files` | File storage | Avatars, news, coursework (not org document library) |
+| 📁 `DocumentsController` | `api/Documents` | `OrganizationDocumentService` | Corporate file library — see [`Documents.md`](Documents.md) |
 | 🪪 `DigitalIdController` | `api/DigitalId` | `DigitalIdService` | `digital-id` |
 | 🕷️ `WebSpiderController` | `api/web-spider` | `WebSpiderAdminService`, `SpiderSyncRunService` | `admin` |
 | 🎨 `ToolsController` | `api/Tools` | `ColorExtractionService` | `POST extract-colors` — multipart `file`; used by register + branding workspace |
 | 📚 `OfferingPackagesAdminController` | `api/Organizations/current/offering-packages` | `CourseOfferingPackageService` | **Org Admin** — curriculum packages, apply/revert |
-| 🎓 `CourseOfferingsAdminController` | `api/Organizations/current/periods/{periodId}/offerings` | `CourseOfferingService` | **Org Admin** for CRUD; **`tasks`** View/Edit for **grade-plan** on teaching team |
+| 🎓 `CourseOfferingsAdminController` | `api/Organizations/current/periods/{periodId}/offerings` | `CourseOfferingService`, **`OfferingTimetableService`** (per-offering publish) | **Org Admin** for CRUD + publish; **`tasks`** View/Edit for **grade-plan** on teaching team |
+| 📅 `PeriodTimetableAdminController` | `api/Organizations/current/periods/{periodId}` | **`OfferingTimetableService`**, **`ScheduleService`** | **Org Admin** — preview, publish status, bulk publish, member schedule preview |
 | 🎓 `OfferingsController` | `api/Offerings` | `CourseOfferingService`, **`GradebookService`** | `tasks` View — periods, assignable, my enrollments; **`tasks` Edit** — gradebook + student breakdown |
 
 ---
@@ -132,6 +135,7 @@ Thin HTTP layer — business logic lives in services. No broad try/catch (use ex
 | 🛡️ `OrganizationAdminService` | Current-org admin: settings, members, roles, periods, widgets |
 | 📚 `CourseOfferingPackageService` | Curriculum packages: CRUD, save items, apply/revert to period |
 | 🎓 `CourseOfferingService` | Term offerings, enrollments, cohort/program enroll, rollover |
+| 📅 `OfferingTimetableService` | Weekly session plan preview, host/cohort/room conflicts, publish → **`Event`**, bulk publish, expected attendance seed |
 | 📊 `GradebookService` | Teacher roster + per-student coursework breakdown (1–10 scale) |
 | 📝 `AuditLogService` | Admin audit append/query (org + platform) |
 | 🔐 `PermissionService` | Role ↔ widget permissions |
@@ -139,15 +143,16 @@ Thin HTTP layer — business logic lives in services. No broad try/catch (use ex
 | 👥 `GroupService` | Hierarchical groups, type catalog, membership, assignable picker, departments |
 | 📧 `EmailService` | Brevo transactional email — invites, **password reset**, **2FA sign-in codes** (console log when Brevo unset) |
 | 🎨 `ColorExtractionService` | Logo → color palette (ImageSharp) |
-| 📅 `ScheduleService` | Calendar events, attendance, busy times |
+| 📅 `ScheduleService` | Calendar events, attendance, busy times; **`GetScheduleForUserAsync`** for admin member-schedule preview |
 | 🏷️ `EventTypeService` | Per-org event types |
-| 📰 `NewsService` | News items and read state |
+| 📰 `NewsService` | News items and read state (legacy API — member UI merged into announcements) |
+| 📣 `AnnouncementService` | Channels (General/Group/CourseOffering), posts, comments, read cursors, SignalR broadcast |
 | ✅ `TaskService` | Task items, assignment batches, submissions list, student **`PATCH` submission**, teaching-team grade updates |
 | 📐 `OfferingGradePlanService` | Per-offering grade categories — **host-only** save |
 | 🔐 `OfferingTeachingAuthorization` | Host / instructor / org-admin checks for coursework |
 | 📊 `GradeService` | Grades + admin CRUD |
 | 📋 `AttendanceService` | My attendance + admin records; **`RecordMemberAttendanceAsync`** (staff scan follow-up / manual roll) |
-| 💬 `ChatService` | Messages + SignalR notify |
+| 💬 `ChatService` | Messages + SignalR notify (legacy — merged into announcements) |
 | 🚪 `RoomService` | Rooms, bookings, search, amenities |
 | 🗺️ `MapService` | Buildings, floors, pins |
 | 📐 `FloorplanProcessingService` | Upload floorplan, Roboflow extraction, GeoJSON |
@@ -172,7 +177,7 @@ Thin HTTP layer — business logic lives in services. No broad try/catch (use ex
 |------|---------|----------|
 | `IsCoreFeature` | Platform shell; hidden from catalog/role toggles | profile, settings, admin |
 | `IsAlwaysEnabled` | Always in effective enabled set; not in catalog toggles | schedule, tasks, digital-id |
-| `IsInOrgCatalog` | Admin can enable/disable org-wide | chat, news, map, rooms, … |
+| `IsInOrgCatalog` | Admin can enable/disable org-wide | announcements, map, rooms, … |
 | `Audience` | University / corporate / all | grades · documents · shared (coursework = always-on **`tasks`**) |
 
 Removed from registry (not member widgets): **events**, **transport**, **finance**. **Groups**: role permissions + admin API only (`IsInOrgCatalog: false`).
@@ -204,7 +209,7 @@ All inherit **`BaseEntity`**: `Id`, `CreatedAt`, `UpdatedAt`, `IsDeleted`. Mappi
 | 📚 Offerings | `CourseOfferingPackage`, `CourseOfferingPackageProgram`, `CourseOfferingPackageItem`, `CourseOfferingPackageItemProgram`, `CourseOffering`, `OfferingEnrollment` |
 | 👥 Groups | `Group`, `GroupMember` |
 | 📅 Schedule | `Event`, `EventOverride`, `EventAssociation`, `EventAttendance`, `EventType` |
-| 📰 Content | `NewsItem`, `UserNewsRead`, `TaskItem`, `Grade`, `Message` |
+| 📰 Content | `NewsItem`, `UserNewsRead`, `TaskItem`, `Grade`, `Message`, `OrganizationDocument` |
 | 🗺️ Map | `Building`, `Floor`, `Room`, `RoomBooking`, `RoomAmenity`, `MapPin`, `Floorplan` |
 | 🕷️ Spider | `ScrapedClassEvent`, `SpiderSyncRun`, `SpiderSyncKind`, `SpiderSyncStatus` |
 | 🔧 Infra | `BaseEntity`, `IOrganizationScoped`, `Enums.cs` |
@@ -229,7 +234,7 @@ All inherit **`BaseEntity`**: `Id`, `CreatedAt`, `UpdatedAt`, `IsDeleted`. Mappi
 
 ## 📋 DTOs/ (18 subfolders)
 
-`Attendance`, `Auth`, `Chat`, `Common`, `DigitalId`, `Files`, `Grades`, `Groups`, `Import`, `Maps`, `News`, `Offerings`, `Organizations`, `Rooms`, `Schedule`, `Scraping`, `Search`, `Tasks`, `Users`
+`Attendance`, `Auth`, `Chat`, `Common`, `DigitalId`, **`Documents`**, `Files`, `Grades`, `Groups`, `Import`, `Maps`, `News`, `Offerings`, `Organizations`, `Rooms`, `Schedule`, `Scraping`, `Search`, `Tasks`, `Users`
 
 - **Requests** → FluentValidation in `Validators/`
 - **Responses** → `[Required]` on always-present fields (OpenAPI / NSwag)
@@ -251,14 +256,20 @@ All inherit **`BaseEntity`**: `Id`, `CreatedAt`, `UpdatedAt`, `IsDeleted`. Mappi
 | Invite helpers | `OrganizationInviteCodeGenerator`, `InviteLinkBuilder`, `InviteEmailTemplates` |
 | Onboarding | **`OrganizationOnboardingProgress.cs`** — step ids in **`OnboardingCompletedStepsJson`** |
 | Widget catalog | **`OrganizationWidgetKeys.cs`** — **`null` JSON** = legacy all catalog enabled; **`"[]"`** = no optional widgets (new registrations) |
+| Schedule visibility | **`ScheduleUserVisibilityContext.cs`**, **`EventAudienceHelper.cs`** — member **My schedule** for published offering events |
+| Session plans | **`OfferingSessionPlanJson.cs`** — weekly pattern JSON on **`CourseOffering`** |
 
 ---
 
 ## 📡 SignalR — `Hubs/AppHub.cs`
 
 - Endpoint: **`/ws/app`**
-- Clients call `JoinOrganization(organizationId)` after login
-- Used by `ChatService` for real-time message notifications
+- Clients call **`JoinOrganization(organizationId)`** after connect — adds connection to org group
+- **`AnnouncementService`** broadcasts **`announcement_post`** and **`announcement_comment`** to the org group
+- Legacy **`ChatService`** still uses the hub for message notifications
+- **CORS:** explicit origins + **`AllowCredentials`** — **`CorsOriginPolicy`** (required for negotiate with JWT)
+
+Full mobile lifecycle (background pause, foreground reconnect): [`Announcements.md`](Announcements.md).
 
 ---
 
@@ -342,14 +353,19 @@ Widget catalog metadata: **`GET /api/Admin/widgets`** — returns assignable wid
 - **`RoleNames`** — `Admin` (protected), `Member`, `Unassigned` (holding bucket when custom roles are removed).
 - On **`DELETE .../roles/{id}`**: if members are assigned, move them to existing **Unassigned** → else **Member** → else **create Unassigned** (or **Member** when deleting Unassigned). Uses **`ExecuteUpdateAsync`** on `OrganizationMembers`. Does **not** reassign to other custom roles. **Admin** role cannot be deleted. Audit action: `role.delete`.
 
-### 📅 Schedule vs web spider
+### 📅 Schedule vs web spider vs native timetables
 
 | Data | Table | Purpose |
 |------|-------|---------|
-| In-app calendar | `Event` | User CRUD via `ScheduleController` |
-| Scraped timetable | `ScrapedClassEvent` | Filled by spider sync (Hangfire) |
+| In-app calendar | `Event` | Member **Schedule**; CRUD + published offering sessions |
+| Weekly pattern (draft) | `CourseOffering.WeeklySessionPlanJson` | Admin build tab — not visible to members until publish |
+| Scraped timetable | `ScrapedClassEvent` | Filled by spider sync (Hangfire) — reference only |
 
-> ⚠️ These are **separate models** — do not confuse them!
+> ⚠️ **`Event`** and **`ScrapedClassEvent`** are **separate models**. Native **publish** (`OfferingTimetableService`) writes **`Event`**; spider does not replace that flow.
+
+**Member Schedule visibility** — `ScheduleRepository` + **`ScheduleUserVisibilityContext`** / **`EventAudienceHelper`**: host, teaching team, group/cohort membership, offering enrollment + audience JSON, enrollment cohort ids, expected/added attendance. Admin mirror: **`POST .../periods/{periodId}/member-schedule-preview`**.
+
+See [`Timetables.md`](Timetables.md).
 
 ### 📅 Organization periods (`GET/POST/PUT/DELETE .../periods`)
 
@@ -359,7 +375,7 @@ Per-org **reporting windows** (`OrganizationPeriod`: name, start/end, optional `
 |-------------|-----|
 | Org admin **`/periods-workspace`** | CRUD + **set current** via **`updatePeriod`**; onboarding step 7 |
 | Member Grades widget | May group/filter by **`Grade.semester`** string (free text, not FK to period) |
-| Schedule / attendance | Not wired to periods yet |
+| Schedule / attendance | **`Event.PeriodId`**, **`OfferingId`** from timetable publish; expected attendance seeded on publish |
 
 Only one period may be **`IsCurrent`** per org (`OrganizationAdminService.ClearCurrentPeriodFlagAsync`). Grades/attendance **admin workspaces** are not routed in mobile org admin — periods are standalone org config.
 
@@ -433,7 +449,7 @@ Cross-widget org search for members — permission-scoped, grouped by domain.
 |------|--------|
 | **Endpoint** | `GET /api/Search` — `[Authorize]` |
 | **Query** | `Q` (required), optional `Types[]`, `LimitPerType` (default 8, max 20), `Page`, `PageSize` |
-| **Buckets** | `users`, `rooms`, `news`, `tasks`, `schedule`, `groups`, `grades` (`DTOs/Search/SearchTypes.cs`) |
+| **Buckets** | `users`, `rooms`, `news`, `tasks`, `schedule`, `groups`, `grades`, **`documents`** (corporate orgs only) (`DTOs/Search/SearchTypes.cs`) |
 | **Response** | `UniversalSearchResponse` → `SearchResultGroupDto[]` with `SearchHitDto` (`title`, `subtitle`, `imageUrl`, `route`) |
 | **Permissions** | Current org role widget access — only types with **view+** are searched; SuperAdmin bypass |
 | **Implementation** | **`SearchService`** — **`IServiceScopeFactory.CreateAsyncScope()`** per bucket so parallel domain queries never share one **`ApplicationDbContext`** (EF Core is not thread-safe) |
@@ -460,10 +476,28 @@ Cross-widget org search for members — permission-scoped, grouped by domain.
 - **Revert:** soft-deletes term offerings matching package course names + enrollments
 - Full product + API reference: [`CurriculumOfferings.md`](CurriculumOfferings.md)
 
-### 🕷️ Web spider
+### 📅 Timetables (native build, preview, publish)
 
-- URLs on **Organization** (admin UI)
-- Details: [`WebSpider.md`](WebSpider.md)
+- **Service:** **`OfferingTimetableService`** — expand **`WeeklySessionPlanJson`**, detect **host / cohort / room** conflicts, publish recurring **`Event`** rows (with **`RoomId`**, cohort/audience JSON), bulk publish, seed **`Expected`** attendance
+- **Period APIs:** **`PeriodTimetableAdminController`** at `/api/Organizations/current/periods/{periodId}`:
+  - `POST preview-timetable` — proposed + published slots for a week (scope filters optional)
+  - `POST timetable-publish-status` — counts + conflict totals (**full term** when scoped filters sent — `scopeFiltersApplied`)
+  - `POST bulk-publish-timetable` — per-offering outcomes
+  - `POST member-schedule-preview` — admin check vs member **My schedule** rules
+- **Per offering:** `POST .../offerings/{offeringId}/publish-timetable` on **`CourseOfferingsAdminController`**
+- **Infrastructure:** **`OfferingSessionPlanJson`**, **`EventAudienceHelper`**, **`ScheduleUserVisibilityContext`**
+- **Permission:** org **Admin** only — not **`schedule`** widget
+- Full reference: [`Timetables.md`](Timetables.md)
+
+### 🕷️ Web spider & schedule import
+
+- **Schedule only** in admin UI — news spider removed from API/workspace.
+- URLs on **Organization** (`SpiderSchedulePageUrl`).
+- **Import mapping:** `POST /api/web-spider/schedule/import-resolution` — **`ScrapedScheduleImportResolutionService`**
+- **Apply to offering:** `POST /api/web-spider/schedule/apply-to-offering` — **`ScrapedScheduleApplyService`** → **`WeeklySessionPlanJson`**
+- Optional sync: Hangfire → **`ScrapedClassEvent`**
+- Infrastructure: **`ScrapedScheduleRowEnricher`** (exact activity-only labels; **`IsProgramOrGroupPageCode`**), **`ScrapedScheduleNormalizer`**, **`ScheduleTimeParser`** (`sapt. 1`, `sapt. 2`, …)
+- Details: [`WebSpider.md`](WebSpider.md) · [`Timetables.md`](Timetables.md) (Import tab)
 - Optional **`GEMINI_API_KEY`** for parse fallbacks
 
 ---
@@ -493,6 +527,7 @@ Cross-widget org search for members — permission-scoped, grouped by domain.
 | [`Frontend.md`](Frontend.md) | Mobile client structure |
 | [`DigitalId.md`](DigitalId.md) | Pass, scanner, attendance |
 | [`CurriculumOfferings.md`](CurriculumOfferings.md) | Periods, curriculum packages, apply/revert |
+| [`Timetables.md`](Timetables.md) | Preview, publish, bulk publish, member Schedule visibility |
 | [`Coursework.md`](Coursework.md) | Batches, turn-in, grading, grade plan, teaching authorization |
 | [`Grades.md`](Grades.md) | Coursework standing, transcript, credits, teacher gradebook |
 | [`../README.md`](../README.md) | Monorepo overview |

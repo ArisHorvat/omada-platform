@@ -1,7 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { ScreenHeader } from '@/src/components/navigation/ScreenHeader';
 import { PageContainer } from '@/src/components/layout/PageContainer';
@@ -14,7 +14,7 @@ import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext
 import { AdminTextInput } from '@/src/screens/admin/components/AdminTextInput';
 import { useProgramGroupOptions } from '@/src/screens/admin/periods-workspace/hooks/useProgramGroupOptions';
 import { PackageCourseRow } from './components/PackageCourseRow';
-import { TermOfferingSessionCard } from './components/TermOfferingSessionCard';
+import { TermCoursesSection } from './components/TermCoursesSection';
 import { ProgramSelectField } from './components/ProgramSelectField';
 import { useOfferingsWorkspace } from './hooks/useOfferingsWorkspace';
 import { createOfferingsWorkspaceStyles } from './styles/offerings-workspace.styles';
@@ -23,6 +23,7 @@ export default function OfferingsWorkspaceScreen() {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { periodId: periodIdParam } = useLocalSearchParams<{ periodId?: string }>();
   const styles = useMemo(() => createOfferingsWorkspaceStyles(colors), [colors]);
   const { organization } = useCurrentOrganization();
   const isUniversity = organization?.organizationType === OrganizationType.University;
@@ -30,6 +31,7 @@ export default function OfferingsWorkspaceScreen() {
   const [periodPickerOpen, setPeriodPickerOpen] = useState(false);
   const [packageSearch, setPackageSearch] = useState('');
   const [packageProgramFilterId, setPackageProgramFilterId] = useState('');
+  const [termPeriodId, setTermPeriodId] = useState<string | null>(null);
 
   const programPickerOptions = useMemo(
     () => programOptions.map((o) => ({ value: o.value, label: o.label })),
@@ -68,6 +70,28 @@ export default function OfferingsWorkspaceScreen() {
     refetch,
   } = model;
 
+  useEffect(() => {
+    if (typeof periodIdParam === 'string' && periodIdParam) {
+      setTermPeriodId(periodIdParam);
+      setApplyPeriodId(periodIdParam);
+    }
+  }, [periodIdParam, setApplyPeriodId]);
+
+  useEffect(() => {
+    if (termPeriodId || periodIdParam || !periodOptions.length) return;
+    const current =
+      periodOptions.find((p) => p.subtitle?.toLowerCase().includes('current')) ?? periodOptions[0];
+    if (current?.value) {
+      setTermPeriodId(current.value);
+      setApplyPeriodId(current.value);
+    }
+  }, [termPeriodId, periodIdParam, periodOptions, setApplyPeriodId]);
+
+  const handleTermPeriodChange = (id: string | null) => {
+    setTermPeriodId(id);
+    if (id) setApplyPeriodId(id);
+  };
+
   const applyPeriodLabel =
     periodOptions.find((o) => o.value === applyPeriodId)?.label ?? 'Select academic period';
 
@@ -100,6 +124,10 @@ export default function OfferingsWorkspaceScreen() {
   const packageProgramFilterLabel =
     programPickerOptions.find((o) => o.value === packageProgramFilterId)?.label ?? '';
 
+  const startNewPackage = () => {
+    clearEditor();
+  };
+
   if (!isUniversity) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -123,7 +151,7 @@ export default function OfferingsWorkspaceScreen() {
         <PageContainer fullBleed>
           <ScreenHeader
             title="Course offerings"
-            subtitle="Curriculum packages, instructors, and term apply"
+            subtitle="Create packages, apply to terms, configure courses"
           />
 
           <ScrollView
@@ -136,20 +164,24 @@ export default function OfferingsWorkspaceScreen() {
                   Curriculum packages
                 </AppText>
                 <AppText variant="caption" style={styles.sectionHint}>
-                  Pick one program for the whole package. Need the same course for another program? Duplicate the
-                  package or add the course again in a separate package.
+                  Build reusable course templates for a program. Create or select a package, add courses, then apply
+                  to a term. Set credits and per-activity attendance in each package course; publish schedules in Timetables.
                 </AppText>
-                <AppButton
-                  title="Open periods workspace"
-                  variant="outline"
-                  onPress={() => router.push('/periods-workspace')}
-                  style={{ alignSelf: 'flex-start', marginBottom: 12 }}
-                />
+                <View style={styles.rowActions}>
+                  <AppButton title="New package" icon="add" onPress={startNewPackage} style={{ minWidth: 0 }} />
+                  <AppButton
+                    title="Periods"
+                    variant="outline"
+                    onPress={() => router.push('/periods-workspace')}
+                    style={{ minWidth: 0 }}
+                  />
+                </View>
               </View>
             </ClayView>
 
             <AppText variant="label" style={styles.sectionLabel}>
-              PACKAGES ({filteredPackages.length}{hasPackageFilters ? ` of ${packages.length}` : ''})
+              YOUR PACKAGES ({filteredPackages.length}
+              {hasPackageFilters ? ` of ${packages.length}` : ''})
             </AppText>
 
             {packages.length > 0 ? (
@@ -180,7 +212,7 @@ export default function OfferingsWorkspaceScreen() {
               <WidgetEmptyState
                 icon="school"
                 title="No packages yet"
-                description="Create your first curriculum package below."
+                description="Tap New package below to create your first curriculum template."
               />
             ) : filteredPackages.length === 0 ? (
               <ClayView depth={1} color={colors.card} style={{ borderRadius: 12, padding: 14 }}>
@@ -191,44 +223,61 @@ export default function OfferingsWorkspaceScreen() {
                 </AppText>
               </ClayView>
             ) : (
-              filteredPackages.map((pkg) => (
-                <PressClay key={pkg.id} onPress={() => loadPackageIntoEditor(pkg)}>
+              filteredPackages.map((pkg) => {
+                const isSelected = selectedPackage?.id === pkg.id;
+                return (
                   <ClayView
-                    depth={selectedPackage?.id === pkg.id ? 4 : 2}
-                    color={selectedPackage?.id === pkg.id ? colors.primary + '18' : colors.card}
+                    key={pkg.id}
+                    depth={isSelected ? 4 : 2}
+                    contentOverflow="visible"
+                    color={isSelected ? colors.primary + '18' : colors.card}
                     style={styles.packageCard}
                   >
                     <AppText variant="body" weight="bold">
                       {pkg.name}
                     </AppText>
+                    {pkg.description ? (
+                      <AppText variant="caption" style={{ color: colors.subtle, marginTop: 4 }} numberOfLines={2}>
+                        {pkg.description}
+                      </AppText>
+                    ) : null}
                     <AppText variant="caption" style={{ color: colors.subtle, marginTop: 4 }}>
                       {pkg.items.length} course{pkg.items.length === 1 ? '' : 's'}
                       {pkg.programGroupNames.length ? ` · ${pkg.programGroupNames.join(', ')}` : ''}
                     </AppText>
+                    <View style={[styles.rowActions, { marginTop: 10, marginBottom: 0 }]}>
+                      <AppButton
+                        title={isSelected ? 'Editing' : 'Edit'}
+                        size="sm"
+                        variant={isSelected ? 'primary' : 'outline'}
+                        onPress={() => loadPackageIntoEditor(pkg)}
+                        style={{ minWidth: 0 }}
+                      />
+                      <AppButton
+                        title="Delete"
+                        size="sm"
+                        variant="outline"
+                        onPress={() => confirmDeletePackage(pkg)}
+                        style={{ minWidth: 0 }}
+                      />
+                    </View>
                   </ClayView>
-                </PressClay>
-              ))
+                );
+              })
             )}
 
             <ClayView depth={3} color={colors.card} style={styles.clayShell}>
               <View style={styles.clayInner}>
                 <View style={styles.editorHeader}>
                   <AppText variant="h3" weight="bold" style={{ flex: 1 }}>
-                    {selectedPackage ? 'Edit package' : 'New package'}
+                    {selectedPackage ? `Edit — ${selectedPackage.name}` : 'New package'}
                   </AppText>
                   {selectedPackage ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                      <PressClay onPress={clearEditor}>
-                        <AppText variant="caption" style={{ color: colors.primary }}>
-                          New
-                        </AppText>
-                      </PressClay>
-                      <PressClay onPress={() => confirmDeletePackage(selectedPackage)}>
-                        <ClayView depth={2} color={colors.card} style={styles.iconBtn}>
-                          <Icon name="delete-outline" size={20} color={colors.error} />
-                        </ClayView>
-                      </PressClay>
-                    </View>
+                    <PressClay onPress={startNewPackage}>
+                      <AppText variant="caption" style={{ color: colors.primary }}>
+                        New instead
+                      </AppText>
+                    </PressClay>
                   ) : null}
                 </View>
 
@@ -265,7 +314,7 @@ export default function OfferingsWorkspaceScreen() {
 
                 {selectedPackage ? (
                   <AppButton
-                    title={isSaving ? 'Saving…' : 'Save package details'}
+                    title={isSaving ? 'Saving…' : 'Save details'}
                     variant="outline"
                     onPress={savePackage}
                     disabled={isSaving || !newPackageName.trim() || !packageProgramId}
@@ -283,7 +332,7 @@ export default function OfferingsWorkspaceScreen() {
                 {selectedPackage ? (
                   <>
                     <AppText variant="label" style={styles.sectionLabel}>
-                      COURSES ({itemDrafts.length})
+                      COURSES IN PACKAGE ({itemDrafts.length})
                     </AppText>
                     {itemDrafts.map((item, idx) => (
                       <PackageCourseRow
@@ -309,8 +358,8 @@ export default function OfferingsWorkspaceScreen() {
                       APPLY TO TERM
                     </AppText>
                     <AppText variant="caption" style={styles.sectionHint}>
-                      Only courses with “Apply to term” checked are created. New offerings enroll linked
-                      student groups; existing offerings in the term are left unchanged.
+                      Creates offerings for checked courses. New offerings enroll linked student groups; existing
+                      offerings in the term are left unchanged.
                     </AppText>
                     <PressClay onPress={() => setPeriodPickerOpen(true)}>
                       <ClayView depth={2} color={colors.background} style={styles.selectField}>
@@ -343,29 +392,48 @@ export default function OfferingsWorkspaceScreen() {
                     {applyPeriodId ? (
                       <>
                         <AppText variant="label" style={styles.sectionLabel}>
-                          OFFERINGS FROM THIS PACKAGE IN TERM
+                          IN THIS TERM FROM PACKAGE ({periodOfferings.length})
                         </AppText>
                         {periodOfferingsLoading ? (
                           <ActivityIndicator color={colors.primary} style={{ marginVertical: 8 }} />
                         ) : periodOfferings.length === 0 ? (
                           <AppText variant="caption" style={{ color: colors.subtle, marginBottom: 8 }}>
-                            No offerings from this package in the selected term yet.
+                            Not applied to this term yet — use Apply to period above.
                           </AppText>
                         ) : (
                           periodOfferings.map((offering) => (
-                            <TermOfferingSessionCard
+                            <ClayView
                               key={offering.id}
-                              periodId={applyPeriodId}
-                              offering={offering}
-                            />
+                              depth={1}
+                              contentOverflow="visible"
+                              color={colors.background}
+                              style={{ padding: 12, borderRadius: 12, marginBottom: 8 }}
+                            >
+                              <AppText variant="body" weight="bold">
+                                {offering.name}
+                              </AppText>
+                              <AppText variant="caption" style={{ color: colors.subtle, marginTop: 4 }}>
+                                {offering.enrollmentCount} enrolled
+                              </AppText>
+                            </ClayView>
                           ))
                         )}
                       </>
                     ) : null}
                   </>
-                ) : null}
+                ) : (
+                  <AppText variant="caption" style={{ color: colors.subtle }}>
+                    After creating the package you can add courses and apply them to a term.
+                  </AppText>
+                )}
               </View>
             </ClayView>
+
+            <TermCoursesSection
+              periodId={termPeriodId}
+              periodOptions={periodOptions}
+              onPeriodChange={handleTermPeriodChange}
+            />
           </ScrollView>
 
           <SearchableOptionPickerSheet
@@ -375,7 +443,11 @@ export default function OfferingsWorkspaceScreen() {
             searchPlaceholder="Search periods…"
             options={periodOptions}
             selected={applyPeriodId || null}
-            onSelect={(id) => setApplyPeriodId(id ?? '')}
+            onSelect={(id) => {
+              const next = id ?? '';
+              setApplyPeriodId(next);
+              if (next) setTermPeriodId(next);
+            }}
             allLabel="No period"
             height={480}
             zIndexBase={300}

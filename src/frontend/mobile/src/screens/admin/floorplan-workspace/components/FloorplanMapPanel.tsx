@@ -4,6 +4,7 @@ import { AppButton, AppText, ClayView } from '@/src/components/ui';
 import { FloorplanFloorplanViewerBlock } from '@/src/screens/admin/floorplan-workspace/components/FloorplanFloorplanViewerBlock';
 import type { FloorplanWorkspaceModel } from '@/src/screens/admin/floorplan-workspace/hooks/useFloorplanWorkspace';
 import { mapWebNoSelectStyle } from '@/src/screens/admin/floorplan-workspace/styles/floorplanWorkspaceScreen.styles';
+import { FloorplanMapLegendPanel } from '@/src/screens/widgets/map/components/FloorplanMapLegendPanel';
 
 type Props = {
   model: FloorplanWorkspaceModel;
@@ -20,23 +21,25 @@ export function FloorplanMapPanel({ model, compactChrome = false }: Props) {
     hasRoomPolygons,
     isVectorMode,
     setIsVectorMode,
+    previewImageUrl,
   } = model;
   const webNoSelect = mapWebNoSelectStyle();
 
   return (
-    <ClayView
-      depth={4}
-      color={colors.card}
-      style={{
-        borderRadius: 14,
-        padding: compactChrome ? 8 : 12,
-        width: '100%',
-        alignSelf: 'stretch',
-        flex: isWideLayout ? 1 : 1,
-        minHeight: 0,
-        ...(webNoSelect ?? {}),
-      }}
-    >
+    <View style={{ flex: isWideLayout ? 1 : 1, minHeight: 0, width: '100%', alignSelf: 'stretch' }}>
+      <ClayView
+        depth={4}
+        color={colors.card}
+        style={{
+          borderRadius: 14,
+          padding: compactChrome ? 8 : 12,
+          width: '100%',
+          alignSelf: 'stretch',
+          flex: 1,
+          minHeight: 0,
+          ...(webNoSelect ?? {}),
+        }}
+      >
       {!compactChrome ? (
         <>
           <AppText variant="label" style={{ color: colors.subtle, marginBottom: 4 }}>
@@ -86,6 +89,15 @@ export function FloorplanMapPanel({ model, compactChrome = false }: Props) {
         </View>
       ) : null}
       <FloorplanFloorplanViewerBlock model={model} />
-    </ClayView>
+      </ClayView>
+      {previewImageUrl ? (
+        <FloorplanMapLegendPanel
+          colors={colors}
+          mode="admin"
+          wideLayout={isWideLayout}
+          style={{ marginTop: 10, width: '100%', alignSelf: 'stretch' }}
+        />
+      ) : null}
+    </View>
   );
 }

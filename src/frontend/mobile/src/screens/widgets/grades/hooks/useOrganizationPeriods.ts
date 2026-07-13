@@ -23,24 +23,30 @@ export function useOrganizationPeriods() {
     staleTime: 1000 * 60 * 2,
   });
 
-  const [activePeriodId, setActivePeriodId] = useState<string | null>(null);
+  const [activePeriodId, setActivePeriodIdState] = useState<string | null>(null);
+  const [allowAllTerms, setAllowAllTerms] = useState(false);
 
   const periods = periodsQuery.data ?? [];
 
+  const setActivePeriodId = (periodId: string | null) => {
+    setAllowAllTerms(periodId === null);
+    setActivePeriodIdState(periodId);
+  };
+
   useEffect(() => {
-    if (activePeriodId) return;
+    if (activePeriodId || allowAllTerms) return;
     const currentId = currentPeriodQuery.data?.periodId;
     if (currentId) {
-      setActivePeriodId(currentId);
+      setActivePeriodIdState(currentId);
       return;
     }
     const fromList = periods.find((p) => p.isCurrent)?.id;
     if (fromList) {
-      setActivePeriodId(fromList);
+      setActivePeriodIdState(fromList);
       return;
     }
-    if (periods[0]?.id) setActivePeriodId(periods[0].id);
-  }, [activePeriodId, currentPeriodQuery.data?.periodId, periods]);
+    if (periods[0]?.id) setActivePeriodIdState(periods[0].id);
+  }, [activePeriodId, allowAllTerms, currentPeriodQuery.data?.periodId, periods]);
 
   const activePeriod = useMemo(
     () => periods.find((p) => p.id === activePeriodId) ?? null,

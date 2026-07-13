@@ -10,10 +10,6 @@ public class SaveSpiderConfigRequestValidator : AbstractValidator<SaveSpiderConf
         RuleFor(x => x.SchedulePageUrl)
             .Must(BeAbsoluteHttpUrlOrEmpty)
             .WithMessage("Schedule URL must be a valid absolute http or https address.");
-
-        RuleFor(x => x.NewsStartUrl)
-            .Must(BeAbsoluteHttpUrlOrEmpty)
-            .WithMessage("News URL must be a valid absolute http or https address.");
     }
 
     private static bool BeAbsoluteHttpUrlOrEmpty(string? url)

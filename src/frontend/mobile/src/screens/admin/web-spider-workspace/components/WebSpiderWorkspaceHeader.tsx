@@ -12,8 +12,8 @@ export function WebSpiderWorkspaceHeader({ model }: Props) {
   return (
     <View style={{ paddingHorizontal: horizontalPad }}>
       <ScreenHeader
-        title="Web crawling"
-        subtitle="Paste links, tap Save URLs for your organization, then preview or sync. Discovery helps find the right timetable or article page on the same site."
+        title="Schedule import"
+        subtitle="Paste a public timetable URL, preview scraped rows, and sync to the import store. Use Discover to find year pages (e.g. I1.html) on the same site."
         onBack={goBack}
         style={{ paddingHorizontal: 0 }}
       />

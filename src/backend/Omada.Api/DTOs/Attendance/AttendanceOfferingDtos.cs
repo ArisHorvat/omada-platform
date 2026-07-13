@@ -116,6 +116,10 @@ public class OfferingActivityAttendanceDto
 
     [Required]
     public required decimal RatePercent { get; set; }
+
+    public decimal? RequiredAttendancePercent { get; set; }
+
+    public bool? MeetsRequirement { get; set; }
 }
 
 public class WorkTimeEntryDto

@@ -26,6 +26,10 @@ public interface ICourseOfferingService
 
     Task<ServiceResponse<int>> EnrollLinkedProgramsAsync(Guid periodId, Guid offeringId, EnrollLinkedProgramsRequest request);
 
+    Task<ServiceResponse<int>> UnenrollUserAsync(Guid periodId, Guid offeringId, UnenrollUserRequest request);
+
+    Task<ServiceResponse<int>> UnenrollCohortAsync(Guid periodId, Guid offeringId, UnenrollCohortRequest request);
+
     Task<ServiceResponse<SetupProgramTermResultDto>> SetupProgramTermAsync(Guid periodId, SetupProgramTermRequest request);
 
     Task<ServiceResponse<int>> RolloverOfferingsAsync(Guid targetPeriodId, RolloverOfferingsRequest request);

@@ -62,6 +62,8 @@ type Props = {
 
   canSaveEdit: boolean;
 
+  onManageCourses?: (periodId: string) => void;
+
 };
 
 
@@ -105,6 +107,8 @@ export function PeriodListCard({
   onDelete,
 
   canSaveEdit,
+
+  onManageCourses,
 
 }: Props) {
 
@@ -219,6 +223,15 @@ export function PeriodListCard({
           </View>
 
           <View style={styles.periodActions}>
+
+            {onManageCourses && period.id ? (
+              <AppButton
+                title="Term courses"
+                variant="secondary"
+                onPress={() => onManageCourses(period.id!)}
+                style={{ minWidth: 0 }}
+              />
+            ) : null}
 
             <AppButton title="Edit" variant="outline" onPress={onStartEdit} style={{ minWidth: 68 }} />
 

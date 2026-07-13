@@ -23,8 +23,8 @@ export function GradesWidgetAccess({ canView, permissionsLoading, children }: Gr
     return (
       <WidgetEmptyState
         title="Grades unavailable"
-        description="You do not have permission to view grades in this organization."
-        icon="lock"
+        description="Enable the Grades widget for your role to see standing here."
+        icon="school"
       />
     );
   }

@@ -275,9 +275,9 @@ public sealed class FloorplanProcessingService : IFloorplanProcessingService
                 room.CoordinateY = p.CentroidY;
                 room.MapIconKey = p.MapIconKey;
                 room.FloorId = floor.Id;
-                room.BuildingId ??= buildingId;
-                if (string.IsNullOrWhiteSpace(room.FloorplanFeatureKey))
-                    room.FloorplanFeatureKey = p.RoomId.Length > 128 ? p.RoomId[..128] : p.RoomId;
+                room.BuildingId = buildingId;
+                // Always sync the stable GeoJSON feature id so the indoor map can resolve polygons after re-save.
+                room.FloorplanFeatureKey = p.RoomId.Length > 128 ? p.RoomId[..128] : p.RoomId;
                 room.UpdatedAt = DateTime.UtcNow;
                 updated++;
             }

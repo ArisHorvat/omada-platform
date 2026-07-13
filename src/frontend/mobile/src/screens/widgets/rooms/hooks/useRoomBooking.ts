@@ -5,6 +5,8 @@ import { scheduleApi, unwrap, usersApi } from '@/src/api';
 import { QUERY_KEYS } from '@/src/api/queryKeys';
 import type { RoomDto } from '@/src/api/generatedClient';
 import { useAuth } from '@/src/context/AuthContext';
+import { usePermission } from '@/src/context/PermissionContext';
+import type { Capability } from '@/src/config/permissions.config';
 import { useEventForm } from '@/src/screens/widgets/schedule/hooks/useEventForm';
 import { roundToQuarterHour } from '@/src/screens/widgets/schedule/utils/quarterHour';
 
@@ -24,14 +26,16 @@ function defaultBookingWindow(): { start: Date; end: Date } {
 
 export function useRoomBooking(options?: UseRoomBookingOptions) {
   const queryClient = useQueryClient();
-  const { token } = useAuth();
+  const { token, activeSession } = useAuth();
+  const { can } = usePermission();
+  const canBookSchedule = can('schedule.manage' as Capability);
   const form = useEventForm(new Date());
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [bookingRoom, setBookingRoom] = useState<RoomDto | null>(null);
 
   const { data: profile } = useQuery({
-    queryKey: QUERY_KEYS.userProfile,
+    queryKey: QUERY_KEYS.userProfile(activeSession?.orgId ?? ''),
     queryFn: () => unwrap(usersApi.getMe()),
     enabled: !!token,
     staleTime: 1000 * 60 * 5,
@@ -43,6 +47,13 @@ export function useRoomBooking(options?: UseRoomBookingOptions) {
   });
 
   const startBooking = (room: RoomDto, timeWindow?: { start?: Date; end?: Date }) => {
+    if (!canBookSchedule) {
+      Alert.alert(
+        'Schedule edit required',
+        'Booking a room creates an event on the organization schedule. Ask an admin for schedule edit access, or use a room that is already on your calendar.',
+      );
+      return;
+    }
     const { start, end } = timeWindow?.start && timeWindow?.end
       ? { start: roundToQuarterHour(timeWindow.start), end: roundToQuarterHour(timeWindow.end) }
       : defaultBookingWindow();
@@ -120,6 +131,7 @@ export function useRoomBooking(options?: UseRoomBookingOptions) {
     startBooking,
     confirmBooking,
     closeModal,
+    canBookSchedule,
     searchHosts: async (q: string) => unwrap(scheduleApi.searchHosts(q)),
   };
 }

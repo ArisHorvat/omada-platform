@@ -12,7 +12,10 @@ public interface IUserService
         string? q,
         string? role,
         Guid? managerId,
-        Guid? departmentId);
+        Guid? departmentId,
+        Guid? groupId);
+
+    Task<ServiceResponse<IReadOnlyList<string>>> GetDirectoryRoleNamesAsync();
 
     Task<ServiceResponse<UserDeepProfileDto>> GetUserDeepProfileAsync(Guid id);
     Task<ServiceResponse<string>> UpdateProfileAsync(UpdateProfileRequest request);

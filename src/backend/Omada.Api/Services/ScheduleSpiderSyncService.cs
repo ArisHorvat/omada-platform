@@ -49,7 +49,8 @@ public class ScheduleSpiderSyncService : IScheduleSpiderSyncService
             throw;
         }
 
-        var scraped = extraction.Events;
+        var scraped = ScrapedScheduleNormalizer.EnrichAll(extraction.Events);
+        scraped = ScrapedScheduleDedup.CleanForPreview(scraped);
         if (scraped.Count == 0)
         {
             _logger.LogWarning("No scraped rows from schedule URL for organization {OrganizationId}.", organizationId);
@@ -156,13 +157,19 @@ public class ScheduleSpiderSyncService : IScheduleSpiderSyncService
     private static string BuildNaturalKey(ScrapedEventDto dto) =>
         string.Join("||",
             NormalizeKeyPart(dto.ClassName),
+            NormalizeKeyPart(dto.ActivityType),
             NormalizeKeyPart(dto.Time),
+            NormalizeKeyPart(dto.Room),
+            NormalizeKeyPart(dto.Professor),
             NormalizeKeyPart(dto.GroupNumber));
 
     private static string BuildNaturalKey(ScrapedClassEvent e) =>
         string.Join("||",
             NormalizeKeyPart(e.ClassName),
+            NormalizeKeyPart(e.ActivityType),
             NormalizeKeyPart(e.Time),
+            NormalizeKeyPart(e.RoomText),
+            NormalizeKeyPart(e.Professor),
             NormalizeKeyPart(e.GroupNumber));
 
     private static string NormalizeKeyPart(string? value) =>

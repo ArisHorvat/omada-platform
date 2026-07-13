@@ -169,6 +169,18 @@ public class EnrollLinkedProgramsRequest
     public bool UseLinkedPrograms { get; set; } = true;
 }
 
+public class UnenrollUserRequest
+{
+    [Required]
+    public required Guid UserId { get; set; }
+}
+
+public class UnenrollCohortRequest
+{
+    [Required]
+    public required Guid CohortGroupId { get; set; }
+}
+
 public class ApplyOfferingPackageRequest
 {
     /// <summary>Enroll linked student groups on newly created offerings.</summary>

@@ -1,5 +1,13 @@
 import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
-import { View, ScrollView, StyleSheet, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
+import {
+  View,
+  ScrollView,
+  StyleSheet,
+  Platform,
+  type NativeSyntheticEvent,
+  type NativeScrollEvent,
+} from 'react-native';
+import { PressClay } from '@/src/components/animations';
 import { AppText } from './AppText';
 import { useThemeColors } from '@/src/hooks';
 
@@ -14,6 +22,8 @@ const ITEM_HEIGHT = 44;
 const VISIBLE_ITEMS = 3;
 const LOOPS = 3;
 const MIDDLE_LOOP_INDEX = 1;
+const IS_WEB = Platform.OS === 'web';
+const WEB_SCROLL_END_MS = 120;
 
 export const ClayTimeSpinner: React.FC<ClayTimeSpinnerProps> = ({ value, onChange, minuteIncrement = 1 }) => {
   const colors = useThemeColors();
@@ -23,13 +33,15 @@ export const ClayTimeSpinner: React.FC<ClayTimeSpinnerProps> = ({ value, onChang
     [minuteIncrement],
   );
 
-  const hoursData = Array.from({ length: 24 }, (_, i) => i);
+  const hoursData = useMemo(() => Array.from({ length: 24 }, (_, i) => i), []);
   const minLen = minuteChoices.length;
 
   const hourScrollRef = useRef<ScrollView>(null);
   const minScrollRef = useRef<ScrollView>(null);
   const hourFinalizeGen = useRef(0);
   const minFinalizeGen = useRef(0);
+  const hourScrollEndTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const minScrollEndTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const closestQuarter = (m: number) => {
     const q = [0, 15, 30, 45];
@@ -48,19 +60,33 @@ export const ClayTimeSpinner: React.FC<ClayTimeSpinnerProps> = ({ value, onChang
     setSelectedMinute(m);
   }, [value.getTime(), minuteIncrement]);
 
+  const hourOffsetFor = useCallback((hour: number) => (24 * MIDDLE_LOOP_INDEX + hour) * ITEM_HEIGHT, []);
+  const minuteOffsetFor = useCallback(
+    (minute: number) => {
+      const minuteIndex = (minuteChoices as readonly number[]).indexOf(minute);
+      const mi = minuteIndex >= 0 ? minuteIndex : 0;
+      return (minLen * MIDDLE_LOOP_INDEX + mi) * ITEM_HEIGHT;
+    },
+    [minLen, minuteChoices],
+  );
+
   useEffect(() => {
     const h = value.getHours();
     const m = minuteIncrement === 15 ? closestQuarter(value.getMinutes()) : value.getMinutes();
-    const minuteIndex = (minuteChoices as readonly number[]).indexOf(m);
-    const mi = minuteIndex >= 0 ? minuteIndex : 0;
     const t = requestAnimationFrame(() => {
-      const initialHourOffset = (24 * MIDDLE_LOOP_INDEX + h) * ITEM_HEIGHT;
-      const initialMinOffset = (minLen * MIDDLE_LOOP_INDEX + mi) * ITEM_HEIGHT;
-      hourScrollRef.current?.scrollTo({ y: initialHourOffset, animated: false });
-      minScrollRef.current?.scrollTo({ y: initialMinOffset, animated: false });
+      hourScrollRef.current?.scrollTo({ y: hourOffsetFor(h), animated: false });
+      minScrollRef.current?.scrollTo({ y: minuteOffsetFor(m), animated: false });
     });
     return () => cancelAnimationFrame(t);
-  }, [value.getTime(), minuteIncrement, minLen, minuteChoices]);
+  }, [value.getTime(), minuteIncrement, hourOffsetFor, minuteOffsetFor]);
+
+  useEffect(
+    () => () => {
+      if (hourScrollEndTimer.current) clearTimeout(hourScrollEndTimer.current);
+      if (minScrollEndTimer.current) clearTimeout(minScrollEndTimer.current);
+    },
+    [],
+  );
 
   const recenterIfNeeded = useCallback((scrollY: number, dataLength: number, ref: React.RefObject<ScrollView | null>) => {
     const singleSetHeight = dataLength * ITEM_HEIGHT;
@@ -76,36 +102,57 @@ export const ClayTimeSpinner: React.FC<ClayTimeSpinnerProps> = ({ value, onChang
     return scrollY;
   }, []);
 
-  /** Read scroll Y synchronously — RN nullifies `nativeEvent` after the event callback returns. */
+  const snapOffset = useCallback((scrollY: number) => Math.round(scrollY / ITEM_HEIGHT) * ITEM_HEIGHT, []);
+
+  const applyHour = useCallback(
+    (hour: number) => {
+      if (selectedHour === hour) return;
+      setSelectedHour(hour);
+      const newDate = new Date(value);
+      newDate.setHours(hour);
+      newDate.setMinutes(selectedMinute);
+      onChange(newDate);
+    },
+    [onChange, selectedHour, selectedMinute, value],
+  );
+
+  const applyMinute = useCallback(
+    (minute: number) => {
+      if (selectedMinute === minute) return;
+      setSelectedMinute(minute);
+      const newDate = new Date(value);
+      newDate.setMinutes(minute);
+      onChange(newDate);
+    },
+    [onChange, selectedMinute, value],
+  );
+
   const finalizeHourFromOffset = useCallback(
     (scrollY: number) => {
-      const offsetY = recenterIfNeeded(scrollY, 24, hourScrollRef);
+      const snapped = snapOffset(scrollY);
+      if (Math.abs(snapped - scrollY) > 0.5) {
+        hourScrollRef.current?.scrollTo({ y: snapped, animated: !IS_WEB });
+      }
+      const offsetY = recenterIfNeeded(snapped, 24, hourScrollRef);
       const index = Math.round(offsetY / ITEM_HEIGHT);
       const normalizedValue = ((index % 24) + 24) % 24;
-      if (selectedHour !== normalizedValue) {
-        setSelectedHour(normalizedValue);
-        const newDate = new Date(value);
-        newDate.setHours(normalizedValue);
-        onChange(newDate);
-      }
+      applyHour(normalizedValue);
     },
-    [onChange, recenterIfNeeded, selectedHour, value],
+    [applyHour, recenterIfNeeded, snapOffset],
   );
 
   const finalizeMinuteFromOffset = useCallback(
     (scrollY: number) => {
-      const offsetY = recenterIfNeeded(scrollY, minLen, minScrollRef);
+      const snapped = snapOffset(scrollY);
+      if (Math.abs(snapped - scrollY) > 0.5) {
+        minScrollRef.current?.scrollTo({ y: snapped, animated: !IS_WEB });
+      }
+      const offsetY = recenterIfNeeded(snapped, minLen, minScrollRef);
       const index = Math.round(offsetY / ITEM_HEIGHT);
       const normalizedValue = ((index % minLen) + minLen) % minLen;
-      const minuteVal = minuteChoices[normalizedValue]!;
-      if (selectedMinute !== minuteVal) {
-        setSelectedMinute(minuteVal);
-        const newDate = new Date(value);
-        newDate.setMinutes(minuteVal);
-        onChange(newDate);
-      }
+      applyMinute(minuteChoices[normalizedValue]!);
     },
-    [minuteChoices, minLen, onChange, recenterIfNeeded, selectedMinute, value],
+    [applyMinute, minLen, minuteChoices, recenterIfNeeded, snapOffset],
   );
 
   const queueFinalizeHour = useCallback(
@@ -132,7 +179,56 @@ export const ClayTimeSpinner: React.FC<ClayTimeSpinnerProps> = ({ value, onChang
     [finalizeMinuteFromOffset],
   );
 
+  const handleHourScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (!IS_WEB) return;
+      const scrollY = e.nativeEvent.contentOffset.y;
+      if (hourScrollEndTimer.current) clearTimeout(hourScrollEndTimer.current);
+      hourScrollEndTimer.current = setTimeout(() => finalizeHourFromOffset(scrollY), WEB_SCROLL_END_MS);
+    },
+    [finalizeHourFromOffset],
+  );
+
+  const handleMinuteScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (!IS_WEB) return;
+      const scrollY = e.nativeEvent.contentOffset.y;
+      if (minScrollEndTimer.current) clearTimeout(minScrollEndTimer.current);
+      minScrollEndTimer.current = setTimeout(() => finalizeMinuteFromOffset(scrollY), WEB_SCROLL_END_MS);
+    },
+    [finalizeMinuteFromOffset],
+  );
+
+  const jumpToHour = useCallback(
+    (hour: number) => {
+      applyHour(hour);
+      hourScrollRef.current?.scrollTo({ y: hourOffsetFor(hour), animated: true });
+    },
+    [applyHour, hourOffsetFor],
+  );
+
+  const jumpToMinute = useCallback(
+    (minute: number) => {
+      applyMinute(minute);
+      minScrollRef.current?.scrollTo({ y: minuteOffsetFor(minute), animated: true });
+    },
+    [applyMinute, minuteOffsetFor],
+  );
+
   const Spacer = () => <View style={{ height: ITEM_HEIGHT }} />;
+
+  const webScrollStyle = IS_WEB
+    ? ({
+        scrollSnapType: 'y mandatory',
+        overflowY: 'scroll',
+      } as const)
+    : undefined;
+
+  const webItemSnapStyle = IS_WEB
+    ? ({
+        scrollSnapAlign: 'center',
+      } as const)
+    : undefined;
 
   return (
     <View style={styles.container}>
@@ -149,6 +245,8 @@ export const ClayTimeSpinner: React.FC<ClayTimeSpinnerProps> = ({ value, onChang
               decelerationRate="fast"
               scrollEventThrottle={16}
               nestedScrollEnabled
+              style={webScrollStyle}
+              onScroll={handleHourScroll}
               onScrollEndDrag={queueFinalizeHour}
               onMomentumScrollEnd={queueFinalizeHour}
             >
@@ -156,18 +254,20 @@ export const ClayTimeSpinner: React.FC<ClayTimeSpinnerProps> = ({ value, onChang
               {Array.from({ length: LOOPS }).map((_, loopIndex) => (
                 <View key={`h-${loopIndex}`}>
                   {hoursData.map((h) => (
-                    <View key={`${loopIndex}-${h}`} style={styles.itemContainer}>
-                      <AppText
-                        weight={selectedHour === h ? 'bold' : 'regular'}
-                        style={{
-                          fontSize: selectedHour === h ? 20 : 17,
-                          color: selectedHour === h ? colors.primary : colors.text,
-                          opacity: selectedHour === h ? 1 : 0.4,
-                        }}
-                      >
-                        {h.toString().padStart(2, '0')}
-                      </AppText>
-                    </View>
+                    <PressClay key={`${loopIndex}-${h}`} onPress={() => jumpToHour(h)}>
+                      <View style={[styles.itemContainer, webItemSnapStyle]}>
+                        <AppText
+                          weight={selectedHour === h ? 'bold' : 'regular'}
+                          style={{
+                            fontSize: selectedHour === h ? 20 : 17,
+                            color: selectedHour === h ? colors.primary : colors.text,
+                            opacity: selectedHour === h ? 1 : 0.4,
+                          }}
+                        >
+                          {h.toString().padStart(2, '0')}
+                        </AppText>
+                      </View>
+                    </PressClay>
                   ))}
                 </View>
               ))}
@@ -191,6 +291,8 @@ export const ClayTimeSpinner: React.FC<ClayTimeSpinnerProps> = ({ value, onChang
               decelerationRate="fast"
               scrollEventThrottle={16}
               nestedScrollEnabled
+              style={webScrollStyle}
+              onScroll={handleMinuteScroll}
               onScrollEndDrag={queueFinalizeMinute}
               onMomentumScrollEnd={queueFinalizeMinute}
             >
@@ -198,18 +300,20 @@ export const ClayTimeSpinner: React.FC<ClayTimeSpinnerProps> = ({ value, onChang
               {Array.from({ length: LOOPS }).map((_, loopIndex) => (
                 <View key={`m-${loopIndex}`}>
                   {minuteChoices.map((m) => (
-                    <View key={`${loopIndex}-${m}`} style={styles.itemContainer}>
-                      <AppText
-                        weight={selectedMinute === m ? 'bold' : 'regular'}
-                        style={{
-                          fontSize: selectedMinute === m ? 20 : 17,
-                          color: selectedMinute === m ? colors.primary : colors.text,
-                          opacity: selectedMinute === m ? 1 : 0.4,
-                        }}
-                      >
-                        {m.toString().padStart(2, '0')}
-                      </AppText>
-                    </View>
+                    <PressClay key={`${loopIndex}-${m}`} onPress={() => jumpToMinute(m)}>
+                      <View style={[styles.itemContainer, webItemSnapStyle]}>
+                        <AppText
+                          weight={selectedMinute === m ? 'bold' : 'regular'}
+                          style={{
+                            fontSize: selectedMinute === m ? 20 : 17,
+                            color: selectedMinute === m ? colors.primary : colors.text,
+                            opacity: selectedMinute === m ? 1 : 0.4,
+                          }}
+                        >
+                          {m.toString().padStart(2, '0')}
+                        </AppText>
+                      </View>
+                    </PressClay>
                   ))}
                 </View>
               ))}

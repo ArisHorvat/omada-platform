@@ -10,7 +10,7 @@ import { orgAdminApi, unwrap } from '@/src/api';
 import { QUERY_KEYS } from '@/src/api/queryKeys';
 import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
 import { alertAction, confirmAction } from '@/src/utils/confirmAction';
-import { normalizeWeeklySessions, type OfferingWeeklySession } from '../utils/offeringSessionPlan';
+import { normalizeWeeklySessions, normalizePackageActivitySessions, type OfferingWeeklySession } from '../utils/offeringSessionPlan';
 
 function buildInstructors(item: PackageItemDraft) {
   const instructors: { userId: string; role: string }[] = [];
@@ -31,6 +31,7 @@ export type PackageItemDraft = {
   code: string;
   hostUserId: string;
   teamUserIds: string[];
+  credits: number;
   weeklySessions: OfferingWeeklySession[];
   /** When false, course stays in the package but is skipped on “Apply to period”. */
   applyToTerm: boolean;
@@ -45,7 +46,8 @@ function buildItemsPayload(itemDrafts: PackageItemDraft[]) {
       sortOrder: idx,
       defaultHostId: item.hostUserId || undefined,
       instructors: buildInstructors(item),
-      weeklySessions: normalizeWeeklySessions(item.weeklySessions),
+      weeklySessions: normalizePackageActivitySessions(item.weeklySessions),
+      credits: item.credits,
     }));
 }
 
@@ -67,7 +69,10 @@ function mapItemToDraft(item: CourseOfferingPackageDto['items'][number], idx: nu
       frequency: (s.frequency as OfferingWeeklySession['frequency']) ?? 'weekly',
       isOptional: s.isOptional ?? false,
       sortOrder: s.sortOrder ?? i,
+      requiredAttendancePercent: s.requiredAttendancePercent,
+      assignedInstructorIds: s.assignedInstructorIds ?? [],
     })),
+    credits: item.credits ?? 0,
     applyToTerm: true,
   };
 }
@@ -199,7 +204,7 @@ export function useOfferingsWorkspace() {
       return offeringPackagesApi.applyToPeriod(selectedPackageId, applyPeriodId, {
         enrollLinkedPrograms: true,
         skipExistingNames: true,
-        enrollExistingOfferings: false,
+        enrollExistingOfferings: true,
         limitToItemNames: applyNames,
       });
     },
@@ -269,7 +274,7 @@ export function useOfferingsWorkspace() {
   const confirmDeletePackage = (pkg: CourseOfferingPackageDto) => {
     confirmAction({
       title: 'Delete package',
-      message: `Delete "${pkg.name}"? Term offerings already created are not removed.`,
+      message: `Delete "${pkg.name}"? This also removes matching term offerings (all periods) and their coursework tasks.`,
       confirmText: 'Delete',
       destructive: true,
       onConfirm: () => deleteMutation.mutate(pkg.id),
@@ -297,6 +302,7 @@ export function useOfferingsWorkspace() {
         code: '',
         hostUserId: '',
         teamUserIds: [],
+        credits: 0,
         weeklySessions: [],
         applyToTerm: true,
       },

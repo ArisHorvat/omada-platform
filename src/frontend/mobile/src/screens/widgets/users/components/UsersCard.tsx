@@ -1,23 +1,51 @@
 import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { ProgressiveImage, AppText, Skeleton, WidgetEmptyState, WidgetErrorState } from '@/src/components/ui';
+import { useRouter } from 'expo-router';
+import {
+  ProgressiveImage,
+  AppText,
+  Skeleton,
+  WidgetEmptyState,
+  WidgetErrorState,
+  ClayView,
+} from '@/src/components/ui';
+import { PressClay } from '@/src/components/animations/PressClay';
+import { AppButton } from '@/src/components/ui';
 import { useUsersWidgetLogic } from '../hooks/useUsersWidgetLogic';
 import { useThemeColors } from '@/src/hooks';
-import { ClayView } from '@/src/components/ui/ClayView';
+import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
+import { getDirectoryCopy } from '../utils/directoryCopy';
 
 const AVATAR_SIZE = 44;
 
 export const UsersCard = () => {
   const colors = useThemeColors();
+  const router = useRouter();
+  const { organization } = useCurrentOrganization();
+  const copy = useMemo(() => getDirectoryCopy(organization?.organizationType), [organization?.organizationType]);
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const { manager, teamUsers, isLoadingTeam, isErrorTeam, refetchTeam } = useUsersWidgetLogic({
     teamPageSize: 12,
   });
 
-  // If user has no manager set, we cannot build "My Team" reliably.
   if (!manager) {
-    return <WidgetEmptyState title="No team yet" description="Your team will appear here." icon="person" />;
+    return (
+      <View style={styles.container}>
+        <WidgetEmptyState
+          title="Browse the directory"
+          description="Find colleagues and open their profiles."
+          icon="group"
+        />
+        <AppButton
+          title="Open directory"
+          variant="secondary"
+          icon="group"
+          onPress={() => router.push('/users' as never)}
+          style={{ marginTop: 8 }}
+        />
+      </View>
+    );
   }
 
   if (isLoadingTeam) {
@@ -41,25 +69,35 @@ export const UsersCard = () => {
   return (
     <View style={styles.container}>
       <AppText variant="caption" weight="bold" style={[styles.title, { color: colors.subtle }]}>
-        MY TEAM
+        {copy.teamKicker}
       </AppText>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {teamUsers.length === 0 ? (
-          <WidgetEmptyState title="No one here yet" description="Try again later." icon="person" style={{ minHeight: 84 }} />
+          <WidgetEmptyState title="No teammates yet" description="Your peers will appear here." icon="person" style={{ minHeight: 84 }} />
         ) : (
           teamUsers.map((u) => (
-            <View key={u.id} style={styles.avatarWrap}>
-              <ClayView depth={10} puffy={18} color={colors.primaryContainer} style={styles.avatarClay}>
-                {u.avatarUrl ? (
-                  <ProgressiveImage source={{ uri: u.avatarUrl }} resizeMode="cover" style={styles.avatarImage} />
-                ) : (
-                  <AppText variant="body" weight="bold" style={{ color: colors.onPrimaryContainer }}>
-                    {(u.firstName?.[0] ?? '').toUpperCase()}
-                  </AppText>
-                )}
-              </ClayView>
-            </View>
+            <PressClay
+              key={u.id}
+              onPress={() =>
+                router.push({ pathname: '/user-profile', params: { id: u.id } } as never)
+              }
+            >
+              <View style={styles.avatarWrap}>
+                <ClayView depth={10} puffy={18} color={colors.primaryContainer} style={styles.avatarClay}>
+                  {u.avatarUrl ? (
+                    <ProgressiveImage source={{ uri: u.avatarUrl }} resizeMode="cover" style={styles.avatarImage} />
+                  ) : (
+                    <AppText variant="body" weight="bold" style={{ color: colors.onPrimaryContainer }}>
+                      {(u.firstName?.[0] ?? '').toUpperCase()}
+                    </AppText>
+                  )}
+                </ClayView>
+                <AppText variant="caption" numberOfLines={1} style={[styles.avatarName, { color: colors.text }]}>
+                  {u.firstName}
+                </AppText>
+              </View>
+            </PressClay>
           ))
         )}
       </ScrollView>
@@ -67,7 +105,7 @@ export const UsersCard = () => {
   );
 };
 
-const makeStyles = (colors: any) =>
+const makeStyles = (colors: { subtle: string; text: string }) =>
   StyleSheet.create({
     container: {
       paddingHorizontal: 12,
@@ -79,14 +117,13 @@ const makeStyles = (colors: any) =>
       opacity: 0.9,
     },
     scrollContent: {
-      alignItems: 'center',
+      alignItems: 'flex-start',
       gap: 12,
       paddingVertical: 4,
     },
     avatarWrap: {
-      width: AVATAR_SIZE + 10,
+      width: 72,
       alignItems: 'center',
-      justifyContent: 'center',
     },
     avatarClay: {
       width: AVATAR_SIZE,
@@ -99,10 +136,14 @@ const makeStyles = (colors: any) =>
     avatarImage: {
       ...StyleSheet.absoluteFillObject,
     },
+    avatarName: {
+      marginTop: 6,
+      maxWidth: 72,
+      textAlign: 'center',
+    },
     avatarSkeletonWrap: {
       width: AVATAR_SIZE + 10,
       alignItems: 'center',
       justifyContent: 'center',
     },
   });
-

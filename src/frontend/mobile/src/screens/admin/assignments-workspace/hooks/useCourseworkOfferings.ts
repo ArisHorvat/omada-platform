@@ -22,7 +22,7 @@ export function useCourseworkOfferings() {
   const orgId = organization?.id ?? '';
 
   const profileQuery = useQuery({
-    queryKey: QUERY_KEYS.userProfile,
+    queryKey: QUERY_KEYS.userProfile(orgId),
     queryFn: () => unwrap(usersApi.getMe()),
     staleTime: 1000 * 60 * 5,
   });

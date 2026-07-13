@@ -15,6 +15,7 @@ public class UserDirectoryItemDto
 
     public string? Title { get; set; }
     public Guid? DepartmentId { get; set; }
+    public string? DepartmentName { get; set; }
     public Guid? ManagerId { get; set; }
 
     /// <summary>User role within the current organization (e.g. Student, Faculty).</summary>

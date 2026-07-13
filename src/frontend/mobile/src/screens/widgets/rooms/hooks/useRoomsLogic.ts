@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { mapsApi, roomsApi, scheduleApi, unwrap } from '@/src/api';
 import { roundToQuarterHour } from '../../schedule/utils/quarterHour';
@@ -6,6 +6,7 @@ import { Alert } from 'react-native';
 import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
 import { RoomDto, ScheduleItemDto } from '@/src/api/generatedClient';
 import { useRoomBooking } from './useRoomBooking';
+import { dateAtLocalNoon, localDayKey } from '@/src/utils/localDayKey';
 
 export type UseRoomsLogicOptions = {
   /** Open Rooms with this room selected (from map deep link). */
@@ -132,13 +133,13 @@ export const useRoomsLogic = (options?: UseRoomsLogicOptions) => {
   });
 
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
-  const [timelineDate, setTimelineDate] = useState(() => {
-    const d = new Date();
-    d.setHours(12, 0, 0, 0);
-    return d;
-  });
+  const [timelineDate, setTimelineDateRaw] = useState(() => dateAtLocalNoon(new Date()));
 
-  const timelineDayKey = timelineDate.toISOString().slice(0, 10);
+  const setTimelineDate = useCallback((date: Date) => {
+    setTimelineDateRaw(dateAtLocalNoon(date));
+  }, []);
+
+  const timelineDayKey = localDayKey(timelineDate);
 
   const roomTimelineQuery = useQuery({
     queryKey: ['room-timeline', selectedRoomId, timelineDayKey],
@@ -158,6 +159,7 @@ export const useRoomsLogic = (options?: UseRoomsLogicOptions) => {
     closeModal,
     eventTypes,
     searchHosts,
+    canBookSchedule,
   } = useRoomBooking({
     onBooked: () => {
       refetch();
@@ -197,6 +199,9 @@ export const useRoomsLogic = (options?: UseRoomsLogicOptions) => {
   const commitFilters = (next: typeof filters) => {
     setFilters(next);
     setPage(1);
+    if (selectedRoomId) {
+      setTimelineDate(dateAtLocalNoon(next.date));
+    }
   };
 
   const decoratedRooms = rooms.map((r) => ({ ...r, isBusy: busyRoomIds.has(r.id) }));
@@ -222,13 +227,18 @@ export const useRoomsLogic = (options?: UseRoomsLogicOptions) => {
   const selectRoom = (roomId: string) => {
     setSelectedRoomId((prev) => {
       if (prev !== roomId) {
-        const d = new Date();
-        d.setHours(12, 0, 0, 0);
-        setTimelineDate(d);
+        setTimelineDate(dateAtLocalNoon(filters.date));
       }
       return roomId;
     });
   };
+
+  const filterDayKey = localDayKey(filters.date);
+
+  useEffect(() => {
+    if (!selectedRoomId) return;
+    setTimelineDate(dateAtLocalNoon(filters.date));
+  }, [filterDayKey, selectedRoomId, setTimelineDate, filters.date]);
 
   const focusedRoomDecorated = useMemo(() => {
     const r = focusedRoomQuery.data;
@@ -271,6 +281,7 @@ export const useRoomsLogic = (options?: UseRoomsLogicOptions) => {
     setTimelineDate,
     bookingRoom,
     focusedRoomLoading: !!focusId && focusedRoomQuery.isLoading,
+    canBookSchedule,
     refreshNow: () => {
       availableNowQuery.refetch();
       liveScheduleQuery.refetch();

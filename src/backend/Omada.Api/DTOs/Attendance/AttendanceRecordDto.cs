@@ -18,6 +18,8 @@ public class AttendanceRecordDto
 
     public string? GroupName { get; set; }
 
+    public string? EventTypeName { get; set; }
+
     public string? RoomName { get; set; }
 
     [Required]

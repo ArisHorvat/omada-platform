@@ -12,7 +12,7 @@ Omada uses **one schedule-backed attendance store** (`Event` + `EventAttendance`
 | **Corporate (events)** | RSVP / participation on meetings (optional) | Same `EventAttendance` — status **Accepted** / **Declined** / **Maybe** |
 | **Corporate (workday)** | **Clock in** → **break** → **clock out**; recent days list | `WorkTimeEntry` per user per calendar day |
 
-**Schedule link (university):** Calendar events are created manually or via **Publish to schedule** from the offering weekly pattern (periods workspace). Events set **`OfferingId`** (+ **`EventTypeId`**, optional **`CohortGroupId`**) so roster and student reports scope correctly.
+**Schedule link (university):** Calendar events are created manually or via **Publish to schedule** from the offering weekly pattern (`/timetables-workspace`). Events set **`OfferingId`** (+ **`EventTypeId`**, optional **`CohortGroupId`**) so roster and student reports scope correctly.
 
 ---
 
@@ -22,13 +22,11 @@ Omada uses **one schedule-backed attendance store** (`Event` + `EventAttendance`
 |--------|------------|-------|
 | View own attendance / work time | `attendance` **View** | `GET /api/Attendance/me`, work-time routes |
 | Student offering breakdown | `attendance` **View** | `GET /api/Attendance/my-offerings` |
-| Mark roster / scan / record member | `attendance` **Edit** | Host, session manager, **or offering teaching team** |
+| Mark roster / scan / record member | `attendance` **Edit** | University: **host only** for teacher session list; roster write also for offering teaching team on that event |
 | Set required attendance % on offering | Org **Admin** | Periods workspace (same as credits) |
 | Corporate clock in/out | `attendance` **View** | Own entries only |
 
-**Teaching team:** For events with **`OfferingId`**, **`OfferingTeachingAuthorization.CanTeachOfferingAsync`** grants roster read/write (host + co-instructors + org Admin).
-
-**Digital ID:** Scan verifies identity; staff still picks session and calls **`POST /api/Attendance/record`** or uses **session roster** UI. See [`DigitalId.md`](DigitalId.md).
+**Digital ID:** Scan verifies identity; staff still records via **`POST /api/Attendance/record`** or **session roster** UI. See [`DigitalId.md`](DigitalId.md).
 
 ---
 
@@ -36,27 +34,58 @@ Omada uses **one schedule-backed attendance store** (`Event` + `EventAttendance`
 
 ### Student (`/(widgets)/attendance` — student view)
 
-1. Pick **term** (when multiple periods apply).
-2. **By course (offering):** each enrolled offering shows:
-   - Overall **present / held** count and **rate %**
-   - Breakdown by **activity type** (Lab, Seminar, Lecture — from `Event.EventType`)
-   - **Required %** from offering (if admin set) + **meets requirement** badge
-3. **Recent sessions** — flat history (existing records list).
-4. **Next session** — check-in from schedule (existing).
+1. Compact inline stats (present / absent / rate) — no large hero card.
+2. **By course (offering):** each enrolled offering shows rate %, breakdown by **activity type**, and optional **required %** badge (`AttendanceOfferingsPanel`).
+3. **Recent history** — flat list with green **Present** / red **Absent** badges (`isAttendancePresent` in `attendanceLabels.ts`).
+4. **Next session** — self check-in from schedule (`POST /api/Schedule/{id}/attendance`).
 
 ### Teacher (`/(widgets)/attendance` — teacher view)
 
-1. **Sessions to take roll** — upcoming events where user is host, session manager, or **on offering teaching team** (with offering name + event type).
-2. Tap session → **`/attendance-session/[eventId]`** roster:
-   - Enrolled students for **`OfferingId`** (respect cohort when set)
-   - Per-row: Present / Absent / Not marked
+1. **This week's sessions** — calendar week (Mon–Sun), **host-only** for university (`HostId == userId`). Past sessions in the week are excluded.
+2. Tap session → **`/attendance-session/[eventId]?instanceDate=`** (full ISO from `startTime`) → roster:
+   - Enrolled students for **`OfferingId`** (cohort filter when set)
+   - **Alternate-section** swap-ins listed when they have `Added` attendance on that instance; students who **declined** (swapped away) are hidden from the base roster
+   - Per-row: **Present** / **Absent** / **Clear** — everyone starts **neutral** until the teacher marks
+   - **Present** chip: grey when unselected, **green when selected**
    - Bulk save → **`POST .../sessions/{eventId}/roster`**
-3. **Scan Digital ID** → existing scanner → record present for selected session.
+3. **Scan Digital ID** → `/digital-id-scanner` when `attendance.take` or `digital-id.manage`.
 
 ### Admin
 
 - **Periods workspace:** per offering — **Credits** + **Required attendance %** (0–100, optional).
-- Future: auto-seed **`Expected`** rows from enrollments when timetable is published.
+- **Timetables publish:** creates **`Event`** rows from weekly patterns — **does not** auto-seed `Expected` attendance (teacher marks roll explicitly).
+
+---
+
+## Instance dates (critical)
+
+Attendance rows are keyed by **`InstanceDate`** (occurrence start, minute precision UTC).
+
+| Helper | Location | Role |
+|--------|----------|------|
+| **`AttendanceInstanceHelper`** | `Infrastructure/AttendanceInstanceHelper.cs` | Resolve canonical occurrence from event + requested day; match stored rows; pick preferred row when duplicates exist |
+
+**Rules:**
+
+- **Non-recurring events:** instance = event `StartTime` (truncated to minute).
+- **Recurring events:** instance = requested calendar day + event wall-clock time (not midnight).
+- **Roster GET/POST** both use the same resolved instant — pass full ISO `instanceDate` from the teacher session list.
+- **History** dedupes by `(EventId, calendar day)` — one row per session day in `GET /api/Attendance/me`.
+- **Save** upserts by day; duplicate rows for the same user/event/day are soft-deleted on consolidate.
+
+---
+
+## Status semantics
+
+| Status | University meaning | Counts as present? | Roster display |
+|--------|-------------------|--------------------|----------------|
+| `None` | Not marked | No | Neutral |
+| `Expected` | Legacy / unused after publish seed removed | No | **Not marked** (mapped to `None`) |
+| `Added` | Present (teacher or self check-in) | Yes | Present |
+| `Accepted` | Present (corporate RSVP) | Yes (corporate) | Present |
+| `Declined` | Absent / swapped away | No | Absent |
+
+**Teacher bulk mark:** Present → `Added`, Absent → `Declined`, Clear → `None` (soft-delete row).
 
 ---
 
@@ -66,47 +95,30 @@ Omada uses **one schedule-backed attendance store** (`Event` + `EventAttendance`
 
 When **`organizationKind === Corporate`**:
 
-1. **Today:** Clock **In** / **Out**, edit **break minutes** (or break start/end in future).
+1. **Today:** Clock **In** / **Out**, edit **break minutes**.
 2. **Computed:** net worked time = `(clockOut - clockIn) - break`.
-3. **Recent days:** list last ~14 **`WorkTimeEntry`** rows with times and totals.
+3. **Recent days:** list last ~14 **`WorkTimeEntry`** rows.
 
-Meeting RSVP remains on **schedule** + optional participation summary (existing event attendance).
+Meeting RSVP remains on **schedule** + participation summary.
 
 ---
 
 ## Backend API
 
-### Existing (`AttendanceController`)
-
 | Method | Route | Purpose |
 |--------|-------|---------|
-| `GET` | `/api/Attendance/me` | Summary, history, next session, teacher sessions |
+| `GET` | `/api/Attendance/me` | Summary, deduped history, next session, teacher sessions |
 | `GET` | `/api/Attendance/admin/records` | Org-wide flat list (`attendance` Edit) |
 | `POST` | `/api/Attendance/record` | Staff marks one member for one session instance |
-
-### University (Phase 1+)
-
-| Method | Route | Permission |
-|--------|-------|------------|
-| `GET` | `/api/Attendance/sessions/{eventId}/roster?instanceDate=` | `attendance` Edit + can manage session |
+| `GET` | `/api/Attendance/sessions/{eventId}/roster?instanceDate=` | Session roster (`attendance` Edit + can manage session) |
 | `POST` | `/api/Attendance/sessions/{eventId}/roster` | Bulk mark roster |
-| `GET` | `/api/Attendance/my-offerings?periodId=` | `attendance` View — per-offering + by event type |
-
-### Corporate work time
-
-| Method | Route | Purpose |
-|--------|-------|---------|
-| `GET` | `/api/Attendance/work-time/today` | Today's entry (if any) |
-| `GET` | `/api/Attendance/work-time/recent?days=` | Recent day records |
-| `POST` | `/api/Attendance/work-time/clock-in` | Start day |
-| `POST` | `/api/Attendance/work-time/clock-out` | End day |
-| `PUT` | `/api/Attendance/work-time/today/break` | Set break minutes |
-
-### Schedule (self check-in)
-
-| Method | Route | Purpose |
-|--------|-------|---------|
+| `GET` | `/api/Attendance/my-offerings?periodId=` | Per-offering + by event type |
+| `GET/POST/PUT` | `/api/Attendance/work-time/*` | Corporate clock in/out/break |
 | `POST` | `/api/Schedule/{id}/attendance` | Student self RSVP / check-in |
+
+**Services:** `AttendanceService` (roster, history, work time), `ScheduleService.ApplyAttendanceForUserAsync` (single-user write + duplicate consolidation).
+
+**Performance:** `GET /api/Attendance/me` uses **lightweight event queries** for `nextSession` and `teacherSessions` — it does **not** call full `GetScheduleAsync` (which loads every event’s attendances). Uses `AsSplitQuery()` + enrollment batching instead.
 
 ---
 
@@ -120,8 +132,6 @@ Meeting RSVP remains on **schedule** + optional participation summary (existing 
 | `CourseOffering` | **`RequiredAttendancePercent`** (nullable 0–100), **`Credits`**, session plan JSON |
 | `WorkTimeEntry` | Corporate day: **`WorkDate`**, **`ClockInUtc`**, **`ClockOutUtc`**, **`BreakMinutes`** |
 
-**Statuses (`AttendanceStatus`):** University present = `Added` / `Expected` / `Accepted`; absent = `Declined`. Corporate RSVP uses `Accepted` / `Tentative` / `Declined`.
-
 ---
 
 ## Frontend map
@@ -131,30 +141,25 @@ Meeting RSVP remains on **schedule** + optional participation summary (existing 
 | Attendance screen | `screens/widgets/attendance/components/AttendanceScreen.tsx` |
 | Work time (corporate) | `components/WorkTimeClockPanel.tsx` |
 | Offering breakdown (university) | `components/AttendanceOfferingsPanel.tsx` |
-| Session roster | `components/AttendanceSessionRosterScreen.tsx` → route `attendance-session/[eventId]` |
-| Labels | `utils/attendanceLabels.ts` |
+| Session roster | `components/AttendanceSessionRosterScreen.tsx` → `attendance-session/[eventId]` |
+| Labels & status helpers | `utils/attendanceLabels.ts` — `normalizeAttendanceStatus`, `isAttendancePresent`, `isAttendanceAbsent` |
+| Styles | `styles/attendance.styles.ts` — history cards use `contentOverflow="visible"`, no badge `maxWidth` clip |
 | Temp API | `api/attendanceExtendedApi.ts` until NSwag regen |
 | Admin rule field | `periods-workspace/.../OfferingAttendanceRuleField.tsx` |
 
-**Filters:** Reuse **`filterPickerRow.ts`** picker rows for term/course on university attendance (same pattern as Grades).
+**UI pitfalls:**
 
----
+- **`ClayView` `puffy` ≠ content padding** — history/roster cards need explicit padding and `contentOverflow="visible"` so shadows and badges are not clipped.
+- **Recent history:** green badge only when `isAttendancePresent(status, statusLabel)`; roster Present chip green **only when selected**.
 
-## Roadmap (later phases)
-
-| Phase | Item |
-|-------|------|
-| **2** | **Publish timetable** from **`WeeklySessionPlanJson`** → recurring `Event` rows (`POST .../publish-timetable`) |
-| **2** | **Auto `Expected`** attendance rows on publish + new enrollments |
-| **3** | Per-activity-type rules JSON on offering (different % for lab vs seminar) |
-| **3** | Lateness, geofence, scan → auto clock-in |
-| **4** | Manager timesheet approval for corporate |
+**Filters:** Reuse **`filterPickerRow.ts`** picker rows for term/course (same pattern as Grades).
 
 ---
 
 ## Related docs
 
 - [`DigitalId.md`](DigitalId.md) — scanner + manual roll
-- [`CurriculumOfferings.md`](CurriculumOfferings.md) — offerings, periods, credits
+- [`CurriculumOfferings.md`](CurriculumOfferings.md) — offerings, periods, credits, per-offering enrollment
+- [`Timetables.md`](Timetables.md) — publish → schedule events
 - [`Coursework.md`](Coursework.md) — separate from attendance widget
-- Rules: **`domain-attendance.mdc`**
+- Rules: **`.cursor/rules/domain-attendance.mdc`**

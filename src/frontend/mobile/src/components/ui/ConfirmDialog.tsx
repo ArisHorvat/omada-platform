@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useRef } from 'react';
 import { Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { AUTH_CONTENT_MAX_WIDTH } from '@/src/constants/layout';
@@ -22,6 +22,8 @@ export interface ConfirmDialogProps {
   onCancel: () => void;
 }
 
+const BACKDROP_PRESS_GRACE_MS = 400;
+
 export function ConfirmDialog({
   visible,
   title,
@@ -35,6 +37,19 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   const colors = useThemeColors();
   const webAnchor = useWebMainPaneAnchor();
+  const openedAtRef = useRef(0);
+
+  React.useEffect(() => {
+    if (visible) {
+      openedAtRef.current = Date.now();
+    }
+  }, [visible]);
+
+  const handleBackdropPress = useCallback(() => {
+    if (Date.now() - openedAtRef.current < BACKDROP_PRESS_GRACE_MS) return;
+    onCancel();
+  }, [onCancel]);
+
   const overlayHostStyle = webFixedOverlayHostStyle(webAnchor, styles.overlay);
   const dialogHostStyle = webFixedOverlayHostStyle(webAnchor, styles.dialogSlot);
 
@@ -49,9 +64,18 @@ export function ConfirmDialog({
       onRequestClose={onCancel}
     >
       <View style={overlayHostStyle}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onCancel} accessibilityLabel="Dismiss" />
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={handleBackdropPress}
+          accessibilityLabel="Dismiss"
+        />
         <View style={dialogHostStyle} pointerEvents="box-none">
-          <ClayView depth={18} puffy={22} color={colors.card} style={styles.card}>
+          <ClayView
+            depth={18}
+            contentOverflow="visible"
+            color={colors.card}
+            style={styles.card}
+          >
             <AppText variant="h3" weight="bold" style={{ color: colors.text, textAlign: 'center' }}>
               {title}
             </AppText>

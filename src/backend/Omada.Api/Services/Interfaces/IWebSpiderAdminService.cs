@@ -3,7 +3,7 @@ using Omada.Api.DTOs.Scraping;
 
 namespace Omada.Api.Services.Interfaces;
 
-/// <summary>Organization-admin operations for previewing and triggering web spider jobs.</summary>
+/// <summary>Organization-admin operations for schedule import preview and sync.</summary>
 public interface IWebSpiderAdminService
 {
     Task<ServiceResponse<SpiderConfigDto>> GetConfigAsync(CancellationToken cancellationToken = default);
@@ -21,18 +21,6 @@ public interface IWebSpiderAdminService
         CancellationToken cancellationToken = default);
 
     Task<ServiceResponse<SpiderSyncEnqueueResultDto>> EnqueueScheduleSyncAsync(
-        SpiderUrlRequest? request,
-        CancellationToken cancellationToken = default);
-
-    Task<ServiceResponse<SpiderPreviewNewsResultDto>> PreviewNewsAsync(
-        SpiderUrlRequest request,
-        CancellationToken cancellationToken = default);
-
-    Task<ServiceResponse<NewsDiscoveryResult>> DiscoverNewsAsync(
-        SpiderUrlRequest request,
-        CancellationToken cancellationToken = default);
-
-    Task<ServiceResponse<SpiderSyncEnqueueResultDto>> EnqueueNewsSyncAsync(
         SpiderUrlRequest? request,
         CancellationToken cancellationToken = default);
 

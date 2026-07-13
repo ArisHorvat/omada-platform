@@ -34,6 +34,9 @@ public class CourseOffering : BaseEntity, IOrganizationScoped
     /// <summary>JSON array of <see cref="Guid"/> — schedule event ids created by timetable publish (for replace).</summary>
     public string? TimetablePublishedEventIdsJson { get; set; }
 
+    /// <summary>Normalized weekly pattern snapshot from the last publish (detects pattern edits).</summary>
+    public string? TimetablePublishedPlanJson { get; set; }
+
     /// <summary>Default instructor for this offering.</summary>
     public Guid? HostId { get; set; }
 

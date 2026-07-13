@@ -7,11 +7,12 @@ export function createTasksInboxStyles(colors: {
 }) {
   return StyleSheet.create({
     card: {
-      marginHorizontal: 20,
       marginBottom: 16,
       borderRadius: 20,
       padding: 16,
       gap: 12,
+      overflow: 'hidden',
+      alignSelf: 'stretch',
     },
     scopeRow: {
       flexDirection: 'row',
@@ -23,11 +24,14 @@ export function createTasksInboxStyles(colors: {
     segmentRow: {
       flexDirection: 'row',
       gap: 8,
+      width: '100%',
     },
     segmentBtn: {
+      flex: 1,
+      minWidth: 0,
       borderRadius: 14,
-      paddingVertical: 11,
-      paddingHorizontal: 12,
+      paddingVertical: 10,
+      paddingHorizontal: 8,
     },
     timeRow: {
       flexDirection: 'row',

@@ -3,8 +3,10 @@ using Microsoft.AspNetCore.Mvc;
 using Omada.Api.Abstractions;
 using Omada.Api.DTOs.Common;
 using Omada.Api.DTOs.Groups;
+using Omada.Api.DTOs.Users;
 using Omada.Api.Entities;
 using Omada.Api.Infrastructure;
+using Omada.Api.Infrastructure.Security;
 using Omada.Api.Services.Interfaces;
 
 namespace Omada.Api.Controllers;
@@ -22,14 +24,14 @@ public class GroupsController : ControllerBase
     }
 
     [HttpGet("tree")]
-    [HasPermission(WidgetKeys.Groups, nameof(AccessLevel.View))]
+    [RequiresOrgAdmin]
     public async Task<ActionResult<ServiceResponse<IEnumerable<GroupTreeNodeDto>>>> GetTree()
     {
         var response = await _groupService.GetGroupTreeAsync();
         return response.IsSuccess ? Ok(response) : BadRequest(response);
     }
 
-  /// <summary>Groups the current user may attach to schedule events, assignments, or grades (membership-scoped).</summary>
+    /// <summary>Groups the current user may attach to schedule events, assignments, or grades (membership-scoped).</summary>
     [HttpGet("assignable")]
     [Authorize]
     public async Task<ActionResult<ServiceResponse<IEnumerable<GroupPickerItemDto>>>> GetAssignable(
@@ -40,7 +42,7 @@ public class GroupsController : ControllerBase
     }
 
     [HttpGet("types")]
-    [HasPermission(WidgetKeys.Groups, nameof(AccessLevel.View))]
+    [RequiresOrgAdmin]
     public async Task<ActionResult<ServiceResponse<IEnumerable<GroupTypeOptionDto>>>> GetTypes()
     {
         var response = await _groupService.GetGroupTypeCatalogAsync();
@@ -48,7 +50,7 @@ public class GroupsController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
-    [HasPermission(WidgetKeys.Groups, nameof(AccessLevel.View))]
+    [RequiresOrgAdmin]
     public async Task<ActionResult<ServiceResponse<GroupDetailDto>>> GetById([FromRoute] Guid id)
     {
         var response = await _groupService.GetGroupByIdAsync(id);
@@ -56,7 +58,7 @@ public class GroupsController : ControllerBase
     }
 
     [HttpPost]
-    [HasPermission(WidgetKeys.Groups, nameof(AccessLevel.Edit))]
+    [RequiresOrgAdmin]
     public async Task<ActionResult<ServiceResponse<GroupDto>>> CreateGroup([FromBody] CreateGroupRequest request)
     {
         var response = await _groupService.CreateGroupAsync(request);
@@ -64,7 +66,7 @@ public class GroupsController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    [HasPermission(WidgetKeys.Groups, nameof(AccessLevel.Edit))]
+    [RequiresOrgAdmin]
     public async Task<ActionResult<ServiceResponse<GroupDto>>> UpdateGroup(
         [FromRoute] Guid id,
         [FromBody] UpdateGroupRequest request)
@@ -74,7 +76,7 @@ public class GroupsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
-    [HasPermission(WidgetKeys.Groups, nameof(AccessLevel.Admin))]
+    [RequiresOrgAdmin]
     public async Task<ActionResult<ServiceResponse<bool>>> DeleteGroup([FromRoute] Guid id)
     {
         var response = await _groupService.DeleteGroupAsync(id);
@@ -82,7 +84,7 @@ public class GroupsController : ControllerBase
     }
 
     [HttpGet("{id:guid}/members")]
-    [HasPermission(WidgetKeys.Groups, nameof(AccessLevel.View))]
+    [RequiresOrgAdmin]
     public async Task<ActionResult<ServiceResponse<PagedResponse<GroupMemberDto>>>> GetMembers(
         [FromRoute] Guid id,
         [FromQuery] PagedRequest request,
@@ -93,7 +95,7 @@ public class GroupsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/members")]
-    [HasPermission(WidgetKeys.Groups, nameof(AccessLevel.Edit))]
+    [RequiresOrgAdmin]
     public async Task<ActionResult<ServiceResponse<int>>> AddMembers(
         [FromRoute] Guid id,
         [FromBody] AddGroupMembersRequest request)
@@ -103,7 +105,7 @@ public class GroupsController : ControllerBase
     }
 
     [HttpDelete("{id:guid}/members/{userId:guid}")]
-    [HasPermission(WidgetKeys.Groups, nameof(AccessLevel.Edit))]
+    [RequiresOrgAdmin]
     public async Task<ActionResult<ServiceResponse<bool>>> RemoveMember(
         [FromRoute] Guid id,
         [FromRoute] Guid userId,
@@ -114,7 +116,7 @@ public class GroupsController : ControllerBase
     }
 
     [HttpPost("members/move")]
-    [HasPermission(WidgetKeys.Groups, nameof(AccessLevel.Edit))]
+    [RequiresOrgAdmin]
     public async Task<ActionResult<ServiceResponse<int>>> MoveMembers([FromBody] MoveGroupMembersRequest request)
     {
         var response = await _groupService.MoveGroupMembersAsync(request);
@@ -122,7 +124,7 @@ public class GroupsController : ControllerBase
     }
 
     [HttpGet("attendance-config")]
-    [HasPermission(WidgetKeys.Groups, nameof(AccessLevel.View))]
+    [RequiresOrgAdmin]
     public async Task<ActionResult<ServiceResponse<AttendanceConfigDto>>> GetAttendanceConfig()
     {
         var response = await _groupService.GetAttendanceConfigAsync();
@@ -134,6 +136,14 @@ public class GroupsController : ControllerBase
     public async Task<ActionResult<ServiceResponse<IEnumerable<DepartmentSummaryDto>>>> GetDepartments()
     {
         var response = await _groupService.GetDepartmentsAsync();
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
+    }
+
+    [HttpGet("directory-filter")]
+    [HasPermission(WidgetKeys.Users, nameof(AccessLevel.View))]
+    public async Task<ActionResult<ServiceResponse<IReadOnlyList<DirectoryGroupOptionDto>>>> GetDirectoryFilter()
+    {
+        var response = await _groupService.GetDirectoryFilterGroupsAsync();
         return response.IsSuccess ? Ok(response) : BadRequest(response);
     }
 }

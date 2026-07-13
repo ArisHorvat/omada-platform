@@ -1,95 +1,44 @@
 import { useQuery } from '@tanstack/react-query';
-import React from 'react';
 
-import apiClient from '@/src/api/apiClient';
 import { unwrap, usersApi } from '@/src/api';
+import { QUERY_KEYS } from '@/src/api/queryKeys';
+import { usersDirectoryApi } from '@/src/api/usersDirectoryApi';
+import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
 
-export type UserDirectoryItemDto = {
-  id: string;
-  firstName: string;
-  lastName: string;
-  roleName: string;
-  title?: string | null;
-  departmentId?: string | null;
-  managerId?: string | null;
-  avatarUrl?: string | null;
-  email?: string | null;
-  phone?: string | null;
-};
+export function useUsersWidgetLogic({ teamPageSize = 12 }: { teamPageSize?: number } = {}) {
+  const { organization } = useCurrentOrganization();
+  const orgId = organization?.id ?? '';
 
-export type UserDeepProfileDto = {
-  id: string;
-  firstName: string;
-  lastName: string;
-  roleName: string;
-  title?: string | null;
-  departmentId?: string | null;
-  managerId?: string | null;
-  avatarUrl?: string | null;
-  email?: string | null;
-  phone?: string | null;
-  bio?: string | null;
-};
-
-export type PagedResponse<T> = {
-  items: T[];
-  totalCount: number;
-  page: number;
-  pageSize: number;
-};
-
-export const useUsersWidgetLogic = ({ teamPageSize = 12 }: { teamPageSize?: number } = {}) => {
   const meQuery = useQuery({
-    queryKey: ['users', 'me', 'widget'],
-    queryFn: async () => await unwrap(usersApi.getMe()),
+    queryKey: QUERY_KEYS.userProfile(orgId),
+    queryFn: async () => unwrap(usersApi.getMe()),
   });
 
-  const managerId = (meQuery.data as any)?.managerId as string | undefined;
+  const managerId = meQuery.data?.managerId ?? null;
 
   const managerQuery = useQuery({
-    queryKey: ['users', 'manager', managerId],
-    enabled: !!managerId,
-    queryFn: async () => {
-      const res = await apiClient.get(`/Users/${managerId}`);
-      const envelope = res.data as any;
-      if (!envelope?.isSuccess) {
-        throw new Error(envelope?.error?.message || 'Failed to load manager.');
-      }
-      return envelope.data as UserDeepProfileDto;
-    },
+    queryKey: QUERY_KEYS.users.widgetManager(orgId, managerId),
+    enabled: !!orgId && !!managerId,
+    queryFn: async () => unwrap(usersApi.getById(managerId!)),
   });
 
   const teamQuery = useQuery({
-    queryKey: ['users', 'team', managerId, teamPageSize],
-    enabled: !!managerId,
-    queryFn: async () => {
-      const res = await apiClient.get(`/Users/directory`, {
-        params: {
-          Page: 1,
-          PageSize: teamPageSize,
-          managerId,
-        },
-      });
-
-      const envelope = res.data as any;
-      if (!envelope?.isSuccess) {
-        throw new Error(envelope?.error?.message || 'Failed to load team.');
-      }
-
-      return envelope.data as PagedResponse<UserDirectoryItemDto>;
-    },
+    queryKey: QUERY_KEYS.users.widgetTeam(orgId, managerId, teamPageSize),
+    enabled: !!orgId && !!managerId,
+    queryFn: async () =>
+      usersDirectoryApi.getDirectory({
+        page: 1,
+        pageSize: teamPageSize,
+        managerId,
+      }),
   });
-
-  const manager = managerQuery.data ?? null;
-  const teamUsers = teamQuery.data?.items ?? [];
 
   return {
     me: meQuery.data,
-    manager,
-    teamUsers,
+    manager: managerQuery.data ?? null,
+    teamUsers: teamQuery.data?.items ?? [],
     isLoadingMe: meQuery.isLoading,
     isErrorMe: meQuery.isError,
-    errorMe: meQuery.error,
     isLoadingManager: managerQuery.isLoading,
     isErrorManager: managerQuery.isError,
     isLoadingTeam: teamQuery.isLoading,
@@ -97,5 +46,4 @@ export const useUsersWidgetLogic = ({ teamPageSize = 12 }: { teamPageSize?: numb
     refetchManager: () => void managerQuery.refetch(),
     refetchTeam: () => void teamQuery.refetch(),
   };
-};
-
+}

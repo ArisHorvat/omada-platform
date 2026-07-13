@@ -12,12 +12,17 @@ Welcome to the Omada documentation! This folder is your **single source of truth
 | 🏗️ **Understand how everything fits together** | [`Architecture.md`](Architecture.md) |
 | ⚙️ **Work on the API / backend** | [`Backend.md`](Backend.md) |
 | 📱 **Work on the mobile app** | [`Frontend.md`](Frontend.md) |
-| 🕷️ **Configure web crawling** | [`WebSpider.md`](WebSpider.md) |
+| 🕷️ **Configure schedule import** | [`WebSpider.md`](WebSpider.md) · [`Timetables.md`](Timetables.md) (Import tab under **Timetables** — no separate Integrations nav) |
 | 🔐 **Password, reset & 2FA** | [`AccountSecurity.md`](AccountSecurity.md) |
 | 🪪 **Digital ID pass & scanner** | [`DigitalId.md`](DigitalId.md) |
+| 📁 **Documents — corporate file library** | [`Documents.md`](Documents.md) |
+| 📣 **Announcements — channels, posts, comments** | [`Announcements.md`](Announcements.md) |
 | 📚 **Curriculum packages & term offerings** | [`CurriculumOfferings.md`](CurriculumOfferings.md) |
+| 📅 **Timetables — build, preview, publish, republish, import** | [`Timetables.md`](Timetables.md) |
+| 🕷️ **Schedule import — scrape, map, apply** | [`WebSpider.md`](WebSpider.md) |
 | 📝 **Coursework — post, turn-in, grade** | [`Coursework.md`](Coursework.md) |
 | 📊 **Grades — standing, transcript, gradebook** | [`Grades.md`](Grades.md) |
+| ✅ **Attendance — roll, breakdown, work time** | [`Attendance.md`](Attendance.md) |
 | 🗺️ **Set up locations, maps & rooms** | [`Frontend.md`](Frontend.md) (Locations & maps workspace) · rules **`domain-map-rooms-admin.mdc`** |
 | 👤 **Learn user flows (registration, invites)** | [`../src/frontend/mobile/TUTORIAL.md`](../src/frontend/mobile/TUTORIAL.md) |
 | 🌍 **Product overview** | [`../README.md`](../README.md) |
@@ -33,13 +38,17 @@ Welcome to the Omada documentation! This folder is your **single source of truth
 | [`Architecture.md`](Architecture.md) | 🏗️ | System design, tenancy, permissions, data flow, vertical slices |
 | [`Configuration.md`](Configuration.md) | 🔧 | `.env`, `appsettings`, mobile env vars, setup checklist |
 | [`Backend.md`](Backend.md) | ⚙️ | `Omada.Api` folder map, controllers, services, entities, migrations |
-| [`Frontend.md`](Frontend.md) | 📱 | Expo Router, Clay UI, widgets, org admin workspaces (`fullBleed`, groups, event types, periods, offerings, **locations & maps**), API layer |
+| [`Frontend.md`](Frontend.md) | 📱 | Expo Router, Clay UI, widgets, org admin workspaces (`fullBleed`, groups, event types, periods, offerings, **timetables**, **locations & maps**), API layer |
 | [`AccountSecurity.md`](AccountSecurity.md) | 🔐 | Change password, forgot/reset email links, email OTP 2FA at sign-in |
 | [`DigitalId.md`](DigitalId.md) | 🪪 | Rotating QR pass, staff scanner, attendance + manual roll, Clay section pattern |
+| [`Documents.md`](Documents.md) | 📁 | Corporate file library — upload sheet, detail sheet, storage abstraction |
+| [`Announcements.md`](Announcements.md) | 📣 | Org/group/course channels, posts + comments, unread, SignalR, legacy chat/news |
 | [`CurriculumOfferings.md`](CurriculumOfferings.md) | 📚 | Academic periods, curriculum packages, apply/revert, instructor pickers |
+| [`Timetables.md`](Timetables.md) | 📅 | Weekly session patterns, preview/conflicts, publish to Schedule, **import tab** (map & apply) |
 | [`Coursework.md`](Coursework.md) | 📝 | Tasks widget, batches, teaching workspace, grading, grade plan (host-only edit) |
 | [`Grades.md`](Grades.md) | 📊 | Coursework standing (1–10), transcript + credits, teacher gradebook, filter panel patterns |
-| [`WebSpider.md`](WebSpider.md) | 🕷️ | HTML crawling, Hangfire sync, Gemini fallback, admin API |
+| [`Attendance.md`](Attendance.md) | ✅ | University roll, offering breakdown, corporate work time, instance-date rules |
+| [`WebSpider.md`](WebSpider.md) | 🕷️ | Schedule scrape, mapping workspace, apply to offering, optional Hangfire sync |
 
 ### Project READMEs (quick entry points)
 
@@ -83,9 +92,13 @@ Welcome to the Omada documentation! This folder is your **single source of truth
 | **API contract** | DTOs + Swagger | `generatedClient.ts` (NSwag) |
 | **Account security** | Change password, forgot/reset, email OTP 2FA | Settings → Security; `(auth)/forgot-password`, `reset-password`; login 2FA panel — see [`AccountSecurity.md`](AccountSecurity.md) |
 | **Digital ID** | Pass JWT + scan + record attendance | Profile → Digital ID; scanner for `attendance.take` / `digital-id.manage` — see [`DigitalId.md`](DigitalId.md) |
+| **Documents** | `DocumentsController` + disk storage | **`/documents`** — corporate catalog; upload/detail sheets — see [`Documents.md`](Documents.md) |
+| **Announcements** | Channels, posts, comments, read cursors, SignalR hub | **`/(tabs)/announcements`** — replaces chat/news; **`useOrganizationHub`** lifecycle — see [`Announcements.md`](Announcements.md) |
 | **Curriculum offerings** | Packages + apply to period — **`[RequiresOrgAdmin]`** | University **`/offerings-workspace`** + **`/periods-workspace`** — see [`CurriculumOfferings.md`](CurriculumOfferings.md) |
+| **Timetables** | `OfferingTimetableService`, **`ScrapedScheduleApplyService`**, import wizard | **`/timetables-workspace`** (View / Build / **Import** — scrape, map, batch apply; no Integrations nav) — [`Timetables.md`](Timetables.md) · [`WebSpider.md`](WebSpider.md) |
 | **Coursework** | Batches + `PATCH /submission`; grade plan host-only | **`tasks`** widget — **`/coursework-teaching`**, **`/assignments-workspace`**, **`/coursework-batch/[id]`** — see [`Coursework.md`](Coursework.md) |
 | **Grades** | Gradebook on **`OfferingsController`**; **`CourseOffering.Credits`**; formal **`Grade`** rows | **`/(widgets)/grades`** — My grades + Teaching; **`filterPickerRow.ts`** — see [`Grades.md`](Grades.md) |
+| **Attendance** | **`AttendanceInstanceHelper`**; roster bulk mark; work time | **`/(widgets)/attendance`** — student/teacher; **`/attendance-session/[eventId]`** — see [`Attendance.md`](Attendance.md) |
 | **Universal search** | `GET /api/Search` — widget-access filter; **`IServiceScopeFactory`** per bucket | Dashboard **`SearchBar`** → **`/(modals)/search`**; **`useUniversalSearch`** + `searchApi` |
 | **Theme** | Org branding on `Organization` | `OrganizationThemeContext` + Clay colors |
 

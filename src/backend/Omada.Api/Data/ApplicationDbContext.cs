@@ -32,6 +32,10 @@ public class ApplicationDbContext : DbContext
     public DbSet<EventOverride> EventOverrides { get; set; }
     public DbSet<EventAssociation> EventAssociations { get; set; }
     public DbSet<Message> Messages { get; set; }
+    public DbSet<AnnouncementChannel> AnnouncementChannels { get; set; }
+    public DbSet<AnnouncementPost> AnnouncementPosts { get; set; }
+    public DbSet<AnnouncementComment> AnnouncementComments { get; set; }
+    public DbSet<UserAnnouncementChannelRead> UserAnnouncementChannelReads { get; set; }
     public DbSet<TaskItem> Tasks { get; set; }
     public DbSet<NewsItem> News { get; set; }
     public DbSet<UserNewsRead> UserNewsReads { get; set; }
@@ -57,6 +61,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Grade> Grades { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
     public DbSet<WorkTimeEntry> WorkTimeEntries { get; set; }
+    public DbSet<OrganizationDocument> OrganizationDocuments { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -172,6 +177,21 @@ public class ApplicationDbContext : DbContext
             (_currentOrganizationId == null || ea.Event.OrganizationId == _currentOrganizationId));
 
         modelBuilder.Entity<WorkTimeEntry>().HasQueryFilter(e =>
+            !e.IsDeleted && (_currentOrganizationId == null || e.OrganizationId == _currentOrganizationId));
+
+        modelBuilder.Entity<AnnouncementChannel>().HasQueryFilter(e =>
+            !e.IsDeleted && (_currentOrganizationId == null || e.OrganizationId == _currentOrganizationId));
+
+        modelBuilder.Entity<AnnouncementPost>().HasQueryFilter(e =>
+            !e.IsDeleted && (_currentOrganizationId == null || e.OrganizationId == _currentOrganizationId));
+
+        modelBuilder.Entity<AnnouncementComment>().HasQueryFilter(e =>
+            !e.IsDeleted && (_currentOrganizationId == null || e.OrganizationId == _currentOrganizationId));
+
+        modelBuilder.Entity<UserAnnouncementChannelRead>().HasQueryFilter(e =>
+            !e.IsDeleted && (_currentOrganizationId == null || e.OrganizationId == _currentOrganizationId));
+
+        modelBuilder.Entity<OrganizationDocument>().HasQueryFilter(e =>
             !e.IsDeleted && (_currentOrganizationId == null || e.OrganizationId == _currentOrganizationId));
     }
 

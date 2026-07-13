@@ -15,6 +15,8 @@ public class AttendanceSessionDto
 
     public string? GroupName { get; set; }
 
+    public string? CohortGroupName { get; set; }
+
     public string? RoomName { get; set; }
 
     [Required]

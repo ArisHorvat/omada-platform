@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Platform, ScrollView, Switch, TextInput, TouchableOpacity, View } from 'react-native';
+import { Platform, ScrollView, Switch, TextInput, TouchableOpacity, View } from 'react-native';
+import { alertAction } from '@/src/utils/confirmAction';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AppButton, AppText, ClayView, Icon, SegmentedControl, type IconName } from '@/src/components/ui';
 import { PressClay } from '@/src/components/animations';
@@ -250,11 +251,11 @@ export function FloorplanRoomsTab({ model }: Props) {
       await queryClient.invalidateQueries({ queryKey: ['map-floors'] });
       await queryClient.invalidateQueries({ queryKey: ['rooms-search'] });
       await queryClient.invalidateQueries({ queryKey: ['rooms-widget-available'] });
-      Alert.alert('Saved', 'Room details were updated.');
+      alertAction({ title: 'Saved', message: 'Room details were updated successfully.' });
     },
     onError: (e: unknown) => {
       const msg = e instanceof Error ? e.message : 'Save failed.';
-      Alert.alert('Could not save room details', msg);
+      alertAction({ title: 'Could not save room details', message: msg });
     },
   });
 

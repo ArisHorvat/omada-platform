@@ -117,7 +117,16 @@ function parsePolygonRoomFromFeature(raw: unknown): GeoJsonRoomPolygon | null {
     ? (f.properties as Record<string, unknown>)
     : {}) as Record<string, unknown>;
   const roomName = props.roomName != null ? String(props.roomName) : 'Room';
-  const roomId = props.roomId != null ? String(props.roomId) : '';
+  let roomId = props.roomId != null ? String(props.roomId).trim() : '';
+  if (!roomId) {
+    const topId = (f as { id?: unknown }).id;
+    if (topId != null) {
+      const fid = String(topId).trim();
+      if (fid.startsWith('room-')) roomId = fid.slice(5).trim();
+      else if (fid.startsWith('floorplan-')) roomId = fid.slice(10).trim();
+      else if (fid) roomId = fid;
+    }
+  }
   const doorLines = extractDoorLinesFromProps(props);
   const shell = isBuildingShellFeature(roomName);
   const rawBookable = props.isBookable;

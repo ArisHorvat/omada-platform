@@ -15,7 +15,6 @@ namespace Omada.Api.Controllers;
 public class BuildingsController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
-    // Note: Inject IUserContext here to filter by OrgId if needed
 
     public BuildingsController(ApplicationDbContext context)
     {

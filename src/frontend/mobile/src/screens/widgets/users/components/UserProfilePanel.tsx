@@ -13,7 +13,9 @@ import {
   WidgetErrorState,
 } from '@/src/components/ui';
 import { useThemeColors } from '@/src/hooks';
+import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
 import { useUserProfileLogic } from '../hooks/useUserProfileLogic';
+import { getDirectoryCopy } from '../utils/directoryCopy';
 
 const AVATAR_SIZE = 120;
 
@@ -32,10 +34,13 @@ const statusColor = (s: string | null | undefined, colors: ReturnType<typeof use
 interface UserProfilePanelProps {
   userId: string | undefined;
   onOpenUser?: (id: string) => void;
+  onFilterByGroup?: (groupId: string) => void;
 }
 
-export function UserProfilePanel({ userId, onOpenUser }: UserProfilePanelProps) {
+export function UserProfilePanel({ userId, onOpenUser, onFilterByGroup }: UserProfilePanelProps) {
   const colors = useThemeColors();
+  const { organization } = useCurrentOrganization();
+  const copy = useMemo(() => getDirectoryCopy(organization?.organizationType), [organization?.organizationType]);
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const { profile, manager, availability, isLoading, isError, refetch, isLoadingStatus } =
@@ -48,8 +53,11 @@ export function UserProfilePanel({ userId, onOpenUser }: UserProfilePanelProps) 
     return `${a}${b}`.toUpperCase();
   })();
 
-  const roleLabel = profile?.title ? profile.title : profile?.roleName ?? '';
   const availabilityText = isLoadingStatus ? '…' : availability ?? '—';
+  const departmentName = (profile as { departmentName?: string | null } | null)?.departmentName ?? null;
+  const groups = ((profile as { groups?: { id?: string; name?: string; type?: string }[] } | null)?.groups ?? []).filter(
+    (g) => g.id && g.name,
+  );
 
   if (!userId) {
     return (
@@ -116,9 +124,17 @@ export function UserProfilePanel({ userId, onOpenUser }: UserProfilePanelProps) 
           {profile.firstName} {profile.lastName}
         </AppText>
 
-        {roleLabel ? (
-          <AppText variant="h3" style={[styles.roleLabel, { color: colors.subtle }]} numberOfLines={1}>
-            {roleLabel}
+        {profile.roleName ? (
+          <View style={[styles.rolePill, { backgroundColor: `${colors.primary}14`, borderColor: `${colors.primary}33` }]}>
+            <AppText variant="caption" weight="bold" style={{ color: colors.primary }}>
+              {profile.roleName}
+            </AppText>
+          </View>
+        ) : null}
+
+        {departmentName ? (
+          <AppText variant="caption" style={{ color: colors.subtle, marginTop: 8, textAlign: 'center' }} numberOfLines={2}>
+            {copy.primaryDepartmentLabel}: {departmentName}
           </AppText>
         ) : null}
 
@@ -217,6 +233,35 @@ export function UserProfilePanel({ userId, onOpenUser }: UserProfilePanelProps) 
           ) : null}
         </View>
 
+        {groups.length > 0 ? (
+          <View style={[styles.detailSection, styles.detailSectionBorder]}>
+            <AppText variant="caption" weight="bold" style={[styles.sectionTitle, { color: colors.subtle }]}>
+              {copy.groupsSectionTitle.toUpperCase()}
+            </AppText>
+            <View style={styles.groupChipWrap}>
+              {groups.map((group) => (
+                <PressClay
+                  key={group.id}
+                  onPress={() => {
+                    if (group.id && onFilterByGroup) onFilterByGroup(group.id);
+                  }}
+                >
+                  <ClayView
+                    depth={4}
+                    color={colors.background}
+                    style={[styles.groupChip, { borderColor: colors.border }]}
+                  >
+                    <Icon name="groups" size={14} color={colors.primary} />
+                    <AppText variant="caption" weight="bold" style={{ color: colors.text, flex: 1 }} numberOfLines={1}>
+                      {group.name}
+                    </AppText>
+                  </ClayView>
+                </PressClay>
+              ))}
+            </View>
+          </View>
+        ) : null}
+
         {profile.managerId ? (
           <View style={[styles.detailSection, styles.detailSectionBorder]}>
             <AppText variant="caption" weight="bold" style={[styles.sectionTitle, { color: colors.subtle }]}>
@@ -235,9 +280,19 @@ export function UserProfilePanel({ userId, onOpenUser }: UserProfilePanelProps) 
                   <AppText variant="body" weight="bold" style={{ color: colors.text }}>
                     {manager ? `${manager.firstName} ${manager.lastName}` : 'Loading...'}
                   </AppText>
-                  <AppText variant="caption" style={{ color: colors.subtle }}>
-                    {manager?.title || manager?.roleName || 'Manager'}
-                  </AppText>
+                  {manager?.roleName ? (
+                    <View
+                      style={[
+                        styles.rolePill,
+                        styles.managerRolePill,
+                        { backgroundColor: `${colors.primary}14`, borderColor: `${colors.primary}33` },
+                      ]}
+                    >
+                      <AppText variant="caption" weight="bold" style={{ color: colors.primary }} numberOfLines={1}>
+                        {manager.roleName}
+                      </AppText>
+                    </View>
+                  ) : null}
                 </View>
                 {onOpenUser ? <Icon name="chevron-right" size={24} color={colors.subtle} /> : null}
               </View>
@@ -303,11 +358,20 @@ const makeStyles = (colors: ReturnType<typeof useThemeColors>) =>
     },
     name: {
       textAlign: 'center',
+      marginBottom: 8,
+    },
+    rolePill: {
+      alignSelf: 'center',
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 10,
+      borderWidth: StyleSheet.hairlineWidth,
       marginBottom: 4,
     },
-    roleLabel: {
-      textAlign: 'center',
-      marginBottom: 12,
+    managerRolePill: {
+      alignSelf: 'flex-start',
+      marginTop: 4,
+      marginBottom: 0,
     },
     statusRow: {
       flexDirection: 'row',
@@ -367,5 +431,20 @@ const makeStyles = (colors: ReturnType<typeof useThemeColors>) =>
     managerRow: {
       flexDirection: 'row',
       alignItems: 'center',
+    },
+    groupChipWrap: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    groupChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      borderRadius: 12,
+      borderWidth: StyleSheet.hairlineWidth,
+      maxWidth: '100%',
     },
   });

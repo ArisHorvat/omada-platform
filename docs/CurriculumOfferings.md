@@ -157,11 +157,23 @@ Program IDs must reference **`Group`** rows in the same org with valid program t
 
 **Query keys:** `QUERY_KEYS.orgAdmin.offeringPackages(orgId)`, `QUERY_KEYS.orgAdmin.offerings(orgId, periodId)`.
 
+### Timetable import — add course shortcut
+
+From **Timetables → Import schedule** mapping wizard, **Add course** (`ImportScheduleCreateOfferingSheet` + `importOfferingViaPackage.ts`):
+
+| Mode | Program |
+|------|---------|
+| **Existing package** | Not asked — course inherits package-linked programs |
+| **New package** | Required — same as Offerings workspace program picker |
+
+Applies the package to the current period (optional toggle) so the new term offering can be mapped immediately.
+
 ---
 
 ## Related docs
 
 - [`Coursework.md`](Coursework.md) — post assignments, student turn-in, batch grading, grade plan (after offerings exist in a term)
+- [`Timetables.md`](Timetables.md) — weekly session patterns, preview/publish to Schedule (after offerings + enrollments)
 - [`Grades.md`](Grades.md) — student standing, transcript, teacher gradebook
 - [`Backend.md`](Backend.md) — controller/service index
 - [`Frontend.md`](Frontend.md) — admin workspace table

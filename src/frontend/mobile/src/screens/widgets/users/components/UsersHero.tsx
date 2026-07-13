@@ -3,6 +3,10 @@ import { Linking, StyleSheet, View } from 'react-native';
 import { AppText, Icon, ProgressiveImage, Skeleton, WidgetEmptyState, WidgetErrorState, AppButton } from '@/src/components/ui';
 import { useUsersWidgetLogic } from '../hooks/useUsersWidgetLogic';
 import { useThemeColors } from '@/src/hooks';
+import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
+import { getDirectoryCopy } from '../utils/directoryCopy';
+import { useRouter } from 'expo-router';
+import { PressClay } from '@/src/components/animations/PressClay';
 
 const getInitials = (firstName: string, lastName: string) => {
   const a = firstName?.trim()?.[0] ?? '';
@@ -12,6 +16,9 @@ const getInitials = (firstName: string, lastName: string) => {
 
 export const UsersHero = () => {
   const colors = useThemeColors();
+  const router = useRouter();
+  const { organization } = useCurrentOrganization();
+  const copy = useMemo(() => getDirectoryCopy(organization?.organizationType), [organization?.organizationType]);
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const { manager, isLoadingManager, isErrorManager, refetchManager, isLoadingMe } = useUsersWidgetLogic({
@@ -31,44 +38,51 @@ export const UsersHero = () => {
   }
 
   if (!manager) {
-    return <WidgetEmptyState title="No advisor assigned" description="Your advisor will appear here." icon="person" />;
+    return (
+      <View style={styles.container}>
+        <WidgetEmptyState title="No manager assigned" description="Open the directory to find people." icon="person" />
+        <AppButton title="Open directory" size="sm" variant="outline" icon="group" onPress={() => router.push('/users' as never)} />
+      </View>
+    );
   }
 
   return (
     <View style={styles.container}>
-      <View style={styles.topRow}>
-        <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-          {manager.avatarUrl ? (
-            <ProgressiveImage
-              source={{ uri: manager.avatarUrl }}
-              resizeMode="cover"
-              style={styles.avatarImage}
-            />
-          ) : (
-            <AppText variant="h3" weight="bold" style={{ color: colors.onPrimary }}>
-              {getInitials(manager.firstName, manager.lastName)}
-            </AppText>
-          )}
-        </View>
+      <PressClay onPress={() => router.push({ pathname: '/user-profile', params: { id: manager.id } } as never)}>
+        <View style={styles.topRow}>
+          <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
+            {manager.avatarUrl ? (
+              <ProgressiveImage
+                source={{ uri: manager.avatarUrl }}
+                resizeMode="cover"
+                style={styles.avatarImage}
+              />
+            ) : (
+              <AppText variant="h3" weight="bold" style={{ color: colors.onPrimary }}>
+                {getInitials(manager.firstName, manager.lastName)}
+              </AppText>
+            )}
+          </View>
 
-        <View style={styles.textBlock}>
-          <AppText variant="caption" weight="bold" style={[styles.kicker, { color: colors.subtle }]}>
-            MY MANAGER/ADVISOR
-          </AppText>
-          <AppText variant="h2" weight="bold" style={{ color: colors.text }} numberOfLines={1}>
-            {manager.firstName} {manager.lastName}
-          </AppText>
-          {manager.title ? (
-            <AppText variant="body" style={{ color: colors.subtle }} numberOfLines={1}>
-              {manager.title}
+          <View style={styles.textBlock}>
+            <AppText variant="caption" weight="bold" style={[styles.kicker, { color: colors.subtle }]}>
+              {copy.managerKicker}
             </AppText>
-          ) : (
-            <AppText variant="body" style={{ color: colors.subtle }} numberOfLines={1}>
-              {manager.roleName}
+            <AppText variant="h2" weight="bold" style={{ color: colors.text }} numberOfLines={1}>
+              {manager.firstName} {manager.lastName}
             </AppText>
-          )}
+            {manager.title ? (
+              <AppText variant="body" style={{ color: colors.subtle }} numberOfLines={1}>
+                {manager.title}
+              </AppText>
+            ) : (
+              <AppText variant="body" style={{ color: colors.subtle }} numberOfLines={1}>
+                {manager.roleName}
+              </AppText>
+            )}
+          </View>
         </View>
-      </View>
+      </PressClay>
 
       <View style={styles.actionsRow}>
         {manager.email ? (

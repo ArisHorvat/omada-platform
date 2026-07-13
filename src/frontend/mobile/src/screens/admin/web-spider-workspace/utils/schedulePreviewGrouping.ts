@@ -40,6 +40,11 @@ export function subjectNameOf(event: ScrapedScheduleEvent): string {
 }
 
 export function dayOf(event: ScrapedScheduleEvent): string {
+  const parsed = (event as { dayOfWeek?: number | null }).dayOfWeek;
+  if (parsed != null && parsed >= 0 && parsed <= 6) {
+    const names = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    return names[parsed] ?? 'Unknown day';
+  }
   const first = (event.time ?? '').trim().split(/\s+/)[0] ?? '';
   if (!first) return 'Unknown day';
   return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
@@ -57,10 +62,14 @@ export function pageLabelOf(event: ScrapedScheduleEvent): string {
   }
 }
 
-function groupLabelFor(event: ScrapedScheduleEvent): string {
+export function groupLabelFor(event: ScrapedScheduleEvent): string {
   const g = (event.groupNumber ?? '').trim();
   if (g) return g;
   return 'Unknown group';
+}
+
+function groupLabelForInternal(event: ScrapedScheduleEvent): string {
+  return groupLabelFor(event);
 }
 
 function sortKeyForMode(mode: SchedulePreviewViewMode, key: string): number | string {
@@ -104,7 +113,7 @@ export function groupEventsByView(
         break;
       case 'group':
       default:
-        key = groupLabelFor(ev);
+        key = groupLabelForInternal(ev);
         break;
     }
 
@@ -128,7 +137,7 @@ export function groupEventsByView(
 }
 
 export function previewStats(events: ScrapedScheduleEvent[]) {
-  const groups = new Set(events.map(groupLabelFor));
+  const groups = new Set(events.map(groupLabelForInternal));
   const types = new Set(events.map(activityTypeOf));
   const subjects = new Set(events.map(subjectNameOf));
   const pages = new Set(events.map(pageLabelOf));

@@ -18,17 +18,20 @@ public class TaskService : ITaskService
     private readonly IUnitOfWork _uow;
     private readonly IUserContext _userContext;
     private readonly ApplicationDbContext _context;
+    private readonly IGroupScopeService _groupScope;
 
     public TaskService(
         ITaskRepository taskRepository,
         IUnitOfWork uow,
         IUserContext userContext,
-        ApplicationDbContext context)
+        ApplicationDbContext context,
+        IGroupScopeService groupScope)
     {
         _taskRepository = taskRepository;
         _uow = uow;
         _userContext = userContext;
         _context = context;
+        _groupScope = groupScope;
     }
 
     public async Task<ServiceResponse<PagedResponse<TaskItemDto>>> GetUserTasksAsync(
@@ -358,12 +361,9 @@ public class TaskService : ITaskService
             }
 
             subjectId = request.SubjectId;
-            targetUserIds = await _context.GroupMembers
-                .AsNoTracking()
-                .Where(m => m.GroupId == request.SubjectId.Value)
-                .Select(m => m.UserId)
-                .Distinct()
-                .ToListAsync();
+            var orgId = _userContext.OrganizationId;
+            targetUserIds = (await _groupScope.GetMemberUserIdsInScopeAsync(orgId, request.SubjectId.Value))
+                .ToList();
         }
         else
         {

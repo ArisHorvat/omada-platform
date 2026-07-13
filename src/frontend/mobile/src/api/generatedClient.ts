@@ -72,6 +72,395 @@ export class AdminClient {
     }
 }
 
+export class AnnouncementsClient {
+    protected instance: AxiosInstance;
+    protected baseUrl: string;
+    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
+
+    constructor(baseUrl?: string, instance?: AxiosInstance) {
+
+        this.instance = instance || axios.create();
+
+        this.baseUrl = baseUrl ?? "http://localhost:5069";
+
+    }
+
+    getChannels( cancelToken?: CancelToken): Promise<ServiceResponseOfListOfAnnouncementChannelDto> {
+        let url_ = this.baseUrl + "/api/announcements/channels";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processGetChannels(_response);
+        });
+    }
+
+    protected processGetChannels(response: AxiosResponse): Promise<ServiceResponseOfListOfAnnouncementChannelDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfListOfAnnouncementChannelDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfListOfAnnouncementChannelDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfListOfAnnouncementChannelDto>(null as any);
+    }
+
+    getFeed(page: number | undefined, pageSize: number | undefined, cancelToken?: CancelToken): Promise<ServiceResponseOfPagedResponseOfAnnouncementPostDto> {
+        let url_ = this.baseUrl + "/api/announcements/feed?";
+        if (page === null)
+            throw new globalThis.Error("The parameter 'page' cannot be null.");
+        else if (page !== undefined)
+            url_ += "Page=" + encodeURIComponent("" + page) + "&";
+        if (pageSize === null)
+            throw new globalThis.Error("The parameter 'pageSize' cannot be null.");
+        else if (pageSize !== undefined)
+            url_ += "PageSize=" + encodeURIComponent("" + pageSize) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processGetFeed(_response);
+        });
+    }
+
+    protected processGetFeed(response: AxiosResponse): Promise<ServiceResponseOfPagedResponseOfAnnouncementPostDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfPagedResponseOfAnnouncementPostDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfPagedResponseOfAnnouncementPostDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfPagedResponseOfAnnouncementPostDto>(null as any);
+    }
+
+    getChannelPosts(channelId: string, page: number | undefined, pageSize: number | undefined, cancelToken?: CancelToken): Promise<ServiceResponseOfPagedResponseOfAnnouncementPostDto> {
+        let url_ = this.baseUrl + "/api/announcements/channels/{channelId}/posts?";
+        if (channelId === undefined || channelId === null)
+            throw new globalThis.Error("The parameter 'channelId' must be defined.");
+        url_ = url_.replace("{channelId}", encodeURIComponent("" + channelId));
+        if (page === null)
+            throw new globalThis.Error("The parameter 'page' cannot be null.");
+        else if (page !== undefined)
+            url_ += "Page=" + encodeURIComponent("" + page) + "&";
+        if (pageSize === null)
+            throw new globalThis.Error("The parameter 'pageSize' cannot be null.");
+        else if (pageSize !== undefined)
+            url_ += "PageSize=" + encodeURIComponent("" + pageSize) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processGetChannelPosts(_response);
+        });
+    }
+
+    protected processGetChannelPosts(response: AxiosResponse): Promise<ServiceResponseOfPagedResponseOfAnnouncementPostDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfPagedResponseOfAnnouncementPostDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfPagedResponseOfAnnouncementPostDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfPagedResponseOfAnnouncementPostDto>(null as any);
+    }
+
+    createPost(channelId: string, request: CreateAnnouncementPostRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfAnnouncementPostDto> {
+        let url_ = this.baseUrl + "/api/announcements/channels/{channelId}/posts";
+        if (channelId === undefined || channelId === null)
+            throw new globalThis.Error("The parameter 'channelId' must be defined.");
+        url_ = url_.replace("{channelId}", encodeURIComponent("" + channelId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processCreatePost(_response);
+        });
+    }
+
+    protected processCreatePost(response: AxiosResponse): Promise<ServiceResponseOfAnnouncementPostDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfAnnouncementPostDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfAnnouncementPostDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfAnnouncementPostDto>(null as any);
+    }
+
+    getComments(postId: string, cancelToken?: CancelToken): Promise<ServiceResponseOfListOfAnnouncementCommentDto> {
+        let url_ = this.baseUrl + "/api/announcements/posts/{postId}/comments";
+        if (postId === undefined || postId === null)
+            throw new globalThis.Error("The parameter 'postId' must be defined.");
+        url_ = url_.replace("{postId}", encodeURIComponent("" + postId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processGetComments(_response);
+        });
+    }
+
+    protected processGetComments(response: AxiosResponse): Promise<ServiceResponseOfListOfAnnouncementCommentDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfListOfAnnouncementCommentDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfListOfAnnouncementCommentDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfListOfAnnouncementCommentDto>(null as any);
+    }
+
+    createComment(postId: string, request: CreateAnnouncementCommentRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfAnnouncementCommentDto> {
+        let url_ = this.baseUrl + "/api/announcements/posts/{postId}/comments";
+        if (postId === undefined || postId === null)
+            throw new globalThis.Error("The parameter 'postId' must be defined.");
+        url_ = url_.replace("{postId}", encodeURIComponent("" + postId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processCreateComment(_response);
+        });
+    }
+
+    protected processCreateComment(response: AxiosResponse): Promise<ServiceResponseOfAnnouncementCommentDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfAnnouncementCommentDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfAnnouncementCommentDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfAnnouncementCommentDto>(null as any);
+    }
+
+    markChannelRead(channelId: string, cancelToken?: CancelToken): Promise<ServiceResponseOfBoolean> {
+        let url_ = this.baseUrl + "/api/announcements/channels/{channelId}/read";
+        if (channelId === undefined || channelId === null)
+            throw new globalThis.Error("The parameter 'channelId' must be defined.");
+        url_ = url_.replace("{channelId}", encodeURIComponent("" + channelId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "POST",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processMarkChannelRead(_response);
+        });
+    }
+
+    protected processMarkChannelRead(response: AxiosResponse): Promise<ServiceResponseOfBoolean> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfBoolean.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfBoolean>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfBoolean>(null as any);
+    }
+}
+
 export class AttendanceClient {
     protected instance: AxiosInstance;
     protected baseUrl: string;
@@ -1994,6 +2383,122 @@ export class CourseOfferingsAdminClient {
         return Promise.resolve<ServiceResponseOfInteger>(null as any);
     }
 
+    unenrollUser(periodId: string, offeringId: string, request: UnenrollUserRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfInteger> {
+        let url_ = this.baseUrl + "/api/Organizations/current/periods/{periodId}/offerings/{offeringId}/unenroll-user";
+        if (periodId === undefined || periodId === null)
+            throw new globalThis.Error("The parameter 'periodId' must be defined.");
+        url_ = url_.replace("{periodId}", encodeURIComponent("" + periodId));
+        if (offeringId === undefined || offeringId === null)
+            throw new globalThis.Error("The parameter 'offeringId' must be defined.");
+        url_ = url_.replace("{offeringId}", encodeURIComponent("" + offeringId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processUnenrollUser(_response);
+        });
+    }
+
+    protected processUnenrollUser(response: AxiosResponse): Promise<ServiceResponseOfInteger> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfInteger.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfInteger>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfInteger>(null as any);
+    }
+
+    unenrollCohort(periodId: string, offeringId: string, request: UnenrollCohortRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfInteger> {
+        let url_ = this.baseUrl + "/api/Organizations/current/periods/{periodId}/offerings/{offeringId}/unenroll-cohort";
+        if (periodId === undefined || periodId === null)
+            throw new globalThis.Error("The parameter 'periodId' must be defined.");
+        url_ = url_.replace("{periodId}", encodeURIComponent("" + periodId));
+        if (offeringId === undefined || offeringId === null)
+            throw new globalThis.Error("The parameter 'offeringId' must be defined.");
+        url_ = url_.replace("{offeringId}", encodeURIComponent("" + offeringId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processUnenrollCohort(_response);
+        });
+    }
+
+    protected processUnenrollCohort(response: AxiosResponse): Promise<ServiceResponseOfInteger> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfInteger.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfInteger>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfInteger>(null as any);
+    }
+
     getGradePlan(periodId: string, offeringId: string, cancelToken?: CancelToken): Promise<ServiceResponseOfOfferingGradePlanDto> {
         let url_ = this.baseUrl + "/api/Organizations/current/periods/{periodId}/offerings/{offeringId}/grade-plan";
         if (periodId === undefined || periodId === null)
@@ -2104,6 +2609,64 @@ export class CourseOfferingsAdminClient {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
         }
         return Promise.resolve<ServiceResponseOfOfferingGradePlanDto>(null as any);
+    }
+
+    publishTimetable(periodId: string, offeringId: string, request: PublishTimetableRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfPublishTimetableResultDto> {
+        let url_ = this.baseUrl + "/api/Organizations/current/periods/{periodId}/offerings/{offeringId}/publish-timetable";
+        if (periodId === undefined || periodId === null)
+            throw new globalThis.Error("The parameter 'periodId' must be defined.");
+        url_ = url_.replace("{periodId}", encodeURIComponent("" + periodId));
+        if (offeringId === undefined || offeringId === null)
+            throw new globalThis.Error("The parameter 'offeringId' must be defined.");
+        url_ = url_.replace("{offeringId}", encodeURIComponent("" + offeringId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processPublishTimetable(_response);
+        });
+    }
+
+    protected processPublishTimetable(response: AxiosResponse): Promise<ServiceResponseOfPublishTimetableResultDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfPublishTimetableResultDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfPublishTimetableResultDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfPublishTimetableResultDto>(null as any);
     }
 
     setupProgram(periodId: string, request: SetupProgramTermRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfSetupProgramTermResultDto> {
@@ -2332,6 +2895,412 @@ export class DigitalIdClient {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
         }
         return Promise.resolve<ServiceResponseOfDigitalIdScanResultDto>(null as any);
+    }
+}
+
+export class DocumentsClient {
+    protected instance: AxiosInstance;
+    protected baseUrl: string;
+    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
+
+    constructor(baseUrl?: string, instance?: AxiosInstance) {
+
+        this.instance = instance || axios.create();
+
+        this.baseUrl = baseUrl ?? "http://localhost:5069";
+
+    }
+
+    getCategories( cancelToken?: CancelToken): Promise<ServiceResponseOfListOfDocumentCategoryDto> {
+        let url_ = this.baseUrl + "/api/Documents/categories";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processGetCategories(_response);
+        });
+    }
+
+    protected processGetCategories(response: AxiosResponse): Promise<ServiceResponseOfListOfDocumentCategoryDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfListOfDocumentCategoryDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfListOfDocumentCategoryDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfListOfDocumentCategoryDto>(null as any);
+    }
+
+    list(q: string | null | undefined, category: string | null | undefined, page: number | undefined, pageSize: number | undefined, cancelToken?: CancelToken): Promise<ServiceResponseOfPagedResponseOfOrganizationDocumentDto> {
+        let url_ = this.baseUrl + "/api/Documents?";
+        if (q !== undefined && q !== null)
+            url_ += "Q=" + encodeURIComponent("" + q) + "&";
+        if (category !== undefined && category !== null)
+            url_ += "Category=" + encodeURIComponent("" + category) + "&";
+        if (page === null)
+            throw new globalThis.Error("The parameter 'page' cannot be null.");
+        else if (page !== undefined)
+            url_ += "Page=" + encodeURIComponent("" + page) + "&";
+        if (pageSize === null)
+            throw new globalThis.Error("The parameter 'pageSize' cannot be null.");
+        else if (pageSize !== undefined)
+            url_ += "PageSize=" + encodeURIComponent("" + pageSize) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processList(_response);
+        });
+    }
+
+    protected processList(response: AxiosResponse): Promise<ServiceResponseOfPagedResponseOfOrganizationDocumentDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfPagedResponseOfOrganizationDocumentDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfPagedResponseOfOrganizationDocumentDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfPagedResponseOfOrganizationDocumentDto>(null as any);
+    }
+
+    upload(contentType: string | null | undefined, contentDisposition: string | null | undefined, headers: any[] | null | undefined, length: number | undefined, name: string | null | undefined, fileName: string | null | undefined, title: string | null | undefined, category: string | null | undefined, description: string | null | undefined, cancelToken?: CancelToken): Promise<ServiceResponseOfOrganizationDocumentDto> {
+        let url_ = this.baseUrl + "/api/Documents";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = new FormData();
+        if (contentType !== null && contentType !== undefined)
+            content_.append("ContentType", contentType.toString());
+        if (contentDisposition !== null && contentDisposition !== undefined)
+            content_.append("ContentDisposition", contentDisposition.toString());
+        if (headers !== null && headers !== undefined)
+            headers.forEach(item_ => content_.append("Headers", item_.toString()));
+        if (length === null || length === undefined)
+            throw new globalThis.Error("The parameter 'length' cannot be null.");
+        else
+            content_.append("Length", length.toString());
+        if (name !== null && name !== undefined)
+            content_.append("Name", name.toString());
+        if (fileName !== null && fileName !== undefined)
+            content_.append("FileName", fileName.toString());
+        if (title !== null && title !== undefined)
+            content_.append("title", title.toString());
+        if (category !== null && category !== undefined)
+            content_.append("category", category.toString());
+        if (description !== null && description !== undefined)
+            content_.append("description", description.toString());
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processUpload(_response);
+        });
+    }
+
+    protected processUpload(response: AxiosResponse): Promise<ServiceResponseOfOrganizationDocumentDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfOrganizationDocumentDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfOrganizationDocumentDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfOrganizationDocumentDto>(null as any);
+    }
+
+    getById(id: string, cancelToken?: CancelToken): Promise<ServiceResponseOfOrganizationDocumentDto> {
+        let url_ = this.baseUrl + "/api/Documents/{id}";
+        if (id === undefined || id === null)
+            throw new globalThis.Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processGetById(_response);
+        });
+    }
+
+    protected processGetById(response: AxiosResponse): Promise<ServiceResponseOfOrganizationDocumentDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfOrganizationDocumentDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfOrganizationDocumentDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfOrganizationDocumentDto>(null as any);
+    }
+
+    update(id: string, request: UpdateOrganizationDocumentRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfOrganizationDocumentDto> {
+        let url_ = this.baseUrl + "/api/Documents/{id}";
+        if (id === undefined || id === null)
+            throw new globalThis.Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "PUT",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processUpdate(_response);
+        });
+    }
+
+    protected processUpdate(response: AxiosResponse): Promise<ServiceResponseOfOrganizationDocumentDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfOrganizationDocumentDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfOrganizationDocumentDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfOrganizationDocumentDto>(null as any);
+    }
+
+    delete(id: string, cancelToken?: CancelToken): Promise<ServiceResponseOfBoolean> {
+        let url_ = this.baseUrl + "/api/Documents/{id}";
+        if (id === undefined || id === null)
+            throw new globalThis.Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "DELETE",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processDelete(_response);
+        });
+    }
+
+    protected processDelete(response: AxiosResponse): Promise<ServiceResponseOfBoolean> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfBoolean.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfBoolean>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfBoolean>(null as any);
+    }
+
+    download(id: string, cancelToken?: CancelToken): Promise<FileResponse> {
+        let url_ = this.baseUrl + "/api/Documents/{id}/download";
+        if (id === undefined || id === null)
+            throw new globalThis.Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            responseType: "blob",
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/octet-stream"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processDownload(_response);
+        });
+    }
+
+    protected processDownload(response: AxiosResponse): Promise<FileResponse> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200 || status === 206) {
+            const contentDisposition = response.headers ? response.headers["content-disposition"] : undefined;
+            let fileNameMatch = contentDisposition ? /filename\*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/g.exec(contentDisposition) : undefined;
+            let fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[3] || fileNameMatch[2] : undefined;
+            if (fileName) {
+                fileName = decodeURIComponent(fileName);
+            } else {
+                fileNameMatch = contentDisposition ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition) : undefined;
+                fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
+            }
+            return Promise.resolve({ fileName: fileName, status: status, data: new Blob([response.data], { type: response.headers["content-type"] }), headers: _headers });
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<FileResponse>(null as any);
     }
 }
 
@@ -5664,7 +6633,7 @@ export class OrganizationAdminClient {
         return Promise.resolve<ServiceResponseOfRegenerateInviteCodeResponse>(null as any);
     }
 
-    getMembers(page: number | undefined, pageSize: number | undefined, q: string | null | undefined, roleId: string | null | undefined, cancelToken?: CancelToken): Promise<ServiceResponseOfPagedResponseOfOrganizationMemberDto> {
+    getMembers(page: number | undefined, pageSize: number | undefined, q: string | null | undefined, roleId: string | null | undefined, includeAdmins: boolean | undefined, cancelToken?: CancelToken): Promise<ServiceResponseOfPagedResponseOfOrganizationMemberDto> {
         let url_ = this.baseUrl + "/api/Organizations/current/members?";
         if (page === null)
             throw new globalThis.Error("The parameter 'page' cannot be null.");
@@ -5678,6 +6647,10 @@ export class OrganizationAdminClient {
             url_ += "q=" + encodeURIComponent("" + q) + "&";
         if (roleId !== undefined && roleId !== null)
             url_ += "roleId=" + encodeURIComponent("" + roleId) + "&";
+        if (includeAdmins === null)
+            throw new globalThis.Error("The parameter 'includeAdmins' cannot be null.");
+        else if (includeAdmins !== undefined)
+            url_ += "includeAdmins=" + encodeURIComponent("" + includeAdmins) + "&";
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: AxiosRequestConfig = {
@@ -6507,6 +7480,158 @@ export class OrganizationAdminClient {
         }
         return Promise.resolve<ServiceResponseOfPagedResponseOfAuditLogDto>(null as any);
     }
+
+    getScrapedHostAliases( cancelToken?: CancelToken): Promise<ServiceResponseOfIReadOnlyListOfScrapedHostAliasDto> {
+        let url_ = this.baseUrl + "/api/Organizations/current/scraped-host-aliases";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: AxiosRequestConfig = {
+            method: "GET",
+            url: url_,
+            headers: {
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processGetScrapedHostAliases(_response);
+        });
+    }
+
+    protected processGetScrapedHostAliases(response: AxiosResponse): Promise<ServiceResponseOfIReadOnlyListOfScrapedHostAliasDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfIReadOnlyListOfScrapedHostAliasDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfIReadOnlyListOfScrapedHostAliasDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfIReadOnlyListOfScrapedHostAliasDto>(null as any);
+    }
+
+    saveScrapedHostAliases(request: SaveScrapedHostAliasesRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfIReadOnlyListOfScrapedHostAliasDto> {
+        let url_ = this.baseUrl + "/api/Organizations/current/scraped-host-aliases";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "PUT",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processSaveScrapedHostAliases(_response);
+        });
+    }
+
+    protected processSaveScrapedHostAliases(response: AxiosResponse): Promise<ServiceResponseOfIReadOnlyListOfScrapedHostAliasDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfIReadOnlyListOfScrapedHostAliasDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfIReadOnlyListOfScrapedHostAliasDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfIReadOnlyListOfScrapedHostAliasDto>(null as any);
+    }
+
+    linkScrapedHostAlias(request: LinkScrapedHostAliasRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfIReadOnlyListOfScrapedHostAliasDto> {
+        let url_ = this.baseUrl + "/api/Organizations/current/scraped-host-aliases/link";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processLinkScrapedHostAlias(_response);
+        });
+    }
+
+    protected processLinkScrapedHostAlias(response: AxiosResponse): Promise<ServiceResponseOfIReadOnlyListOfScrapedHostAliasDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfIReadOnlyListOfScrapedHostAliasDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfIReadOnlyListOfScrapedHostAliasDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfIReadOnlyListOfScrapedHostAliasDto>(null as any);
+    }
 }
 
 export class OrganizationsClient {
@@ -6732,6 +7857,240 @@ export class OrganizationsClient {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
         }
         return Promise.resolve<ServiceResponseOfOrganizationInvitePreviewDto>(null as any);
+    }
+}
+
+export class PeriodTimetableAdminClient {
+    protected instance: AxiosInstance;
+    protected baseUrl: string;
+    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
+
+    constructor(baseUrl?: string, instance?: AxiosInstance) {
+
+        this.instance = instance || axios.create();
+
+        this.baseUrl = baseUrl ?? "http://localhost:5069";
+
+    }
+
+    previewTimetable(periodId: string, request: PreviewTimetableRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfPreviewTimetableResultDto> {
+        let url_ = this.baseUrl + "/api/Organizations/current/periods/{periodId}/preview-timetable";
+        if (periodId === undefined || periodId === null)
+            throw new globalThis.Error("The parameter 'periodId' must be defined.");
+        url_ = url_.replace("{periodId}", encodeURIComponent("" + periodId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processPreviewTimetable(_response);
+        });
+    }
+
+    protected processPreviewTimetable(response: AxiosResponse): Promise<ServiceResponseOfPreviewTimetableResultDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfPreviewTimetableResultDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfPreviewTimetableResultDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfPreviewTimetableResultDto>(null as any);
+    }
+
+    getPublishStatus(periodId: string, request: TimetablePublishStatusRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfTimetablePublishStatusResultDto> {
+        let url_ = this.baseUrl + "/api/Organizations/current/periods/{periodId}/timetable-publish-status";
+        if (periodId === undefined || periodId === null)
+            throw new globalThis.Error("The parameter 'periodId' must be defined.");
+        url_ = url_.replace("{periodId}", encodeURIComponent("" + periodId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processGetPublishStatus(_response);
+        });
+    }
+
+    protected processGetPublishStatus(response: AxiosResponse): Promise<ServiceResponseOfTimetablePublishStatusResultDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfTimetablePublishStatusResultDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfTimetablePublishStatusResultDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfTimetablePublishStatusResultDto>(null as any);
+    }
+
+    bulkPublishTimetable(periodId: string, request: BulkPublishTimetableRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfBulkPublishTimetableResultDto> {
+        let url_ = this.baseUrl + "/api/Organizations/current/periods/{periodId}/bulk-publish-timetable";
+        if (periodId === undefined || periodId === null)
+            throw new globalThis.Error("The parameter 'periodId' must be defined.");
+        url_ = url_.replace("{periodId}", encodeURIComponent("" + periodId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processBulkPublishTimetable(_response);
+        });
+    }
+
+    protected processBulkPublishTimetable(response: AxiosResponse): Promise<ServiceResponseOfBulkPublishTimetableResultDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfBulkPublishTimetableResultDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfBulkPublishTimetableResultDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfBulkPublishTimetableResultDto>(null as any);
+    }
+
+    memberSchedulePreview(periodId: string, request: MemberSchedulePreviewRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfMemberSchedulePreviewResultDto> {
+        let url_ = this.baseUrl + "/api/Organizations/current/periods/{periodId}/member-schedule-preview";
+        if (periodId === undefined || periodId === null)
+            throw new globalThis.Error("The parameter 'periodId' must be defined.");
+        url_ = url_.replace("{periodId}", encodeURIComponent("" + periodId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processMemberSchedulePreview(_response);
+        });
+    }
+
+    protected processMemberSchedulePreview(response: AxiosResponse): Promise<ServiceResponseOfMemberSchedulePreviewResultDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfMemberSchedulePreviewResultDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfMemberSchedulePreviewResultDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfMemberSchedulePreviewResultDto>(null as any);
     }
 }
 
@@ -7200,7 +8559,7 @@ export class ScheduleClient {
         return Promise.resolve<ServiceResponseOfScheduleUserStatusDto>(null as any);
     }
 
-    getSchedule(date: Date | null | undefined, viewMode: string | undefined, hostId: string | null | undefined, groupId: string | null | undefined, roomId: string | null | undefined, eventTypeId: string | null | undefined, myScheduleOnly: boolean | undefined, publicOnly: boolean | undefined, cancelToken?: CancelToken): Promise<ServiceResponseOfIEnumerableOfScheduleItemDto> {
+    getSchedule(date: Date | null | undefined, viewMode: string | undefined, hostId: string | null | undefined, groupId: string | null | undefined, roomId: string | null | undefined, eventTypeId: string | null | undefined, myScheduleOnly: boolean | undefined, publicOnly: boolean | undefined, periodId: string | null | undefined, offeringId: string | null | undefined, programGroupId: string | null | undefined, cancelToken?: CancelToken): Promise<ServiceResponseOfIEnumerableOfScheduleItemDto> {
         let url_ = this.baseUrl + "/api/Schedule?";
         if (date !== undefined && date !== null)
             url_ += "date=" + encodeURIComponent(date ? "" + date.toISOString() : "") + "&";
@@ -7224,6 +8583,12 @@ export class ScheduleClient {
             throw new globalThis.Error("The parameter 'publicOnly' cannot be null.");
         else if (publicOnly !== undefined)
             url_ += "publicOnly=" + encodeURIComponent("" + publicOnly) + "&";
+        if (periodId !== undefined && periodId !== null)
+            url_ += "periodId=" + encodeURIComponent("" + periodId) + "&";
+        if (offeringId !== undefined && offeringId !== null)
+            url_ += "offeringId=" + encodeURIComponent("" + offeringId) + "&";
+        if (programGroupId !== undefined && programGroupId !== null)
+            url_ += "programGroupId=" + encodeURIComponent("" + programGroupId) + "&";
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: AxiosRequestConfig = {
@@ -9538,162 +10903,6 @@ export class WebSpiderClient {
         return Promise.resolve<ServiceResponseOfSpiderSyncEnqueueResultDto>(null as any);
     }
 
-    previewNews(request: SpiderUrlRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfSpiderPreviewNewsResultDto> {
-        let url_ = this.baseUrl + "/api/web-spider/news/preview";
-        url_ = url_.replace(/[?&]$/, "");
-
-        const content_ = JSON.stringify(request);
-
-        let options_: AxiosRequestConfig = {
-            data: content_,
-            method: "POST",
-            url: url_,
-            headers: {
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-            },
-            cancelToken
-        };
-
-        return this.instance.request(options_).catch((_error: any) => {
-            if (isAxiosError(_error) && _error.response) {
-                return _error.response;
-            } else {
-                throw _error;
-            }
-        }).then((_response: AxiosResponse) => {
-            return this.processPreviewNews(_response);
-        });
-    }
-
-    protected processPreviewNews(response: AxiosResponse): Promise<ServiceResponseOfSpiderPreviewNewsResultDto> {
-        const status = response.status;
-        let _headers: any = {};
-        if (response.headers && typeof response.headers === "object") {
-            for (const k in response.headers) {
-                if (response.headers.hasOwnProperty(k)) {
-                    _headers[k] = response.headers[k];
-                }
-            }
-        }
-        if (status === 200) {
-            const _responseText = response.data;
-            let result200: any = null;
-            let resultData200  = _responseText;
-            result200 = ServiceResponseOfSpiderPreviewNewsResultDto.fromJS(resultData200);
-            return Promise.resolve<ServiceResponseOfSpiderPreviewNewsResultDto>(result200);
-
-        } else if (status !== 200 && status !== 204) {
-            const _responseText = response.data;
-            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
-        }
-        return Promise.resolve<ServiceResponseOfSpiderPreviewNewsResultDto>(null as any);
-    }
-
-    discoverNews(request: SpiderUrlRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfNewsDiscoveryResult> {
-        let url_ = this.baseUrl + "/api/web-spider/news/discover";
-        url_ = url_.replace(/[?&]$/, "");
-
-        const content_ = JSON.stringify(request);
-
-        let options_: AxiosRequestConfig = {
-            data: content_,
-            method: "POST",
-            url: url_,
-            headers: {
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-            },
-            cancelToken
-        };
-
-        return this.instance.request(options_).catch((_error: any) => {
-            if (isAxiosError(_error) && _error.response) {
-                return _error.response;
-            } else {
-                throw _error;
-            }
-        }).then((_response: AxiosResponse) => {
-            return this.processDiscoverNews(_response);
-        });
-    }
-
-    protected processDiscoverNews(response: AxiosResponse): Promise<ServiceResponseOfNewsDiscoveryResult> {
-        const status = response.status;
-        let _headers: any = {};
-        if (response.headers && typeof response.headers === "object") {
-            for (const k in response.headers) {
-                if (response.headers.hasOwnProperty(k)) {
-                    _headers[k] = response.headers[k];
-                }
-            }
-        }
-        if (status === 200) {
-            const _responseText = response.data;
-            let result200: any = null;
-            let resultData200  = _responseText;
-            result200 = ServiceResponseOfNewsDiscoveryResult.fromJS(resultData200);
-            return Promise.resolve<ServiceResponseOfNewsDiscoveryResult>(result200);
-
-        } else if (status !== 200 && status !== 204) {
-            const _responseText = response.data;
-            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
-        }
-        return Promise.resolve<ServiceResponseOfNewsDiscoveryResult>(null as any);
-    }
-
-    enqueueNewsSync(request: SpiderUrlRequest | undefined, cancelToken?: CancelToken): Promise<ServiceResponseOfSpiderSyncEnqueueResultDto> {
-        let url_ = this.baseUrl + "/api/web-spider/news/sync";
-        url_ = url_.replace(/[?&]$/, "");
-
-        const content_ = JSON.stringify(request);
-
-        let options_: AxiosRequestConfig = {
-            data: content_,
-            method: "POST",
-            url: url_,
-            headers: {
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-            },
-            cancelToken
-        };
-
-        return this.instance.request(options_).catch((_error: any) => {
-            if (isAxiosError(_error) && _error.response) {
-                return _error.response;
-            } else {
-                throw _error;
-            }
-        }).then((_response: AxiosResponse) => {
-            return this.processEnqueueNewsSync(_response);
-        });
-    }
-
-    protected processEnqueueNewsSync(response: AxiosResponse): Promise<ServiceResponseOfSpiderSyncEnqueueResultDto> {
-        const status = response.status;
-        let _headers: any = {};
-        if (response.headers && typeof response.headers === "object") {
-            for (const k in response.headers) {
-                if (response.headers.hasOwnProperty(k)) {
-                    _headers[k] = response.headers[k];
-                }
-            }
-        }
-        if (status === 200) {
-            const _responseText = response.data;
-            let result200: any = null;
-            let resultData200  = _responseText;
-            result200 = ServiceResponseOfSpiderSyncEnqueueResultDto.fromJS(resultData200);
-            return Promise.resolve<ServiceResponseOfSpiderSyncEnqueueResultDto>(result200);
-
-        } else if (status !== 200 && status !== 204) {
-            const _responseText = response.data;
-            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
-        }
-        return Promise.resolve<ServiceResponseOfSpiderSyncEnqueueResultDto>(null as any);
-    }
-
     getSyncHistory(limit: number | undefined, cancelToken?: CancelToken): Promise<ServiceResponseOfIReadOnlyListOfSpiderSyncRunDto> {
         let url_ = this.baseUrl + "/api/web-spider/sync/history?";
         if (limit === null)
@@ -9792,6 +11001,162 @@ export class WebSpiderClient {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
         }
         return Promise.resolve<ServiceResponseOfIReadOnlyListOfUnresolvedScrapedEventDto>(null as any);
+    }
+
+    previewApplyScrapedToOffering(request: ApplyScrapedScheduleRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfApplyScrapedSchedulePreviewResultDto> {
+        let url_ = this.baseUrl + "/api/web-spider/schedule/apply-to-offering/preview";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processPreviewApplyScrapedToOffering(_response);
+        });
+    }
+
+    protected processPreviewApplyScrapedToOffering(response: AxiosResponse): Promise<ServiceResponseOfApplyScrapedSchedulePreviewResultDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfApplyScrapedSchedulePreviewResultDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfApplyScrapedSchedulePreviewResultDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfApplyScrapedSchedulePreviewResultDto>(null as any);
+    }
+
+    applyScrapedToOffering(request: ApplyScrapedScheduleRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfApplyScrapedScheduleResultDto> {
+        let url_ = this.baseUrl + "/api/web-spider/schedule/apply-to-offering";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processApplyScrapedToOffering(_response);
+        });
+    }
+
+    protected processApplyScrapedToOffering(response: AxiosResponse): Promise<ServiceResponseOfApplyScrapedScheduleResultDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfApplyScrapedScheduleResultDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfApplyScrapedScheduleResultDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfApplyScrapedScheduleResultDto>(null as any);
+    }
+
+    resolveImportMappings(request: ScrapedImportResolutionRequest, cancelToken?: CancelToken): Promise<ServiceResponseOfScrapedImportResolutionResultDto> {
+        let url_ = this.baseUrl + "/api/web-spider/schedule/import-resolution";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: AxiosRequestConfig = {
+            data: content_,
+            method: "POST",
+            url: url_,
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            cancelToken
+        };
+
+        return this.instance.request(options_).catch((_error: any) => {
+            if (isAxiosError(_error) && _error.response) {
+                return _error.response;
+            } else {
+                throw _error;
+            }
+        }).then((_response: AxiosResponse) => {
+            return this.processResolveImportMappings(_response);
+        });
+    }
+
+    protected processResolveImportMappings(response: AxiosResponse): Promise<ServiceResponseOfScrapedImportResolutionResultDto> {
+        const status = response.status;
+        let _headers: any = {};
+        if (response.headers && typeof response.headers === "object") {
+            for (const k in response.headers) {
+                if (response.headers.hasOwnProperty(k)) {
+                    _headers[k] = response.headers[k];
+                }
+            }
+        }
+        if (status === 200) {
+            const _responseText = response.data;
+            let result200: any = null;
+            let resultData200  = _responseText;
+            result200 = ServiceResponseOfScrapedImportResolutionResultDto.fromJS(resultData200);
+            return Promise.resolve<ServiceResponseOfScrapedImportResolutionResultDto>(result200);
+
+        } else if (status !== 200 && status !== 204) {
+            const _responseText = response.data;
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+        }
+        return Promise.resolve<ServiceResponseOfScrapedImportResolutionResultDto>(null as any);
     }
 }
 
@@ -9957,6 +11322,627 @@ export interface IAppError {
     code?: string;
     message?: string;
     detail?: string | undefined;
+}
+
+export class ServiceResponseOfListOfAnnouncementChannelDto implements IServiceResponseOfListOfAnnouncementChannelDto {
+    isSuccess?: boolean;
+    data?: AnnouncementChannelDto[] | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfListOfAnnouncementChannelDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            if (Array.isArray(_data["data"])) {
+                this.data = [] as any;
+                for (let item of _data["data"])
+                    this.data!.push(AnnouncementChannelDto.fromJS(item));
+            }
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfListOfAnnouncementChannelDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfListOfAnnouncementChannelDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        if (Array.isArray(this.data)) {
+            data["data"] = [];
+            for (let item of this.data)
+                data["data"].push(item ? item.toJSON() : undefined as any);
+        }
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfListOfAnnouncementChannelDto {
+    isSuccess?: boolean;
+    data?: AnnouncementChannelDto[] | undefined;
+    error?: AppError | undefined;
+}
+
+export class AnnouncementChannelDto implements IAnnouncementChannelDto {
+    id!: string;
+    kind!: AnnouncementChannelKind;
+    name!: string;
+    groupId?: string | undefined;
+    courseOfferingId?: string | undefined;
+    lastPostAt?: Date | undefined;
+    unreadCount!: number;
+
+    constructor(data?: IAnnouncementChannelDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.kind = _data["kind"];
+            this.name = _data["name"];
+            this.groupId = _data["groupId"];
+            this.courseOfferingId = _data["courseOfferingId"];
+            this.lastPostAt = _data["lastPostAt"] ? new Date(_data["lastPostAt"].toString()) : undefined as any;
+            this.unreadCount = _data["unreadCount"];
+        }
+    }
+
+    static fromJS(data: any): AnnouncementChannelDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new AnnouncementChannelDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["kind"] = this.kind;
+        data["name"] = this.name;
+        data["groupId"] = this.groupId;
+        data["courseOfferingId"] = this.courseOfferingId;
+        data["lastPostAt"] = this.lastPostAt ? this.lastPostAt.toISOString() : undefined as any;
+        data["unreadCount"] = this.unreadCount;
+        return data;
+    }
+}
+
+export interface IAnnouncementChannelDto {
+    id: string;
+    kind: AnnouncementChannelKind;
+    name: string;
+    groupId?: string | undefined;
+    courseOfferingId?: string | undefined;
+    lastPostAt?: Date | undefined;
+    unreadCount: number;
+}
+
+export enum AnnouncementChannelKind {
+    General = "General",
+    Group = "Group",
+    CourseOffering = "CourseOffering",
+}
+
+export class ServiceResponseOfPagedResponseOfAnnouncementPostDto implements IServiceResponseOfPagedResponseOfAnnouncementPostDto {
+    isSuccess?: boolean;
+    data?: PagedResponseOfAnnouncementPostDto | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfPagedResponseOfAnnouncementPostDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"] ? PagedResponseOfAnnouncementPostDto.fromJS(_data["data"]) : undefined as any;
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfPagedResponseOfAnnouncementPostDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfPagedResponseOfAnnouncementPostDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data ? this.data.toJSON() : undefined as any;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfPagedResponseOfAnnouncementPostDto {
+    isSuccess?: boolean;
+    data?: PagedResponseOfAnnouncementPostDto | undefined;
+    error?: AppError | undefined;
+}
+
+export class PagedResponseOfAnnouncementPostDto implements IPagedResponseOfAnnouncementPostDto {
+    items!: AnnouncementPostDto[];
+    totalCount!: number;
+    page!: number;
+    pageSize!: number;
+    totalPages?: number;
+
+    constructor(data?: IPagedResponseOfAnnouncementPostDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+        if (!data) {
+            this.items = [];
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["items"])) {
+                this.items = [] as any;
+                for (let item of _data["items"])
+                    this.items!.push(AnnouncementPostDto.fromJS(item));
+            }
+            this.totalCount = _data["totalCount"];
+            this.page = _data["page"];
+            this.pageSize = _data["pageSize"];
+            this.totalPages = _data["totalPages"];
+        }
+    }
+
+    static fromJS(data: any): PagedResponseOfAnnouncementPostDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new PagedResponseOfAnnouncementPostDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.items)) {
+            data["items"] = [];
+            for (let item of this.items)
+                data["items"].push(item ? item.toJSON() : undefined as any);
+        }
+        data["totalCount"] = this.totalCount;
+        data["page"] = this.page;
+        data["pageSize"] = this.pageSize;
+        data["totalPages"] = this.totalPages;
+        return data;
+    }
+}
+
+export interface IPagedResponseOfAnnouncementPostDto {
+    items: AnnouncementPostDto[];
+    totalCount: number;
+    page: number;
+    pageSize: number;
+    totalPages?: number;
+}
+
+export class AnnouncementPostDto implements IAnnouncementPostDto {
+    id!: string;
+    channelId!: string;
+    channelKind!: AnnouncementChannelKind;
+    channelName!: string;
+    authorId!: string;
+    authorName!: string;
+    title?: string | undefined;
+    content!: string;
+    coverImageUrl?: string | undefined;
+    createdAt!: Date;
+    commentCount!: number;
+
+    constructor(data?: IAnnouncementPostDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.channelId = _data["channelId"];
+            this.channelKind = _data["channelKind"];
+            this.channelName = _data["channelName"];
+            this.authorId = _data["authorId"];
+            this.authorName = _data["authorName"];
+            this.title = _data["title"];
+            this.content = _data["content"];
+            this.coverImageUrl = _data["coverImageUrl"];
+            this.createdAt = _data["createdAt"] ? new Date(_data["createdAt"].toString()) : undefined as any;
+            this.commentCount = _data["commentCount"];
+        }
+    }
+
+    static fromJS(data: any): AnnouncementPostDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new AnnouncementPostDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["channelId"] = this.channelId;
+        data["channelKind"] = this.channelKind;
+        data["channelName"] = this.channelName;
+        data["authorId"] = this.authorId;
+        data["authorName"] = this.authorName;
+        data["title"] = this.title;
+        data["content"] = this.content;
+        data["coverImageUrl"] = this.coverImageUrl;
+        data["createdAt"] = this.createdAt ? this.createdAt.toISOString() : undefined as any;
+        data["commentCount"] = this.commentCount;
+        return data;
+    }
+}
+
+export interface IAnnouncementPostDto {
+    id: string;
+    channelId: string;
+    channelKind: AnnouncementChannelKind;
+    channelName: string;
+    authorId: string;
+    authorName: string;
+    title?: string | undefined;
+    content: string;
+    coverImageUrl?: string | undefined;
+    createdAt: Date;
+    commentCount: number;
+}
+
+export class ServiceResponseOfAnnouncementPostDto implements IServiceResponseOfAnnouncementPostDto {
+    isSuccess?: boolean;
+    data?: AnnouncementPostDto | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfAnnouncementPostDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"] ? AnnouncementPostDto.fromJS(_data["data"]) : undefined as any;
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfAnnouncementPostDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfAnnouncementPostDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data ? this.data.toJSON() : undefined as any;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfAnnouncementPostDto {
+    isSuccess?: boolean;
+    data?: AnnouncementPostDto | undefined;
+    error?: AppError | undefined;
+}
+
+export class CreateAnnouncementPostRequest implements ICreateAnnouncementPostRequest {
+    title!: string;
+    content!: string;
+    coverImageUrl?: string | undefined;
+
+    constructor(data?: ICreateAnnouncementPostRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.title = _data["title"];
+            this.content = _data["content"];
+            this.coverImageUrl = _data["coverImageUrl"];
+        }
+    }
+
+    static fromJS(data: any): CreateAnnouncementPostRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new CreateAnnouncementPostRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["title"] = this.title;
+        data["content"] = this.content;
+        data["coverImageUrl"] = this.coverImageUrl;
+        return data;
+    }
+}
+
+export interface ICreateAnnouncementPostRequest {
+    title: string;
+    content: string;
+    coverImageUrl?: string | undefined;
+}
+
+export class ServiceResponseOfListOfAnnouncementCommentDto implements IServiceResponseOfListOfAnnouncementCommentDto {
+    isSuccess?: boolean;
+    data?: AnnouncementCommentDto[] | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfListOfAnnouncementCommentDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            if (Array.isArray(_data["data"])) {
+                this.data = [] as any;
+                for (let item of _data["data"])
+                    this.data!.push(AnnouncementCommentDto.fromJS(item));
+            }
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfListOfAnnouncementCommentDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfListOfAnnouncementCommentDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        if (Array.isArray(this.data)) {
+            data["data"] = [];
+            for (let item of this.data)
+                data["data"].push(item ? item.toJSON() : undefined as any);
+        }
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfListOfAnnouncementCommentDto {
+    isSuccess?: boolean;
+    data?: AnnouncementCommentDto[] | undefined;
+    error?: AppError | undefined;
+}
+
+export class AnnouncementCommentDto implements IAnnouncementCommentDto {
+    id!: string;
+    postId!: string;
+    authorId!: string;
+    authorName!: string;
+    content!: string;
+    createdAt!: Date;
+
+    constructor(data?: IAnnouncementCommentDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.postId = _data["postId"];
+            this.authorId = _data["authorId"];
+            this.authorName = _data["authorName"];
+            this.content = _data["content"];
+            this.createdAt = _data["createdAt"] ? new Date(_data["createdAt"].toString()) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): AnnouncementCommentDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new AnnouncementCommentDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["postId"] = this.postId;
+        data["authorId"] = this.authorId;
+        data["authorName"] = this.authorName;
+        data["content"] = this.content;
+        data["createdAt"] = this.createdAt ? this.createdAt.toISOString() : undefined as any;
+        return data;
+    }
+}
+
+export interface IAnnouncementCommentDto {
+    id: string;
+    postId: string;
+    authorId: string;
+    authorName: string;
+    content: string;
+    createdAt: Date;
+}
+
+export class ServiceResponseOfAnnouncementCommentDto implements IServiceResponseOfAnnouncementCommentDto {
+    isSuccess?: boolean;
+    data?: AnnouncementCommentDto | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfAnnouncementCommentDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"] ? AnnouncementCommentDto.fromJS(_data["data"]) : undefined as any;
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfAnnouncementCommentDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfAnnouncementCommentDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data ? this.data.toJSON() : undefined as any;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfAnnouncementCommentDto {
+    isSuccess?: boolean;
+    data?: AnnouncementCommentDto | undefined;
+    error?: AppError | undefined;
+}
+
+export class CreateAnnouncementCommentRequest implements ICreateAnnouncementCommentRequest {
+    content!: string;
+
+    constructor(data?: ICreateAnnouncementCommentRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.content = _data["content"];
+        }
+    }
+
+    static fromJS(data: any): CreateAnnouncementCommentRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new CreateAnnouncementCommentRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["content"] = this.content;
+        return data;
+    }
+}
+
+export interface ICreateAnnouncementCommentRequest {
+    content: string;
+}
+
+export class ServiceResponseOfBoolean implements IServiceResponseOfBoolean {
+    isSuccess?: boolean;
+    data?: boolean;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfBoolean) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"];
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfBoolean {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfBoolean();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfBoolean {
+    isSuccess?: boolean;
+    data?: boolean;
+    error?: AppError | undefined;
 }
 
 export class ServiceResponseOfMyAttendanceResponse implements IServiceResponseOfMyAttendanceResponse {
@@ -10142,6 +12128,7 @@ export class AttendanceRecordDto implements IAttendanceRecordDto {
     eventTitle!: string;
     groupId?: string | undefined;
     groupName?: string | undefined;
+    eventTypeName?: string | undefined;
     roomName?: string | undefined;
     instanceDate!: Date;
     status!: AttendanceStatus;
@@ -10163,6 +12150,7 @@ export class AttendanceRecordDto implements IAttendanceRecordDto {
             this.eventTitle = _data["eventTitle"];
             this.groupId = _data["groupId"];
             this.groupName = _data["groupName"];
+            this.eventTypeName = _data["eventTypeName"];
             this.roomName = _data["roomName"];
             this.instanceDate = _data["instanceDate"] ? new Date(_data["instanceDate"].toString()) : undefined as any;
             this.status = _data["status"];
@@ -10184,6 +12172,7 @@ export class AttendanceRecordDto implements IAttendanceRecordDto {
         data["eventTitle"] = this.eventTitle;
         data["groupId"] = this.groupId;
         data["groupName"] = this.groupName;
+        data["eventTypeName"] = this.eventTypeName;
         data["roomName"] = this.roomName;
         data["instanceDate"] = this.instanceDate ? this.instanceDate.toISOString() : undefined as any;
         data["status"] = this.status;
@@ -10198,6 +12187,7 @@ export interface IAttendanceRecordDto {
     eventTitle: string;
     groupId?: string | undefined;
     groupName?: string | undefined;
+    eventTypeName?: string | undefined;
     roomName?: string | undefined;
     instanceDate: Date;
     status: AttendanceStatus;
@@ -10218,6 +12208,7 @@ export class AttendanceSessionDto implements IAttendanceSessionDto {
     title!: string;
     groupId?: string | undefined;
     groupName?: string | undefined;
+    cohortGroupName?: string | undefined;
     roomName?: string | undefined;
     startTime!: Date;
     endTime!: Date;
@@ -10243,6 +12234,7 @@ export class AttendanceSessionDto implements IAttendanceSessionDto {
             this.title = _data["title"];
             this.groupId = _data["groupId"];
             this.groupName = _data["groupName"];
+            this.cohortGroupName = _data["cohortGroupName"];
             this.roomName = _data["roomName"];
             this.startTime = _data["startTime"] ? new Date(_data["startTime"].toString()) : undefined as any;
             this.endTime = _data["endTime"] ? new Date(_data["endTime"].toString()) : undefined as any;
@@ -10268,6 +12260,7 @@ export class AttendanceSessionDto implements IAttendanceSessionDto {
         data["title"] = this.title;
         data["groupId"] = this.groupId;
         data["groupName"] = this.groupName;
+        data["cohortGroupName"] = this.cohortGroupName;
         data["roomName"] = this.roomName;
         data["startTime"] = this.startTime ? this.startTime.toISOString() : undefined as any;
         data["endTime"] = this.endTime ? this.endTime.toISOString() : undefined as any;
@@ -10286,6 +12279,7 @@ export interface IAttendanceSessionDto {
     title: string;
     groupId?: string | undefined;
     groupName?: string | undefined;
+    cohortGroupName?: string | undefined;
     roomName?: string | undefined;
     startTime: Date;
     endTime: Date;
@@ -10477,6 +12471,8 @@ export class OfferingActivityAttendanceDto implements IOfferingActivityAttendanc
     presentCount!: number;
     heldCount!: number;
     ratePercent!: number;
+    requiredAttendancePercent?: number | undefined;
+    meetsRequirement?: boolean | undefined;
 
     constructor(data?: IOfferingActivityAttendanceDto) {
         if (data) {
@@ -10494,6 +12490,8 @@ export class OfferingActivityAttendanceDto implements IOfferingActivityAttendanc
             this.presentCount = _data["presentCount"];
             this.heldCount = _data["heldCount"];
             this.ratePercent = _data["ratePercent"];
+            this.requiredAttendancePercent = _data["requiredAttendancePercent"];
+            this.meetsRequirement = _data["meetsRequirement"];
         }
     }
 
@@ -10511,6 +12509,8 @@ export class OfferingActivityAttendanceDto implements IOfferingActivityAttendanc
         data["presentCount"] = this.presentCount;
         data["heldCount"] = this.heldCount;
         data["ratePercent"] = this.ratePercent;
+        data["requiredAttendancePercent"] = this.requiredAttendancePercent;
+        data["meetsRequirement"] = this.meetsRequirement;
         return data;
     }
 }
@@ -10521,6 +12521,8 @@ export interface IOfferingActivityAttendanceDto {
     presentCount: number;
     heldCount: number;
     ratePercent: number;
+    requiredAttendancePercent?: number | undefined;
+    meetsRequirement?: boolean | undefined;
 }
 
 export class ServiceResponseOfAttendanceSessionRosterDto implements IServiceResponseOfAttendanceSessionRosterDto {
@@ -10696,50 +12698,6 @@ export interface IAttendanceRosterMemberDto {
     cohortGroupName?: string | undefined;
     status: AttendanceStatus;
     statusLabel: string;
-}
-
-export class ServiceResponseOfBoolean implements IServiceResponseOfBoolean {
-    isSuccess?: boolean;
-    data?: boolean;
-    error?: AppError | undefined;
-
-    constructor(data?: IServiceResponseOfBoolean) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (this as any)[property] = (data as any)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.isSuccess = _data["isSuccess"];
-            this.data = _data["data"];
-            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
-        }
-    }
-
-    static fromJS(data: any): ServiceResponseOfBoolean {
-        data = typeof data === 'object' ? data : {};
-        let result = new ServiceResponseOfBoolean();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["isSuccess"] = this.isSuccess;
-        data["data"] = this.data;
-        data["error"] = this.error ? this.error.toJSON() : undefined as any;
-        return data;
-    }
-}
-
-export interface IServiceResponseOfBoolean {
-    isSuccess?: boolean;
-    data?: boolean;
-    error?: AppError | undefined;
 }
 
 export class BulkMarkAttendanceRequest implements IBulkMarkAttendanceRequest {
@@ -12826,6 +14784,7 @@ export class CourseOfferingDto implements ICourseOfferingDto {
     enrollmentCount!: number;
     credits!: number;
     requiredAttendancePercent?: number | undefined;
+    timetablePublishedAt?: Date | undefined;
     weeklySessions!: OfferingWeeklySessionDto[];
     createdAt!: Date;
 
@@ -12876,6 +14835,7 @@ export class CourseOfferingDto implements ICourseOfferingDto {
             this.enrollmentCount = _data["enrollmentCount"];
             this.credits = _data["credits"];
             this.requiredAttendancePercent = _data["requiredAttendancePercent"];
+            this.timetablePublishedAt = _data["timetablePublishedAt"] ? new Date(_data["timetablePublishedAt"].toString()) : undefined as any;
             if (Array.isArray(_data["weeklySessions"])) {
                 this.weeklySessions = [] as any;
                 for (let item of _data["weeklySessions"])
@@ -12924,6 +14884,7 @@ export class CourseOfferingDto implements ICourseOfferingDto {
         data["enrollmentCount"] = this.enrollmentCount;
         data["credits"] = this.credits;
         data["requiredAttendancePercent"] = this.requiredAttendancePercent;
+        data["timetablePublishedAt"] = this.timetablePublishedAt ? this.timetablePublishedAt.toISOString() : undefined as any;
         if (Array.isArray(this.weeklySessions)) {
             data["weeklySessions"] = [];
             for (let item of this.weeklySessions)
@@ -12953,6 +14914,7 @@ export interface ICourseOfferingDto {
     enrollmentCount: number;
     credits: number;
     requiredAttendancePercent?: number | undefined;
+    timetablePublishedAt?: Date | undefined;
     weeklySessions: OfferingWeeklySessionDto[];
     createdAt: Date;
 }
@@ -13010,8 +14972,21 @@ export class OfferingWeeklySessionDto implements IOfferingWeeklySessionDto {
     eventTypeName?: string | undefined;
     hoursPerSession!: number;
     frequency!: string;
+    biweeklyPhase?: number | undefined;
     isOptional?: boolean;
     sortOrder?: number;
+    dayOfWeek?: number | undefined;
+    startTimeLocal?: string | undefined;
+    hostId?: string | undefined;
+    hostName?: string | undefined;
+    audienceScope?: string;
+    cohortGroupIds?: string[] | undefined;
+    cohortDelivery?: string;
+    cohortAssignments?: OfferingSessionCohortAssignmentDto[] | undefined;
+    roomId?: string | undefined;
+    roomName?: string | undefined;
+    requiredAttendancePercent?: number | undefined;
+    assignedInstructorIds?: string[] | undefined;
 
     constructor(data?: IOfferingWeeklySessionDto) {
         if (data) {
@@ -13028,8 +15003,33 @@ export class OfferingWeeklySessionDto implements IOfferingWeeklySessionDto {
             this.eventTypeName = _data["eventTypeName"];
             this.hoursPerSession = _data["hoursPerSession"];
             this.frequency = _data["frequency"];
+            this.biweeklyPhase = _data["biweeklyPhase"];
             this.isOptional = _data["isOptional"];
             this.sortOrder = _data["sortOrder"];
+            this.dayOfWeek = _data["dayOfWeek"];
+            this.startTimeLocal = _data["startTimeLocal"];
+            this.hostId = _data["hostId"];
+            this.hostName = _data["hostName"];
+            this.audienceScope = _data["audienceScope"];
+            if (Array.isArray(_data["cohortGroupIds"])) {
+                this.cohortGroupIds = [] as any;
+                for (let item of _data["cohortGroupIds"])
+                    this.cohortGroupIds!.push(item);
+            }
+            this.cohortDelivery = _data["cohortDelivery"];
+            if (Array.isArray(_data["cohortAssignments"])) {
+                this.cohortAssignments = [] as any;
+                for (let item of _data["cohortAssignments"])
+                    this.cohortAssignments!.push(OfferingSessionCohortAssignmentDto.fromJS(item));
+            }
+            this.roomId = _data["roomId"];
+            this.roomName = _data["roomName"];
+            this.requiredAttendancePercent = _data["requiredAttendancePercent"];
+            if (Array.isArray(_data["assignedInstructorIds"])) {
+                this.assignedInstructorIds = [] as any;
+                for (let item of _data["assignedInstructorIds"])
+                    this.assignedInstructorIds!.push(item);
+            }
         }
     }
 
@@ -13046,8 +15046,33 @@ export class OfferingWeeklySessionDto implements IOfferingWeeklySessionDto {
         data["eventTypeName"] = this.eventTypeName;
         data["hoursPerSession"] = this.hoursPerSession;
         data["frequency"] = this.frequency;
+        data["biweeklyPhase"] = this.biweeklyPhase;
         data["isOptional"] = this.isOptional;
         data["sortOrder"] = this.sortOrder;
+        data["dayOfWeek"] = this.dayOfWeek;
+        data["startTimeLocal"] = this.startTimeLocal;
+        data["hostId"] = this.hostId;
+        data["hostName"] = this.hostName;
+        data["audienceScope"] = this.audienceScope;
+        if (Array.isArray(this.cohortGroupIds)) {
+            data["cohortGroupIds"] = [];
+            for (let item of this.cohortGroupIds)
+                data["cohortGroupIds"].push(item);
+        }
+        data["cohortDelivery"] = this.cohortDelivery;
+        if (Array.isArray(this.cohortAssignments)) {
+            data["cohortAssignments"] = [];
+            for (let item of this.cohortAssignments)
+                data["cohortAssignments"].push(item ? item.toJSON() : undefined as any);
+        }
+        data["roomId"] = this.roomId;
+        data["roomName"] = this.roomName;
+        data["requiredAttendancePercent"] = this.requiredAttendancePercent;
+        if (Array.isArray(this.assignedInstructorIds)) {
+            data["assignedInstructorIds"] = [];
+            for (let item of this.assignedInstructorIds)
+                data["assignedInstructorIds"].push(item);
+        }
         return data;
     }
 }
@@ -13057,8 +15082,97 @@ export interface IOfferingWeeklySessionDto {
     eventTypeName?: string | undefined;
     hoursPerSession: number;
     frequency: string;
+    biweeklyPhase?: number | undefined;
     isOptional?: boolean;
     sortOrder?: number;
+    dayOfWeek?: number | undefined;
+    startTimeLocal?: string | undefined;
+    hostId?: string | undefined;
+    hostName?: string | undefined;
+    audienceScope?: string;
+    cohortGroupIds?: string[] | undefined;
+    cohortDelivery?: string;
+    cohortAssignments?: OfferingSessionCohortAssignmentDto[] | undefined;
+    roomId?: string | undefined;
+    roomName?: string | undefined;
+    requiredAttendancePercent?: number | undefined;
+    assignedInstructorIds?: string[] | undefined;
+}
+
+export class OfferingSessionCohortAssignmentDto implements IOfferingSessionCohortAssignmentDto {
+    hostId?: string | undefined;
+    hostName?: string | undefined;
+    cohortGroupIds?: string[];
+    dayOfWeek?: number | undefined;
+    startTimeLocal?: string | undefined;
+    roomId?: string | undefined;
+    roomName?: string | undefined;
+    frequency?: string | undefined;
+    biweeklyPhase?: number | undefined;
+
+    constructor(data?: IOfferingSessionCohortAssignmentDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.hostId = _data["hostId"];
+            this.hostName = _data["hostName"];
+            if (Array.isArray(_data["cohortGroupIds"])) {
+                this.cohortGroupIds = [] as any;
+                for (let item of _data["cohortGroupIds"])
+                    this.cohortGroupIds!.push(item);
+            }
+            this.dayOfWeek = _data["dayOfWeek"];
+            this.startTimeLocal = _data["startTimeLocal"];
+            this.roomId = _data["roomId"];
+            this.roomName = _data["roomName"];
+            this.frequency = _data["frequency"];
+            this.biweeklyPhase = _data["biweeklyPhase"];
+        }
+    }
+
+    static fromJS(data: any): OfferingSessionCohortAssignmentDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new OfferingSessionCohortAssignmentDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["hostId"] = this.hostId;
+        data["hostName"] = this.hostName;
+        if (Array.isArray(this.cohortGroupIds)) {
+            data["cohortGroupIds"] = [];
+            for (let item of this.cohortGroupIds)
+                data["cohortGroupIds"].push(item);
+        }
+        data["dayOfWeek"] = this.dayOfWeek;
+        data["startTimeLocal"] = this.startTimeLocal;
+        data["roomId"] = this.roomId;
+        data["roomName"] = this.roomName;
+        data["frequency"] = this.frequency;
+        data["biweeklyPhase"] = this.biweeklyPhase;
+        return data;
+    }
+}
+
+export interface IOfferingSessionCohortAssignmentDto {
+    hostId?: string | undefined;
+    hostName?: string | undefined;
+    cohortGroupIds?: string[];
+    dayOfWeek?: number | undefined;
+    startTimeLocal?: string | undefined;
+    roomId?: string | undefined;
+    roomName?: string | undefined;
+    frequency?: string | undefined;
+    biweeklyPhase?: number | undefined;
 }
 
 export class ServiceResponseOfCourseOfferingDto implements IServiceResponseOfCourseOfferingDto {
@@ -13605,6 +15719,78 @@ export interface IEnrollLinkedProgramsRequest {
     useLinkedPrograms?: boolean;
 }
 
+export class UnenrollUserRequest implements IUnenrollUserRequest {
+    userId!: string;
+
+    constructor(data?: IUnenrollUserRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.userId = _data["userId"];
+        }
+    }
+
+    static fromJS(data: any): UnenrollUserRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new UnenrollUserRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["userId"] = this.userId;
+        return data;
+    }
+}
+
+export interface IUnenrollUserRequest {
+    userId: string;
+}
+
+export class UnenrollCohortRequest implements IUnenrollCohortRequest {
+    cohortGroupId!: string;
+
+    constructor(data?: IUnenrollCohortRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.cohortGroupId = _data["cohortGroupId"];
+        }
+    }
+
+    static fromJS(data: any): UnenrollCohortRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new UnenrollCohortRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["cohortGroupId"] = this.cohortGroupId;
+        return data;
+    }
+}
+
+export interface IUnenrollCohortRequest {
+    cohortGroupId: string;
+}
+
 export class ServiceResponseOfOfferingGradePlanDto implements IServiceResponseOfOfferingGradePlanDto {
     isSuccess?: boolean;
     data?: OfferingGradePlanDto | undefined;
@@ -13940,6 +16126,138 @@ export interface IUpsertOfferingGradeCategoryRequest {
     weight: number;
     sortOrder?: number;
     isBonus?: boolean;
+}
+
+export class ServiceResponseOfPublishTimetableResultDto implements IServiceResponseOfPublishTimetableResultDto {
+    isSuccess?: boolean;
+    data?: PublishTimetableResultDto | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfPublishTimetableResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"] ? PublishTimetableResultDto.fromJS(_data["data"]) : undefined as any;
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfPublishTimetableResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfPublishTimetableResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data ? this.data.toJSON() : undefined as any;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfPublishTimetableResultDto {
+    isSuccess?: boolean;
+    data?: PublishTimetableResultDto | undefined;
+    error?: AppError | undefined;
+}
+
+export class PublishTimetableResultDto implements IPublishTimetableResultDto {
+    eventsCreated?: number;
+    expectedAttendanceRowsSeeded?: number;
+    publishedAt?: Date;
+
+    constructor(data?: IPublishTimetableResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.eventsCreated = _data["eventsCreated"];
+            this.expectedAttendanceRowsSeeded = _data["expectedAttendanceRowsSeeded"];
+            this.publishedAt = _data["publishedAt"] ? new Date(_data["publishedAt"].toString()) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): PublishTimetableResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new PublishTimetableResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["eventsCreated"] = this.eventsCreated;
+        data["expectedAttendanceRowsSeeded"] = this.expectedAttendanceRowsSeeded;
+        data["publishedAt"] = this.publishedAt ? this.publishedAt.toISOString() : undefined as any;
+        return data;
+    }
+}
+
+export interface IPublishTimetableResultDto {
+    eventsCreated?: number;
+    expectedAttendanceRowsSeeded?: number;
+    publishedAt?: Date;
+}
+
+export class PublishTimetableRequest implements IPublishTimetableRequest {
+    replaceExisting?: boolean;
+    clientUtcOffsetMinutes?: number | undefined;
+    forceDespiteConflicts?: boolean;
+
+    constructor(data?: IPublishTimetableRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.replaceExisting = _data["replaceExisting"];
+            this.clientUtcOffsetMinutes = _data["clientUtcOffsetMinutes"];
+            this.forceDespiteConflicts = _data["forceDespiteConflicts"];
+        }
+    }
+
+    static fromJS(data: any): PublishTimetableRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new PublishTimetableRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["replaceExisting"] = this.replaceExisting;
+        data["clientUtcOffsetMinutes"] = this.clientUtcOffsetMinutes;
+        data["forceDespiteConflicts"] = this.forceDespiteConflicts;
+        return data;
+    }
+}
+
+export interface IPublishTimetableRequest {
+    replaceExisting?: boolean;
+    clientUtcOffsetMinutes?: number | undefined;
+    forceDespiteConflicts?: boolean;
 }
 
 export class ServiceResponseOfSetupProgramTermResultDto implements IServiceResponseOfSetupProgramTermResultDto {
@@ -14356,6 +16674,365 @@ export interface IDigitalIdScanResultDto {
     roleName?: string | undefined;
     avatarUrl?: string | undefined;
     message?: string | undefined;
+}
+
+export class ServiceResponseOfListOfDocumentCategoryDto implements IServiceResponseOfListOfDocumentCategoryDto {
+    isSuccess?: boolean;
+    data?: DocumentCategoryDto[] | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfListOfDocumentCategoryDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            if (Array.isArray(_data["data"])) {
+                this.data = [] as any;
+                for (let item of _data["data"])
+                    this.data!.push(DocumentCategoryDto.fromJS(item));
+            }
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfListOfDocumentCategoryDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfListOfDocumentCategoryDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        if (Array.isArray(this.data)) {
+            data["data"] = [];
+            for (let item of this.data)
+                data["data"].push(item ? item.toJSON() : undefined as any);
+        }
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfListOfDocumentCategoryDto {
+    isSuccess?: boolean;
+    data?: DocumentCategoryDto[] | undefined;
+    error?: AppError | undefined;
+}
+
+export class DocumentCategoryDto implements IDocumentCategoryDto {
+    key!: string;
+    label!: string;
+
+    constructor(data?: IDocumentCategoryDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.key = _data["key"];
+            this.label = _data["label"];
+        }
+    }
+
+    static fromJS(data: any): DocumentCategoryDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new DocumentCategoryDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["key"] = this.key;
+        data["label"] = this.label;
+        return data;
+    }
+}
+
+export interface IDocumentCategoryDto {
+    key: string;
+    label: string;
+}
+
+export class ServiceResponseOfPagedResponseOfOrganizationDocumentDto implements IServiceResponseOfPagedResponseOfOrganizationDocumentDto {
+    isSuccess?: boolean;
+    data?: PagedResponseOfOrganizationDocumentDto | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfPagedResponseOfOrganizationDocumentDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"] ? PagedResponseOfOrganizationDocumentDto.fromJS(_data["data"]) : undefined as any;
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfPagedResponseOfOrganizationDocumentDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfPagedResponseOfOrganizationDocumentDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data ? this.data.toJSON() : undefined as any;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfPagedResponseOfOrganizationDocumentDto {
+    isSuccess?: boolean;
+    data?: PagedResponseOfOrganizationDocumentDto | undefined;
+    error?: AppError | undefined;
+}
+
+export class PagedResponseOfOrganizationDocumentDto implements IPagedResponseOfOrganizationDocumentDto {
+    items!: OrganizationDocumentDto[];
+    totalCount!: number;
+    page!: number;
+    pageSize!: number;
+    totalPages?: number;
+
+    constructor(data?: IPagedResponseOfOrganizationDocumentDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+        if (!data) {
+            this.items = [];
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["items"])) {
+                this.items = [] as any;
+                for (let item of _data["items"])
+                    this.items!.push(OrganizationDocumentDto.fromJS(item));
+            }
+            this.totalCount = _data["totalCount"];
+            this.page = _data["page"];
+            this.pageSize = _data["pageSize"];
+            this.totalPages = _data["totalPages"];
+        }
+    }
+
+    static fromJS(data: any): PagedResponseOfOrganizationDocumentDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new PagedResponseOfOrganizationDocumentDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.items)) {
+            data["items"] = [];
+            for (let item of this.items)
+                data["items"].push(item ? item.toJSON() : undefined as any);
+        }
+        data["totalCount"] = this.totalCount;
+        data["page"] = this.page;
+        data["pageSize"] = this.pageSize;
+        data["totalPages"] = this.totalPages;
+        return data;
+    }
+}
+
+export interface IPagedResponseOfOrganizationDocumentDto {
+    items: OrganizationDocumentDto[];
+    totalCount: number;
+    page: number;
+    pageSize: number;
+    totalPages?: number;
+}
+
+export class OrganizationDocumentDto implements IOrganizationDocumentDto {
+    id!: string;
+    title!: string;
+    originalFileName!: string;
+    contentType!: string;
+    byteSize!: number;
+    category!: string;
+    description?: string | undefined;
+    uploadedByName!: string;
+    createdAt!: Date;
+    updatedAt?: Date | undefined;
+
+    constructor(data?: IOrganizationDocumentDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.title = _data["title"];
+            this.originalFileName = _data["originalFileName"];
+            this.contentType = _data["contentType"];
+            this.byteSize = _data["byteSize"];
+            this.category = _data["category"];
+            this.description = _data["description"];
+            this.uploadedByName = _data["uploadedByName"];
+            this.createdAt = _data["createdAt"] ? new Date(_data["createdAt"].toString()) : undefined as any;
+            this.updatedAt = _data["updatedAt"] ? new Date(_data["updatedAt"].toString()) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): OrganizationDocumentDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new OrganizationDocumentDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["title"] = this.title;
+        data["originalFileName"] = this.originalFileName;
+        data["contentType"] = this.contentType;
+        data["byteSize"] = this.byteSize;
+        data["category"] = this.category;
+        data["description"] = this.description;
+        data["uploadedByName"] = this.uploadedByName;
+        data["createdAt"] = this.createdAt ? this.createdAt.toISOString() : undefined as any;
+        data["updatedAt"] = this.updatedAt ? this.updatedAt.toISOString() : undefined as any;
+        return data;
+    }
+}
+
+export interface IOrganizationDocumentDto {
+    id: string;
+    title: string;
+    originalFileName: string;
+    contentType: string;
+    byteSize: number;
+    category: string;
+    description?: string | undefined;
+    uploadedByName: string;
+    createdAt: Date;
+    updatedAt?: Date | undefined;
+}
+
+export class ServiceResponseOfOrganizationDocumentDto implements IServiceResponseOfOrganizationDocumentDto {
+    isSuccess?: boolean;
+    data?: OrganizationDocumentDto | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfOrganizationDocumentDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"] ? OrganizationDocumentDto.fromJS(_data["data"]) : undefined as any;
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfOrganizationDocumentDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfOrganizationDocumentDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data ? this.data.toJSON() : undefined as any;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfOrganizationDocumentDto {
+    isSuccess?: boolean;
+    data?: OrganizationDocumentDto | undefined;
+    error?: AppError | undefined;
+}
+
+export class UpdateOrganizationDocumentRequest implements IUpdateOrganizationDocumentRequest {
+    title!: string;
+    category!: string;
+    description?: string | undefined;
+
+    constructor(data?: IUpdateOrganizationDocumentRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.title = _data["title"];
+            this.category = _data["category"];
+            this.description = _data["description"];
+        }
+    }
+
+    static fromJS(data: any): UpdateOrganizationDocumentRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new UpdateOrganizationDocumentRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["title"] = this.title;
+        data["category"] = this.category;
+        data["description"] = this.description;
+        return data;
+    }
+}
+
+export interface IUpdateOrganizationDocumentRequest {
+    title: string;
+    category: string;
+    description?: string | undefined;
 }
 
 export class ServiceResponseOfIEnumerableOfEventTypeDto implements IServiceResponseOfIEnumerableOfEventTypeDto {
@@ -17572,6 +20249,7 @@ export class CourseOfferingPackageItemDto implements ICourseOfferingPackageItemD
     programGroupIds!: string[];
     programGroupNames!: string[];
     weeklySessions!: OfferingWeeklySessionDto[];
+    credits!: number;
 
     constructor(data?: ICourseOfferingPackageItemDto) {
         if (data) {
@@ -17617,6 +20295,7 @@ export class CourseOfferingPackageItemDto implements ICourseOfferingPackageItemD
                 for (let item of _data["weeklySessions"])
                     this.weeklySessions!.push(OfferingWeeklySessionDto.fromJS(item));
             }
+            this.credits = _data["credits"];
         }
     }
 
@@ -17656,6 +20335,7 @@ export class CourseOfferingPackageItemDto implements ICourseOfferingPackageItemD
             for (let item of this.weeklySessions)
                 data["weeklySessions"].push(item ? item.toJSON() : undefined as any);
         }
+        data["credits"] = this.credits;
         return data;
     }
 }
@@ -17672,6 +20352,7 @@ export interface ICourseOfferingPackageItemDto {
     programGroupIds: string[];
     programGroupNames: string[];
     weeklySessions: OfferingWeeklySessionDto[];
+    credits: number;
 }
 
 export class ServiceResponseOfCourseOfferingPackageDto implements IServiceResponseOfCourseOfferingPackageDto {
@@ -17880,6 +20561,7 @@ export class UpsertCourseOfferingPackageItemRequest implements IUpsertCourseOffe
     instructors?: OfferingInstructorInputDto[] | undefined;
     programGroupIds?: string[] | undefined;
     weeklySessions?: OfferingWeeklySessionDto[] | undefined;
+    credits?: number;
 
     constructor(data?: IUpsertCourseOfferingPackageItemRequest) {
         if (data) {
@@ -17914,6 +20596,7 @@ export class UpsertCourseOfferingPackageItemRequest implements IUpsertCourseOffe
                 for (let item of _data["weeklySessions"])
                     this.weeklySessions!.push(OfferingWeeklySessionDto.fromJS(item));
             }
+            this.credits = _data["credits"];
         }
     }
 
@@ -17948,6 +20631,7 @@ export class UpsertCourseOfferingPackageItemRequest implements IUpsertCourseOffe
             for (let item of this.weeklySessions)
                 data["weeklySessions"].push(item ? item.toJSON() : undefined as any);
         }
+        data["credits"] = this.credits;
         return data;
     }
 }
@@ -17963,6 +20647,7 @@ export interface IUpsertCourseOfferingPackageItemRequest {
     instructors?: OfferingInstructorInputDto[] | undefined;
     programGroupIds?: string[] | undefined;
     weeklySessions?: OfferingWeeklySessionDto[] | undefined;
+    credits?: number;
 }
 
 export class ServiceResponseOfApplyOfferingPackageResultDto implements IServiceResponseOfApplyOfferingPackageResultDto {
@@ -20549,6 +23234,194 @@ export interface IAuditLogDto {
     createdAt: Date;
 }
 
+export class ServiceResponseOfIReadOnlyListOfScrapedHostAliasDto implements IServiceResponseOfIReadOnlyListOfScrapedHostAliasDto {
+    isSuccess?: boolean;
+    data?: ScrapedHostAliasDto[] | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfIReadOnlyListOfScrapedHostAliasDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            if (Array.isArray(_data["data"])) {
+                this.data = [] as any;
+                for (let item of _data["data"])
+                    this.data!.push(ScrapedHostAliasDto.fromJS(item));
+            }
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfIReadOnlyListOfScrapedHostAliasDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfIReadOnlyListOfScrapedHostAliasDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        if (Array.isArray(this.data)) {
+            data["data"] = [];
+            for (let item of this.data)
+                data["data"].push(item ? item.toJSON() : undefined as any);
+        }
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfIReadOnlyListOfScrapedHostAliasDto {
+    isSuccess?: boolean;
+    data?: ScrapedHostAliasDto[] | undefined;
+    error?: AppError | undefined;
+}
+
+export class ScrapedHostAliasDto implements IScrapedHostAliasDto {
+    scrapedLabel?: string;
+    hostUserId?: string | undefined;
+    hostDisplayName?: string | undefined;
+    pendingDisplayName?: string | undefined;
+
+    constructor(data?: IScrapedHostAliasDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.scrapedLabel = _data["scrapedLabel"];
+            this.hostUserId = _data["hostUserId"];
+            this.hostDisplayName = _data["hostDisplayName"];
+            this.pendingDisplayName = _data["pendingDisplayName"];
+        }
+    }
+
+    static fromJS(data: any): ScrapedHostAliasDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ScrapedHostAliasDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["scrapedLabel"] = this.scrapedLabel;
+        data["hostUserId"] = this.hostUserId;
+        data["hostDisplayName"] = this.hostDisplayName;
+        data["pendingDisplayName"] = this.pendingDisplayName;
+        return data;
+    }
+}
+
+export interface IScrapedHostAliasDto {
+    scrapedLabel?: string;
+    hostUserId?: string | undefined;
+    hostDisplayName?: string | undefined;
+    pendingDisplayName?: string | undefined;
+}
+
+export class SaveScrapedHostAliasesRequest implements ISaveScrapedHostAliasesRequest {
+    aliases?: ScrapedHostAliasDto[];
+
+    constructor(data?: ISaveScrapedHostAliasesRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["aliases"])) {
+                this.aliases = [] as any;
+                for (let item of _data["aliases"])
+                    this.aliases!.push(ScrapedHostAliasDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): SaveScrapedHostAliasesRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new SaveScrapedHostAliasesRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.aliases)) {
+            data["aliases"] = [];
+            for (let item of this.aliases)
+                data["aliases"].push(item ? item.toJSON() : undefined as any);
+        }
+        return data;
+    }
+}
+
+export interface ISaveScrapedHostAliasesRequest {
+    aliases?: ScrapedHostAliasDto[];
+}
+
+export class LinkScrapedHostAliasRequest implements ILinkScrapedHostAliasRequest {
+    scrapedLabel?: string;
+    hostUserId?: string;
+    hostDisplayName?: string | undefined;
+
+    constructor(data?: ILinkScrapedHostAliasRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.scrapedLabel = _data["scrapedLabel"];
+            this.hostUserId = _data["hostUserId"];
+            this.hostDisplayName = _data["hostDisplayName"];
+        }
+    }
+
+    static fromJS(data: any): LinkScrapedHostAliasRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new LinkScrapedHostAliasRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["scrapedLabel"] = this.scrapedLabel;
+        data["hostUserId"] = this.hostUserId;
+        data["hostDisplayName"] = this.hostDisplayName;
+        return data;
+    }
+}
+
+export interface ILinkScrapedHostAliasRequest {
+    scrapedLabel?: string;
+    hostUserId?: string;
+    hostDisplayName?: string | undefined;
+}
+
 export class RegisterOrganizationRequest implements IRegisterOrganizationRequest {
     name!: string;
     organizationType?: string;
@@ -20898,6 +23771,1044 @@ export interface IPagedResponseOfOrganizationDetailsDto {
     page: number;
     pageSize: number;
     totalPages?: number;
+}
+
+export class ServiceResponseOfPreviewTimetableResultDto implements IServiceResponseOfPreviewTimetableResultDto {
+    isSuccess?: boolean;
+    data?: PreviewTimetableResultDto | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfPreviewTimetableResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"] ? PreviewTimetableResultDto.fromJS(_data["data"]) : undefined as any;
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfPreviewTimetableResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfPreviewTimetableResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data ? this.data.toJSON() : undefined as any;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfPreviewTimetableResultDto {
+    isSuccess?: boolean;
+    data?: PreviewTimetableResultDto | undefined;
+    error?: AppError | undefined;
+}
+
+export class PreviewTimetableResultDto implements IPreviewTimetableResultDto {
+    weekStartDate!: Date;
+    weekEndDate!: Date;
+    slots!: TimetablePreviewSlotDto[];
+    conflicts!: TimetablePreviewConflictDto[];
+    conflictCount?: number;
+
+    constructor(data?: IPreviewTimetableResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+        if (!data) {
+            this.slots = [];
+            this.conflicts = [];
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.weekStartDate = _data["weekStartDate"] ? new Date(_data["weekStartDate"].toString()) : undefined as any;
+            this.weekEndDate = _data["weekEndDate"] ? new Date(_data["weekEndDate"].toString()) : undefined as any;
+            if (Array.isArray(_data["slots"])) {
+                this.slots = [] as any;
+                for (let item of _data["slots"])
+                    this.slots!.push(TimetablePreviewSlotDto.fromJS(item));
+            }
+            if (Array.isArray(_data["conflicts"])) {
+                this.conflicts = [] as any;
+                for (let item of _data["conflicts"])
+                    this.conflicts!.push(TimetablePreviewConflictDto.fromJS(item));
+            }
+            this.conflictCount = _data["conflictCount"];
+        }
+    }
+
+    static fromJS(data: any): PreviewTimetableResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new PreviewTimetableResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["weekStartDate"] = this.weekStartDate ? this.weekStartDate.toISOString() : undefined as any;
+        data["weekEndDate"] = this.weekEndDate ? this.weekEndDate.toISOString() : undefined as any;
+        if (Array.isArray(this.slots)) {
+            data["slots"] = [];
+            for (let item of this.slots)
+                data["slots"].push(item ? item.toJSON() : undefined as any);
+        }
+        if (Array.isArray(this.conflicts)) {
+            data["conflicts"] = [];
+            for (let item of this.conflicts)
+                data["conflicts"].push(item ? item.toJSON() : undefined as any);
+        }
+        data["conflictCount"] = this.conflictCount;
+        return data;
+    }
+}
+
+export interface IPreviewTimetableResultDto {
+    weekStartDate: Date;
+    weekEndDate: Date;
+    slots: TimetablePreviewSlotDto[];
+    conflicts: TimetablePreviewConflictDto[];
+    conflictCount?: number;
+}
+
+export class TimetablePreviewSlotDto implements ITimetablePreviewSlotDto {
+    key!: string;
+    source!: string;
+    startTime!: Date;
+    endTime!: Date;
+    title!: string;
+    offeringId?: string | undefined;
+    offeringName?: string | undefined;
+    hostId?: string | undefined;
+    hostName?: string | undefined;
+    cohortGroupId?: string | undefined;
+    cohortGroupName?: string | undefined;
+    cohortGroupNames?: string[] | undefined;
+    activityLabel?: string | undefined;
+    eventTypeId?: string | undefined;
+    eventTypeName?: string | undefined;
+    eventTypeColorHex?: string | undefined;
+    programGroupName?: string | undefined;
+    audienceScope?: string | undefined;
+    roomId?: string | undefined;
+    roomName?: string | undefined;
+    hasConflict?: boolean;
+
+    constructor(data?: ITimetablePreviewSlotDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.key = _data["key"];
+            this.source = _data["source"];
+            this.startTime = _data["startTime"] ? new Date(_data["startTime"].toString()) : undefined as any;
+            this.endTime = _data["endTime"] ? new Date(_data["endTime"].toString()) : undefined as any;
+            this.title = _data["title"];
+            this.offeringId = _data["offeringId"];
+            this.offeringName = _data["offeringName"];
+            this.hostId = _data["hostId"];
+            this.hostName = _data["hostName"];
+            this.cohortGroupId = _data["cohortGroupId"];
+            this.cohortGroupName = _data["cohortGroupName"];
+            if (Array.isArray(_data["cohortGroupNames"])) {
+                this.cohortGroupNames = [] as any;
+                for (let item of _data["cohortGroupNames"])
+                    this.cohortGroupNames!.push(item);
+            }
+            this.activityLabel = _data["activityLabel"];
+            this.eventTypeId = _data["eventTypeId"];
+            this.eventTypeName = _data["eventTypeName"];
+            this.eventTypeColorHex = _data["eventTypeColorHex"];
+            this.programGroupName = _data["programGroupName"];
+            this.audienceScope = _data["audienceScope"];
+            this.roomId = _data["roomId"];
+            this.roomName = _data["roomName"];
+            this.hasConflict = _data["hasConflict"];
+        }
+    }
+
+    static fromJS(data: any): TimetablePreviewSlotDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new TimetablePreviewSlotDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["key"] = this.key;
+        data["source"] = this.source;
+        data["startTime"] = this.startTime ? this.startTime.toISOString() : undefined as any;
+        data["endTime"] = this.endTime ? this.endTime.toISOString() : undefined as any;
+        data["title"] = this.title;
+        data["offeringId"] = this.offeringId;
+        data["offeringName"] = this.offeringName;
+        data["hostId"] = this.hostId;
+        data["hostName"] = this.hostName;
+        data["cohortGroupId"] = this.cohortGroupId;
+        data["cohortGroupName"] = this.cohortGroupName;
+        if (Array.isArray(this.cohortGroupNames)) {
+            data["cohortGroupNames"] = [];
+            for (let item of this.cohortGroupNames)
+                data["cohortGroupNames"].push(item);
+        }
+        data["activityLabel"] = this.activityLabel;
+        data["eventTypeId"] = this.eventTypeId;
+        data["eventTypeName"] = this.eventTypeName;
+        data["eventTypeColorHex"] = this.eventTypeColorHex;
+        data["programGroupName"] = this.programGroupName;
+        data["audienceScope"] = this.audienceScope;
+        data["roomId"] = this.roomId;
+        data["roomName"] = this.roomName;
+        data["hasConflict"] = this.hasConflict;
+        return data;
+    }
+}
+
+export interface ITimetablePreviewSlotDto {
+    key: string;
+    source: string;
+    startTime: Date;
+    endTime: Date;
+    title: string;
+    offeringId?: string | undefined;
+    offeringName?: string | undefined;
+    hostId?: string | undefined;
+    hostName?: string | undefined;
+    cohortGroupId?: string | undefined;
+    cohortGroupName?: string | undefined;
+    cohortGroupNames?: string[] | undefined;
+    activityLabel?: string | undefined;
+    eventTypeId?: string | undefined;
+    eventTypeName?: string | undefined;
+    eventTypeColorHex?: string | undefined;
+    programGroupName?: string | undefined;
+    audienceScope?: string | undefined;
+    roomId?: string | undefined;
+    roomName?: string | undefined;
+    hasConflict?: boolean;
+}
+
+export class TimetablePreviewConflictDto implements ITimetablePreviewConflictDto {
+    conflictType!: string;
+    slotKeyA!: string;
+    slotKeyB!: string;
+    message!: string;
+
+    constructor(data?: ITimetablePreviewConflictDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.conflictType = _data["conflictType"];
+            this.slotKeyA = _data["slotKeyA"];
+            this.slotKeyB = _data["slotKeyB"];
+            this.message = _data["message"];
+        }
+    }
+
+    static fromJS(data: any): TimetablePreviewConflictDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new TimetablePreviewConflictDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["conflictType"] = this.conflictType;
+        data["slotKeyA"] = this.slotKeyA;
+        data["slotKeyB"] = this.slotKeyB;
+        data["message"] = this.message;
+        return data;
+    }
+}
+
+export interface ITimetablePreviewConflictDto {
+    conflictType: string;
+    slotKeyA: string;
+    slotKeyB: string;
+    message: string;
+}
+
+export class PreviewTimetableRequest implements IPreviewTimetableRequest {
+    weekStartDate!: Date;
+    clientUtcOffsetMinutes?: number | undefined;
+    programGroupId?: string | undefined;
+    offeringId?: string | undefined;
+    hostId?: string | undefined;
+    groupId?: string | undefined;
+
+    constructor(data?: IPreviewTimetableRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.weekStartDate = _data["weekStartDate"] ? new Date(_data["weekStartDate"].toString()) : undefined as any;
+            this.clientUtcOffsetMinutes = _data["clientUtcOffsetMinutes"];
+            this.programGroupId = _data["programGroupId"];
+            this.offeringId = _data["offeringId"];
+            this.hostId = _data["hostId"];
+            this.groupId = _data["groupId"];
+        }
+    }
+
+    static fromJS(data: any): PreviewTimetableRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new PreviewTimetableRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["weekStartDate"] = this.weekStartDate ? this.weekStartDate.toISOString() : undefined as any;
+        data["clientUtcOffsetMinutes"] = this.clientUtcOffsetMinutes;
+        data["programGroupId"] = this.programGroupId;
+        data["offeringId"] = this.offeringId;
+        data["hostId"] = this.hostId;
+        data["groupId"] = this.groupId;
+        return data;
+    }
+}
+
+export interface IPreviewTimetableRequest {
+    weekStartDate: Date;
+    clientUtcOffsetMinutes?: number | undefined;
+    programGroupId?: string | undefined;
+    offeringId?: string | undefined;
+    hostId?: string | undefined;
+    groupId?: string | undefined;
+}
+
+export class ServiceResponseOfTimetablePublishStatusResultDto implements IServiceResponseOfTimetablePublishStatusResultDto {
+    isSuccess?: boolean;
+    data?: TimetablePublishStatusResultDto | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfTimetablePublishStatusResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"] ? TimetablePublishStatusResultDto.fromJS(_data["data"]) : undefined as any;
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfTimetablePublishStatusResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfTimetablePublishStatusResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data ? this.data.toJSON() : undefined as any;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfTimetablePublishStatusResultDto {
+    isSuccess?: boolean;
+    data?: TimetablePublishStatusResultDto | undefined;
+    error?: AppError | undefined;
+}
+
+export class TimetablePublishStatusResultDto implements ITimetablePublishStatusResultDto {
+    offerings!: TimetableOfferingPublishStatusDto[];
+    totalCount?: number;
+    publishedCount?: number;
+    withPatternCount?: number;
+    withConflictsCount?: number;
+    readyToPublishCount?: number;
+    readyToRepublishCount?: number;
+    scopeFiltersApplied?: boolean;
+
+    constructor(data?: ITimetablePublishStatusResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+        if (!data) {
+            this.offerings = [];
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["offerings"])) {
+                this.offerings = [] as any;
+                for (let item of _data["offerings"])
+                    this.offerings!.push(TimetableOfferingPublishStatusDto.fromJS(item));
+            }
+            this.totalCount = _data["totalCount"];
+            this.publishedCount = _data["publishedCount"];
+            this.withPatternCount = _data["withPatternCount"];
+            this.withConflictsCount = _data["withConflictsCount"];
+            this.readyToPublishCount = _data["readyToPublishCount"];
+            this.readyToRepublishCount = _data["readyToRepublishCount"];
+            this.scopeFiltersApplied = _data["scopeFiltersApplied"];
+        }
+    }
+
+    static fromJS(data: any): TimetablePublishStatusResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new TimetablePublishStatusResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.offerings)) {
+            data["offerings"] = [];
+            for (let item of this.offerings)
+                data["offerings"].push(item ? item.toJSON() : undefined as any);
+        }
+        data["totalCount"] = this.totalCount;
+        data["publishedCount"] = this.publishedCount;
+        data["withPatternCount"] = this.withPatternCount;
+        data["withConflictsCount"] = this.withConflictsCount;
+        data["readyToPublishCount"] = this.readyToPublishCount;
+        data["readyToRepublishCount"] = this.readyToRepublishCount;
+        data["scopeFiltersApplied"] = this.scopeFiltersApplied;
+        return data;
+    }
+}
+
+export interface ITimetablePublishStatusResultDto {
+    offerings: TimetableOfferingPublishStatusDto[];
+    totalCount?: number;
+    publishedCount?: number;
+    withPatternCount?: number;
+    withConflictsCount?: number;
+    readyToPublishCount?: number;
+    readyToRepublishCount?: number;
+    scopeFiltersApplied?: boolean;
+}
+
+export class TimetableOfferingPublishStatusDto implements ITimetableOfferingPublishStatusDto {
+    offeringId!: string;
+    offeringName!: string;
+    code?: string | undefined;
+    hasPattern?: boolean;
+    isPublished?: boolean;
+    publishedAt?: Date | undefined;
+    needsRepublish?: boolean;
+    conflictCount?: number;
+    conflictMessages?: string[] | undefined;
+
+    constructor(data?: ITimetableOfferingPublishStatusDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.offeringId = _data["offeringId"];
+            this.offeringName = _data["offeringName"];
+            this.code = _data["code"];
+            this.hasPattern = _data["hasPattern"];
+            this.isPublished = _data["isPublished"];
+            this.publishedAt = _data["publishedAt"] ? new Date(_data["publishedAt"].toString()) : undefined as any;
+            this.needsRepublish = _data["needsRepublish"];
+            this.conflictCount = _data["conflictCount"];
+            if (Array.isArray(_data["conflictMessages"])) {
+                this.conflictMessages = [] as any;
+                for (let item of _data["conflictMessages"])
+                    this.conflictMessages!.push(item);
+            }
+        }
+    }
+
+    static fromJS(data: any): TimetableOfferingPublishStatusDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new TimetableOfferingPublishStatusDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["offeringId"] = this.offeringId;
+        data["offeringName"] = this.offeringName;
+        data["code"] = this.code;
+        data["hasPattern"] = this.hasPattern;
+        data["isPublished"] = this.isPublished;
+        data["publishedAt"] = this.publishedAt ? this.publishedAt.toISOString() : undefined as any;
+        data["needsRepublish"] = this.needsRepublish;
+        data["conflictCount"] = this.conflictCount;
+        if (Array.isArray(this.conflictMessages)) {
+            data["conflictMessages"] = [];
+            for (let item of this.conflictMessages)
+                data["conflictMessages"].push(item);
+        }
+        return data;
+    }
+}
+
+export interface ITimetableOfferingPublishStatusDto {
+    offeringId: string;
+    offeringName: string;
+    code?: string | undefined;
+    hasPattern?: boolean;
+    isPublished?: boolean;
+    publishedAt?: Date | undefined;
+    needsRepublish?: boolean;
+    conflictCount?: number;
+    conflictMessages?: string[] | undefined;
+}
+
+export class TimetablePublishStatusRequest implements ITimetablePublishStatusRequest {
+    weekStartDate?: Date | undefined;
+    clientUtcOffsetMinutes?: number | undefined;
+    programGroupId?: string | undefined;
+    offeringId?: string | undefined;
+    hostId?: string | undefined;
+    groupId?: string | undefined;
+
+    constructor(data?: ITimetablePublishStatusRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.weekStartDate = _data["weekStartDate"] ? new Date(_data["weekStartDate"].toString()) : undefined as any;
+            this.clientUtcOffsetMinutes = _data["clientUtcOffsetMinutes"];
+            this.programGroupId = _data["programGroupId"];
+            this.offeringId = _data["offeringId"];
+            this.hostId = _data["hostId"];
+            this.groupId = _data["groupId"];
+        }
+    }
+
+    static fromJS(data: any): TimetablePublishStatusRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new TimetablePublishStatusRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["weekStartDate"] = this.weekStartDate ? this.weekStartDate.toISOString() : undefined as any;
+        data["clientUtcOffsetMinutes"] = this.clientUtcOffsetMinutes;
+        data["programGroupId"] = this.programGroupId;
+        data["offeringId"] = this.offeringId;
+        data["hostId"] = this.hostId;
+        data["groupId"] = this.groupId;
+        return data;
+    }
+}
+
+export interface ITimetablePublishStatusRequest {
+    weekStartDate?: Date | undefined;
+    clientUtcOffsetMinutes?: number | undefined;
+    programGroupId?: string | undefined;
+    offeringId?: string | undefined;
+    hostId?: string | undefined;
+    groupId?: string | undefined;
+}
+
+export class ServiceResponseOfBulkPublishTimetableResultDto implements IServiceResponseOfBulkPublishTimetableResultDto {
+    isSuccess?: boolean;
+    data?: BulkPublishTimetableResultDto | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfBulkPublishTimetableResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"] ? BulkPublishTimetableResultDto.fromJS(_data["data"]) : undefined as any;
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfBulkPublishTimetableResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfBulkPublishTimetableResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data ? this.data.toJSON() : undefined as any;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfBulkPublishTimetableResultDto {
+    isSuccess?: boolean;
+    data?: BulkPublishTimetableResultDto | undefined;
+    error?: AppError | undefined;
+}
+
+export class BulkPublishTimetableResultDto implements IBulkPublishTimetableResultDto {
+    publishedCount?: number;
+    skippedConflictCount?: number;
+    failedCount?: number;
+    results!: BulkPublishOfferingResultDto[];
+
+    constructor(data?: IBulkPublishTimetableResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+        if (!data) {
+            this.results = [];
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.publishedCount = _data["publishedCount"];
+            this.skippedConflictCount = _data["skippedConflictCount"];
+            this.failedCount = _data["failedCount"];
+            if (Array.isArray(_data["results"])) {
+                this.results = [] as any;
+                for (let item of _data["results"])
+                    this.results!.push(BulkPublishOfferingResultDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): BulkPublishTimetableResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new BulkPublishTimetableResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["publishedCount"] = this.publishedCount;
+        data["skippedConflictCount"] = this.skippedConflictCount;
+        data["failedCount"] = this.failedCount;
+        if (Array.isArray(this.results)) {
+            data["results"] = [];
+            for (let item of this.results)
+                data["results"].push(item ? item.toJSON() : undefined as any);
+        }
+        return data;
+    }
+}
+
+export interface IBulkPublishTimetableResultDto {
+    publishedCount?: number;
+    skippedConflictCount?: number;
+    failedCount?: number;
+    results: BulkPublishOfferingResultDto[];
+}
+
+export class BulkPublishOfferingResultDto implements IBulkPublishOfferingResultDto {
+    offeringId!: string;
+    offeringName!: string;
+    outcome!: string;
+    message?: string | undefined;
+    eventsCreated?: number | undefined;
+
+    constructor(data?: IBulkPublishOfferingResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.offeringId = _data["offeringId"];
+            this.offeringName = _data["offeringName"];
+            this.outcome = _data["outcome"];
+            this.message = _data["message"];
+            this.eventsCreated = _data["eventsCreated"];
+        }
+    }
+
+    static fromJS(data: any): BulkPublishOfferingResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new BulkPublishOfferingResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["offeringId"] = this.offeringId;
+        data["offeringName"] = this.offeringName;
+        data["outcome"] = this.outcome;
+        data["message"] = this.message;
+        data["eventsCreated"] = this.eventsCreated;
+        return data;
+    }
+}
+
+export interface IBulkPublishOfferingResultDto {
+    offeringId: string;
+    offeringName: string;
+    outcome: string;
+    message?: string | undefined;
+    eventsCreated?: number | undefined;
+}
+
+export class BulkPublishTimetableRequest implements IBulkPublishTimetableRequest {
+    programGroupId?: string | undefined;
+    offeringIds?: string[] | undefined;
+    replaceExisting?: boolean;
+    skipWithConflicts?: boolean;
+    forceDespiteConflicts?: boolean;
+    clientUtcOffsetMinutes?: number | undefined;
+
+    constructor(data?: IBulkPublishTimetableRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.programGroupId = _data["programGroupId"];
+            if (Array.isArray(_data["offeringIds"])) {
+                this.offeringIds = [] as any;
+                for (let item of _data["offeringIds"])
+                    this.offeringIds!.push(item);
+            }
+            this.replaceExisting = _data["replaceExisting"];
+            this.skipWithConflicts = _data["skipWithConflicts"];
+            this.forceDespiteConflicts = _data["forceDespiteConflicts"];
+            this.clientUtcOffsetMinutes = _data["clientUtcOffsetMinutes"];
+        }
+    }
+
+    static fromJS(data: any): BulkPublishTimetableRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new BulkPublishTimetableRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["programGroupId"] = this.programGroupId;
+        if (Array.isArray(this.offeringIds)) {
+            data["offeringIds"] = [];
+            for (let item of this.offeringIds)
+                data["offeringIds"].push(item);
+        }
+        data["replaceExisting"] = this.replaceExisting;
+        data["skipWithConflicts"] = this.skipWithConflicts;
+        data["forceDespiteConflicts"] = this.forceDespiteConflicts;
+        data["clientUtcOffsetMinutes"] = this.clientUtcOffsetMinutes;
+        return data;
+    }
+}
+
+export interface IBulkPublishTimetableRequest {
+    programGroupId?: string | undefined;
+    offeringIds?: string[] | undefined;
+    replaceExisting?: boolean;
+    skipWithConflicts?: boolean;
+    forceDespiteConflicts?: boolean;
+    clientUtcOffsetMinutes?: number | undefined;
+}
+
+export class ServiceResponseOfMemberSchedulePreviewResultDto implements IServiceResponseOfMemberSchedulePreviewResultDto {
+    isSuccess?: boolean;
+    data?: MemberSchedulePreviewResultDto | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfMemberSchedulePreviewResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"] ? MemberSchedulePreviewResultDto.fromJS(_data["data"]) : undefined as any;
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfMemberSchedulePreviewResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfMemberSchedulePreviewResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data ? this.data.toJSON() : undefined as any;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfMemberSchedulePreviewResultDto {
+    isSuccess?: boolean;
+    data?: MemberSchedulePreviewResultDto | undefined;
+    error?: AppError | undefined;
+}
+
+export class MemberSchedulePreviewResultDto implements IMemberSchedulePreviewResultDto {
+    weekStartDate?: Date;
+    weekEndDate?: Date;
+    userId?: string;
+    userDisplayName?: string | undefined;
+    sessionCount?: number;
+    sessions?: MemberSchedulePreviewItemDto[];
+
+    constructor(data?: IMemberSchedulePreviewResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.weekStartDate = _data["weekStartDate"] ? new Date(_data["weekStartDate"].toString()) : undefined as any;
+            this.weekEndDate = _data["weekEndDate"] ? new Date(_data["weekEndDate"].toString()) : undefined as any;
+            this.userId = _data["userId"];
+            this.userDisplayName = _data["userDisplayName"];
+            this.sessionCount = _data["sessionCount"];
+            if (Array.isArray(_data["sessions"])) {
+                this.sessions = [] as any;
+                for (let item of _data["sessions"])
+                    this.sessions!.push(MemberSchedulePreviewItemDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): MemberSchedulePreviewResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new MemberSchedulePreviewResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["weekStartDate"] = this.weekStartDate ? this.weekStartDate.toISOString() : undefined as any;
+        data["weekEndDate"] = this.weekEndDate ? this.weekEndDate.toISOString() : undefined as any;
+        data["userId"] = this.userId;
+        data["userDisplayName"] = this.userDisplayName;
+        data["sessionCount"] = this.sessionCount;
+        if (Array.isArray(this.sessions)) {
+            data["sessions"] = [];
+            for (let item of this.sessions)
+                data["sessions"].push(item ? item.toJSON() : undefined as any);
+        }
+        return data;
+    }
+}
+
+export interface IMemberSchedulePreviewResultDto {
+    weekStartDate?: Date;
+    weekEndDate?: Date;
+    userId?: string;
+    userDisplayName?: string | undefined;
+    sessionCount?: number;
+    sessions?: MemberSchedulePreviewItemDto[];
+}
+
+export class MemberSchedulePreviewItemDto implements IMemberSchedulePreviewItemDto {
+    eventId?: string;
+    title?: string;
+    startTime?: Date;
+    endTime?: Date;
+    typeName?: string | undefined;
+    hostName?: string | undefined;
+    roomName?: string | undefined;
+    offeringName?: string | undefined;
+    cohortGroupName?: string | undefined;
+    visibilityReason?: string;
+
+    constructor(data?: IMemberSchedulePreviewItemDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.eventId = _data["eventId"];
+            this.title = _data["title"];
+            this.startTime = _data["startTime"] ? new Date(_data["startTime"].toString()) : undefined as any;
+            this.endTime = _data["endTime"] ? new Date(_data["endTime"].toString()) : undefined as any;
+            this.typeName = _data["typeName"];
+            this.hostName = _data["hostName"];
+            this.roomName = _data["roomName"];
+            this.offeringName = _data["offeringName"];
+            this.cohortGroupName = _data["cohortGroupName"];
+            this.visibilityReason = _data["visibilityReason"];
+        }
+    }
+
+    static fromJS(data: any): MemberSchedulePreviewItemDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new MemberSchedulePreviewItemDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["eventId"] = this.eventId;
+        data["title"] = this.title;
+        data["startTime"] = this.startTime ? this.startTime.toISOString() : undefined as any;
+        data["endTime"] = this.endTime ? this.endTime.toISOString() : undefined as any;
+        data["typeName"] = this.typeName;
+        data["hostName"] = this.hostName;
+        data["roomName"] = this.roomName;
+        data["offeringName"] = this.offeringName;
+        data["cohortGroupName"] = this.cohortGroupName;
+        data["visibilityReason"] = this.visibilityReason;
+        return data;
+    }
+}
+
+export interface IMemberSchedulePreviewItemDto {
+    eventId?: string;
+    title?: string;
+    startTime?: Date;
+    endTime?: Date;
+    typeName?: string | undefined;
+    hostName?: string | undefined;
+    roomName?: string | undefined;
+    offeringName?: string | undefined;
+    cohortGroupName?: string | undefined;
+    visibilityReason?: string;
+}
+
+export class MemberSchedulePreviewRequest implements IMemberSchedulePreviewRequest {
+    userId!: string;
+    weekStartDate!: Date;
+    clientUtcOffsetMinutes?: number | undefined;
+
+    constructor(data?: IMemberSchedulePreviewRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.userId = _data["userId"];
+            this.weekStartDate = _data["weekStartDate"] ? new Date(_data["weekStartDate"].toString()) : undefined as any;
+            this.clientUtcOffsetMinutes = _data["clientUtcOffsetMinutes"];
+        }
+    }
+
+    static fromJS(data: any): MemberSchedulePreviewRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new MemberSchedulePreviewRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["userId"] = this.userId;
+        data["weekStartDate"] = this.weekStartDate ? this.weekStartDate.toISOString() : undefined as any;
+        data["clientUtcOffsetMinutes"] = this.clientUtcOffsetMinutes;
+        return data;
+    }
+}
+
+export interface IMemberSchedulePreviewRequest {
+    userId: string;
+    weekStartDate: Date;
+    clientUtcOffsetMinutes?: number | undefined;
 }
 
 export class ServiceResponseOfIEnumerableOfRoomDto implements IServiceResponseOfIEnumerableOfRoomDto {
@@ -24443,9 +28354,7 @@ export interface IServiceResponseOfSpiderConfigDto {
 
 export class SpiderConfigDto implements ISpiderConfigDto {
     schedulePageUrl!: string;
-    newsStartUrl!: string;
     hasSchedulePageUrl!: boolean;
-    hasNewsStartUrl!: boolean;
     isSavedInDatabase!: boolean;
 
     constructor(data?: ISpiderConfigDto) {
@@ -24460,9 +28369,7 @@ export class SpiderConfigDto implements ISpiderConfigDto {
     init(_data?: any) {
         if (_data) {
             this.schedulePageUrl = _data["schedulePageUrl"];
-            this.newsStartUrl = _data["newsStartUrl"];
             this.hasSchedulePageUrl = _data["hasSchedulePageUrl"];
-            this.hasNewsStartUrl = _data["hasNewsStartUrl"];
             this.isSavedInDatabase = _data["isSavedInDatabase"];
         }
     }
@@ -24477,9 +28384,7 @@ export class SpiderConfigDto implements ISpiderConfigDto {
     toJSON(data?: any) {
         data = typeof data === 'object' ? data : {};
         data["schedulePageUrl"] = this.schedulePageUrl;
-        data["newsStartUrl"] = this.newsStartUrl;
         data["hasSchedulePageUrl"] = this.hasSchedulePageUrl;
-        data["hasNewsStartUrl"] = this.hasNewsStartUrl;
         data["isSavedInDatabase"] = this.isSavedInDatabase;
         return data;
     }
@@ -24487,15 +28392,12 @@ export class SpiderConfigDto implements ISpiderConfigDto {
 
 export interface ISpiderConfigDto {
     schedulePageUrl: string;
-    newsStartUrl: string;
     hasSchedulePageUrl: boolean;
-    hasNewsStartUrl: boolean;
     isSavedInDatabase: boolean;
 }
 
 export class SaveSpiderConfigRequest implements ISaveSpiderConfigRequest {
     schedulePageUrl?: string | undefined;
-    newsStartUrl?: string | undefined;
 
     constructor(data?: ISaveSpiderConfigRequest) {
         if (data) {
@@ -24509,7 +28411,6 @@ export class SaveSpiderConfigRequest implements ISaveSpiderConfigRequest {
     init(_data?: any) {
         if (_data) {
             this.schedulePageUrl = _data["schedulePageUrl"];
-            this.newsStartUrl = _data["newsStartUrl"];
         }
     }
 
@@ -24523,14 +28424,12 @@ export class SaveSpiderConfigRequest implements ISaveSpiderConfigRequest {
     toJSON(data?: any) {
         data = typeof data === 'object' ? data : {};
         data["schedulePageUrl"] = this.schedulePageUrl;
-        data["newsStartUrl"] = this.newsStartUrl;
         return data;
     }
 }
 
 export interface ISaveSpiderConfigRequest {
     schedulePageUrl?: string | undefined;
-    newsStartUrl?: string | undefined;
 }
 
 export class ServiceResponseOfSpiderPreviewScheduleResultDto implements IServiceResponseOfSpiderPreviewScheduleResultDto {
@@ -24586,6 +28485,8 @@ export class SpiderPreviewScheduleResultDto implements ISpiderPreviewScheduleRes
     hubLinksDiscovered!: number;
     schedulePagesScraped!: number;
     wasTruncated!: boolean;
+    parsedTimeCount!: number;
+    unparsedTimeCount!: number;
 
     constructor(data?: ISpiderPreviewScheduleResultDto) {
         if (data) {
@@ -24618,6 +28519,8 @@ export class SpiderPreviewScheduleResultDto implements ISpiderPreviewScheduleRes
             this.hubLinksDiscovered = _data["hubLinksDiscovered"];
             this.schedulePagesScraped = _data["schedulePagesScraped"];
             this.wasTruncated = _data["wasTruncated"];
+            this.parsedTimeCount = _data["parsedTimeCount"];
+            this.unparsedTimeCount = _data["unparsedTimeCount"];
         }
     }
 
@@ -24646,6 +28549,8 @@ export class SpiderPreviewScheduleResultDto implements ISpiderPreviewScheduleRes
         data["hubLinksDiscovered"] = this.hubLinksDiscovered;
         data["schedulePagesScraped"] = this.schedulePagesScraped;
         data["wasTruncated"] = this.wasTruncated;
+        data["parsedTimeCount"] = this.parsedTimeCount;
+        data["unparsedTimeCount"] = this.unparsedTimeCount;
         return data;
     }
 }
@@ -24659,6 +28564,8 @@ export interface ISpiderPreviewScheduleResultDto {
     hubLinksDiscovered: number;
     schedulePagesScraped: number;
     wasTruncated: boolean;
+    parsedTimeCount: number;
+    unparsedTimeCount: number;
 }
 
 export class ScrapedEventDto implements IScrapedEventDto {
@@ -24669,6 +28576,16 @@ export class ScrapedEventDto implements IScrapedEventDto {
     groupNumber!: string;
     activityType!: string;
     sourcePageUrl?: string | undefined;
+    dayLabel?: string | undefined;
+    hoursLabel?: string | undefined;
+    frequencyLabel?: string | undefined;
+    dayOfWeek?: number | undefined;
+    startTimeLocal?: string | undefined;
+    hoursPerSession?: number | undefined;
+    frequency?: string | undefined;
+    biweeklyPhase?: number | undefined;
+    timeParsed?: boolean;
+    timeParseWarning?: string | undefined;
 
     constructor(data?: IScrapedEventDto) {
         if (data) {
@@ -24688,6 +28605,16 @@ export class ScrapedEventDto implements IScrapedEventDto {
             this.groupNumber = _data["groupNumber"];
             this.activityType = _data["activityType"];
             this.sourcePageUrl = _data["sourcePageUrl"];
+            this.dayLabel = _data["dayLabel"];
+            this.hoursLabel = _data["hoursLabel"];
+            this.frequencyLabel = _data["frequencyLabel"];
+            this.dayOfWeek = _data["dayOfWeek"];
+            this.startTimeLocal = _data["startTimeLocal"];
+            this.hoursPerSession = _data["hoursPerSession"];
+            this.frequency = _data["frequency"];
+            this.biweeklyPhase = _data["biweeklyPhase"];
+            this.timeParsed = _data["timeParsed"];
+            this.timeParseWarning = _data["timeParseWarning"];
         }
     }
 
@@ -24707,6 +28634,16 @@ export class ScrapedEventDto implements IScrapedEventDto {
         data["groupNumber"] = this.groupNumber;
         data["activityType"] = this.activityType;
         data["sourcePageUrl"] = this.sourcePageUrl;
+        data["dayLabel"] = this.dayLabel;
+        data["hoursLabel"] = this.hoursLabel;
+        data["frequencyLabel"] = this.frequencyLabel;
+        data["dayOfWeek"] = this.dayOfWeek;
+        data["startTimeLocal"] = this.startTimeLocal;
+        data["hoursPerSession"] = this.hoursPerSession;
+        data["frequency"] = this.frequency;
+        data["biweeklyPhase"] = this.biweeklyPhase;
+        data["timeParsed"] = this.timeParsed;
+        data["timeParseWarning"] = this.timeParseWarning;
         return data;
     }
 }
@@ -24719,6 +28656,16 @@ export interface IScrapedEventDto {
     groupNumber: string;
     activityType: string;
     sourcePageUrl?: string | undefined;
+    dayLabel?: string | undefined;
+    hoursLabel?: string | undefined;
+    frequencyLabel?: string | undefined;
+    dayOfWeek?: number | undefined;
+    startTimeLocal?: string | undefined;
+    hoursPerSession?: number | undefined;
+    frequency?: string | undefined;
+    biweeklyPhase?: number | undefined;
+    timeParsed?: boolean;
+    timeParseWarning?: string | undefined;
 }
 
 export class ScrapedSchedulePageSummaryDto implements IScrapedSchedulePageSummaryDto {
@@ -25023,275 +28970,6 @@ export interface ISpiderSyncEnqueueResultDto {
     message: string;
 }
 
-export class ServiceResponseOfSpiderPreviewNewsResultDto implements IServiceResponseOfSpiderPreviewNewsResultDto {
-    isSuccess?: boolean;
-    data?: SpiderPreviewNewsResultDto | undefined;
-    error?: AppError | undefined;
-
-    constructor(data?: IServiceResponseOfSpiderPreviewNewsResultDto) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (this as any)[property] = (data as any)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.isSuccess = _data["isSuccess"];
-            this.data = _data["data"] ? SpiderPreviewNewsResultDto.fromJS(_data["data"]) : undefined as any;
-            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
-        }
-    }
-
-    static fromJS(data: any): ServiceResponseOfSpiderPreviewNewsResultDto {
-        data = typeof data === 'object' ? data : {};
-        let result = new ServiceResponseOfSpiderPreviewNewsResultDto();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["isSuccess"] = this.isSuccess;
-        data["data"] = this.data ? this.data.toJSON() : undefined as any;
-        data["error"] = this.error ? this.error.toJSON() : undefined as any;
-        return data;
-    }
-}
-
-export interface IServiceResponseOfSpiderPreviewNewsResultDto {
-    isSuccess?: boolean;
-    data?: SpiderPreviewNewsResultDto | undefined;
-    error?: AppError | undefined;
-}
-
-export class SpiderPreviewNewsResultDto implements ISpiderPreviewNewsResultDto {
-    sourceUrl!: string;
-    article!: ExtractedNewsArticleDto;
-
-    constructor(data?: ISpiderPreviewNewsResultDto) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (this as any)[property] = (data as any)[property];
-            }
-        }
-        if (!data) {
-            this.article = new ExtractedNewsArticleDto();
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.sourceUrl = _data["sourceUrl"];
-            this.article = _data["article"] ? ExtractedNewsArticleDto.fromJS(_data["article"]) : new ExtractedNewsArticleDto();
-        }
-    }
-
-    static fromJS(data: any): SpiderPreviewNewsResultDto {
-        data = typeof data === 'object' ? data : {};
-        let result = new SpiderPreviewNewsResultDto();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["sourceUrl"] = this.sourceUrl;
-        data["article"] = this.article ? this.article.toJSON() : undefined as any;
-        return data;
-    }
-}
-
-export interface ISpiderPreviewNewsResultDto {
-    sourceUrl: string;
-    article: ExtractedNewsArticleDto;
-}
-
-export class ExtractedNewsArticleDto implements IExtractedNewsArticleDto {
-    title!: string;
-    content!: string;
-    category!: NewsCategory;
-
-    constructor(data?: IExtractedNewsArticleDto) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (this as any)[property] = (data as any)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.title = _data["title"];
-            this.content = _data["content"];
-            this.category = _data["category"];
-        }
-    }
-
-    static fromJS(data: any): ExtractedNewsArticleDto {
-        data = typeof data === 'object' ? data : {};
-        let result = new ExtractedNewsArticleDto();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["title"] = this.title;
-        data["content"] = this.content;
-        data["category"] = this.category;
-        return data;
-    }
-}
-
-export interface IExtractedNewsArticleDto {
-    title: string;
-    content: string;
-    category: NewsCategory;
-}
-
-export class ServiceResponseOfNewsDiscoveryResult implements IServiceResponseOfNewsDiscoveryResult {
-    isSuccess?: boolean;
-    data?: NewsDiscoveryResult | undefined;
-    error?: AppError | undefined;
-
-    constructor(data?: IServiceResponseOfNewsDiscoveryResult) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (this as any)[property] = (data as any)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.isSuccess = _data["isSuccess"];
-            this.data = _data["data"] ? NewsDiscoveryResult.fromJS(_data["data"]) : undefined as any;
-            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
-        }
-    }
-
-    static fromJS(data: any): ServiceResponseOfNewsDiscoveryResult {
-        data = typeof data === 'object' ? data : {};
-        let result = new ServiceResponseOfNewsDiscoveryResult();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["isSuccess"] = this.isSuccess;
-        data["data"] = this.data ? this.data.toJSON() : undefined as any;
-        data["error"] = this.error ? this.error.toJSON() : undefined as any;
-        return data;
-    }
-}
-
-export interface IServiceResponseOfNewsDiscoveryResult {
-    isSuccess?: boolean;
-    data?: NewsDiscoveryResult | undefined;
-    error?: AppError | undefined;
-}
-
-export class NewsDiscoveryResult implements INewsDiscoveryResult {
-    startUrl?: string;
-    pages?: DiscoveredNewsPageDto[];
-
-    constructor(data?: INewsDiscoveryResult) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (this as any)[property] = (data as any)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.startUrl = _data["startUrl"];
-            if (Array.isArray(_data["pages"])) {
-                this.pages = [] as any;
-                for (let item of _data["pages"])
-                    this.pages!.push(DiscoveredNewsPageDto.fromJS(item));
-            }
-        }
-    }
-
-    static fromJS(data: any): NewsDiscoveryResult {
-        data = typeof data === 'object' ? data : {};
-        let result = new NewsDiscoveryResult();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["startUrl"] = this.startUrl;
-        if (Array.isArray(this.pages)) {
-            data["pages"] = [];
-            for (let item of this.pages)
-                data["pages"].push(item ? item.toJSON() : undefined as any);
-        }
-        return data;
-    }
-}
-
-export interface INewsDiscoveryResult {
-    startUrl?: string;
-    pages?: DiscoveredNewsPageDto[];
-}
-
-export class DiscoveredNewsPageDto implements IDiscoveredNewsPageDto {
-    url?: string;
-    kind?: NewsPageKind;
-
-    constructor(data?: IDiscoveredNewsPageDto) {
-        if (data) {
-            for (var property in data) {
-                if (data.hasOwnProperty(property))
-                    (this as any)[property] = (data as any)[property];
-            }
-        }
-    }
-
-    init(_data?: any) {
-        if (_data) {
-            this.url = _data["url"];
-            this.kind = _data["kind"];
-        }
-    }
-
-    static fromJS(data: any): DiscoveredNewsPageDto {
-        data = typeof data === 'object' ? data : {};
-        let result = new DiscoveredNewsPageDto();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["url"] = this.url;
-        data["kind"] = this.kind;
-        return data;
-    }
-}
-
-export interface IDiscoveredNewsPageDto {
-    url?: string;
-    kind?: NewsPageKind;
-}
-
-export enum NewsPageKind {
-    Unknown = "Unknown",
-    Archive = "Archive",
-    Article = "Article",
-}
-
 export class ServiceResponseOfIReadOnlyListOfSpiderSyncRunDto implements IServiceResponseOfIReadOnlyListOfSpiderSyncRunDto {
     isSuccess?: boolean;
     data?: SpiderSyncRunDto[] | undefined;
@@ -25550,6 +29228,849 @@ export interface IUnresolvedScrapedEventDto {
     groupNumber: string;
     missingHost?: boolean;
     missingRoom?: boolean;
+}
+
+export class ServiceResponseOfApplyScrapedSchedulePreviewResultDto implements IServiceResponseOfApplyScrapedSchedulePreviewResultDto {
+    isSuccess?: boolean;
+    data?: ApplyScrapedSchedulePreviewResultDto | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfApplyScrapedSchedulePreviewResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"] ? ApplyScrapedSchedulePreviewResultDto.fromJS(_data["data"]) : undefined as any;
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfApplyScrapedSchedulePreviewResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfApplyScrapedSchedulePreviewResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data ? this.data.toJSON() : undefined as any;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfApplyScrapedSchedulePreviewResultDto {
+    isSuccess?: boolean;
+    data?: ApplyScrapedSchedulePreviewResultDto | undefined;
+    error?: AppError | undefined;
+}
+
+export class ApplyScrapedSchedulePreviewResultDto implements IApplyScrapedSchedulePreviewResultDto {
+    proposedSessions?: OfferingWeeklySessionDto[];
+    skipped?: ScrapedScheduleApplySkipDto[];
+    matchedEventCount?: number;
+    existingSessionCount?: number;
+    resultSessionCount?: number;
+
+    constructor(data?: IApplyScrapedSchedulePreviewResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (Array.isArray(_data["proposedSessions"])) {
+                this.proposedSessions = [] as any;
+                for (let item of _data["proposedSessions"])
+                    this.proposedSessions!.push(OfferingWeeklySessionDto.fromJS(item));
+            }
+            if (Array.isArray(_data["skipped"])) {
+                this.skipped = [] as any;
+                for (let item of _data["skipped"])
+                    this.skipped!.push(ScrapedScheduleApplySkipDto.fromJS(item));
+            }
+            this.matchedEventCount = _data["matchedEventCount"];
+            this.existingSessionCount = _data["existingSessionCount"];
+            this.resultSessionCount = _data["resultSessionCount"];
+        }
+    }
+
+    static fromJS(data: any): ApplyScrapedSchedulePreviewResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ApplyScrapedSchedulePreviewResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (Array.isArray(this.proposedSessions)) {
+            data["proposedSessions"] = [];
+            for (let item of this.proposedSessions)
+                data["proposedSessions"].push(item ? item.toJSON() : undefined as any);
+        }
+        if (Array.isArray(this.skipped)) {
+            data["skipped"] = [];
+            for (let item of this.skipped)
+                data["skipped"].push(item ? item.toJSON() : undefined as any);
+        }
+        data["matchedEventCount"] = this.matchedEventCount;
+        data["existingSessionCount"] = this.existingSessionCount;
+        data["resultSessionCount"] = this.resultSessionCount;
+        return data;
+    }
+}
+
+export interface IApplyScrapedSchedulePreviewResultDto {
+    proposedSessions?: OfferingWeeklySessionDto[];
+    skipped?: ScrapedScheduleApplySkipDto[];
+    matchedEventCount?: number;
+    existingSessionCount?: number;
+    resultSessionCount?: number;
+}
+
+export class ScrapedScheduleApplySkipDto implements IScrapedScheduleApplySkipDto {
+    className?: string;
+    time?: string;
+    reason?: string;
+
+    constructor(data?: IScrapedScheduleApplySkipDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.className = _data["className"];
+            this.time = _data["time"];
+            this.reason = _data["reason"];
+        }
+    }
+
+    static fromJS(data: any): ScrapedScheduleApplySkipDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ScrapedScheduleApplySkipDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["className"] = this.className;
+        data["time"] = this.time;
+        data["reason"] = this.reason;
+        return data;
+    }
+}
+
+export interface IScrapedScheduleApplySkipDto {
+    className?: string;
+    time?: string;
+    reason?: string;
+}
+
+export class ApplyScrapedScheduleRequest implements IApplyScrapedScheduleRequest {
+    periodId!: string;
+    offeringId!: string;
+    events!: ScrapedEventDto[];
+    studyGroupLabel?: string | undefined;
+    replaceExistingSessions?: boolean;
+    importAllScopedRows?: boolean;
+    implicitCourseName?: string | undefined;
+    mappings?: ScrapedImportMappingsDto | undefined;
+
+    constructor(data?: IApplyScrapedScheduleRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+        if (!data) {
+            this.events = [];
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.periodId = _data["periodId"];
+            this.offeringId = _data["offeringId"];
+            if (Array.isArray(_data["events"])) {
+                this.events = [] as any;
+                for (let item of _data["events"])
+                    this.events!.push(ScrapedEventDto.fromJS(item));
+            }
+            this.studyGroupLabel = _data["studyGroupLabel"];
+            this.replaceExistingSessions = _data["replaceExistingSessions"];
+            this.importAllScopedRows = _data["importAllScopedRows"];
+            this.implicitCourseName = _data["implicitCourseName"];
+            this.mappings = _data["mappings"] ? ScrapedImportMappingsDto.fromJS(_data["mappings"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ApplyScrapedScheduleRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new ApplyScrapedScheduleRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["periodId"] = this.periodId;
+        data["offeringId"] = this.offeringId;
+        if (Array.isArray(this.events)) {
+            data["events"] = [];
+            for (let item of this.events)
+                data["events"].push(item ? item.toJSON() : undefined as any);
+        }
+        data["studyGroupLabel"] = this.studyGroupLabel;
+        data["replaceExistingSessions"] = this.replaceExistingSessions;
+        data["importAllScopedRows"] = this.importAllScopedRows;
+        data["implicitCourseName"] = this.implicitCourseName;
+        data["mappings"] = this.mappings ? this.mappings.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IApplyScrapedScheduleRequest {
+    periodId: string;
+    offeringId: string;
+    events: ScrapedEventDto[];
+    studyGroupLabel?: string | undefined;
+    replaceExistingSessions?: boolean;
+    importAllScopedRows?: boolean;
+    implicitCourseName?: string | undefined;
+    mappings?: ScrapedImportMappingsDto | undefined;
+}
+
+export class ScrapedImportMappingsDto implements IScrapedImportMappingsDto {
+    subjectToOfferingId?: { [key: string]: string; };
+    activityTypeToEventTypeId?: { [key: string]: string; };
+    professorToHostId?: { [key: string]: string; };
+    roomToRoomId?: { [key: string]: string; };
+    studyGroupToGroupId?: { [key: string]: string; };
+    professorToDisplayName?: { [key: string]: string; };
+
+    constructor(data?: IScrapedImportMappingsDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            if (_data["subjectToOfferingId"]) {
+                this.subjectToOfferingId = {} as any;
+                for (let key in _data["subjectToOfferingId"]) {
+                    if (_data["subjectToOfferingId"].hasOwnProperty(key))
+                        (this.subjectToOfferingId as any)![key] = _data["subjectToOfferingId"][key];
+                }
+            }
+            if (_data["activityTypeToEventTypeId"]) {
+                this.activityTypeToEventTypeId = {} as any;
+                for (let key in _data["activityTypeToEventTypeId"]) {
+                    if (_data["activityTypeToEventTypeId"].hasOwnProperty(key))
+                        (this.activityTypeToEventTypeId as any)![key] = _data["activityTypeToEventTypeId"][key];
+                }
+            }
+            if (_data["professorToHostId"]) {
+                this.professorToHostId = {} as any;
+                for (let key in _data["professorToHostId"]) {
+                    if (_data["professorToHostId"].hasOwnProperty(key))
+                        (this.professorToHostId as any)![key] = _data["professorToHostId"][key];
+                }
+            }
+            if (_data["roomToRoomId"]) {
+                this.roomToRoomId = {} as any;
+                for (let key in _data["roomToRoomId"]) {
+                    if (_data["roomToRoomId"].hasOwnProperty(key))
+                        (this.roomToRoomId as any)![key] = _data["roomToRoomId"][key];
+                }
+            }
+            if (_data["studyGroupToGroupId"]) {
+                this.studyGroupToGroupId = {} as any;
+                for (let key in _data["studyGroupToGroupId"]) {
+                    if (_data["studyGroupToGroupId"].hasOwnProperty(key))
+                        (this.studyGroupToGroupId as any)![key] = _data["studyGroupToGroupId"][key];
+                }
+            }
+            if (_data["professorToDisplayName"]) {
+                this.professorToDisplayName = {} as any;
+                for (let key in _data["professorToDisplayName"]) {
+                    if (_data["professorToDisplayName"].hasOwnProperty(key))
+                        (this.professorToDisplayName as any)![key] = _data["professorToDisplayName"][key];
+                }
+            }
+        }
+    }
+
+    static fromJS(data: any): ScrapedImportMappingsDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ScrapedImportMappingsDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        if (this.subjectToOfferingId) {
+            data["subjectToOfferingId"] = {};
+            for (let key in this.subjectToOfferingId) {
+                if (this.subjectToOfferingId.hasOwnProperty(key))
+                    (data["subjectToOfferingId"] as any)[key] = (this.subjectToOfferingId as any)[key];
+            }
+        }
+        if (this.activityTypeToEventTypeId) {
+            data["activityTypeToEventTypeId"] = {};
+            for (let key in this.activityTypeToEventTypeId) {
+                if (this.activityTypeToEventTypeId.hasOwnProperty(key))
+                    (data["activityTypeToEventTypeId"] as any)[key] = (this.activityTypeToEventTypeId as any)[key];
+            }
+        }
+        if (this.professorToHostId) {
+            data["professorToHostId"] = {};
+            for (let key in this.professorToHostId) {
+                if (this.professorToHostId.hasOwnProperty(key))
+                    (data["professorToHostId"] as any)[key] = (this.professorToHostId as any)[key];
+            }
+        }
+        if (this.roomToRoomId) {
+            data["roomToRoomId"] = {};
+            for (let key in this.roomToRoomId) {
+                if (this.roomToRoomId.hasOwnProperty(key))
+                    (data["roomToRoomId"] as any)[key] = (this.roomToRoomId as any)[key];
+            }
+        }
+        if (this.studyGroupToGroupId) {
+            data["studyGroupToGroupId"] = {};
+            for (let key in this.studyGroupToGroupId) {
+                if (this.studyGroupToGroupId.hasOwnProperty(key))
+                    (data["studyGroupToGroupId"] as any)[key] = (this.studyGroupToGroupId as any)[key];
+            }
+        }
+        if (this.professorToDisplayName) {
+            data["professorToDisplayName"] = {};
+            for (let key in this.professorToDisplayName) {
+                if (this.professorToDisplayName.hasOwnProperty(key))
+                    (data["professorToDisplayName"] as any)[key] = (this.professorToDisplayName as any)[key];
+            }
+        }
+        return data;
+    }
+}
+
+export interface IScrapedImportMappingsDto {
+    subjectToOfferingId?: { [key: string]: string; };
+    activityTypeToEventTypeId?: { [key: string]: string; };
+    professorToHostId?: { [key: string]: string; };
+    roomToRoomId?: { [key: string]: string; };
+    studyGroupToGroupId?: { [key: string]: string; };
+    professorToDisplayName?: { [key: string]: string; };
+}
+
+export class ServiceResponseOfApplyScrapedScheduleResultDto implements IServiceResponseOfApplyScrapedScheduleResultDto {
+    isSuccess?: boolean;
+    data?: ApplyScrapedScheduleResultDto | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfApplyScrapedScheduleResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"] ? ApplyScrapedScheduleResultDto.fromJS(_data["data"]) : undefined as any;
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfApplyScrapedScheduleResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfApplyScrapedScheduleResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data ? this.data.toJSON() : undefined as any;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfApplyScrapedScheduleResultDto {
+    isSuccess?: boolean;
+    data?: ApplyScrapedScheduleResultDto | undefined;
+    error?: AppError | undefined;
+}
+
+export class ApplyScrapedScheduleResultDto extends ApplyScrapedSchedulePreviewResultDto implements IApplyScrapedScheduleResultDto {
+    applied?: boolean;
+    offeringId?: string;
+
+    constructor(data?: IApplyScrapedScheduleResultDto) {
+        super(data);
+    }
+
+    override init(_data?: any) {
+        super.init(_data);
+        if (_data) {
+            this.applied = _data["applied"];
+            this.offeringId = _data["offeringId"];
+        }
+    }
+
+    static override fromJS(data: any): ApplyScrapedScheduleResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ApplyScrapedScheduleResultDto();
+        result.init(data);
+        return result;
+    }
+
+    override toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["applied"] = this.applied;
+        data["offeringId"] = this.offeringId;
+        super.toJSON(data);
+        return data;
+    }
+}
+
+export interface IApplyScrapedScheduleResultDto extends IApplyScrapedSchedulePreviewResultDto {
+    applied?: boolean;
+    offeringId?: string;
+}
+
+export class ServiceResponseOfScrapedImportResolutionResultDto implements IServiceResponseOfScrapedImportResolutionResultDto {
+    isSuccess?: boolean;
+    data?: ScrapedImportResolutionResultDto | undefined;
+    error?: AppError | undefined;
+
+    constructor(data?: IServiceResponseOfScrapedImportResolutionResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.isSuccess = _data["isSuccess"];
+            this.data = _data["data"] ? ScrapedImportResolutionResultDto.fromJS(_data["data"]) : undefined as any;
+            this.error = _data["error"] ? AppError.fromJS(_data["error"]) : undefined as any;
+        }
+    }
+
+    static fromJS(data: any): ServiceResponseOfScrapedImportResolutionResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ServiceResponseOfScrapedImportResolutionResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["isSuccess"] = this.isSuccess;
+        data["data"] = this.data ? this.data.toJSON() : undefined as any;
+        data["error"] = this.error ? this.error.toJSON() : undefined as any;
+        return data;
+    }
+}
+
+export interface IServiceResponseOfScrapedImportResolutionResultDto {
+    isSuccess?: boolean;
+    data?: ScrapedImportResolutionResultDto | undefined;
+    error?: AppError | undefined;
+}
+
+export class ScrapedImportResolutionResultDto implements IScrapedImportResolutionResultDto {
+    scopeSummary?: string;
+    recommendSingleOfferingImport?: boolean;
+    suggestedOfferingId?: string | undefined;
+    suggestedOfferingName?: string | undefined;
+    implicitCourseName?: string | undefined;
+    subjects?: ScrapedImportFieldResolutionDto[];
+    activityTypes?: ScrapedImportFieldResolutionDto[];
+    professors?: ScrapedImportFieldResolutionDto[];
+    rooms?: ScrapedImportFieldResolutionDto[];
+    studyGroups?: ScrapedImportGroupResolutionDto[];
+    eventTypes?: ScrapedImportFieldResolutionDto[];
+
+    constructor(data?: IScrapedImportResolutionResultDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.scopeSummary = _data["scopeSummary"];
+            this.recommendSingleOfferingImport = _data["recommendSingleOfferingImport"];
+            this.suggestedOfferingId = _data["suggestedOfferingId"];
+            this.suggestedOfferingName = _data["suggestedOfferingName"];
+            this.implicitCourseName = _data["implicitCourseName"];
+            if (Array.isArray(_data["subjects"])) {
+                this.subjects = [] as any;
+                for (let item of _data["subjects"])
+                    this.subjects!.push(ScrapedImportFieldResolutionDto.fromJS(item));
+            }
+            if (Array.isArray(_data["activityTypes"])) {
+                this.activityTypes = [] as any;
+                for (let item of _data["activityTypes"])
+                    this.activityTypes!.push(ScrapedImportFieldResolutionDto.fromJS(item));
+            }
+            if (Array.isArray(_data["professors"])) {
+                this.professors = [] as any;
+                for (let item of _data["professors"])
+                    this.professors!.push(ScrapedImportFieldResolutionDto.fromJS(item));
+            }
+            if (Array.isArray(_data["rooms"])) {
+                this.rooms = [] as any;
+                for (let item of _data["rooms"])
+                    this.rooms!.push(ScrapedImportFieldResolutionDto.fromJS(item));
+            }
+            if (Array.isArray(_data["studyGroups"])) {
+                this.studyGroups = [] as any;
+                for (let item of _data["studyGroups"])
+                    this.studyGroups!.push(ScrapedImportGroupResolutionDto.fromJS(item));
+            }
+            if (Array.isArray(_data["eventTypes"])) {
+                this.eventTypes = [] as any;
+                for (let item of _data["eventTypes"])
+                    this.eventTypes!.push(ScrapedImportFieldResolutionDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): ScrapedImportResolutionResultDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ScrapedImportResolutionResultDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["scopeSummary"] = this.scopeSummary;
+        data["recommendSingleOfferingImport"] = this.recommendSingleOfferingImport;
+        data["suggestedOfferingId"] = this.suggestedOfferingId;
+        data["suggestedOfferingName"] = this.suggestedOfferingName;
+        data["implicitCourseName"] = this.implicitCourseName;
+        if (Array.isArray(this.subjects)) {
+            data["subjects"] = [];
+            for (let item of this.subjects)
+                data["subjects"].push(item ? item.toJSON() : undefined as any);
+        }
+        if (Array.isArray(this.activityTypes)) {
+            data["activityTypes"] = [];
+            for (let item of this.activityTypes)
+                data["activityTypes"].push(item ? item.toJSON() : undefined as any);
+        }
+        if (Array.isArray(this.professors)) {
+            data["professors"] = [];
+            for (let item of this.professors)
+                data["professors"].push(item ? item.toJSON() : undefined as any);
+        }
+        if (Array.isArray(this.rooms)) {
+            data["rooms"] = [];
+            for (let item of this.rooms)
+                data["rooms"].push(item ? item.toJSON() : undefined as any);
+        }
+        if (Array.isArray(this.studyGroups)) {
+            data["studyGroups"] = [];
+            for (let item of this.studyGroups)
+                data["studyGroups"].push(item ? item.toJSON() : undefined as any);
+        }
+        if (Array.isArray(this.eventTypes)) {
+            data["eventTypes"] = [];
+            for (let item of this.eventTypes)
+                data["eventTypes"].push(item ? item.toJSON() : undefined as any);
+        }
+        return data;
+    }
+}
+
+export interface IScrapedImportResolutionResultDto {
+    scopeSummary?: string;
+    recommendSingleOfferingImport?: boolean;
+    suggestedOfferingId?: string | undefined;
+    suggestedOfferingName?: string | undefined;
+    implicitCourseName?: string | undefined;
+    subjects?: ScrapedImportFieldResolutionDto[];
+    activityTypes?: ScrapedImportFieldResolutionDto[];
+    professors?: ScrapedImportFieldResolutionDto[];
+    rooms?: ScrapedImportFieldResolutionDto[];
+    studyGroups?: ScrapedImportGroupResolutionDto[];
+    eventTypes?: ScrapedImportFieldResolutionDto[];
+}
+
+export class ScrapedImportFieldResolutionDto implements IScrapedImportFieldResolutionDto {
+    scrapedLabel?: string;
+    eventCount?: number;
+    suggestedTargetId?: string | undefined;
+    suggestedTargetLabel?: string | undefined;
+    confidence?: number;
+    suggestions?: ScrapedImportSuggestionDto[];
+
+    constructor(data?: IScrapedImportFieldResolutionDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.scrapedLabel = _data["scrapedLabel"];
+            this.eventCount = _data["eventCount"];
+            this.suggestedTargetId = _data["suggestedTargetId"];
+            this.suggestedTargetLabel = _data["suggestedTargetLabel"];
+            this.confidence = _data["confidence"];
+            if (Array.isArray(_data["suggestions"])) {
+                this.suggestions = [] as any;
+                for (let item of _data["suggestions"])
+                    this.suggestions!.push(ScrapedImportSuggestionDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): ScrapedImportFieldResolutionDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ScrapedImportFieldResolutionDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["scrapedLabel"] = this.scrapedLabel;
+        data["eventCount"] = this.eventCount;
+        data["suggestedTargetId"] = this.suggestedTargetId;
+        data["suggestedTargetLabel"] = this.suggestedTargetLabel;
+        data["confidence"] = this.confidence;
+        if (Array.isArray(this.suggestions)) {
+            data["suggestions"] = [];
+            for (let item of this.suggestions)
+                data["suggestions"].push(item ? item.toJSON() : undefined as any);
+        }
+        return data;
+    }
+}
+
+export interface IScrapedImportFieldResolutionDto {
+    scrapedLabel?: string;
+    eventCount?: number;
+    suggestedTargetId?: string | undefined;
+    suggestedTargetLabel?: string | undefined;
+    confidence?: number;
+    suggestions?: ScrapedImportSuggestionDto[];
+}
+
+export class ScrapedImportSuggestionDto implements IScrapedImportSuggestionDto {
+    id?: string | undefined;
+    label?: string;
+    subtitle?: string | undefined;
+    score?: number;
+
+    constructor(data?: IScrapedImportSuggestionDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.label = _data["label"];
+            this.subtitle = _data["subtitle"];
+            this.score = _data["score"];
+        }
+    }
+
+    static fromJS(data: any): ScrapedImportSuggestionDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ScrapedImportSuggestionDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["label"] = this.label;
+        data["subtitle"] = this.subtitle;
+        data["score"] = this.score;
+        return data;
+    }
+}
+
+export interface IScrapedImportSuggestionDto {
+    id?: string | undefined;
+    label?: string;
+    subtitle?: string | undefined;
+    score?: number;
+}
+
+export class ScrapedImportGroupResolutionDto implements IScrapedImportGroupResolutionDto {
+    scrapedLabel?: string;
+    eventCount?: number;
+    suggestedGroupType?: string | undefined;
+    suggestedGroupId?: string | undefined;
+    suggestedGroupLabel?: string | undefined;
+    suggestions?: ScrapedImportSuggestionDto[];
+
+    constructor(data?: IScrapedImportGroupResolutionDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.scrapedLabel = _data["scrapedLabel"];
+            this.eventCount = _data["eventCount"];
+            this.suggestedGroupType = _data["suggestedGroupType"];
+            this.suggestedGroupId = _data["suggestedGroupId"];
+            this.suggestedGroupLabel = _data["suggestedGroupLabel"];
+            if (Array.isArray(_data["suggestions"])) {
+                this.suggestions = [] as any;
+                for (let item of _data["suggestions"])
+                    this.suggestions!.push(ScrapedImportSuggestionDto.fromJS(item));
+            }
+        }
+    }
+
+    static fromJS(data: any): ScrapedImportGroupResolutionDto {
+        data = typeof data === 'object' ? data : {};
+        let result = new ScrapedImportGroupResolutionDto();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["scrapedLabel"] = this.scrapedLabel;
+        data["eventCount"] = this.eventCount;
+        data["suggestedGroupType"] = this.suggestedGroupType;
+        data["suggestedGroupId"] = this.suggestedGroupId;
+        data["suggestedGroupLabel"] = this.suggestedGroupLabel;
+        if (Array.isArray(this.suggestions)) {
+            data["suggestions"] = [];
+            for (let item of this.suggestions)
+                data["suggestions"].push(item ? item.toJSON() : undefined as any);
+        }
+        return data;
+    }
+}
+
+export interface IScrapedImportGroupResolutionDto {
+    scrapedLabel?: string;
+    eventCount?: number;
+    suggestedGroupType?: string | undefined;
+    suggestedGroupId?: string | undefined;
+    suggestedGroupLabel?: string | undefined;
+    suggestions?: ScrapedImportSuggestionDto[];
+}
+
+export class ScrapedImportResolutionRequest implements IScrapedImportResolutionRequest {
+    periodId!: string;
+    events!: ScrapedEventDto[];
+    studyGroupLabel?: string | undefined;
+    selectedOfferingId?: string | undefined;
+
+    constructor(data?: IScrapedImportResolutionRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+        if (!data) {
+            this.events = [];
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.periodId = _data["periodId"];
+            if (Array.isArray(_data["events"])) {
+                this.events = [] as any;
+                for (let item of _data["events"])
+                    this.events!.push(ScrapedEventDto.fromJS(item));
+            }
+            this.studyGroupLabel = _data["studyGroupLabel"];
+            this.selectedOfferingId = _data["selectedOfferingId"];
+        }
+    }
+
+    static fromJS(data: any): ScrapedImportResolutionRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new ScrapedImportResolutionRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["periodId"] = this.periodId;
+        if (Array.isArray(this.events)) {
+            data["events"] = [];
+            for (let item of this.events)
+                data["events"].push(item ? item.toJSON() : undefined as any);
+        }
+        data["studyGroupLabel"] = this.studyGroupLabel;
+        data["selectedOfferingId"] = this.selectedOfferingId;
+        return data;
+    }
+}
+
+export interface IScrapedImportResolutionRequest {
+    periodId: string;
+    events: ScrapedEventDto[];
+    studyGroupLabel?: string | undefined;
+    selectedOfferingId?: string | undefined;
 }
 
 export interface FileParameter {

@@ -14,6 +14,8 @@ public class EventConfiguration : IEntityTypeConfiguration<Event>
         builder.Property(e => e.Description).HasMaxLength(2000);
         builder.Property(e => e.ColorHex).HasMaxLength(10);
         builder.Property(e => e.RecurrenceRule).HasMaxLength(500);
+        builder.Property(e => e.AudienceCohortGroupIdsJson).HasMaxLength(2000);
+        builder.Property(e => e.HostDisplayName).HasMaxLength(200);
         builder.Property(e => e.MaxCapacity);
 
         builder.HasOne(e => e.Organization)

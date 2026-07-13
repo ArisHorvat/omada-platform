@@ -18,7 +18,6 @@ import { ScreenTransition } from '@/src/components/animations';
 import { usePermission } from '@/src/context/PermissionContext';
 import { canTeachCoursework } from '@/src/utils/courseworkTeachingAccess';
 import { createStyles } from '../styles/grades.styles';
-import { GradesBiometricGate } from './GradesBiometricGate';
 import { GradesFiltersBar } from './GradesFiltersBar';
 import { GradesSummaryHero } from './GradesSummaryHero';
 import { GradesCourseCard } from './GradesCourseCard';
@@ -95,7 +94,7 @@ function GradesScreenContent() {
             <WidgetEmptyState
               title="Grades unavailable"
               description="You do not have permission to view grades in this organization."
-              icon="lock"
+              icon="school"
             />
           </View>
         </SafeAreaView>
@@ -307,7 +306,10 @@ function GradesScreenContent() {
             ) : isWideShell ? (
               <SplitPane
                 sidebar={
-                  <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+                  <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{ paddingBottom: 24, paddingHorizontal: 20 }}
+                  >
                     {modeToggle}
                     {hero}
                     {pendingCta}
@@ -359,9 +361,5 @@ const localStyles = StyleSheet.create({
 });
 
 export default function GradesScreen() {
-  return (
-    <GradesBiometricGate>
-      <GradesScreenContent />
-    </GradesBiometricGate>
-  );
+  return <GradesScreenContent />;
 }

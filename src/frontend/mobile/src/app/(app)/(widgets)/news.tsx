@@ -1,5 +1,5 @@
-import NewsFeedScreen from '@/src/screens/widgets/news/components/NewsFeedScreen';
+import { Redirect } from 'expo-router';
 
-export default function NewsRoute() {
-  return <NewsFeedScreen />;
+export default function NewsRedirect() {
+  return <Redirect href="/announcements" />;
 }

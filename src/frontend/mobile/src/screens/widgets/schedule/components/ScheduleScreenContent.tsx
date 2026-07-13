@@ -27,6 +27,8 @@ import { EventModal } from './EventModal';
 import { ScheduleItemDto, HostDto, RoomDto, AttendanceStatus } from '@/src/api/generatedClient';
 import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
 import type { ScheduleDictionary } from '../hooks/useScheduleDictionary';
+import { usePermission } from '@/src/context/PermissionContext';
+import type { Capability } from '@/src/config/permissions.config';
 import { ExploreAgendaView } from './ExploreAgendaView';
 import { ScheduleExploreFiltersSheet, type ExploreFilterKind } from './ScheduleExploreFilters';
 import { EventBottomSheet } from './EventBottomSheet';
@@ -104,6 +106,8 @@ export default function ScheduleScreenContent({
   } = useScheduleLogic();
 
   const { organization } = useCurrentOrganization();
+  const { can } = usePermission();
+  const canManageSchedule = can('schedule.manage' as Capability);
 
   const [sheetEvent, setSheetEvent] = useState<ScheduleItemDto | null>(null);
   const [meetingSheetEvent, setMeetingSheetEvent] = useState<ScheduleItemDto | null>(null);
@@ -398,11 +402,18 @@ export default function ScheduleScreenContent({
       return;
     }
     if (isMySchedule) {
-      Alert.alert(event.title, `What would you like to do with this ${dictionary.eventLabelLower}?`, [
+      const actions: { text: string; onPress?: () => void; style?: 'cancel' | 'destructive' | 'default' }[] = [
         { text: 'Cancel', style: 'cancel' },
-        { text: `Skip this ${dictionary.eventLabel}`, onPress: () => handleAttendance(event, AttendanceStatus.Declined), style: 'destructive' },
-        { text: 'Edit details', onPress: () => startEditing(event, 'series') },
-      ]);
+        {
+          text: `Skip this ${dictionary.eventLabel}`,
+          onPress: () => handleAttendance(event, AttendanceStatus.Declined),
+          style: 'destructive',
+        },
+      ];
+      if (canManageSchedule) {
+        actions.push({ text: 'Edit details', onPress: () => startEditing(event, 'series') });
+      }
+      Alert.alert(event.title, `What would you like to do with this ${dictionary.eventLabelLower}?`, actions);
     } else {
       Alert.alert(
         event.title,
@@ -416,6 +427,7 @@ export default function ScheduleScreenContent({
   };
 
   const handleDelete = (event: ScheduleItemDto) => {
+    if (!canManageSchedule) return;
     if (event.recurrenceRule) {
       Alert.alert(
         `Delete ${dictionary.eventLabel}`,
@@ -591,7 +603,7 @@ export default function ScheduleScreenContent({
               >
                 <TouchableOpacity
                   onPress={() => handleEventPress(ev)}
-                  onLongPress={() => handleDelete(ev)}
+                  onLongPress={canManageSchedule ? () => handleDelete(ev) : undefined}
                   activeOpacity={0.9}
                   style={{ flex: 1 }}
                 >
@@ -855,7 +867,7 @@ export default function ScheduleScreenContent({
               loading={loading}
               emptyHint={`No public ${dictionary.eventLabelLower}s on this day.`}
               onPressEvent={handleEventPress}
-              onLongPressEvent={handleDelete}
+              onLongPressEvent={canManageSchedule ? handleDelete : undefined}
             />
           ) : (
             renderMyScheduleDayView()
@@ -889,7 +901,7 @@ export default function ScheduleScreenContent({
                 loading={loading}
                 emptyHint={`No ${dictionary.eventLabelLower}s match these filters.`}
                 onPressEvent={handleEventPress}
-                onLongPressEvent={handleDelete}
+                onLongPressEvent={canManageSchedule ? handleDelete : undefined}
               />
             </View>
           </>
@@ -902,13 +914,15 @@ export default function ScheduleScreenContent({
   const scheduleMain = (
     <View ref={paneRef} onLayout={onMainPaneLayout} style={{ flex: 1, minHeight: 0 }}>
       {scheduleScroll}
-      <AnimatedItem animation={ClayAnimations.FAB} style={{ position: 'absolute', bottom: tabBottomPad + 16, right: 20 }}>
-        <PressClay onPress={startCreating}>
-          <ClayView depth={15} puffy={20} color={colors.primary} style={{ width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' }}>
-            <Icon name="add" size={30} color="#FFF" />
-          </ClayView>
-        </PressClay>
-      </AnimatedItem>
+      {canManageSchedule ? (
+        <AnimatedItem animation={ClayAnimations.FAB} style={{ position: 'absolute', bottom: tabBottomPad + 16, right: 20 }}>
+          <PressClay onPress={startCreating}>
+            <ClayView depth={15} puffy={20} color={colors.primary} style={{ width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name="add" size={30} color="#FFF" />
+            </ClayView>
+          </PressClay>
+        </AnimatedItem>
+      ) : null}
     </View>
   );
 

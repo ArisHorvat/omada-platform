@@ -5,12 +5,15 @@ import { Icon, AppText } from '@/src/components/ui';
 import { useThemeColors } from '@/src/hooks';
 import { MAP_SNIPPET_REGION } from '../utils/scheduleMapConstants';
 
+import type { RoomDto } from '@/src/api/generatedClient';
+
 interface Props {
   onPress: () => void;
   overlayLabel: string;
+  room?: RoomDto | null;
 }
 
-export function ScheduleMapSnippet({ onPress, overlayLabel }: Props) {
+export function ScheduleMapSnippet({ onPress, overlayLabel, room: _room }: Props) {
   const colors = useThemeColors();
 
   return (

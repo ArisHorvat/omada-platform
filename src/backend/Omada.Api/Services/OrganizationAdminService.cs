@@ -21,6 +21,7 @@ public class OrganizationAdminService : IOrganizationAdminService
     private readonly IPermissionCacheInvalidator _permissionCacheInvalidator;
     private readonly IAuditLogService _auditLogService;
     private readonly ILogger<OrganizationAdminService> _logger;
+    private readonly IScrapedHostAliasService _hostAliases;
 
     public OrganizationAdminService(
         IUnitOfWork uow,
@@ -30,7 +31,8 @@ public class OrganizationAdminService : IOrganizationAdminService
         IEmailService emailService,
         IPermissionCacheInvalidator permissionCacheInvalidator,
         IAuditLogService auditLogService,
-        ILogger<OrganizationAdminService> logger)
+        ILogger<OrganizationAdminService> logger,
+        IScrapedHostAliasService hostAliases)
     {
         _uow = uow;
         _userContext = userContext;
@@ -40,6 +42,7 @@ public class OrganizationAdminService : IOrganizationAdminService
         _permissionCacheInvalidator = permissionCacheInvalidator;
         _auditLogService = auditLogService;
         _logger = logger;
+        _hostAliases = hostAliases;
     }
 
     public async Task<ServiceResponse<OrganizationDetailsDto>> GetCurrentAsync()
@@ -109,7 +112,7 @@ public class OrganizationAdminService : IOrganizationAdminService
     }
 
     public async Task<ServiceResponse<PagedResponse<OrganizationMemberDto>>> GetMembersAsync(
-        PagedRequest request, string? q, Guid? roleId)
+        PagedRequest request, string? q, Guid? roleId, bool includeAdmins = false)
     {
         var orgId = _userContext.OrganizationId;
         var page = request.Page <= 0 ? 1 : request.Page;
@@ -125,10 +128,14 @@ public class OrganizationAdminService : IOrganizationAdminService
             from m in _uow.Repository<OrganizationMember>().GetQueryable().AsNoTracking()
             join u in _uow.Repository<User>().GetQueryable().AsNoTracking() on m.UserId equals u.Id
             join r in roleQuery on m.RoleId equals r.Id
-            where m.OrganizationId == orgId
-                  && r.Name != RoleNames.Admin
-                  && r.Name != "SuperAdmin"
+            where m.OrganizationId == orgId && m.IsActive
             select new { Member = m, User = u, Role = r };
+
+        if (!includeAdmins)
+        {
+            query = query.Where(x =>
+                x.Role.Name != RoleNames.Admin && x.Role.Name != "SuperAdmin");
+        }
 
         if (roleId.HasValue)
             query = query.Where(x => x.Member.RoleId == roleId.Value);
@@ -353,6 +360,16 @@ public class OrganizationAdminService : IOrganizationAdminService
         var roleEntity = await _uow.Repository<Role>().GetByIdAsync(member.RoleId);
         if (user == null || roleEntity == null)
             return Fail<OrganizationMemberDto>(ErrorCodes.NotFound, "Member not found.");
+
+        if (request.IsActive == true)
+        {
+            await _hostAliases.TryLinkAliasesToUserAsync(
+                orgId,
+                userId,
+                user.FirstName,
+                user.LastName,
+                CancellationToken.None);
+        }
 
         return Ok(MapMemberDto(member, user, roleEntity));
     }
@@ -859,9 +876,8 @@ public class OrganizationAdminService : IOrganizationAdminService
         {
             { WidgetKeys.Users, AccessLevel.Admin },
             { WidgetKeys.Settings, AccessLevel.Admin },
-            { WidgetKeys.News, AccessLevel.Admin },
+            { WidgetKeys.Announcements, AccessLevel.Admin },
             { WidgetKeys.Schedule, AccessLevel.View },
-            { WidgetKeys.Groups, AccessLevel.Admin },
             { WidgetKeys.Admin, AccessLevel.Admin }
         };
 

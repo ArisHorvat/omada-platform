@@ -25,6 +25,7 @@ import { RoomDayTimeline } from '@/src/screens/widgets/schedule/components/RoomD
 import { HostPickerSheet } from '@/src/screens/widgets/schedule/components/HostPickerSheet';
 import { formatRecurrenceLabel } from '@/src/screens/widgets/schedule/utils/recurrenceLabels';
 import { eventsToBusyIntervals, selectionOverlapsBusy } from '@/src/screens/widgets/schedule/utils/roomDayTimeline';
+import { dateAtLocalNoon, localDayKey } from '@/src/utils/localDayKey';
 
 import { EVENT_TYPE_COLOR_PRESETS } from '@/src/constants/eventTypeColors';
 
@@ -54,13 +55,9 @@ export function RoomBookingModal({ visible, onClose, room, form, isSaving, onSav
   const [activePicker, setActivePicker] = useState<'none' | 'date' | 'start' | 'end'>('none');
   const [hostPickerOpen, setHostPickerOpen] = useState(false);
 
-  const dayAnchor = useMemo(() => {
-    const d = new Date(form.startDate);
-    d.setHours(12, 0, 0, 0);
-    return d;
-  }, [form.startDate]);
+  const dayAnchor = useMemo(() => dateAtLocalNoon(form.startDate), [form.startDate]);
 
-  const dayKey = useMemo(() => dayAnchor.toISOString().slice(0, 10), [dayAnchor]);
+  const dayKey = useMemo(() => localDayKey(dayAnchor), [dayAnchor]);
 
   const { data: dayEvents = [] } = useQuery({
     queryKey: ['room-booking-schedule', room?.id, dayKey],
@@ -162,7 +159,7 @@ export function RoomBookingModal({ visible, onClose, room, form, isSaving, onSav
         borderBottomColor: colors.border + '18',
       }}
     >
-      <AppButton title="Cancel" variant="outline" size="sm" onPress={onClose} />
+      <AppButton title="Cancel" variant="outline" size="sm" onPress={onClose} style={{ minWidth: 84 }} />
       <View style={{ flex: 1, alignItems: 'center', paddingHorizontal: 8 }}>
         <AppText weight="bold" variant="h3" numberOfLines={1}>
           Book room
@@ -236,6 +233,13 @@ export function RoomBookingModal({ visible, onClose, room, form, isSaving, onSav
       <AppText variant="caption" style={{ color: colors.subtle, marginBottom: 16 }}>
         Pick a type this room allows, then name your booking.
       </AppText>
+
+      <ClayView depth={2} color={colors.primary + '14'} style={{ padding: 12, borderRadius: 12, marginBottom: 16 }}>
+        <AppText variant="caption" style={{ color: colors.text, lineHeight: 18 }}>
+          Booking reserves the room on the organization schedule (same as creating an event). Attendance and room
+          conflicts use this event — not a separate booking record.
+        </AppText>
+      </ClayView>
 
       {allowedEventTypes.length === 0 ? (
         <ClayView depth={2} color={colors.background} style={{ padding: 16, borderRadius: 14, marginBottom: 16 }}>

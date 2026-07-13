@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using Omada.Api.Abstractions;
 using Omada.Api.Data;
 using Omada.Api.DTOs.Scraping;
-using Omada.Api.Entities;
 using Omada.Api.Services.Interfaces;
 
 namespace Omada.Api.Services;
@@ -26,12 +25,10 @@ public class SpiderUrlResolver : ISpiderUrlResolver
 
         var schedule = NormalizeUrl(org?.SpiderSchedulePageUrl)
                        ?? ResolveScheduleFromAppSettings(organizationId);
-        var news = NormalizeUrl(org?.SpiderNewsStartUrl);
 
-        var hasDb = !string.IsNullOrWhiteSpace(org?.SpiderSchedulePageUrl)
-                    || !string.IsNullOrWhiteSpace(org?.SpiderNewsStartUrl);
+        var hasDb = !string.IsNullOrWhiteSpace(org?.SpiderSchedulePageUrl);
 
-        return BuildConfigDto(schedule, news, hasDb);
+        return BuildConfigDto(schedule, hasDb);
     }
 
     public async Task<ServiceResponse<SpiderConfigDto>> SaveConfigAsync(
@@ -49,15 +46,12 @@ public class SpiderUrlResolver : ISpiderUrlResolver
         }
 
         org.SpiderSchedulePageUrl = NormalizeUrl(request.SchedulePageUrl);
-        org.SpiderNewsStartUrl = NormalizeUrl(request.NewsStartUrl);
         await _db.SaveChangesAsync(cancellationToken);
 
         var schedule = org.SpiderSchedulePageUrl ?? ResolveScheduleFromAppSettings(organizationId);
-        var news = org.SpiderNewsStartUrl ?? string.Empty;
-        var hasDb = !string.IsNullOrWhiteSpace(org.SpiderSchedulePageUrl)
-                    || !string.IsNullOrWhiteSpace(org.SpiderNewsStartUrl);
+        var hasDb = !string.IsNullOrWhiteSpace(org.SpiderSchedulePageUrl);
 
-        return new ServiceResponse<SpiderConfigDto>(true, BuildConfigDto(schedule, news, hasDb));
+        return new ServiceResponse<SpiderConfigDto>(true, BuildConfigDto(schedule, hasDb));
     }
 
     public string? ResolveSchedulePageUrl(Guid organizationId, string? requestUrl = null)
@@ -100,13 +94,11 @@ public class SpiderUrlResolver : ISpiderUrlResolver
         return url.Trim();
     }
 
-    private static SpiderConfigDto BuildConfigDto(string? schedule, string? news, bool isSavedInDatabase) =>
+    private static SpiderConfigDto BuildConfigDto(string? schedule, bool isSavedInDatabase) =>
         new()
         {
             SchedulePageUrl = schedule ?? string.Empty,
-            NewsStartUrl = news ?? string.Empty,
             HasSchedulePageUrl = !string.IsNullOrWhiteSpace(schedule),
-            HasNewsStartUrl = !string.IsNullOrWhiteSpace(news),
             IsSavedInDatabase = isSavedInDatabase,
         };
 }

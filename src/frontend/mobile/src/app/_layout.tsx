@@ -6,6 +6,7 @@ import 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useFonts, Outfit_400Regular, Outfit_600SemiBold, Outfit_800ExtraBold } from '@expo-google-fonts/outfit';
 import { QueryClient } from '@tanstack/react-query';
+import { defaultShouldDehydrateQuery } from '@tanstack/query-core';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -68,7 +69,21 @@ export default function RootLayout() {
   return (
     <PersistQueryClientProvider
       client={queryClient}
-      persistOptions={{ persister: asyncStoragePersister }}
+      persistOptions={{
+        persister: asyncStoragePersister,
+        dehydrateOptions: {
+          shouldDehydrateQuery: (query) => {
+            if (!query?.queryKey || !Array.isArray(query.queryKey) || query.queryKey.length === 0) {
+              return false;
+            }
+            const root = query.queryKey[0];
+            if (root === 'schedule' || root === 'schedule-alternatives' || root === 'userProfile') {
+              return false;
+            }
+            return defaultShouldDehydrateQuery(query);
+          },
+        },
+      }}
     >
       <GestureHandlerRootView style={{ flex: 1 }}>
         <WebAwareSafeAreaProvider>

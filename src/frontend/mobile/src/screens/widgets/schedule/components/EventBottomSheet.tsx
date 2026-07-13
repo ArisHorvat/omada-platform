@@ -4,7 +4,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Linking,
-  Alert,
   ActivityIndicator,
   StyleSheet,
   Dimensions,
@@ -16,7 +15,7 @@ import { QUERY_KEYS } from '@/src/api/queryKeys';
 import { useAuth } from '@/src/context/AuthContext';
 import { BottomSheet } from '@/src/components/ui/BottomSheet';
 import type { WebOverlayAnchor } from '@/src/hooks/usePaneOverlayAnchor';
-import { ClayView, Icon, AppText } from '@/src/components/ui';
+import { ClayView, Icon, AppText, AppButton } from '@/src/components/ui';
 import { useThemeColors, useTabContentBottomPadding } from '@/src/hooks';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePermission } from '@/src/context/PermissionContext';
@@ -27,8 +26,14 @@ import {
   isClassFull,
   type ScheduleItemWithCapacity,
 } from '../utils/scheduleCapacity';
+import {
+  buildSwapConfirmMessage,
+  formatAlternateSessionDay,
+  formatAlternateSessionTime,
+} from '../utils/formatAlternateSession';
 import type { ScheduleDictionary } from '../hooks/useScheduleDictionary';
 import { ScheduleMapSnippet } from './ScheduleMapSnippet';
+import { alertAction, confirmAction } from '@/src/utils/confirmAction';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -61,12 +66,12 @@ export function EventBottomSheet({
   const insets = useSafeAreaInsets();
   const tabBarPad = useTabContentBottomPadding(72);
   const router = useRouter();
-  const { token } = useAuth();
+  const { token, activeSession } = useAuth();
   const { can } = usePermission();
   const canEditSchedule = can('schedule.manage' as Capability);
 
   const { data: me } = useQuery({
-    queryKey: QUERY_KEYS.userProfile,
+    queryKey: QUERY_KEYS.userProfile(activeSession?.orgId ?? ''),
     queryFn: async () => unwrap(usersApi.getMe()),
     enabled: visible && !!token,
     staleTime: 1000 * 60 * 5,
@@ -113,28 +118,24 @@ export function EventBottomSheet({
   const confirmSwap = (alt: ScheduleItemWithCapacity) => {
     if (!event) return;
     if (isClassFull(alt)) {
-      Alert.alert('Class full', 'This section has no open seats.');
+      alertAction({ title: 'Class full', message: 'This section has no open seats.' });
       return;
     }
-    Alert.alert(
-      'Confirm swap',
-      'This will change your schedule for this specific week only.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Confirm',
-          onPress: async () => {
-            try {
-              await onSwapConfirm(event, alt);
-              onClose();
-              setShowAlternatives(false);
-            } catch {
-              /* mutation surfaces alert */
-            }
-          },
-        },
-      ]
-    );
+    confirmAction({
+      title: 'Attend this session instead?',
+      message: buildSwapConfirmMessage(event, alt),
+      confirmText: 'Yes',
+      cancelText: 'Cancel',
+      onConfirm: async () => {
+        try {
+          await onSwapConfirm(event, alt);
+          onClose();
+          setShowAlternatives(false);
+        } catch {
+          /* mutation surfaces alert */
+        }
+      },
+    });
   };
 
   if (!event) return null;
@@ -200,6 +201,22 @@ export function EventBottomSheet({
               </AppText>
             </View>
           ) : null}
+          {(event as { offeringName?: string }).offeringName ? (
+            <View style={styles.metaRow}>
+              <Icon name="school" size={18} color={colors.primary} />
+              <AppText style={{ color: colors.text, marginLeft: 8, flex: 1 }} numberOfLines={2}>
+                {(event as { offeringName?: string }).offeringName}
+              </AppText>
+            </View>
+          ) : null}
+          {(event as { cohortGroupName?: string }).cohortGroupName ? (
+            <View style={styles.metaRow}>
+              <Icon name="groups" size={18} color={colors.primary} />
+              <AppText style={{ color: colors.text, marginLeft: 8, flex: 1 }} numberOfLines={2}>
+                {(event as { cohortGroupName?: string }).cohortGroupName}
+              </AppText>
+            </View>
+          ) : null}
         </View>
 
         <AppText variant="caption" weight="bold" style={{ color: colors.subtle, marginBottom: 8 }}>
@@ -207,8 +224,16 @@ export function EventBottomSheet({
         </AppText>
         <ScheduleMapSnippet
           onPress={openMaps}
-          overlayLabel={room?.location || event.roomName || 'Tap to open in Maps'}
+          overlayLabel={room?.name || room?.location || event.roomName || 'Tap to open in Maps'}
+          room={room}
         />
+
+        <ClayView depth={2} color={colors.card} style={{ padding: 12, borderRadius: 12, marginBottom: 12 }}>
+          <AppText variant="caption" style={{ color: colors.subtle, lineHeight: 18 }}>
+            Skipping or switching sections updates your attendance for this week only — teachers see which slot you
+            attended. Published timetable slots stay unchanged.
+          </AppText>
+        </ClayView>
 
         <TouchableOpacity
           style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
@@ -245,31 +270,59 @@ export function EventBottomSheet({
                 const full = isClassFull(a);
                 const ast = new Date(alt.startTime);
                 const aen = new Date(alt.endTime);
+                const cohort = (alt as { cohortGroupName?: string }).cohortGroupName?.trim();
+                const offering = (alt as { offeringName?: string }).offeringName?.trim();
                 return (
-                  <TouchableOpacity
+                  <ClayView
                     key={alt.id + String(alt.startTime)}
-                    activeOpacity={full ? 1 : 0.88}
-                    disabled={full || swapPending}
-                    onPress={() => confirmSwap(a)}
-                    style={{ marginBottom: 10 }}
+                    depth={4}
+                    color={colors.card}
+                    style={{ padding: 14, borderRadius: 14, marginBottom: 10, opacity: full ? 0.55 : 1 }}
                   >
-                    <ClayView depth={4} color={colors.card} style={{ padding: 14, borderRadius: 14, opacity: full ? 0.55 : 1 }}>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <View style={{ flex: 1, paddingRight: 8 }}>
-                          <AppText weight="bold" numberOfLines={2} style={{ color: colors.text }}>
-                            {ast.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} –{' '}
-                            {aen.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <View style={{ flex: 1, paddingRight: 8, gap: 4 }}>
+                        <AppText weight="bold" style={{ color: colors.text }}>
+                          {formatAlternateSessionDay(ast)}
+                        </AppText>
+                        <AppText variant="caption" style={{ color: colors.text }}>
+                          {formatAlternateSessionTime(ast, aen)}
+                          {alt.typeName ? ` · ${alt.typeName}` : ''}
+                        </AppText>
+                        {alt.hostName ? (
+                          <AppText variant="caption" style={{ color: colors.subtle }}>
+                            {dictionary.hostLabel}: {alt.hostName}
                           </AppText>
-                          {alt.roomName ? (
-                            <AppText variant="caption" style={{ color: colors.subtle, marginTop: 4 }}>
-                              {alt.roomName}
-                            </AppText>
-                          ) : null}
-                        </View>
-                        <CapacityBadge spotsRemaining={spots} full={full} />
+                        ) : null}
+                        {alt.roomName ? (
+                          <AppText variant="caption" style={{ color: colors.subtle }}>
+                            Room: {alt.roomName}
+                          </AppText>
+                        ) : null}
+                        {cohort ? (
+                          <AppText variant="caption" style={{ color: colors.subtle }}>
+                            Group: {cohort}
+                          </AppText>
+                        ) : null}
+                        {offering ? (
+                          <AppText variant="caption" style={{ color: colors.subtle }} numberOfLines={2}>
+                            Course: {offering}
+                          </AppText>
+                        ) : null}
                       </View>
-                    </ClayView>
-                  </TouchableOpacity>
+                      <CapacityBadge spotsRemaining={spots} full={full} />
+                    </View>
+                    {!full ? (
+                      <View style={{ marginTop: 12 }}>
+                        <AppButton
+                          title={swapPending ? 'Switching…' : 'Attend this session'}
+                          variant="primary"
+                          size="sm"
+                          disabled={swapPending}
+                          onPress={() => confirmSwap(a)}
+                        />
+                      </View>
+                    ) : null}
+                  </ClayView>
                 );
               })
             )}
@@ -290,6 +343,9 @@ export function EventBottomSheet({
           >
             <AppText weight="bold" style={{ color: colors.error }}>
               {isHosting ? `Cancel for me (decline)` : `Skip this ${dictionary.eventLabelLower}`}
+            </AppText>
+            <AppText variant="caption" style={{ color: colors.subtle, marginTop: 4, textAlign: 'center' }}>
+              Marks you absent for this occurrence only
             </AppText>
           </TouchableOpacity>
           {canEditSchedule ? (

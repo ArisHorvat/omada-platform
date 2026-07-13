@@ -26,12 +26,18 @@ public class UserService : IUserService
     private readonly IUnitOfWork _uow;
     private readonly IUserContext _userContext;
     private readonly IPublicMediaUrlResolver _mediaUrls;
+    private readonly IGroupScopeService _groupScope;
 
-    public UserService(IUnitOfWork uow, IUserContext userContext, IPublicMediaUrlResolver mediaUrls)
+    public UserService(
+        IUnitOfWork uow,
+        IUserContext userContext,
+        IPublicMediaUrlResolver mediaUrls,
+        IGroupScopeService groupScope)
     {
         _uow = uow;
         _userContext = userContext;
         _mediaUrls = mediaUrls;
+        _groupScope = groupScope;
     }
 
     public async Task<ServiceResponse<UserProfileDto>> GetUserProfileAsync()
@@ -55,16 +61,35 @@ public class UserService : IUserService
                 .FindAsync(rp => rp.RoleId == orgMember.RoleId);
 
             foreach (var perm in rolePermissions)
+            {
+                if (OrganizationWidgetKeys.IsCoreWidget(perm.WidgetKey))
+                    continue;
                 widgetAccess[perm.WidgetKey] = perm.AccessLevel.ToString().ToLower();
+            }
         }
 
         var org = await _uow.Repository<Organization>().GetByIdAsync(orgId);
         if (org != null)
         {
+            widgetAccess = widgetAccess
+                .Where(kv => OrganizationWidgetKeys.IsPermissionAllowedForOrg(org, kv.Key))
+                .ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
+
             var enabledKeys = OrganizationWidgetKeys.GetEffectiveEnabledKeys(org);
             widgetAccess = widgetAccess
-                .Where(kv => OrganizationWidgetKeys.IsCoreWidget(kv.Key) || enabledKeys.Contains(kv.Key))
+                .Where(kv =>
+                    OrganizationWidgetKeys.IsCoreWidget(kv.Key) ||
+                    enabledKeys.Contains(kv.Key) ||
+                    (kv.Key.Equals(WidgetKeys.Chat, StringComparison.OrdinalIgnoreCase) &&
+                     enabledKeys.Contains(WidgetKeys.Announcements)) ||
+                    (kv.Key.Equals(WidgetKeys.News, StringComparison.OrdinalIgnoreCase) &&
+                     enabledKeys.Contains(WidgetKeys.Announcements)))
                 .ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
+
+            ConsolidateCommunicationWidgetAccess(widgetAccess);
+
+            if (widgetAccess.ContainsKey(WidgetKeys.Tasks))
+                widgetAccess.Remove(WidgetKeys.Assignments);
         }
 
         var preferences = ParsePreferencesJson(user.PreferencesJson);
@@ -97,7 +122,8 @@ public class UserService : IUserService
         string? q,
         string? role,
         Guid? managerId,
-        Guid? departmentId)
+        Guid? departmentId,
+        Guid? groupId)
     {
         var viewerUserId = _userContext.UserId;
         var orgId = _userContext.OrganizationId;
@@ -105,6 +131,8 @@ public class UserService : IUserService
         var membersRo = _uow.Repository<OrganizationMember>().GetQueryable().AsNoTracking();
         var usersRo = _uow.Repository<User>().GetQueryable().AsNoTracking();
         var rolesRo = _uow.Repository<Role>().GetQueryable().AsNoTracking();
+        var groupsRo = _uow.Repository<Group>().GetQueryable().AsNoTracking();
+        var groupMembersRo = _uow.Repository<GroupMember>().GetQueryable().AsNoTracking();
 
         var viewerRoleName = await (
             from m in membersRo
@@ -142,6 +170,16 @@ public class UserService : IUserService
         if (departmentId.HasValue)
             baseQuery = baseQuery.Where(x => x.User.DepartmentId == departmentId.Value);
 
+        if (groupId.HasValue)
+        {
+            var scopeIds = await _groupScope.GetDescendantIdsAsync(orgId, groupId.Value, includeSelf: true);
+            var scopedUserIds = groupMembersRo
+                .Where(gm => scopeIds.Contains(gm.GroupId))
+                .Select(gm => gm.UserId)
+                .Distinct();
+            baseQuery = baseQuery.Where(x => scopedUserIds.Contains(x.User.Id));
+        }
+
         if (!string.IsNullOrWhiteSpace(loweredQ))
         {
             baseQuery = baseQuery.Where(x =>
@@ -165,6 +203,9 @@ public class UserService : IUserService
                 LastName = x.User.LastName,
                 Title = x.User.Title,
                 DepartmentId = x.User.DepartmentId,
+                DepartmentName = x.User.DepartmentId == null
+                    ? null
+                    : groupsRo.Where(g => g.Id == x.User.DepartmentId).Select(g => g.Name).FirstOrDefault(),
                 ManagerId = x.User.ManagerId,
                 RoleName = x.RoleName,
                 AvatarUrl = x.User.AvatarUrl,
@@ -191,6 +232,21 @@ public class UserService : IUserService
         });
     }
 
+    public async Task<ServiceResponse<IReadOnlyList<string>>> GetDirectoryRoleNamesAsync()
+    {
+        var orgId = _userContext.OrganizationId;
+
+        var rolesRo = _uow.Repository<Role>().GetQueryable().AsNoTracking();
+
+        var roleNames = await rolesRo
+            .Where(r => r.OrganizationId == orgId)
+            .OrderBy(r => r.Name)
+            .Select(r => r.Name)
+            .ToListAsync();
+
+        return new ServiceResponse<IReadOnlyList<string>>(true, roleNames);
+    }
+
     public async Task<ServiceResponse<UserDeepProfileDto>> GetUserDeepProfileAsync(Guid id)
     {
         var viewerUserId = _userContext.UserId;
@@ -199,6 +255,8 @@ public class UserService : IUserService
         var membersRo = _uow.Repository<OrganizationMember>().GetQueryable().AsNoTracking();
         var usersRo = _uow.Repository<User>().GetQueryable().AsNoTracking();
         var rolesRo = _uow.Repository<Role>().GetQueryable().AsNoTracking();
+        var groupsRo = _uow.Repository<Group>().GetQueryable().AsNoTracking();
+        var groupMembersRo = _uow.Repository<GroupMember>().GetQueryable().AsNoTracking();
 
         var viewerRoleName = await (
             from m in membersRo
@@ -226,6 +284,28 @@ public class UserService : IUserService
         var email = canShowContact && target.User.IsPublicInDirectory ? target.User.Email : null;
         var phone = canShowContact && target.User.IsPublicInDirectory ? target.User.PhoneNumber : null;
 
+        string? departmentName = null;
+        if (target.User.DepartmentId.HasValue)
+        {
+            departmentName = await groupsRo
+                .Where(g => g.Id == target.User.DepartmentId.Value)
+                .Select(g => g.Name)
+                .FirstOrDefaultAsync();
+        }
+
+        var userGroups = await (
+            from gm in groupMembersRo
+            join g in groupsRo on gm.GroupId equals g.Id
+            where gm.UserId == id && g.OrganizationId == orgId
+            orderby g.Name
+            select new UserGroupSummaryDto
+            {
+                Id = g.Id,
+                Name = g.Name,
+                Type = g.Type,
+            }
+        ).ToListAsync();
+
         return new ServiceResponse<UserDeepProfileDto>(true, new UserDeepProfileDto
         {
             Id = target.User.Id,
@@ -234,13 +314,15 @@ public class UserService : IUserService
             RoleName = target.RoleName,
             Title = target.User.Title,
             DepartmentId = target.User.DepartmentId,
+            DepartmentName = departmentName,
             ManagerId = target.User.ManagerId,
             Email = email,
             Phone = phone,
             AvatarUrl = _mediaUrls.ToPublicUrl(string.IsNullOrEmpty(target.User.AvatarUrl) ? null : target.User.AvatarUrl),
             Address = target.User.Address,
             Bio = target.User.Bio,
-            IsPublicInDirectory = target.User.IsPublicInDirectory
+            IsPublicInDirectory = target.User.IsPublicInDirectory,
+            Groups = userGroups,
         });
     }
 
@@ -510,5 +592,38 @@ public class UserService : IUserService
         user.TwoFactorPendingSessionToken = null;
         user.TwoFactorCode = null;
         user.TwoFactorCodeExpires = null;
+    }
+
+    /// <summary>Merges legacy chat/news role rows into a single announcements entry for the mobile client.</summary>
+    private static void ConsolidateCommunicationWidgetAccess(Dictionary<string, string> widgetAccess)
+    {
+        var rank = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["view"] = 1,
+            ["edit"] = 2,
+            ["admin"] = 3,
+        };
+
+        var bestRank = 0;
+        string? bestLevel = null;
+
+        foreach (var key in new[] { WidgetKeys.Announcements, WidgetKeys.Chat, WidgetKeys.News })
+        {
+            if (!widgetAccess.TryGetValue(key, out var level))
+                continue;
+
+            var r = rank.GetValueOrDefault(level, 0);
+            if (r > bestRank)
+            {
+                bestRank = r;
+                bestLevel = level;
+            }
+        }
+
+        widgetAccess.Remove(WidgetKeys.Chat);
+        widgetAccess.Remove(WidgetKeys.News);
+
+        if (bestLevel != null)
+            widgetAccess[WidgetKeys.Announcements] = bestLevel;
     }
 }

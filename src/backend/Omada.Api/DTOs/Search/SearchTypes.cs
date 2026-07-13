@@ -10,9 +10,10 @@ public static class SearchTypes
     public const string Schedule = "schedule";
     public const string Groups = "groups";
     public const string Grades = "grades";
+    public const string Documents = "documents";
 
     public static readonly IReadOnlyList<string> All =
     [
-        Users, Rooms, News, Tasks, Schedule, Groups, Grades
+        Users, Rooms, News, Tasks, Schedule, Groups, Grades, Documents
     ];
 }

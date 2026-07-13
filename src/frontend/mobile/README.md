@@ -1,6 +1,6 @@
 # 📱 Omada Mobile (Expo)
 
-> Primary Omada client for **iOS**, **Android**, and **web** — organization-themed Clay UI, widget dashboard, admin consoles, map, chat, and more.
+> Primary Omada client for **iOS**, **Android**, and **web** — organization-themed Clay UI, widget dashboard, admin consoles, map, announcements, and more.
 
 ---
 
@@ -43,7 +43,7 @@ mobile/src/
 └── 🌍 i18n/          English + Romanian
 ```
 
-**Route pattern:** `app/(app)/(widgets)/news.tsx` → imports `screens/widgets/news/`
+**Route pattern:** `app/(app)/(tabs)/announcements.tsx` → `screens/widgets/announcements/` (legacy `news` / `chat` routes redirect here)
 
 ---
 
@@ -88,14 +88,17 @@ See [`../../../docs/Configuration.md`](../../../docs/Configuration.md) for full 
 | 🏠 Widget dashboard | `(tabs)/dashboard` — bento grid, favorites |
 | 🧩 Widget catalog admin | `/widgets-workspace` — toggle optional features by org type; schedule/tasks/digital ID always on |
 | 🔀 Admin ↔ member app | Profile screens — **Admin console** / **Member app** toggle for org admins only |
-| 🛡️ Org admin | `/org-dashboard` + workspaces (members, roles, branding, groups, **locations & maps**, event types, periods, **offerings**, spider, widgets, audit) — **fullBleed** on web; nav in `screens/admin/config/` |
+| 🛡️ Org admin | `/org-dashboard` + workspaces (members, roles, branding, groups, **locations & maps**, event types, periods, **offerings**, **timetables**, widgets, audit) — **fullBleed** on web; nav in `screens/admin/config/` |
+| 📅 Timetables | `/timetables-workspace` — View · Build & publish · **Import schedule** (scrape + import wizard) — [`../../../docs/Timetables.md`](../../../docs/Timetables.md) · [`../../../docs/WebSpider.md`](../../../docs/WebSpider.md) |
 | 🌐 SuperAdmin | `/admin-dashboard` |
-| 🗺️ Locations & maps | `/floorplan-workspace` — locations → levels → rooms; optional floorplan editor + Roboflow; campus pin picker; **sole room admin path** |
-| 🕷️ Web spider admin | `/web-spider-workspace` |
+| 🗺️ Locations & maps | `/floorplan-workspace` — locations → levels → rooms; optional floorplan editor + Roboflow; campus pin picker; **unassigned rooms** when import creates rooms without a floor |
 | 🔍 Universal search | `(modals)/search` — dashboard **`SearchBar`** → grouped results (people, rooms, news, …); permission-scoped via `GET /api/Search` |
 | 📝 Registration wizard | `(auth)/register-flow/` — **3 steps** (Org → Admin → Branding) + **registration-success**; roles/widgets/invites in admin checklist |
 | 🔐 Account security | Settings → **Security** (change password, 2FA toggle); `(auth)/forgot-password`, `(auth)/reset-password`; login **2FA code** step — [`../../../docs/AccountSecurity.md`](../../../docs/AccountSecurity.md) |
 | 🪪 Digital ID | Profile → `/digital-id` (QR pass); staff `/digital-id-scanner` + Attendance **Scan Digital ID** — [`../../../docs/DigitalId.md`](../../../docs/DigitalId.md) |
+| 📁 Documents | `/(widgets)/documents` — corporate file library; upload sheet + detail sheet — [`../../../docs/Documents.md`](../../../docs/Documents.md) |
+| 📣 Announcements | `(tabs)/announcements` — org/group/course channels, posts + comments, unread, SignalR — [`../../../docs/Announcements.md`](../../../docs/Announcements.md) |
+| ✅ Attendance | `/(widgets)/attendance` — student/teacher views, offering breakdown, recent history; `/attendance-session/[eventId]` — take roll — [`../../../docs/Attendance.md`](../../../docs/Attendance.md) |
 | 📚 Curriculum offerings | `/offerings-workspace` + `/periods-workspace` — packages, apply to term, instructors — [`../../../docs/CurriculumOfferings.md`](../../../docs/CurriculumOfferings.md) |
 | 🔗 Join org | `(auth)/join` — invite code flow |
 
@@ -124,6 +127,7 @@ npm run generate-api
 | 🔐 [`../../../docs/AccountSecurity.md`](../../../docs/AccountSecurity.md) | Password, reset & 2FA flows |
 | 🪪 [`../../../docs/DigitalId.md`](../../../docs/DigitalId.md) | Pass, scanner, attendance |
 | 📚 [`../../../docs/CurriculumOfferings.md`](../../../docs/CurriculumOfferings.md) | Periods, packages, apply/revert |
+| ✅ [`../../../docs/Attendance.md`](../../../docs/Attendance.md) | Roll, roster, work time, history UI |
 | 🕷️ [`../../../docs/WebSpider.md`](../../../docs/WebSpider.md) | Web crawling |
 | 🎓 [`TUTORIAL.md`](TUTORIAL.md) | User flows (registration, invites, daily use) |
 | 🏠 [`../../../README.md`](../../../README.md) | Monorepo overview |

@@ -23,7 +23,7 @@ export const useEditProfileLogic = (options?: { afterSave?: () => void }) => {
   const [pendingAvatarName, setPendingAvatarName] = useState<string | null>(null);
 
   const { data: user, isLoading } = useQuery({
-    queryKey: QUERY_KEYS.userProfile,
+    queryKey: QUERY_KEYS.userProfile(activeSession?.orgId ?? ''),
     queryFn: async () => await unwrap(usersApi.getMe()),
     enabled: !!activeSession,
   });
@@ -38,7 +38,7 @@ export const useEditProfileLogic = (options?: { afterSave?: () => void }) => {
   const updateMutation = useMutation({
     mutationFn: async (req: UpdateMyProfileRequest) => await unwrap(usersApi.updateMe(req)),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.userProfile });
+      queryClient.invalidateQueries({ queryKey: ['userProfile'] });
       setPendingAvatarUri(null);
       setPendingAvatarMime(null);
       setPendingAvatarName(null);

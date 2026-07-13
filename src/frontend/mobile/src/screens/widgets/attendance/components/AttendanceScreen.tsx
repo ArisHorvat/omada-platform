@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ScrollView } from 'react-native';
+import { View, ScrollView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 
@@ -17,21 +17,21 @@ import {
 import { ClayAnimations } from '@/src/constants/animations';
 import { useThemeColors } from '@/src/hooks';
 import { usePermission } from '@/src/context/PermissionContext';
-import { AttendanceStatus, type GroupPickerItemDto } from '@/src/api/generatedClient';
+import { AttendanceStatus } from '@/src/api/generatedClient';
 import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
 import { isUniversityOrg } from '@/src/screens/widgets/tasks/utils/taskLabels';
-import { GradesFilterChips } from '../../grades/components/GradesFilterChips';
 import { useAttendanceScreenLogic } from '../hooks/useAttendanceScreenLogic';
 import { AttendanceOfferingsPanel } from './AttendanceOfferingsPanel';
+import { AttendanceFiltersBar } from './AttendanceFiltersBar';
 import { WorkTimeClockPanel } from './WorkTimeClockPanel';
 import {
   absentNoun,
   formatSessionTime,
+  isAttendanceAbsent,
+  isAttendancePresent,
   isCorporateKind,
   presentNoun,
-  presentRateLabel,
   streakLabel,
-  teacherModeLabel,
 } from '../utils/attendanceLabels';
 import { createStyles } from '../styles/attendance.styles';
 
@@ -70,10 +70,12 @@ export default function AttendanceScreen() {
   const next = data?.nextSession;
   const teacherSessions = data?.teacherSessions ?? [];
 
-  const groupChips = (assignableGroups ?? []).map((g: GroupPickerItemDto) => ({
-    id: g.id,
+  const groupChips = (assignableGroups ?? []).map((g) => ({
+    value: g.id,
     label: g.name,
   }));
+
+  const listAnimation = Platform.OS === 'web' ? null : ClayAnimations.SlideInFlow;
 
   if (!permissionsLoading && !canView) {
     return (
@@ -92,7 +94,11 @@ export default function AttendanceScreen() {
     );
   }
 
-  const isAbsentStatus = (status: AttendanceStatus) => status === AttendanceStatus.Declined;
+  const isAbsentStatus = (status: AttendanceStatus, statusLabel?: string) =>
+    isAttendanceAbsent(status, statusLabel);
+
+  const isPresentStatus = (status: AttendanceStatus, statusLabel?: string) =>
+    isAttendancePresent(status, statusLabel);
 
   return (
     <WidgetPageShell>
@@ -104,11 +110,16 @@ export default function AttendanceScreen() {
               right={
                 canSwitchView ? (
                   <PressClay onPress={() => setViewAsTeacher(isTeacherView ? false : true)}>
-                    <ClayView depth={4} puffy={8} color={colors.card} style={styles.toggle}>
+                    <View
+                      style={[
+                        styles.toggle,
+                        { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.primary + '30' },
+                      ]}
+                    >
                       <AppText variant="caption" weight="bold" style={{ color: colors.primary }}>
                         {isTeacherView ? 'Student view' : 'Teacher view'}
                       </AppText>
-                    </ClayView>
+                    </View>
                   </PressClay>
                 ) : null
               }
@@ -123,47 +134,30 @@ export default function AttendanceScreen() {
               <WidgetErrorState message="Could not load attendance." onRetry={() => void query.refetch()} />
             ) : (
               <>
-                <ClayView depth={8} puffy={16} color={colors.primary} style={styles.summaryCard}>
-                  {summary && summary.totalTracked > 0 ? (
-                    <>
-                      <AppText style={styles.summaryLabel}>{presentRateLabel(kind)} rate</AppText>
-                      <AppText variant="h1" weight="bold" style={styles.summaryValue}>
-                        {summary.ratePercent.toFixed(0)}%
-                      </AppText>
-                      <AppText variant="caption" style={styles.summaryMeta}>
-                        {summary.presentCount} {presentNoun(kind).toLowerCase()} · {summary.absentCount}{' '}
-                        {absentNoun(kind).toLowerCase()}
-                        {summary.tentativeCount > 0 ? ` · ${summary.tentativeCount} maybe` : ''}
-                      </AppText>
-                      {summary.presentStreakDays > 0 ? (
-                        <AppText variant="caption" style={styles.summaryMeta}>
-                          {streakLabel(summary.presentStreakDays, kind)}
-                        </AppText>
-                      ) : null}
-                    </>
-                  ) : (
-                    <>
-                      <AppText style={styles.summaryLabel}>
-                        {isTeacherView ? teacherModeLabel(data?.mode) : 'Getting started'}
-                      </AppText>
-                      <AppText variant="h3" weight="bold" style={styles.summaryValue}>
-                        {isCorporateKind(kind)
-                          ? 'RSVP to meetings from your schedule'
-                          : 'Check in to classes from your schedule'}
-                      </AppText>
-                    </>
-                  )}
-                </ClayView>
+                {!isTeacherView && summary && summary.totalTracked > 0 ? (
+                  <ClayView
+                    depth={2}
+                    contentOverflow="visible"
+                    color={colors.card}
+                    style={styles.inlineStats}
+                  >
+                    <AppText variant="caption" style={{ color: colors.subtle, lineHeight: 18 }}>
+                      {summary.presentCount} {presentNoun(kind).toLowerCase()} · {summary.absentCount}{' '}
+                      {absentNoun(kind).toLowerCase()}
+                      {summary.ratePercent > 0 ? ` · ${summary.ratePercent.toFixed(0)}% marked present` : ''}
+                      {summary.presentStreakDays > 0 ? ` · ${streakLabel(summary.presentStreakDays, kind)}` : ''}
+                    </AppText>
+                  </ClayView>
+                ) : null}
 
-                <GradesFilterChips
-                  chips={groupChips}
-                  activeId={activeGroupId}
-                  onSelect={setActiveGroupId}
-                  allLabel="All groups"
+                <AttendanceFiltersBar
+                  groupOptions={groupChips}
+                  activeGroupId={activeGroupId}
+                  onGroupChange={setActiveGroupId}
                 />
 
                 {isTeacherView ? (
-                  <>
+                  <ScrollView contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
                     {canScanIds ? (
                       <AppButton
                         title="Scan Digital ID"
@@ -174,7 +168,10 @@ export default function AttendanceScreen() {
                       />
                     ) : null}
                     <AppText variant="h3" weight="bold" style={[styles.sectionTitle, { color: colors.text }]}>
-                      Sessions to take roll
+                      This week&apos;s sessions
+                    </AppText>
+                    <AppText variant="caption" style={{ color: colors.subtle, marginBottom: 12, lineHeight: 18 }}>
+                      Sessions you host this calendar week. Tap a row to take roll.
                     </AppText>
                     {teacherSessions.length === 0 ? (
                       <WidgetEmptyState
@@ -184,17 +181,15 @@ export default function AttendanceScreen() {
                       />
                     ) : (
                       teacherSessions.map((session, index) => {
-                        const instanceDate =
-                          session.instanceDate ??
-                          session.startTime?.toString?.() ??
-                          new Date(session.startTime).toISOString();
-                        const instanceParam =
-                          typeof instanceDate === 'string'
-                            ? instanceDate.slice(0, 10)
-                            : new Date(session.startTime).toISOString().slice(0, 10);
+                        const instanceParam = encodeURIComponent(
+                          new Date(session.startTime).toISOString(),
+                        );
 
                         return (
-                        <AnimatedItem key={session.eventId} animation={ClayAnimations.SlideInFlow(index)}>
+                        <AnimatedItem
+                          key={`${session.eventId}-${instanceParam}`}
+                          animation={listAnimation?.(index) ?? null}
+                        >
                           <PressClay
                             onPress={() =>
                               router.push(
@@ -202,7 +197,12 @@ export default function AttendanceScreen() {
                               )
                             }
                           >
-                            <ClayView depth={4} puffy={10} color={colors.card} style={styles.row}>
+                            <ClayView
+                              depth={4}
+                              contentOverflow="visible"
+                              color={colors.card}
+                              style={[styles.listCard, { padding: 14, borderRadius: 16 }]}
+                            >
                               <View style={{ flex: 1 }}>
                                 <AppText variant="body" weight="bold" style={{ color: colors.text }}>
                                   {session.title}
@@ -211,7 +211,11 @@ export default function AttendanceScreen() {
                                   {formatSessionTime(session)}
                                   {session.offeringName ? ` · ${session.offeringName}` : ''}
                                   {session.eventTypeName ? ` · ${session.eventTypeName}` : ''}
-                                  {session.groupName ? ` · ${session.groupName}` : ''}
+                                  {session.cohortGroupName
+                                    ? ` · ${session.cohortGroupName}`
+                                    : session.groupName
+                                      ? ` · ${session.groupName}`
+                                      : ''}
                                 </AppText>
                                 <AppText variant="caption" weight="bold" style={{ color: colors.secondary, marginTop: 4 }}>
                                   {session.enrolledCount}
@@ -227,13 +231,18 @@ export default function AttendanceScreen() {
                         );
                       })
                     )}
-                  </>
+                  </ScrollView>
                 ) : (
-                  <>
+                  <ScrollView contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
                     {isCorporateKind(kind) ? <WorkTimeClockPanel /> : null}
 
                     {next ? (
-                      <ClayView depth={6} puffy={14} color={colors.card} style={[styles.row, { marginBottom: 16 }]}>
+                      <ClayView
+                        depth={6}
+                        contentOverflow="visible"
+                        color={colors.card}
+                        style={{ padding: 14, borderRadius: 16, marginBottom: 16 }}
+                      >
                         <AppText variant="caption" weight="bold" style={{ color: colors.secondary }}>
                           UP NEXT
                         </AppText>
@@ -244,14 +253,16 @@ export default function AttendanceScreen() {
                           {formatSessionTime(next)}
                           {next.roomName ? ` · ${next.roomName}` : ''}
                         </AppText>
-                        <View style={styles.actions}>
+                        <View
+                          style={isCorporateKind(kind) ? styles.actionsStack : styles.actions}
+                        >
                           <AppButton
                             title={isCorporateKind(kind) ? 'Accept' : 'Check in'}
                             size="sm"
                             icon="check"
                             loading={isMutating}
                             onPress={() => void checkIn(next, kind ?? 'University')}
-                            style={{ flex: 1, marginRight: 8 }}
+                            style={isCorporateKind(kind) ? styles.actionBtnFull : styles.actionBtnHalf}
                           />
                           {isCorporateKind(kind) ? (
                             <AppButton
@@ -259,7 +270,7 @@ export default function AttendanceScreen() {
                               size="sm"
                               variant="secondary"
                               onPress={() => void rsvpTentative(next, kind ?? 'Corporate')}
-                              style={{ flex: 1, marginRight: 8 }}
+                              style={styles.actionBtnFull}
                             />
                           ) : null}
                           <AppButton
@@ -267,7 +278,7 @@ export default function AttendanceScreen() {
                             size="sm"
                             variant="secondary"
                             onPress={() => void decline(next, kind ?? 'University')}
-                            style={{ flex: 1 }}
+                            style={isCorporateKind(kind) ? styles.actionBtnFull : styles.actionBtnHalf}
                           />
                         </View>
                       </ClayView>
@@ -285,22 +296,43 @@ export default function AttendanceScreen() {
                         icon="history"
                       />
                     ) : (
-                      <ScrollView contentContainerStyle={{ paddingBottom: 80 }} showsVerticalScrollIndicator={false}>
-                        {records.map((item, index) => {
-                          const absent = isAbsentStatus(item.status);
-                          return (
-                            <AnimatedItem key={item.id} animation={ClayAnimations.SlideInFlow(index)}>
-                              <ClayView depth={4} puffy={8} color={colors.card} style={styles.row}>
-                                <View style={{ flex: 1 }}>
-                                  <AppText variant="body" weight="bold" style={{ color: colors.text }}>
+                      records.map((item, index) => {
+                        const absent = isAbsentStatus(item.status, item.statusLabel);
+                        const present = isPresentStatus(item.status, item.statusLabel);
+                        return (
+                          <AnimatedItem
+                            key={item.id}
+                            animation={listAnimation?.(index) ?? null}
+                            layout={Platform.OS === 'web' ? null : undefined}
+                            style={{ overflow: 'visible' }}
+                          >
+                            <ClayView
+                              depth={4}
+                              contentOverflow="visible"
+                              color={colors.card}
+                              style={styles.historyCard}
+                            >
+                              <View style={styles.historyHeader}>
+                                <View style={styles.historyBody}>
+                                  <AppText
+                                    variant="body"
+                                    weight="bold"
+                                    style={{ color: colors.text, flexShrink: 1 }}
+                                  >
                                     {item.eventTitle}
                                   </AppText>
-                                  <AppText variant="caption" style={{ color: colors.subtle }}>
+                                  <AppText
+                                    variant="caption"
+                                    style={[styles.historyMeta, { color: colors.subtle }]}
+                                  >
                                     {new Date(item.instanceDate).toLocaleDateString(undefined, {
                                       weekday: 'short',
                                       month: 'short',
                                       day: 'numeric',
                                     })}
+                                    {(item as { eventTypeName?: string }).eventTypeName
+                                      ? ` · ${(item as { eventTypeName?: string }).eventTypeName}`
+                                      : ''}
                                     {item.groupName ? ` · ${item.groupName}` : ''}
                                   </AppText>
                                 </View>
@@ -310,25 +342,31 @@ export default function AttendanceScreen() {
                                     {
                                       backgroundColor: absent
                                         ? colors.error + '25'
-                                        : colors.success + '25',
+                                        : present
+                                          ? colors.success + '25'
+                                          : colors.subtle + '22',
                                     },
                                   ]}
                                 >
                                   <AppText
                                     variant="caption"
                                     weight="bold"
-                                    style={{ color: absent ? colors.error : colors.success }}
+                                    numberOfLines={2}
+                                    style={{
+                                      color: absent ? colors.error : present ? colors.success : colors.subtle,
+                                      textAlign: 'center',
+                                    }}
                                   >
                                     {item.statusLabel}
                                   </AppText>
                                 </View>
-                              </ClayView>
-                            </AnimatedItem>
-                          );
-                        })}
-                      </ScrollView>
+                              </View>
+                            </ClayView>
+                          </AnimatedItem>
+                        );
+                      })
                     )}
-                  </>
+                  </ScrollView>
                 )}
               </>
             )}

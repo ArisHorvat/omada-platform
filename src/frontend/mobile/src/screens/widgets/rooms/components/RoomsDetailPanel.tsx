@@ -26,6 +26,7 @@ interface RoomsDetailPanelProps {
   roomTimeline: ScheduleItemDto[];
   roomTimelineLoading: boolean;
   onBook: () => void;
+  canBookSchedule?: boolean;
 }
 
 export function RoomsDetailPanel({
@@ -35,6 +36,7 @@ export function RoomsDetailPanel({
   roomTimeline,
   roomTimelineLoading,
   onBook,
+  canBookSchedule = true,
 }: RoomsDetailPanelProps) {
   const colors = useThemeColors();
   const router = useRouter();
@@ -58,7 +60,7 @@ export function RoomsDetailPanel({
         {room.location || 'Main Building'} · {room.capacity} seats
       </AppText>
 
-      {room.isBookable ? (
+      {room.isBookable && canBookSchedule ? (
         <PressClay onPress={onBook}>
           <ClayView
             depth={8}
@@ -70,6 +72,12 @@ export function RoomsDetailPanel({
             </AppText>
           </ClayView>
         </PressClay>
+      ) : room.isBookable ? (
+        <ClayView depth={4} color={colors.card} style={{ padding: 14, borderRadius: 14, marginBottom: 20 }}>
+          <AppText variant="caption" style={{ color: colors.subtle, lineHeight: 18 }}>
+            Booking creates a schedule event and needs schedule edit permission on your role.
+          </AppText>
+        </ClayView>
       ) : (
         <ClayView depth={4} color={colors.card} style={{ padding: 14, borderRadius: 14, marginBottom: 20 }}>
           <AppText variant="caption" style={{ color: colors.subtle }}>

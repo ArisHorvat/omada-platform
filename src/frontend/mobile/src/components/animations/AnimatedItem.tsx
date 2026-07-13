@@ -28,7 +28,13 @@ export const AnimatedItem = ({
   /** Reanimated on web does not support several cubic/bezier easings used in ClayAnimations — use linear. */
   const enteringAnimation = useMemo(() => {
     if (animation === null) return undefined;
-    if (animation !== undefined) return animation;
+    if (animation !== undefined) {
+      // Custom presets (e.g. SlideInFlow) use bezier easings that break Reanimated on web.
+      if (Platform.OS === 'web') {
+        return FadeInDown.duration(580).easing(Easing.linear).delay(280 + index * 58);
+      }
+      return animation;
+    }
     if (Platform.OS === 'web') {
       return FadeInDown.duration(580).easing(Easing.linear).delay(200 + index * 78);
     }

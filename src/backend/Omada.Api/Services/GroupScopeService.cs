@@ -147,6 +147,37 @@ public class GroupScopeService : IGroupScopeService
         return result;
     }
 
+    public async Task<HashSet<Guid>> GetUserEffectiveGroupIdsAsync(Guid organizationId, Guid userId)
+    {
+        var fromMembership = await _context.GroupMembers
+            .AsNoTracking()
+            .Where(gm => gm.UserId == userId && gm.Group.OrganizationId == organizationId && !gm.Group.IsDeleted)
+            .Select(gm => gm.GroupId)
+            .ToListAsync();
+
+        var fromCohort = await _context.OfferingEnrollments
+            .AsNoTracking()
+            .Where(e =>
+                e.UserId == userId &&
+                e.OrganizationId == organizationId &&
+                !e.IsDeleted &&
+                e.CohortGroupId != null)
+            .Select(e => e.CohortGroupId!.Value)
+            .ToListAsync();
+
+        var fromManaged = await _context.Groups
+            .AsNoTracking()
+            .Where(g => g.OrganizationId == organizationId && !g.IsDeleted && g.ManagerId == userId)
+            .Select(g => g.Id)
+            .ToListAsync();
+
+        var direct = fromMembership.Concat(fromCohort).Concat(fromManaged).Distinct().ToHashSet();
+        if (direct.Count == 0)
+            return direct;
+
+        return await ExpandWithAncestorsAsync(organizationId, direct);
+    }
+
     private async Task EnsureTreeAsync(Guid organizationId)
     {
         if (_parentById != null && _cachedOrgId == organizationId)

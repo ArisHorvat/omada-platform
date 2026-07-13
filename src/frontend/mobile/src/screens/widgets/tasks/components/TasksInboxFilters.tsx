@@ -126,7 +126,13 @@ export function TasksInboxFilters({
                 color={active ? colors.primary : colors.background}
                 style={styles.segmentBtn}
               >
-                <AppText weight="bold" style={{ color: active ? '#FFF' : colors.subtle, textAlign: 'center' }}>
+                <AppText
+                  weight="bold"
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.85}
+                  style={{ color: active ? '#FFF' : colors.subtle, textAlign: 'center' }}
+                >
                   {option.label}
                 </AppText>
               </ClayView>

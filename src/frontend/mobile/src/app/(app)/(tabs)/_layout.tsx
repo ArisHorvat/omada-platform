@@ -6,10 +6,12 @@ import { TabBar } from '@/src/components/navigation/TabBar';
 import { TabShell } from '@/src/components/layout/TabShell';
 import { useBreakpoint } from '@/src/hooks/useBreakpoint';
 import { useThemeColors } from '@/src/hooks';
+import { useAnnouncementsTabEnabled } from '@/src/hooks/useAnnouncementsTabEnabled';
 
 export default function TabLayout() {
   const colors = useThemeColors();
   const { isWideShell } = useBreakpoint();
+  const showAnnouncementsTab = useAnnouncementsTabEnabled();
 
   return (
     <TabShell>
@@ -23,7 +25,11 @@ export default function TabLayout() {
       >
         <Tabs.Screen name="dashboard" />
         <Tabs.Screen name="tasks" />
-        <Tabs.Screen name="chat" />
+        <Tabs.Screen
+          name="announcements"
+          options={{ href: showAnnouncementsTab ? undefined : null }}
+        />
+        <Tabs.Screen name="chat" options={{ href: null }} />
         <Tabs.Screen name="schedule" />
         <Tabs.Screen name="profile" />
       </Tabs>

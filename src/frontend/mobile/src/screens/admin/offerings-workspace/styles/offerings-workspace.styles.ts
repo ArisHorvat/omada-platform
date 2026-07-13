@@ -57,10 +57,15 @@ export function createOfferingsWorkspaceStyles(colors: {
     selectField: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 14,
+      paddingHorizontal: 16,
       paddingVertical: 12,
       borderRadius: 12,
       marginBottom: 12,
+      gap: 12,
+    },
+    selectFieldIcon: {
+      width: 22,
+      alignItems: 'center',
     },
     courseShell: {
       borderRadius: 16,

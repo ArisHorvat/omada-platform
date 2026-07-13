@@ -29,8 +29,8 @@ export function getBentoMetrics(
       : (gridWidth - gap) / 2;
 
   const largeWidth = gridWidth;
-  const smallHeight = Math.round(smallWidth);
-  const largeHeight = smallHeight * 2 + gap;
+  const smallHeight = Math.min(Math.round(smallWidth * 0.92), 168);
+  const largeHeight = Math.min(smallHeight * 2 + gap, 340);
 
   return {
     columns,

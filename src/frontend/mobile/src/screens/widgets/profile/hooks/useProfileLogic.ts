@@ -18,7 +18,7 @@ export const useProfileLogic = () => {
   const [showAccountSwitcher, setShowAccountSwitcher] = useState(false);
 
   const { data: user, isLoading: userLoading } = useQuery({
-    queryKey: QUERY_KEYS.userProfile,
+    queryKey: QUERY_KEYS.userProfile(activeSession?.orgId ?? ''),
     queryFn: async () => await unwrap(usersApi.getMe()),
     enabled: !!activeSession?.orgId,
   });

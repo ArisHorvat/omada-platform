@@ -51,8 +51,8 @@ export const AttendanceBento: React.FC<AttendanceBentoProps> = ({ accentColor, s
       ) : !summary || summary.totalTracked === 0 ? (
         <WidgetEmptyState title="—" description="No data yet" icon="how-to-reg" />
       ) : isLarge ? (
-        <ClayView depth={10} puffy={14} color={`${accentColor}18`} style={styles.large}>
-          <AppText variant="display" weight="bold" style={{ color: accentColor, fontSize: 56, lineHeight: 60 }}>
+        <ClayView depth={10} puffy={10} color={`${accentColor}18`} style={styles.large}>
+          <AppText variant="h2" weight="bold" style={{ color: accentColor, fontSize: 36, lineHeight: 40 }}>
             {summary.ratePercent.toFixed(0)}%
           </AppText>
           <AppText variant="caption" weight="bold" style={{ color: accentColor }}>
@@ -66,7 +66,21 @@ export const AttendanceBento: React.FC<AttendanceBentoProps> = ({ accentColor, s
         </ClayView>
       ) : (
         <View style={styles.bento}>
-          <AppText variant="h2" weight="bold" style={{ color: accentColor, fontSize: 32, marginRight: 8 }}>
+          <AppText
+            variant="h3"
+            weight="bold"
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.7}
+            style={{
+              color: accentColor,
+              fontSize: 24,
+              lineHeight: 28,
+              marginRight: 6,
+              maxWidth: 72,
+              textAlign: 'center',
+            }}
+          >
             {summary.ratePercent.toFixed(0)}%
           </AppText>
           <View>
@@ -86,7 +100,7 @@ export const AttendanceBento: React.FC<AttendanceBentoProps> = ({ accentColor, s
 };
 
 const styles = StyleSheet.create({
-  center: { alignItems: 'center', justifyContent: 'center', minHeight: 140 },
-  bento: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', minHeight: 140 },
-  large: { borderRadius: 20, minHeight: 140, alignItems: 'center', justifyContent: 'center' },
+  center: { alignItems: 'center', justifyContent: 'center', flex: 1, minHeight: 0 },
+  bento: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', minHeight: 0 },
+  large: { borderRadius: 16, flex: 1, minHeight: 0, alignItems: 'center', justifyContent: 'center', paddingVertical: 6 },
 });

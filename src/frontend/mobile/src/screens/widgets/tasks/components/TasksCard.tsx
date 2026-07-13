@@ -95,7 +95,7 @@ export const TasksCard: React.FC<TasksCardProps> = ({ accentColor }) => {
 };
 
 const styles = StyleSheet.create({
-  wrap: { minHeight: 120 },
+  wrap: { flex: 1, minHeight: 0 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

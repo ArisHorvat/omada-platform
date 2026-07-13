@@ -1,4 +1,4 @@
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from './AuthContext';
 import {
@@ -20,13 +20,20 @@ export const usePermission = () => useContext(PermissionContext);
 
 export const PermissionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { activeSession, token } = useAuth();
+  const orgId = activeSession?.orgId ?? '';
 
-  const { data: user, isLoading, refetch } = useQuery({
-    queryKey: QUERY_KEYS.userProfile,
+  const { data: user, isLoading, isFetching, refetch } = useQuery({
+    queryKey: QUERY_KEYS.userProfile(orgId),
     queryFn: async () => await unwrap(usersApi.getMe()),
-    enabled: !!token, // Only run if logged in
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    enabled: !!token && !!orgId,
+    staleTime: 1000 * 60 * 5,
   });
+
+  useEffect(() => {
+    if (token && orgId) {
+      void refetch();
+    }
+  }, [orgId, token, refetch]);
 
   const widgetAccess = user?.widgetAccess || {};
 
@@ -44,7 +51,15 @@ export const PermissionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   return (
-    <PermissionContext.Provider value={{ can, refreshPermissions: async () => { await refetch(); }, isLoading }}>
+    <PermissionContext.Provider
+      value={{
+        can,
+        refreshPermissions: async () => {
+          await refetch();
+        },
+        isLoading: isLoading || isFetching,
+      }}
+    >
       {children}
     </PermissionContext.Provider>
   );

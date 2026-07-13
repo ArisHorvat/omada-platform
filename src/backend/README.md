@@ -1,6 +1,6 @@
 # ⚙️ Omada Backend
 
-> ASP.NET Core **.NET 8** API — authentication, multi-tenant data, widgets, admin consoles, real-time chat, map/floorplans, web spider, and Hangfire jobs.
+> ASP.NET Core **.NET 8** API — authentication, multi-tenant data, widgets, admin consoles, real-time announcements, map/floorplans, web spider, and Hangfire jobs.
 
 ---
 
@@ -47,11 +47,13 @@ src/backend/
 | Org admin | 🛡️ | `/api/Organizations/current` — members (incl. `roleId` filter), roles, holding-role delete |
 | Groups | 👥 | `/api/Groups` — hierarchical org chart, type catalog (`GroupTypes.cs`), membership |
 | Platform admin | 🌐 | `/api/super-admin` |
-| Web spider | 🕷️ | Crawl timetables & news |
+| Web spider | 🕷️ | Schedule scrape, import wizard mapping/apply → **`WeeklySessionPlanJson`**; enricher + **`ScheduleTimeParser`**; optional Hangfire → **`ScrapedClassEvent`** — admin UI: Timetables Import tab only |
 | Floorplan AI | 🤖 | Optional Roboflow GeoJSON on levels with images |
 | Locations & maps | 🗺️ | `Building` → `Floor` → `Room`; campus lat/lng; floors without image; **`POST /api/Rooms`** returns 200 |
-| Real-time chat | 💬 | SignalR + `ChatService` |
+| Real-time announcements | 📣 | SignalR **`AppHub`** + **`AnnouncementService`** — posts/comments; CORS for negotiate — [`../../docs/Announcements.md`](../../docs/Announcements.md) |
 | Digital ID | 🪪 | Rotating QR pass, staff scan, attendance record — [`../../docs/DigitalId.md`](../../docs/DigitalId.md) |
+| Documents | 📁 | Corporate file library — `DocumentsController`, disk storage — [`../../docs/Documents.md`](../../docs/Documents.md) |
+| Attendance | ✅ | University roll + offering breakdown; corporate work time; **`AttendanceInstanceHelper`** — [`../../docs/Attendance.md`](../../docs/Attendance.md) |
 | Curriculum offerings | 📚 | Packages, term apply/revert, enrollments — [`../../docs/CurriculumOfferings.md`](../../docs/CurriculumOfferings.md) |
 | Universal search | 🔍 | `GET /api/Search` — permission-scoped buckets; **`SearchService`** uses **`IServiceScopeFactory`** (one DbContext per bucket) — [`../../docs/Backend.md`](../../docs/Backend.md#-universal-search) |
 | Background jobs | ⏰ | Hangfire for spider sync |
@@ -67,7 +69,10 @@ src/backend/
 | 🔧 [`../../docs/Configuration.md`](../../docs/Configuration.md) | `.env`, appsettings, setup checklist |
 | 🔐 [`../../docs/AccountSecurity.md`](../../docs/AccountSecurity.md) | Password reset & email OTP 2FA |
 | 🪪 [`../../docs/DigitalId.md`](../../docs/DigitalId.md) | Digital ID pass & scanner API |
+| 📁 [`../../docs/Documents.md`](../../docs/Documents.md) | Corporate file library API & storage |
+| 📣 [`../../docs/Announcements.md`](../../docs/Announcements.md) | Channels, posts, comments, unread, SignalR |
 | 📚 [`../../docs/CurriculumOfferings.md`](../../docs/CurriculumOfferings.md) | Curriculum packages & term offerings |
+| ✅ [`../../docs/Attendance.md`](../../docs/Attendance.md) | Roll, roster, work time, instance dates |
 | 🕷️ [`../../docs/WebSpider.md`](../../docs/WebSpider.md) | Web crawling deep dive |
 | 📱 [`../../docs/Frontend.md`](../../docs/Frontend.md) | Mobile client structure |
 

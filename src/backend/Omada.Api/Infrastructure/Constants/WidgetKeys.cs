@@ -11,7 +11,10 @@ public static class WidgetKeys
     public const string SuperAdmin = "super-admin";
 
     // --- COMMUNICATION & SOCIAL ---
+    public const string Announcements = "announcements";
+    /// <summary>Legacy — merged into <see cref="Announcements"/>.</summary>
     public const string Chat = "chat";
+    /// <summary>Legacy — merged into <see cref="Announcements"/>.</summary>
     public const string News = "news";
     public const string Events = "events";
 

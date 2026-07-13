@@ -241,6 +241,7 @@ export const usersApi = new UsersClient(API_BASE_URL, apiClient);
 export const webSpiderApi = new WebSpiderClient(API_BASE_URL, apiClient);
 
 export { offeringsApi, unwrapOfferingsAxios } from '@/src/api/offeringsApi';
+export { documentsApi } from '@/src/api/documentsApi';
 export type {
   CourseOfferingDto,
   OfferingPickerItemDto,

@@ -18,5 +18,6 @@ public class OrganizationConfiguration : IEntityTypeConfiguration<Organization>
         builder.Property(o => o.SpiderNewsStartUrl).HasMaxLength(2048);
         builder.Property(o => o.EnabledWidgetKeysJson).HasMaxLength(4000);
         builder.Property(o => o.OnboardingCompletedStepsJson).HasMaxLength(2000);
+        builder.Property(o => o.ScrapedHostAliasesJson).HasColumnType("nvarchar(max)");
     }
 }

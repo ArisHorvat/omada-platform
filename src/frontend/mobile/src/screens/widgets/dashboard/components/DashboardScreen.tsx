@@ -52,9 +52,12 @@ export default function DashboardScreen() {
   }, [contentWidth, breakpoint, isWideShell]);
 
   const bentoItems = useMemo(() => {
-    const favorites = user.favorites.filter((id: string) => id !== 'digital-id' && id !== 'groups');
+    const available = new Set(data.allWidgets);
+    const favorites = user.favorites.filter(
+      (id: string) => id !== 'digital-id' && id !== 'groups' && available.has(id),
+    );
     return computeBentoLayout(favorites, config.definitions, bentoMetrics.columns);
-  }, [user.favorites, config.definitions, bentoMetrics.columns]);
+  }, [user.favorites, config.definitions, bentoMetrics.columns, data.allWidgets]);
 
   const handleRemoveWidget = (widgetId: string) => {
      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);

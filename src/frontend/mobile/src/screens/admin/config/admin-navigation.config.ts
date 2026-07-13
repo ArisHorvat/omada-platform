@@ -57,6 +57,14 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
         requiresOrgAdmin: true,
       },
       {
+        id: 'timetables',
+        icon: 'event-note',
+        label: 'Timetables',
+        route: '/timetables-workspace',
+        widgetKey: WIDGET_KEYS.schedule,
+        requiresOrgAdmin: true,
+      },
+      {
         id: 'offerings',
         icon: 'school',
         label: 'Offerings',
@@ -68,19 +76,6 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
         icon: 'assignment',
         label: 'Coursework',
         route: '/assignments-workspace',
-      },
-    ],
-  },
-  {
-    id: 'integrations',
-    title: 'Integrations',
-    items: [
-      {
-        id: 'spider',
-        icon: 'language',
-        label: 'Web spider',
-        route: '/web-spider-workspace',
-        anyWidgetKeys: [WIDGET_KEYS.schedule, WIDGET_KEYS.news],
       },
     ],
   },

@@ -371,7 +371,7 @@ public class WebSpiderService : IWebSpiderService
         return new SiteScheduleExtractionResult
         {
             StartUrl = startUrl,
-            Events = allEvents,
+            Events = ScrapedScheduleDedup.RemoveExactDuplicates(allEvents),
             Pages = pageSummaries,
             CrawledMultiplePages = schedulePagesScraped > 1
                 || (hubLinksDiscovered > 0 && schedulePagesScraped > 0),
@@ -389,20 +389,19 @@ public class WebSpiderService : IWebSpiderService
             var doc = new HtmlDocument();
             doc.LoadHtml(html);
             var results = new List<ScrapedEventDto>();
+            var pageCourseHint = ExtractSchedulePageTitle(doc);
 
-            foreach (var table in doc.DocumentNode.SelectNodes("//table") ?? Enumerable.Empty<HtmlNode>())
+            foreach (var table in SelectLeafScheduleTables(doc))
             {
-                if (!TableLooksLikeSchedule(table))
-                    continue;
-
                 var groupHint = InferGroupLabelBeforeTable(table);
-                results.AddRange(ExtractRowsFromScheduleTable(table, groupHint, sourcePageUrl));
+                var courseHint = InferPageCourseTitleBeforeTable(table) ?? pageCourseHint;
+                results.AddRange(ExtractRowsFromScheduleTable(table, groupHint, sourcePageUrl, courseHint));
             }
 
             if (results.Count == 0)
                 throw new HtmlStructureChangedException("No schedule-like tables with class rows were found on the page.");
 
-            return results;
+            return ScrapedScheduleDedup.RemoveExactDuplicates(results);
         }
         catch (HtmlStructureChangedException)
         {
@@ -417,7 +416,8 @@ public class WebSpiderService : IWebSpiderService
     private static List<ScrapedEventDto> ExtractRowsFromScheduleTable(
         HtmlNode table,
         string? groupHint,
-        string? sourcePageUrl = null)
+        string? sourcePageUrl = null,
+        string? courseHint = null)
     {
         var grid = ParseTableIntoGrid(table);
         if (grid.Count == 0)
@@ -452,6 +452,9 @@ public class WebSpiderService : IWebSpiderService
             var dto = new ScrapedEventDto
             {
                 Time = time,
+                DayLabel = string.IsNullOrWhiteSpace(day) ? null : day.Trim(),
+                HoursLabel = string.IsNullOrWhiteSpace(hours) ? null : hours.Trim(),
+                FrequencyLabel = string.IsNullOrWhiteSpace(frequency) ? null : frequency.Trim(),
                 ClassName = className,
                 Room = GetCell(row, columnMap.Room),
                 Professor = GetCell(row, columnMap.Professor),
@@ -463,28 +466,170 @@ public class WebSpiderService : IWebSpiderService
             if (string.IsNullOrWhiteSpace(dto.ClassName) && string.IsNullOrWhiteSpace(dto.Time))
                 continue;
 
+            ScrapedScheduleRowEnricher.EnrichRow(dto, courseHint);
             results.Add(dto);
         }
 
         return results;
     }
 
-    private static string? InferGroupLabelBeforeTable(HtmlNode table)
+    private static string? ExtractSchedulePageTitle(HtmlDocument doc)
+    {
+        var titleNode = doc.DocumentNode.SelectSingleNode("//title");
+        if (titleNode == null)
+            return null;
+
+        var raw = HtmlEntity.DeEntitize(titleNode.InnerText ?? "").Trim();
+        return ScrapedScheduleRowEnricher.ParseSchedulePageTitle(raw);
+    }
+
+    /// <summary>Course / discipline title above the table (not a Grupa heading).</summary>
+    private static string? InferPageCourseTitleBeforeTable(HtmlNode table)
     {
         for (var node = table.PreviousSibling; node != null; node = node.PreviousSibling)
         {
             if (node.NodeType != HtmlNodeType.Element)
                 continue;
 
-            if (node.Name is "h1" or "h2" or "h3" or "h4")
+            var fromHeading = ReadCourseHeading(node);
+            if (!string.IsNullOrWhiteSpace(fromHeading))
+                return fromHeading;
+        }
+
+        var parent = table.ParentNode;
+        while (parent != null && parent.Name is not "html" and not "body" and not "#document")
+        {
+            for (var sibling = parent.PreviousSibling; sibling != null; sibling = sibling.PreviousSibling)
             {
-                var text = HtmlEntity.DeEntitize(node.InnerText ?? "").Trim();
-                if (!string.IsNullOrWhiteSpace(text))
+                if (sibling.NodeType != HtmlNodeType.Element)
+                    continue;
+                var fromHeading = ReadCourseHeading(sibling);
+                if (!string.IsNullOrWhiteSpace(fromHeading))
+                    return fromHeading;
+            }
+
+            parent = parent.ParentNode;
+        }
+
+        return null;
+    }
+
+    private static string? ReadCourseHeading(HtmlNode node)
+    {
+        if (node.Name is "h1" or "h2" or "h3" or "h4")
+        {
+            var text = HtmlEntity.DeEntitize(node.InnerText ?? "").Trim();
+            var fromOrar = ScrapedScheduleRowEnricher.ParseSchedulePageTitle(text);
+            if (!string.IsNullOrWhiteSpace(fromOrar))
+                return fromOrar;
+            if (IsCourseHeading(text))
+                return text;
+        }
+
+        var nested = node.SelectSingleNode(".//h1|.//h2|.//h3|.//h4");
+        if (nested == null)
+            return null;
+
+        var nestedText = HtmlEntity.DeEntitize(nested.InnerText ?? "").Trim();
+        var nestedOrar = ScrapedScheduleRowEnricher.ParseSchedulePageTitle(nestedText);
+        if (!string.IsNullOrWhiteSpace(nestedOrar))
+            return nestedOrar;
+
+        return IsCourseHeading(nestedText) ? nestedText : null;
+    }
+
+    private static bool IsCourseHeading(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return false;
+
+        var lower = text.ToLowerInvariant();
+        if (lower.Contains("grupa") || lower.Contains("tabelar"))
+            return false;
+
+        if (lower.StartsWith("orar"))
+            return false;
+
+        if (System.Text.RegularExpressions.Regex.IsMatch(text, @"^I?\d+$"))
+            return false;
+
+        if (ScrapedScheduleRowEnricher.IsProgramOrGroupPageCode(text))
+            return false;
+
+        return text.Length >= 3;
+    }
+
+    private static string? InferGroupLabelBeforeTable(HtmlNode table)
+    {
+        var heading = FindNearestGroupHeadingBefore(table);
+        return string.IsNullOrWhiteSpace(heading) ? null : heading;
+    }
+
+    private static string? FindNearestGroupHeadingBefore(HtmlNode node)
+    {
+        for (var sibling = node.PreviousSibling; sibling != null; sibling = sibling.PreviousSibling)
+        {
+            if (sibling.NodeType != HtmlNodeType.Element)
+                continue;
+
+            if (sibling.Name is "h1" or "h2" or "h3" or "h4")
+            {
+                var text = HtmlEntity.DeEntitize(sibling.InnerText ?? "").Trim();
+                if (!string.IsNullOrWhiteSpace(text) && text.Contains("grupa", StringComparison.OrdinalIgnoreCase))
+                    return text;
+            }
+
+            var nestedHeading = sibling.SelectSingleNode(".//h1|.//h2|.//h3|.//h4");
+            if (nestedHeading != null)
+            {
+                var text = HtmlEntity.DeEntitize(nestedHeading.InnerText ?? "").Trim();
+                if (!string.IsNullOrWhiteSpace(text) && text.Contains("grupa", StringComparison.OrdinalIgnoreCase))
                     return text;
             }
         }
 
-        return null;
+        var parent = node.ParentNode;
+        if (parent == null || parent.Name is "html" or "body" or "#document")
+            return null;
+
+        return FindNearestGroupHeadingBefore(parent);
+    }
+
+    /// <summary>
+    /// Prefer inner timetable tables so wrapper/layout tables are not parsed again (avoids duplicate rows).
+    /// </summary>
+    private static IEnumerable<HtmlNode> SelectLeafScheduleTables(HtmlDocument doc)
+    {
+        var candidates = (doc.DocumentNode.SelectNodes("//table") ?? Enumerable.Empty<HtmlNode>())
+            .Where(TableLooksLikeSchedule)
+            .ToList();
+
+        if (candidates.Count == 0)
+            return candidates;
+
+        var leaf = candidates
+            .Where(t => !HasNestedScheduleTable(t))
+            .Where(t => !HasScheduleTableAncestor(t))
+            .ToList();
+
+        return leaf.Count > 0 ? leaf : candidates;
+    }
+
+    private static bool HasNestedScheduleTable(HtmlNode table) =>
+        table.SelectNodes(".//table")?.Any(n => !ReferenceEquals(n, table) && TableLooksLikeSchedule(n)) == true;
+
+    private static bool HasScheduleTableAncestor(HtmlNode table)
+    {
+        for (var parent = table.ParentNode; parent != null; parent = parent.ParentNode)
+        {
+            if (parent.NodeType != HtmlNodeType.Element)
+                continue;
+
+            if (parent.Name.Equals("table", StringComparison.OrdinalIgnoreCase) && TableLooksLikeSchedule(parent))
+                return true;
+        }
+
+        return false;
     }
 
     private static IEnumerable<string> ExtractScheduleHubHrefs(
@@ -996,7 +1141,7 @@ public class WebSpiderService : IWebSpiderService
             var h = headerCells[i].ToLowerInvariant();
             if (map.Day < 0 && MatchesAny(h, "ziua", "zi ", "day"))
                 map.Day = i;
-            if (map.Time < 0 && MatchesAny(h, "orele", "ora", "time", "interval", "hour"))
+            if (map.Time < 0 && (MatchesAny(h, "orele", "time", "interval", "hour") || h is "ora" or "ore"))
                 map.Time = i;
             if (map.Frequency < 0 && MatchesAny(h, "frecventa", "frecven", "frequency", "sapt"))
                 map.Frequency = i;

@@ -50,10 +50,10 @@ public static class WidgetRegistry
             IsAlwaysEnabled: true, IsInOrgCatalog: false),
 
         // ---------------------------------------------------------
-        // ADMIN STRUCTURE (Role permissions only — not a member widget catalog entry)
+        // ADMIN STRUCTURE (org admin console only — not a member widget or role toggle)
         // ---------------------------------------------------------
         new(WidgetKeys.Groups, "Groups", "Manage classes, teams, and departments.", "structure-icon", AccessLevel.View,
-            IsInOrgCatalog: false),
+            IsCoreFeature: true, IsInOrgCatalog: false),
 
         // ---------------------------------------------------------
         // ORGANIZATION WIDGETS (Configurable in admin widget catalog)
@@ -76,8 +76,11 @@ public static class WidgetRegistry
         // Shared facilities & communication
         new(WidgetKeys.Rooms, "Rooms", "Room booking and facility management.", "door-icon", AccessLevel.View),
         new(WidgetKeys.Map, "Campus Map", "Interactive organization map and navigation.", "map-icon", AccessLevel.View),
-        new(WidgetKeys.Chat, "Chat", "Real-time messaging channels.", "chat-icon", AccessLevel.Edit),
-        new(WidgetKeys.News, "News", "Broadcast global announcements.", "megaphone-icon", AccessLevel.View)
+        new(WidgetKeys.Announcements, "Announcements", "Org, group, and course channels with posts and updates.", "megaphone-icon", AccessLevel.View),
+
+        // Legacy permission rows — not in org catalog
+        new(WidgetKeys.Chat, "Chat (legacy)", "Merged into Announcements.", "chat-icon", AccessLevel.Edit, IsInOrgCatalog: false),
+        new(WidgetKeys.News, "News (legacy)", "Merged into Announcements.", "megaphone-icon", AccessLevel.View, IsInOrgCatalog: false)
 
     }.AsReadOnly();
 }

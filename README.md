@@ -2,7 +2,7 @@
 
 > **One platform. Many organizations. Your colors, your widgets, your world.**
 
-Omada is a **multi-tenant SaaS** built for **universities and corporate organizations** — schedules, news, tasks, rooms, campus maps, directory, chat, grades, attendance, digital ID, and more in a single, beautifully themed experience.
+Omada is a **multi-tenant SaaS** built for **universities and corporate organizations** — schedules, announcements, tasks, rooms, campus maps, directory, grades, attendance, digital ID, and more in a single, beautifully themed experience.
 
 Each user account can belong to **multiple organizations**. Switching orgs feels like switching **instances**: theme, branding, permissions, and data all follow the active organization.
 
@@ -18,13 +18,15 @@ Each user account can belong to **multiple organizations**. Switching orgs feels
 | 🔐 **Widget RBAC** | View → Edit → Admin per widget; SuperAdmin bypass |
 | 🔗 **Invite system** | Unique invite code + link per org; email invites at registration |
 | 🔐 **Account security** | Change password, forgot/reset email links, optional **email OTP 2FA** at sign-in |
-| 🕷️ **Web spider** | Crawl public timetable & news pages into the platform |
+| 🕷️ **Schedule import** | Scrape public timetables → map to Omada → apply patterns → publish — [`docs/WebSpider.md`](docs/WebSpider.md) · [`docs/Timetables.md`](docs/Timetables.md) |
 | 🗺️ **Map & floorplans** | Locations → levels → rooms; optional floorplan AI (Roboflow); campus GPS + indoor coords |
-| ⚡ **Real-time** | SignalR for chat; React Query + offline-friendly patterns on mobile |
+| ⚡ **Real-time** | SignalR for announcements (posts + comments); hub pauses on mobile background — [`docs/Announcements.md`](docs/Announcements.md) |
 | 🔍 **Universal search** | Cross-widget search scoped to permissions — [`Backend.md`](Backend.md#-universal-search) · [`Frontend.md`](Frontend.md#-universal-search) |
 | 📚 **Curriculum offerings** | Reusable course packages, apply to academic terms, instructor assignment — [`docs/CurriculumOfferings.md`](docs/CurriculumOfferings.md) |
+| 📅 **Native timetables** | Weekly patterns, conflict preview, publish to member Schedule, **republish** (replaces all term events per course), combined same-slot groups, wall-clock timezone — [`docs/Timetables.md`](docs/Timetables.md) |
 | 📝 **Coursework & grading** | Batched assignments, student turn-in, teaching workspace, batch grading — [`docs/Coursework.md`](docs/Coursework.md) |
 | 📊 **Grades & transcript** | Coursework standing (1–10), credits, teacher gradebook — [`docs/Grades.md`](docs/Grades.md) |
+| ✅ **Attendance** | University roll + offering breakdown; corporate clock in/out — [`docs/Attendance.md`](docs/Attendance.md) |
 
 ---
 
@@ -52,8 +54,13 @@ omada-platform/
 │   ├── Frontend.md                 ← Mobile app structure & routes
 │   ├── AccountSecurity.md          ← Password, reset links, email OTP 2FA
 │   ├── CurriculumOfferings.md      ← Periods, packages, apply/revert
+│   ├── DigitalId.md               ← Pass, scanner, attendance
+│   ├── Documents.md               ← Corporate file library
+│   ├── Announcements.md           ← Channels, posts, comments, SignalR
+│   ├── Timetables.md               ← Build, preview, publish, member Schedule
 │   ├── Coursework.md               ← Post, turn-in, grade, teach workspace
 │   ├── Grades.md                   ← Standing, transcript, credits, teacher gradebook
+│   ├── Attendance.md               ← Roll, offering breakdown, work time, instance dates
 │   └── WebSpider.md                ← Crawling & sync deep dive
 │
 ├── ⚙️ src/backend/
@@ -157,7 +164,7 @@ flowchart LR
 | Catalog (toggleable) | University | Corporate | Both |
 |------------------------|------------|-----------|------|
 | Type-specific | grades, assignments | documents | — |
-| Shared | — | — | chat, news, attendance, users, map, rooms |
+| Shared | — | — | announcements, attendance, users, map, rooms |
 
 When an org admin **deletes a custom role**, members move to a **holding role** (`Unassigned` or `Member`) until reassigned in the Members workspace — not onto another custom role.
 
@@ -165,7 +172,7 @@ When an org admin **deletes a custom role**, members move to a **holding role** 
 
 Enforced with `[HasPermission]` on controllers. **SuperAdmin** bypasses widget checks and can enter any active org.
 
-Examples: `schedule`, `tasks`, `digital-id`, `news`, `map`, `rooms`, `chat`, `grades`, `assignments`, `documents`, `admin`, `super-admin`
+Examples: `schedule`, `tasks`, `digital-id`, `announcements`, `map`, `rooms`, `grades`, `assignments`, `documents`, `admin`, `super-admin` (legacy: `chat`, `news` → `announcements`)
 
 ### Admin surfaces
 
@@ -187,7 +194,10 @@ Examples: `schedule`, `tasks`, `digital-id`, `news`, `map`, `rooms`, `chat`, `gr
 | 🔧 [`docs/Configuration.md`](docs/Configuration.md) | `.env`, appsettings, checklist for new clones |
 | 🔐 [`docs/AccountSecurity.md`](docs/AccountSecurity.md) | Change password, forgot/reset, email OTP 2FA |
 | 🪪 [`docs/DigitalId.md`](docs/DigitalId.md) | Member pass (QR), staff scanner, attendance integration |
-| 🕷️ [`docs/WebSpider.md`](docs/WebSpider.md) | Timetable/news crawling, Hangfire, Gemini |
+| 📁 [`docs/Documents.md`](docs/Documents.md) | Corporate file library — upload sheet, folders, storage |
+| 📣 [`docs/Announcements.md`](docs/Announcements.md) | Channels, posts, comments, unread, SignalR, legacy chat/news |
+| ✅ [`docs/Attendance.md`](docs/Attendance.md) | University roll, offering breakdown, corporate work time |
+| 🕷️ [`docs/WebSpider.md`](docs/WebSpider.md) | Timetable import, Hangfire, Gemini |
 | 📱 [`src/frontend/mobile/TUTORIAL.md`](src/frontend/mobile/TUTORIAL.md) | End-user flows (registration, invites, daily use) |
 
 ---
@@ -212,15 +222,18 @@ Details: [`docs/Frontend.md`](docs/Frontend.md) · [`docs/Backend.md`](docs/Back
 
 ---
 
-## 🕷️ Web spider (schedule & news)
+## 🕷️ Schedule import (web spider)
 
-Crawls public HTML for timetables and news. Org admins configure URLs in the **Web crawling** workspace.
+Crawl public HTML timetables, map scraped labels to Omada (event types, hosts, rooms, groups, offerings), and apply weekly patterns — then **publish** for member Schedule.
 
 | Resource | Link |
 |----------|------|
-| Deep dive | [`docs/WebSpider.md`](docs/WebSpider.md) |
-| Admin UI | `/web-spider-workspace` |
-| API | `/api/web-spider/*` (admin widget + Admin) |
+| Import flow & mapping | [`docs/WebSpider.md`](docs/WebSpider.md) |
+| Native build & publish | [`docs/Timetables.md`](docs/Timetables.md) |
+| Admin UI | `/timetables-workspace?tab=import` (legacy `/web-spider-workspace` redirects here) |
+| API | `/api/web-spider/*` — import-resolution + apply-to-offering require **Org Admin** |
+
+> **News spider removed** from admin — schedule import only (under **Timetables → Import**). News **widget** unchanged. No **Integrations** nav section.
 
 ---
 

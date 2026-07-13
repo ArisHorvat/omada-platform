@@ -116,22 +116,6 @@ export const ONBOARDING_ITEMS: OnboardingItem[] = [
 
   {
 
-    id: 'spider',
-
-    title: 'Connect web spider',
-
-    subtitle: 'Import timetable and news from your site',
-
-    route: '/web-spider-workspace',
-
-    stepIndex: 7,
-
-    anyWidgetKeys: [WIDGET_KEYS.schedule, WIDGET_KEYS.news],
-
-  },
-
-  {
-
     id: 'invite',
 
     title: 'Invite your team',
@@ -140,7 +124,7 @@ export const ONBOARDING_ITEMS: OnboardingItem[] = [
 
     route: '/members-workspace',
 
-    stepIndex: 8,
+    stepIndex: 7,
 
   },
 

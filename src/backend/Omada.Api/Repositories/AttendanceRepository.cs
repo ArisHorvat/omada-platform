@@ -32,6 +32,10 @@ public class AttendanceRepository : IAttendanceRepository
             .Include(a => a.Event)
                 .ThenInclude(e => e.Group)
             .Include(a => a.Event)
+                .ThenInclude(e => e.CohortGroup)
+            .Include(a => a.Event)
+                .ThenInclude(e => e.EventType)
+            .Include(a => a.Event)
                 .ThenInclude(e => e.Room)
             .Where(a =>
                 a.UserId == userId &&
@@ -45,7 +49,9 @@ public class AttendanceRepository : IAttendanceRepository
         {
             var scopeIds = await _groupScope.GetDescendantIdsAsync(
                 organizationId, groupId.Value, includeSelf: true);
-            query = query.Where(a => a.Event.GroupId.HasValue && scopeIds.Contains(a.Event.GroupId.Value));
+            query = query.Where(a =>
+                (a.Event.GroupId.HasValue && scopeIds.Contains(a.Event.GroupId.Value)) ||
+                (a.Event.CohortGroupId.HasValue && scopeIds.Contains(a.Event.CohortGroupId.Value)));
         }
 
         return await query
@@ -72,6 +78,8 @@ public class AttendanceRepository : IAttendanceRepository
             .Include(a => a.User)
             .Include(a => a.Event)
                 .ThenInclude(e => e.Group)
+            .Include(a => a.Event)
+                .ThenInclude(e => e.CohortGroup)
             .Where(a =>
                 !a.IsDeleted &&
                 !a.Event.IsDeleted &&
@@ -86,7 +94,9 @@ public class AttendanceRepository : IAttendanceRepository
         {
             var scopeIds = await _groupScope.GetDescendantIdsAsync(
                 organizationId, groupId.Value, includeSelf: true);
-            query = query.Where(a => a.Event.GroupId.HasValue && scopeIds.Contains(a.Event.GroupId.Value));
+            query = query.Where(a =>
+                (a.Event.GroupId.HasValue && scopeIds.Contains(a.Event.GroupId.Value)) ||
+                (a.Event.CohortGroupId.HasValue && scopeIds.Contains(a.Event.CohortGroupId.Value)));
         }
 
         var total = await query.CountAsync(cancellationToken);

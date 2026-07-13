@@ -17,8 +17,22 @@ export async function unwrapServiceEnvelope<T>(envelope: ServiceEnvelope<T> | un
 }
 
 export async function unwrapOfferingsAxios<T>(
-  call: Promise<{ data: ServiceEnvelope<T> }>,
+  call: Promise<{ data: ServiceEnvelope<T>; status?: number }>,
 ): Promise<T> {
-  const res = await call;
-  return unwrapServiceEnvelope(res.data);
+  try {
+    const res = await call;
+    return unwrapServiceEnvelope(res.data);
+  } catch (error) {
+    if (error && typeof error === 'object' && 'response' in error) {
+      const axiosErr = error as { response?: { status?: number; data?: ServiceEnvelope<T> } };
+      const body = axiosErr.response?.data;
+      if (body && body.isSuccess === false) {
+        throw new Error(body.error?.message?.trim() || 'Operation failed.');
+      }
+      if (axiosErr.response?.status === 404) {
+        throw new Error('Import API not found — restart the backend after updating.');
+      }
+    }
+    throw error;
+  }
 }

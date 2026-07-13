@@ -23,8 +23,17 @@ public class Event : BaseEntity, IOrganizationScoped
     /// <summary>When set with <see cref="OfferingId"/>, limits visibility to members of this stable cohort.</summary>
     public Guid? CohortGroupId { get; set; }
 
+    /// <summary>
+    /// JSON array of cohort/subgroup ids when a session is shared by multiple subgroups but not the whole offering.
+    /// Used with <see cref="CohortGroupId"/> null — roster and schedule filter enrollments to these groups.
+    /// </summary>
+    public string? AudienceCohortGroupIdsJson { get; set; }
+
     /// <summary>Host (presenter, instructor, PM, etc.) — links to <see cref="User"/>; naming avoids uni-only &quot;teacher&quot;.</summary>
     public Guid? HostId { get; set; }
+
+    /// <summary>Display name when <see cref="HostId"/> is unset (pending invite / import placeholder).</summary>
+    public string? HostDisplayName { get; set; }
 
     public string? RecurrenceRule { get; set; }
 

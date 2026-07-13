@@ -9,7 +9,8 @@ public interface IOrganizationAdminService
     Task<ServiceResponse<OrganizationDetailsDto>> GetCurrentAsync();
     Task<ServiceResponse<OrganizationDetailsDto>> UpdateCurrentAsync(UpdateCurrentOrganizationRequest request);
     Task<ServiceResponse<RegenerateInviteCodeResponse>> RegenerateInviteCodeAsync();
-    Task<ServiceResponse<PagedResponse<OrganizationMemberDto>>> GetMembersAsync(PagedRequest request, string? q, Guid? roleId);
+    Task<ServiceResponse<PagedResponse<OrganizationMemberDto>>> GetMembersAsync(
+        PagedRequest request, string? q, Guid? roleId, bool includeAdmins = false);
     Task<ServiceResponse<int>> InviteMembersAsync(InviteMembersRequest request);
     Task<ServiceResponse<OrganizationMemberDto>> UpdateMemberAsync(Guid userId, UpdateOrganizationMemberRequest request);
     Task<ServiceResponse<bool>> DeleteMemberAsync(Guid userId);

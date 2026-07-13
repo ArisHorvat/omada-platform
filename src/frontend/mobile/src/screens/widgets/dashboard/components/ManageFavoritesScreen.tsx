@@ -63,7 +63,15 @@ export default function ManageFavoritesScreen() {
           title="Customize Dashboard"
           showBack
           onBack={closeScreen}
-          right={<AppButton title="Done" size="sm" variant="outline" onPress={closeScreen} />}
+          right={
+            <AppButton
+              title="Done"
+              size="sm"
+              variant="primary"
+              onPress={closeScreen}
+              style={{ width: 'auto', minWidth: 84, paddingHorizontal: 16 }}
+            />
+          }
         />
       </AnimatedItem>
 

@@ -40,7 +40,10 @@ public class ScheduleController : ControllerBase
         [FromQuery] Guid? roomId = null,
         [FromQuery] Guid? eventTypeId = null,
         [FromQuery] bool myScheduleOnly = true,
-        [FromQuery] bool publicOnly = false)
+        [FromQuery] bool publicOnly = false,
+        [FromQuery] Guid? periodId = null,
+        [FromQuery] Guid? offeringId = null,
+        [FromQuery] Guid? programGroupId = null)
     {
         var anchorDate = date ?? DateTime.UtcNow;
         var from = anchorDate.Date;
@@ -51,7 +54,10 @@ public class ScheduleController : ControllerBase
             FromDate = from, ToDate = to, HostId = hostId, GroupId = groupId,
             RoomId = roomId, EventTypeId = eventTypeId,
             MyScheduleOnly = myScheduleOnly,
-            PublicOnly = publicOnly
+            PublicOnly = publicOnly,
+            PeriodId = periodId,
+            OfferingId = offeringId,
+            ProgramGroupId = programGroupId
         };
 
         var response = await _scheduleService.GetScheduleAsync(request);

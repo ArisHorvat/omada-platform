@@ -38,14 +38,43 @@ public class ScheduleService : IScheduleService
     public async Task<ServiceResponse<IEnumerable<ScheduleItemDto>>> GetScheduleAsync(GetScheduleRequest request)
     {
         var orgId = _userContext.OrganizationId;
-        var userId = _userContext.UserId; // 🚀 Get Current User
+        var userId = _userContext.UserId;
 
+        return await GetScheduleInternalAsync(orgId, userId, request);
+    }
+
+    public async Task<ServiceResponse<IEnumerable<ScheduleItemDto>>> GetScheduleForUserAsync(
+        Guid userId,
+        GetScheduleRequest request)
+    {
+        var orgId = _userContext.OrganizationId;
+
+        var isMember = await _uow.Repository<OrganizationMember>()
+            .GetQueryable()
+            .AnyAsync(m => m.OrganizationId == orgId && m.UserId == userId && m.IsActive);
+
+        if (!isMember)
+            return new ServiceResponse<IEnumerable<ScheduleItemDto>>(false, null!,
+                new AppError("NOT_FOUND", "User is not an active member of this organization."));
+
+        return await GetScheduleInternalAsync(orgId, userId, request);
+    }
+
+    private async Task<ServiceResponse<IEnumerable<ScheduleItemDto>>> GetScheduleInternalAsync(
+        Guid orgId,
+        Guid userId,
+        GetScheduleRequest request)
+    {
         var events = await _scheduleRepo.GetEventsForScheduleAsync(
             orgId, request.FromDate, request.ToDate,
             request.HostId, request.GroupId, request.RoomId,
-            userId, request.MyScheduleOnly, request.PublicOnly);
+            userId, request.MyScheduleOnly, request.PublicOnly,
+            request.PeriodId, request.OfferingId, request.ProgramGroupId);
 
         var dtos = BuildScheduleItems(events, request, userId);
+        if (request.MyScheduleOnly)
+            await AppendUserAddedSessionsAsync(dtos, orgId, userId, request.FromDate, request.ToDate);
+
         return new ServiceResponse<IEnumerable<ScheduleItemDto>>(true, dtos.OrderBy(x => x.StartTime));
     }
 
@@ -117,7 +146,9 @@ public class ScheduleService : IScheduleService
             {
                 var isCancelled = e.Overrides.Any(o => o.OriginalStartTime == e.StartTime && o.IsCancelled);
                 var isDeclined = request.MyScheduleOnly && e.Attendances.Any(a =>
-                    a.UserId == userId && a.InstanceDate == e.StartTime && a.Status == AttendanceStatus.Declined);
+                    a.UserId == userId
+                    && a.Status == AttendanceStatus.Declined
+                    && AttendanceInstanceMatches(a.InstanceDate, e.StartTime));
 
                 if (!isCancelled && !isDeclined)
                     dtos.Add(MapToDto(e, e.StartTime, e.EndTime));
@@ -321,17 +352,18 @@ public class ScheduleService : IScheduleService
         var duration = targetEvent.EndTime - targetEvent.StartTime;
         DateTime targetStart;
         DateTime targetEnd;
+        DateTime targetInstanceDate;
         if (string.IsNullOrEmpty(targetEvent.RecurrenceRule))
         {
-            targetStart = targetEvent.StartTime;
-            targetEnd = targetEvent.EndTime;
-            if (!AttendanceInstanceMatches(request.InstanceDate, targetStart))
-                return new ServiceResponse<bool>(false, false, new AppError("INVALID_INPUT", "Instance date does not match this event."));
+            targetInstanceDate = AttendanceInstanceHelper.ResolveOccurrenceInstance(targetEvent, request.InstanceDate);
+            targetStart = targetInstanceDate;
+            targetEnd = targetInstanceDate.Add(duration);
         }
         else
         {
-            targetStart = request.InstanceDate;
-            targetEnd = request.InstanceDate.Add(duration);
+            targetInstanceDate = AttendanceInstanceHelper.ResolveOccurrenceInstance(targetEvent, request.InstanceDate);
+            targetStart = targetInstanceDate;
+            targetEnd = targetInstanceDate.Add(duration);
         }
 
         if (targetEvent.Overrides.Any(o => AttendanceInstanceMatches(o.OriginalStartTime, targetStart) && o.IsCancelled))
@@ -348,17 +380,31 @@ public class ScheduleService : IScheduleService
             if (declineEvent == null)
                 return new ServiceResponse<bool>(false, false, new AppError("NOT_FOUND", "Event to decline was not found."));
 
+            var declineInstanceDate = string.IsNullOrEmpty(declineEvent.RecurrenceRule)
+                ? TruncateToMinute(AsUtcScheduleInstant(declineEvent.StartTime))
+                : TruncateToMinute(AsUtcScheduleInstant(request.DeclineInstanceDate.Value));
+
             var declineCandidates = await _uow.Repository<EventAttendance>().GetQueryable()
                 .Where(a => a.EventId == declineEvent.Id && a.UserId == userId)
                 .ToListAsync();
             var declineExisting = declineCandidates.FirstOrDefault(a =>
-                AttendanceInstanceMatches(a.InstanceDate, request.DeclineInstanceDate.Value));
+                AttendanceInstanceMatches(a.InstanceDate, declineInstanceDate));
 
             if (declineExisting == null)
-                return new ServiceResponse<bool>(false, false, new AppError("INVALID_INPUT", "No attendance record found for the class instance to decline."));
-
-            declineExisting.Status = AttendanceStatus.Declined;
-            _uow.Repository<EventAttendance>().Update(declineExisting);
+            {
+                await _uow.Repository<EventAttendance>().AddAsync(new EventAttendance
+                {
+                    EventId = declineEvent.Id,
+                    UserId = userId,
+                    InstanceDate = declineInstanceDate,
+                    Status = AttendanceStatus.Declined
+                });
+            }
+            else
+            {
+                declineExisting.Status = AttendanceStatus.Declined;
+                _uow.Repository<EventAttendance>().Update(declineExisting);
+            }
         }
 
         var wantsBlocking = CountsTowardRsvp(request.Status);
@@ -371,7 +417,7 @@ public class ScheduleService : IScheduleService
                 targetStart,
                 targetEnd,
                 targetEvent.Id,
-                request.InstanceDate,
+                targetInstanceDate,
                 request.DeclineEventId,
                 request.DeclineInstanceDate);
 
@@ -384,17 +430,20 @@ public class ScheduleService : IScheduleService
             .Where(a => a.EventId == eventId && a.UserId == userId)
             .ToListAsync();
         var existingTarget = attendanceCandidates.FirstOrDefault(a =>
-            AttendanceInstanceMatches(a.InstanceDate, request.InstanceDate));
+                AttendanceInstanceHelper.InstanceMatches(a.InstanceDate, targetInstanceDate))
+            ?? attendanceCandidates.FirstOrDefault(a =>
+                AttendanceInstanceHelper.SameCalendarDay(a.InstanceDate, targetInstanceDate));
 
         if (wantsBlocking && targetEvent.MaxCapacity.HasValue)
         {
-            var effective = EffectiveRsvpCountAfterChange(targetEvent, request.InstanceDate, userId, request.Status, existingTarget);
+            var effective = EffectiveRsvpCountAfterChange(targetEvent, targetInstanceDate, userId, request.Status, existingTarget);
             if (effective > targetEvent.MaxCapacity.Value)
                 return new ServiceResponse<bool>(false, false, new AppError("CAPACITY_FULL", "This occurrence is at capacity."));
         }
 
         if (existingTarget != null)
         {
+            existingTarget.InstanceDate = targetInstanceDate;
             existingTarget.Status = request.Status;
             _uow.Repository<EventAttendance>().Update(existingTarget);
         }
@@ -404,10 +453,15 @@ public class ScheduleService : IScheduleService
             {
                 EventId = eventId,
                 UserId = userId,
-                InstanceDate = request.InstanceDate,
+                InstanceDate = targetInstanceDate,
                 Status = request.Status
             });
         }
+
+        var allForUser = await _uow.Repository<EventAttendance>().GetQueryable()
+            .Where(a => a.EventId == eventId && a.UserId == userId)
+            .ToListAsync();
+        ConsolidateAttendanceDuplicates(allForUser, eventId, userId, targetInstanceDate, request.Status);
 
         await _uow.CompleteAsync();
         return new ServiceResponse<bool>(true, true);
@@ -425,6 +479,8 @@ public class ScheduleService : IScheduleService
             .Include(e => e.Room)
             .Include(e => e.Group)
             .Include(e => e.Host)
+            .Include(e => e.Offering)
+            .Include(e => e.CohortGroup)
             .FirstOrDefaultAsync(e => e.Id == eventId && e.OrganizationId == orgId && !e.IsDeleted);
 
         if (refEvent == null)
@@ -441,10 +497,13 @@ public class ScheduleService : IScheduleService
             .Include(e => e.Room)
             .Include(e => e.Group)
             .Include(e => e.Host)
+            .Include(e => e.Offering)
+            .Include(e => e.CohortGroup)
             .Where(e => e.OrganizationId == orgId && !e.IsDeleted
                 && e.Id != eventId
                 && e.Title == refEvent.Title
-                && e.EventTypeId == refEvent.EventTypeId)
+                && e.EventTypeId == refEvent.EventTypeId
+                && (refEvent.OfferingId == null || e.OfferingId == refEvent.OfferingId))
             .ToListAsync();
 
         var dtos = new List<ScheduleItemDto>();
@@ -618,8 +677,8 @@ public class ScheduleService : IScheduleService
             
             var isDeclined = userId.HasValue && e.Attendances.Any(a => 
                 a.UserId == userId.Value && 
-                a.InstanceDate == currentStart && 
-                a.Status == AttendanceStatus.Declined);
+                a.Status == AttendanceStatus.Declined &&
+                AttendanceInstanceMatches(a.InstanceDate, currentStart));
             
             if (!isCancelled && !isDeclined)
             {
@@ -652,6 +711,12 @@ public class ScheduleService : IScheduleService
         };
     }
 
+    private static DateTime TruncateToMinute(DateTime value)
+    {
+        var u = AsUtcScheduleInstant(value);
+        return new DateTime(u.Year, u.Month, u.Day, u.Hour, u.Minute, 0, DateTimeKind.Utc);
+    }
+
     private ScheduleItemDto MapToDto(Event e, DateTime start, DateTime end)
     {
         return new ScheduleItemDto
@@ -672,7 +737,9 @@ public class ScheduleService : IScheduleService
             RoomName = e.Room?.Name,
             
             HostId = e.HostId,
-            HostName = e.Host != null ? $"{e.Host.FirstName} {e.Host.LastName}" : null,
+            HostName = e.Host != null
+                ? $"{e.Host.FirstName} {e.Host.LastName}".Trim()
+                : e.HostDisplayName,
             
             GroupId = e.GroupId,
             GroupName = e.Group?.Name,
@@ -690,7 +757,83 @@ public class ScheduleService : IScheduleService
     }
 
     private static int CountRsvpForInstance(Event e, DateTime instanceStart) =>
-        e.Attendances.Count(a => a.InstanceDate == instanceStart && CountsTowardRsvp(a.Status));
+        e.Attendances.Count(a => AttendanceInstanceMatches(a.InstanceDate, instanceStart) && CountsTowardRsvp(a.Status));
+
+    /// <summary>
+    /// After a section swap, the target slot may sit outside normal cohort visibility — always surface Added rows.
+    /// </summary>
+    private async Task AppendUserAddedSessionsAsync(
+        List<ScheduleItemDto> dtos,
+        Guid orgId,
+        Guid userId,
+        DateTime from,
+        DateTime to)
+    {
+        var existing = new HashSet<string>(dtos.Select(d => OccurrenceKey(d.Id, d.StartTime)));
+
+        var addedRows = await _uow.Repository<EventAttendance>().GetQueryable()
+            .AsNoTracking()
+            .Where(a => a.UserId == userId && a.Status == AttendanceStatus.Added)
+            .Join(
+                _context.Events.AsNoTracking().Where(e => e.OrganizationId == orgId && !e.IsDeleted),
+                a => a.EventId,
+                e => e.Id,
+                (a, _) => new { a.EventId, a.InstanceDate })
+            .ToListAsync();
+
+        if (addedRows.Count == 0)
+            return;
+
+        var eventIds = addedRows.Select(r => r.EventId).Distinct().ToList();
+        var events = await _context.Events
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(e => e.Overrides)
+            .Include(e => e.Attendances.Where(a =>
+                a.UserId == userId ||
+                a.Status == AttendanceStatus.Added ||
+                a.Status == AttendanceStatus.Expected ||
+                a.Status == AttendanceStatus.Accepted ||
+                a.Status == AttendanceStatus.Tentative ||
+                a.Status == AttendanceStatus.Declined))
+            .Include(e => e.EventType)
+            .Include(e => e.Room)
+            .Include(e => e.Group)
+            .Include(e => e.Offering)
+            .Include(e => e.CohortGroup)
+            .Include(e => e.Host)
+            .Where(e => eventIds.Contains(e.Id))
+            .ToListAsync();
+
+        foreach (var row in addedRows)
+        {
+            var ev = events.FirstOrDefault(e => e.Id == row.EventId);
+            if (ev == null)
+                continue;
+
+            var instanceStart = string.IsNullOrEmpty(ev.RecurrenceRule)
+                ? TruncateToMinute(AsUtcScheduleInstant(ev.StartTime))
+                : TruncateToMinute(AsUtcScheduleInstant(row.InstanceDate));
+
+            if (instanceStart < from || instanceStart >= to)
+                continue;
+
+            var key = OccurrenceKey(ev.Id, instanceStart);
+            if (existing.Contains(key))
+                continue;
+
+            if (ev.Overrides.Any(o => AttendanceInstanceMatches(o.OriginalStartTime, instanceStart) && o.IsCancelled))
+                continue;
+
+            var duration = ev.EndTime - ev.StartTime;
+            var instanceEnd = instanceStart.Add(duration);
+            dtos.Add(MapToDto(ev, instanceStart, instanceEnd));
+            existing.Add(key);
+        }
+    }
+
+    private static string OccurrenceKey(Guid eventId, DateTime start) =>
+        $"{eventId:N}|{TruncateToMinute(AsUtcScheduleInstant(start)):yyyyMMddHHmm}";
 
     private static bool CountsTowardRsvp(AttendanceStatus s) =>
         s is AttendanceStatus.Added or AttendanceStatus.Expected or AttendanceStatus.Accepted or AttendanceStatus.Tentative;
@@ -742,7 +885,7 @@ public class ScheduleService : IScheduleService
 
             if (excludeSwapFromEventId.HasValue && excludeSwapFromInstanceDate.HasValue
                 && a.EventId == excludeSwapFromEventId.Value
-                && a.InstanceDate == excludeSwapFromInstanceDate.Value)
+                && AttendanceInstanceMatches(a.InstanceDate, excludeSwapFromInstanceDate.Value))
                 continue;
 
             var (occStart, occEnd) = GetOccurrenceWindow(ev, a.InstanceDate);
@@ -776,11 +919,36 @@ public class ScheduleService : IScheduleService
     /// <summary>
     /// Matches attendance rows to the same calendar minute in UTC (ignores seconds/milliseconds and Kind drift).
     /// </summary>
-    private static bool AttendanceInstanceMatches(DateTime a, DateTime b)
+    private static bool AttendanceInstanceMatches(DateTime a, DateTime b) =>
+        AttendanceInstanceHelper.InstanceMatches(a, b);
+
+    private static void ConsolidateAttendanceDuplicates(
+        IReadOnlyList<EventAttendance> candidates,
+        Guid eventId,
+        Guid userId,
+        DateTime canonicalInstance,
+        AttendanceStatus status)
     {
-        var au = AsUtcScheduleInstant(a);
-        var bu = AsUtcScheduleInstant(b);
-        return au.Year == bu.Year && au.Month == bu.Month && au.Day == bu.Day
-            && au.Hour == bu.Hour && au.Minute == bu.Minute;
+        var sameDay = candidates
+            .Where(a => a.EventId == eventId && a.UserId == userId && !a.IsDeleted
+                && AttendanceInstanceHelper.SameCalendarDay(a.InstanceDate, canonicalInstance))
+            .ToList();
+
+        if (sameDay.Count <= 1)
+            return;
+
+        var keeper = sameDay.FirstOrDefault(a =>
+                        AttendanceInstanceHelper.InstanceMatches(a.InstanceDate, canonicalInstance))
+                    ?? AttendanceInstanceHelper.PickPreferredAttendance(sameDay);
+
+        keeper.InstanceDate = canonicalInstance;
+        keeper.Status = status;
+        keeper.IsDeleted = false;
+
+        foreach (var duplicate in sameDay.Where(a => a.Id != keeper.Id))
+        {
+            duplicate.IsDeleted = true;
+            duplicate.UpdatedAt = DateTime.UtcNow;
+        }
     }
 }

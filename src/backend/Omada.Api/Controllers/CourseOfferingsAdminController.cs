@@ -105,6 +105,28 @@ public class CourseOfferingsAdminController : ControllerBase
         return response.IsSuccess ? Ok(response) : BadRequest(response);
     }
 
+    [HttpPost("{offeringId:guid}/unenroll-user")]
+    [RequiresOrgAdmin]
+    public async Task<ActionResult<ServiceResponse<int>>> UnenrollUser(
+        Guid periodId,
+        Guid offeringId,
+        [FromBody] UnenrollUserRequest request)
+    {
+        var response = await _offeringService.UnenrollUserAsync(periodId, offeringId, request);
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
+    }
+
+    [HttpPost("{offeringId:guid}/unenroll-cohort")]
+    [RequiresOrgAdmin]
+    public async Task<ActionResult<ServiceResponse<int>>> UnenrollCohort(
+        Guid periodId,
+        Guid offeringId,
+        [FromBody] UnenrollCohortRequest request)
+    {
+        var response = await _offeringService.UnenrollCohortAsync(periodId, offeringId, request);
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
+    }
+
     [HttpGet("{offeringId:guid}/grade-plan")]
     [HasPermission(WidgetKeys.Tasks, nameof(AccessLevel.View))]
     public async Task<ActionResult<ServiceResponse<OfferingGradePlanDto>>> GetGradePlan(

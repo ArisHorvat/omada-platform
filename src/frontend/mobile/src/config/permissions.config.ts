@@ -19,6 +19,7 @@ export const WIDGET_KEYS = {
   superAdmin: 'super-admin',
   chat: 'chat',
   news: 'news',
+  announcements: 'announcements',
   events: 'events',
   schedule: 'schedule',
   tasks: 'tasks',
@@ -51,6 +52,9 @@ const ACCESS_RANK: Record<AccessLevel, number> = { view: 1, edit: 2, admin: 3 };
 export const WIDGET_PERMISSION_ALIASES: Record<string, readonly string[]> = {
   tasks: ['tasks', 'assignments'],
   assignments: ['assignments', 'tasks'],
+  announcements: ['announcements', 'chat', 'news'],
+  chat: ['chat', 'announcements', 'news'],
+  news: ['news', 'announcements', 'chat'],
 };
 
 /** Highest access level across aliased widget keys (e.g. tasks + assignments). */
@@ -75,7 +79,11 @@ export function getEffectiveWidgetAccessLevel(
 
 /** Fine-grained UI capabilities (optional future API surface). First segment before `.` must match a widget key. */
 export type Capability =
-  // news
+  // announcements (replaces chat + news)
+  | 'announcements.view'
+  | 'announcements.post'
+  | 'announcements.manage'
+  // news (legacy capabilities — still resolve via aliases)
   | 'news.view'
   | 'news.create'
   | 'news.publish'
@@ -123,9 +131,6 @@ export type Capability =
   // map / transport
   | 'map.view'
   | 'map.manage'
-  // groups
-  | 'groups.view'
-  | 'groups.manage'
   // events (community / org events)
   | 'events.view'
   | 'events.create'
@@ -136,6 +141,11 @@ export type Capability =
 
 /** Maps each widget to the capabilities granted at each AccessLevel (must be supersets: admin ⊇ edit ⊇ view for UX checks). */
 export const PERMISSION_MAP: Record<string, Record<AccessLevel, Capability[]>> = {
+  announcements: {
+    view: ['announcements.view'],
+    edit: ['announcements.view', 'announcements.post'],
+    admin: ['announcements.view', 'announcements.post', 'announcements.manage'],
+  },
   news: {
     view: ['news.view'],
     edit: ['news.view', 'news.create', 'news.publish'],
@@ -214,11 +224,6 @@ export const PERMISSION_MAP: Record<string, Record<AccessLevel, Capability[]>> =
     edit: ['map.view', 'map.manage'],
     admin: ['map.view', 'map.manage'],
   },
-  groups: {
-    view: ['groups.view'],
-    edit: ['groups.view', 'groups.manage'],
-    admin: ['groups.view', 'groups.manage'],
-  },
   events: {
     view: ['events.view'],
     edit: ['events.view', 'events.create'],
@@ -252,11 +257,11 @@ export const WIDGET_PERMISSIONS: Record<string, WidgetPermissionDef> = {
     description: 'View: submit coursework · Edit: post & grade (teachers) · Admin: delegate work tasks',
     levels: PERMISSION_MAP.tasks!,
   },
-  chat: {
-    key: 'chat',
-    label: 'Chat',
-    description: 'Messaging',
-    levels: PERMISSION_MAP.chat!,
+  announcements: {
+    key: 'announcements',
+    label: 'Announcements',
+    description: 'General, group, and course channels',
+    levels: PERMISSION_MAP.announcements!,
   },
   grades: {
     key: 'grades',
@@ -288,12 +293,6 @@ export const WIDGET_PERMISSIONS: Record<string, WidgetPermissionDef> = {
     description: 'File repository',
     levels: PERMISSION_MAP.documents!,
   },
-  news: {
-    key: 'news',
-    label: 'News',
-    description: 'Announcements',
-    levels: PERMISSION_MAP.news!,
-  },
   rooms: {
     key: 'rooms',
     label: 'Room booking',
@@ -323,12 +322,6 @@ export const WIDGET_PERMISSIONS: Record<string, WidgetPermissionDef> = {
     label: 'Events',
     description: 'Community and org events',
     levels: PERMISSION_MAP.events!,
-  },
-  groups: {
-    key: 'groups',
-    label: 'Groups',
-    description: 'Classes and teams',
-    levels: PERMISSION_MAP.groups!,
   },
   'digital-id': {
     key: 'digital-id',

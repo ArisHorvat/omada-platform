@@ -28,6 +28,7 @@ public class CourseOfferingPackageItemConfiguration : IEntityTypeConfiguration<C
         builder.Property(e => e.Name).IsRequired().HasMaxLength(200);
         builder.Property(e => e.Code).HasMaxLength(40);
         builder.Property(e => e.Description).HasMaxLength(2000);
+        builder.Property(e => e.Credits).HasPrecision(5, 2);
         builder.Property(e => e.InstructorsJson).HasMaxLength(4000);
         builder.Property(e => e.WeeklySessionPlanJson).HasMaxLength(8000);
 

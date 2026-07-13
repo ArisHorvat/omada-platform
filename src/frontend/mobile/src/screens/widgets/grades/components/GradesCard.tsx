@@ -72,7 +72,7 @@ export const GradesCard: React.FC<GradesCardProps> = ({ accentColor }) => {
 };
 
 const styles = StyleSheet.create({
-  wrap: { minHeight: 120 },
+  wrap: { flex: 1, minHeight: 0 },
   topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, ScrollView, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ClayView } from '@/src/components/ui/ClayView';
 import { ClayGroupedSection } from '@/src/components/ui/ClayGroupedSection';
@@ -11,7 +11,7 @@ import { Icon } from '@/src/components/ui/Icon';
 import { PressClay } from '@/src/components/animations/PressClay';
 import { ProgressiveImage } from '@/src/components/ui/ProgressiveImage';
 import { PageContainer, WidgetPageShell } from '@/src/components/layout';
-import { useThemeColors } from '@/src/hooks';
+import { useAppSidebar, useThemeColors } from '@/src/hooks';
 import { createStyles } from '@/src/screens/widgets/profile/styles/profile.styles';
 import { useProfileLogic } from '@/src/screens/widgets/profile/hooks/useProfileLogic';
 import { resolveMediaUrl } from '@/src/utils/resolveMediaUrl';
@@ -23,6 +23,8 @@ import { useAuth } from '@/src/context/AuthContext';
 export default function AdminProfileScreen() {
   const colors = useThemeColors();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const showAdminSidebar = useAppSidebar();
   const { activeSession } = useAuth();
   const isSuperAdmin = activeSession?.role === 'SuperAdmin';
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -83,9 +85,23 @@ export default function AdminProfileScreen() {
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <WidgetPageShell fullBleed>
         <PageContainer>
-          <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 32 }]} showsVerticalScrollIndicator={false}>
-            <ClayView depth={12} puffy={18} style={{ paddingHorizontal: 16, paddingVertical: 12, marginBottom: 20 }}>
+          <ScrollView
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}
+            showsVerticalScrollIndicator={false}
+          >
+            <ClayView
+              depth={12}
+              contentOverflow="visible"
+              style={{ paddingHorizontal: 16, paddingVertical: 12, marginBottom: 20, borderRadius: 20 }}
+            >
               <View style={styles.headerRow}>
+                {!showAdminSidebar ? (
+                  <PressClay onPress={() => router.push('/org-dashboard' as never)}>
+                    <View style={{ padding: 8, borderRadius: 12, marginRight: 4 }}>
+                      <Icon name="arrow-back" size={24} color={colors.text} />
+                    </View>
+                  </PressClay>
+                ) : null}
                 <AppText variant="h2" weight="bold" style={{ flex: 1 }}>
                   Profile
                 </AppText>
@@ -97,7 +113,11 @@ export default function AdminProfileScreen() {
               </View>
             </ClayView>
 
-            <ClayView depth={14} puffy={20} style={{ paddingVertical: 24, paddingHorizontal: 20, marginBottom: 20 }}>
+            <ClayView
+              depth={14}
+              contentOverflow="visible"
+              style={{ paddingVertical: 24, paddingHorizontal: 20, marginBottom: 20, borderRadius: 24 }}
+            >
               <View style={styles.avatarWrap}>
                 {avatarUri ? (
                   <ProgressiveImage

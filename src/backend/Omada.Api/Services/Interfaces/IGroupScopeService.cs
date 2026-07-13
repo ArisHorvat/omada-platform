@@ -23,4 +23,10 @@ public interface IGroupScopeService
 
     /// <summary>Depth for many groups in one tree load.</summary>
     Task<Dictionary<Guid, int>> GetDepthsAsync(Guid organizationId, IEnumerable<Guid> groupIds);
+
+    /// <summary>
+    /// Placement groups (membership, enrollment cohort, managed groups) expanded with all ancestors —
+    /// single source for schedule, attendance, and announcement visibility.
+    /// </summary>
+    Task<HashSet<Guid>> GetUserEffectiveGroupIdsAsync(Guid organizationId, Guid userId);
 }

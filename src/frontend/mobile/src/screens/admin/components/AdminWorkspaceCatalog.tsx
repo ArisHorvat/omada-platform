@@ -33,7 +33,7 @@ export function AdminWorkspaceCatalog({
   const router = useRouter();
   const { activeSession, token } = useAuth();
   const { data: user } = useQuery({
-    queryKey: QUERY_KEYS.userProfile,
+    queryKey: QUERY_KEYS.userProfile(activeSession?.orgId ?? ''),
     queryFn: () => unwrap(usersApi.getMe()),
     enabled: !!token,
     staleTime: 1000 * 60 * 5,

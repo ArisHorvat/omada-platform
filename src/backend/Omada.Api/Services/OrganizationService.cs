@@ -356,7 +356,7 @@ public class OrganizationService : IOrganizationService
             var criticalPermissions = new Dictionary<string, AccessLevel>
             {
                 { "users", AccessLevel.Admin }, { "settings", AccessLevel.Admin },
-                { "news", AccessLevel.Admin }, { "schedule", AccessLevel.View }
+                { WidgetKeys.Announcements, AccessLevel.Admin }, { WidgetKeys.Schedule, AccessLevel.View }
             };
 
             foreach (var cp in criticalPermissions)

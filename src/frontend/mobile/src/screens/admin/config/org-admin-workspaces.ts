@@ -21,6 +21,19 @@ export type AdminWorkspaceSection = {
 /** Quick-access tiles on the overview (admin workspaces only — no member widget routes). */
 export const ADMIN_WORKSPACE_SECTIONS: AdminWorkspaceSection[] = [
   {
+    id: 'account',
+    title: 'Your account',
+    items: [
+      {
+        id: 'profile',
+        icon: 'person',
+        title: 'Profile',
+        subtitle: 'Log out, switch org, settings',
+        route: '/admin-profile',
+      },
+    ],
+  },
+  {
     id: 'people',
     title: 'People & governance',
     items: [
@@ -78,15 +91,24 @@ export const ADMIN_WORKSPACE_SECTIONS: AdminWorkspaceSection[] = [
         id: 'periods',
         icon: 'date-range',
         title: 'Periods',
-        subtitle: 'Terms, quarters & cycles',
+        subtitle: 'Terms & reporting dates',
         route: '/periods-workspace',
+        requiresOrgAdmin: true,
+      },
+      {
+        id: 'timetables',
+        icon: 'event-note',
+        title: 'Timetables',
+        subtitle: 'Build, view & import schedules',
+        route: '/timetables-workspace',
+        widgetKey: WIDGET_KEYS.schedule,
         requiresOrgAdmin: true,
       },
       {
         id: 'offerings',
         icon: 'school',
         title: 'Offerings',
-        subtitle: 'Packages & curriculum',
+        subtitle: 'Packages, apply & term courses',
         route: '/offerings-workspace',
         requiresOrgAdmin: true,
       },
@@ -96,20 +118,6 @@ export const ADMIN_WORKSPACE_SECTIONS: AdminWorkspaceSection[] = [
         title: 'Coursework',
         subtitle: 'Post & grade assignments',
         route: '/assignments-workspace',
-      },
-    ],
-  },
-  {
-    id: 'integrations',
-    title: 'Integrations',
-    items: [
-      {
-        id: 'spider',
-        icon: 'language',
-        title: 'Web spider',
-        subtitle: 'Import & sync',
-        route: '/web-spider-workspace',
-        anyWidgetKeys: [WIDGET_KEYS.schedule, WIDGET_KEYS.news],
       },
     ],
   },

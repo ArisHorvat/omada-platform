@@ -111,9 +111,47 @@ public class CourseOfferingPackageService : ICourseOfferingPackageService
         if (entity == null)
             return new ServiceResponse<bool>(false, false, new AppError(ErrorCodes.NotFound, "Package not found."));
 
+        var itemNames = await _context.CourseOfferingPackageItems.AsNoTracking()
+            .Where(i => i.PackageId == packageId && !i.IsDeleted)
+            .Select(i => i.Name)
+            .ToListAsync();
+
+        if (itemNames.Count > 0)
+            await CascadeDeleteOfferingsAndCourseworkAsync(orgId, itemNames);
+
         _uow.Repository<CourseOfferingPackage>().Remove(entity);
         await _uow.CompleteAsync();
         return new ServiceResponse<bool>(true, true);
+    }
+
+    /// <summary>
+    /// Removes term offerings whose names match package courses (all periods) and soft-deletes linked coursework tasks.
+    /// </summary>
+    private async Task CascadeDeleteOfferingsAndCourseworkAsync(Guid orgId, IReadOnlyList<string> itemNames)
+    {
+        var offerings = await _context.CourseOfferings
+            .Where(o => o.OrganizationId == orgId && !o.IsDeleted && itemNames.Contains(o.Name))
+            .ToListAsync();
+
+        if (offerings.Count == 0)
+            return;
+
+        var offeringIds = offerings.Select(o => o.Id).ToList();
+        var tasks = await _context.Set<TaskItem>()
+            .Where(t =>
+                t.OrganizationId == orgId &&
+                !t.IsDeleted &&
+                t.OfferingId.HasValue &&
+                offeringIds.Contains(t.OfferingId.Value))
+            .ToListAsync();
+
+        foreach (var task in tasks)
+            _uow.Repository<TaskItem>().Remove(task);
+
+        foreach (var offering in offerings)
+            _uow.Repository<CourseOffering>().Remove(offering);
+
+        await _uow.CompleteAsync();
     }
 
     public async Task<ServiceResponse<CourseOfferingPackageDto>> SavePackageItemsAsync(
@@ -153,7 +191,9 @@ public class CourseOfferingPackageService : ICourseOfferingPackageService
                 SortOrder = item.SortOrder > 0 ? item.SortOrder : sort++,
                 DefaultHostId = primaryHostId,
                 InstructorsJson = SerializeInstructors(instructorInputs),
-                WeeklySessionPlanJson = OfferingSessionPlanJson.Serialize(item.WeeklySessions)
+                WeeklySessionPlanJson = OfferingSessionPlanJson.Serialize(
+                    OfferingSessionPlanJson.NormalizePackageActivities(item.WeeklySessions ?? new List<OfferingWeeklySessionDto>())),
+                Credits = item.Credits
             };
             await _context.CourseOfferingPackageItems.AddAsync(row);
             await _uow.CompleteAsync();
@@ -273,7 +313,8 @@ public class CourseOfferingPackageService : ICourseOfferingPackageService
                 ProgramGroupIds = programIds,
                 HostId = primaryHostId,
                 Instructors = instructorInputs.Count > 0 ? instructorInputs : null,
-                WeeklySessions = OfferingSessionPlanJson.Parse(item.WeeklySessionPlanJson).ToList()
+                WeeklySessions = OfferingSessionPlanJson.Parse(item.WeeklySessionPlanJson).ToList(),
+                Credits = item.Credits
             });
 
             if (!create.IsSuccess || create.Data == null)
@@ -427,7 +468,8 @@ public class CourseOfferingPackageService : ICourseOfferingPackageService
                 Instructors = instructorDtos,
                 ProgramGroupIds = effectiveProgramIds,
                 ProgramGroupNames = effectiveProgramNames,
-                WeeklySessions = OfferingSessionPlanJson.Parse(item.WeeklySessionPlanJson)
+                WeeklySessions = OfferingSessionPlanJson.Parse(item.WeeklySessionPlanJson),
+                Credits = item.Credits
             });
         }
 

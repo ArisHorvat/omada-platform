@@ -63,13 +63,13 @@ export const AppButton = ({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    width: '100%',
+    alignSelf: 'stretch',
   };
 
   const sizeStyles: Record<'sm' | 'md' | 'lg', ViewStyle> = {
-    sm: { paddingVertical: 8, paddingHorizontal: 12 },
-    md: { paddingVertical: 14, paddingHorizontal: 20 },
-    lg: { paddingVertical: 18, paddingHorizontal: 24 },
+    sm: { paddingVertical: 8, paddingHorizontal: 14, minHeight: 36, minWidth: 72 },
+    md: { paddingVertical: 14, paddingHorizontal: 20, minHeight: 48, minWidth: 96 },
+    lg: { paddingVertical: 18, paddingHorizontal: 24, minHeight: 56, minWidth: 112 },
   };
 
   const getSurfaceColor = (): string => {
@@ -103,7 +103,7 @@ export const AppButton = ({
       return colors.text;
     }
     if (variant === 'primary') {
-      return colors.onPrimary;
+      return colors.onPrimary || '#FFFFFF';
     }
     if (variant === 'danger') {
       return '#FFFFFF';
@@ -135,12 +135,12 @@ export const AppButton = ({
       color={getSurfaceColor()}
       depth={depth}
       puffy={puffy}
+      contentOverflow="visible"
       style={[
         baseRow,
         sizeStyles[size],
         { borderRadius: 14, opacity: inactive ? 0.6 : 1 },
         getVariantClayStyle(),
-        style,
       ]}
     >
       {loading ? (
@@ -188,8 +188,9 @@ export const AppButton = ({
         disabled={inactive}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
+        style={[{ alignSelf: 'stretch' }, style]}
       >
-        <Animated.View style={animatedStyle}>{clayBody}</Animated.View>
+        <Animated.View style={[animatedStyle, { alignSelf: 'stretch' }]}>{clayBody}</Animated.View>
       </Pressable>
     </ClayPressContext.Provider>
   );

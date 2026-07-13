@@ -21,7 +21,7 @@ const HERO_INNER_WIDGETS = new Set([
   'attendance',
   'assignments',
   'grades',
-  'news',
+  'announcements',
   'rooms',
   'tasks',
   'users',
@@ -225,9 +225,9 @@ export const DashboardWidget = ({
                           <AppText variant="h3" weight="bold" style={{ color: cardText }} numberOfLines={1}>
                             {config.name}
                           </AppText>
-                          {id === 'news' && (
+                          {id === 'announcements' && (
                              <AppText variant="caption" weight="bold" style={{ color: cardText, opacity: 0.7 }}>
-                                LIVE UPDATES
+                                CHANNELS
                              </AppText>
                           )}
                       </View>

@@ -17,6 +17,7 @@ public class CourseOfferingConfiguration : IEntityTypeConfiguration<CourseOfferi
         builder.Property(e => e.Credits).HasPrecision(6, 2);
         builder.Property(e => e.RequiredAttendancePercent).HasPrecision(5, 2);
         builder.Property(e => e.TimetablePublishedEventIdsJson).HasMaxLength(4000);
+        builder.Property(e => e.TimetablePublishedPlanJson).HasMaxLength(8000);
 
         builder.HasIndex(e => new { e.OrganizationId, e.PeriodId, e.Name });
 

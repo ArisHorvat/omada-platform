@@ -27,4 +27,10 @@ public class SpiderPreviewScheduleResultDto
 
     [Required]
     public required bool WasTruncated { get; init; }
+
+    [Required]
+    public required int ParsedTimeCount { get; init; }
+
+    [Required]
+    public required int UnparsedTimeCount { get; init; }
 }

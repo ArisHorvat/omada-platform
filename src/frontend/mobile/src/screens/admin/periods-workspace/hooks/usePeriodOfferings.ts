@@ -21,6 +21,7 @@ export function usePeriodOfferings(periodId: string | null) {
   const [newName, setNewName] = useState('');
   const [programGroupId, setProgramGroupId] = useState('');
   const [bulkNames, setBulkNames] = useState('');
+  const [enrollmentOffering, setEnrollmentOffering] = useState<CourseOfferingDto | null>(null);
 
   const offeringsQuery = useQuery({
     queryKey: QUERY_KEYS.orgAdmin.offerings(orgId, periodId ?? ''),
@@ -34,7 +35,22 @@ export function usePeriodOfferings(periodId: string | null) {
   const invalidate = useCallback(async () => {
     if (!periodId) return;
     await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.orgAdmin.offerings(orgId, periodId) });
-  }, [orgId, periodId, queryClient]);
+    if (enrollmentOffering) {
+      await queryClient.invalidateQueries({
+        queryKey: ['orgAdmin', orgId, 'offeringEnrollments', periodId, enrollmentOffering.id],
+      });
+    }
+  }, [enrollmentOffering, orgId, periodId, queryClient]);
+
+  const enrollmentOfferingId = enrollmentOffering?.id ?? '';
+  const enrollmentsQuery = useQuery({
+    queryKey: ['orgAdmin', orgId, 'offeringEnrollments', periodId, enrollmentOfferingId],
+    queryFn: async () => {
+      if (!periodId || !enrollmentOfferingId) return [];
+      return unwrapOfferingsAxios(offeringsApi.getEnrollments(periodId, enrollmentOfferingId));
+    },
+    enabled: !!orgId && !!periodId && !!enrollmentOfferingId,
+  });
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -100,6 +116,39 @@ export function usePeriodOfferings(periodId: string | null) {
       alertAction({ title: 'Enrolled', message: `${count} new enrollment(s) from linked programs.` });
     },
     onError: (e: Error) => alertAction({ title: 'Enroll failed', message: e.message }),
+  });
+
+  const enrollCohortMutation = useMutation({
+    mutationFn: async ({ offeringId, cohortGroupId }: { offeringId: string; cohortGroupId: string }) => {
+      if (!periodId) throw new Error('No period selected.');
+      return unwrapOfferingsAxios(offeringsApi.enrollCohort(periodId, offeringId, cohortGroupId));
+    },
+    onSuccess: async (count) => {
+      await invalidate();
+      alertAction({ title: 'Enrolled', message: `${count} new enrollment(s) added.` });
+    },
+    onError: (e: Error) => alertAction({ title: 'Enroll failed', message: e.message }),
+  });
+
+  const unenrollUserMutation = useMutation({
+    mutationFn: async ({ offeringId, userId }: { offeringId: string; userId: string }) => {
+      if (!periodId) throw new Error('No period selected.');
+      return unwrapOfferingsAxios(offeringsApi.unenrollUser(periodId, offeringId, userId));
+    },
+    onSuccess: invalidate,
+    onError: (e: Error) => alertAction({ title: 'Remove failed', message: e.message }),
+  });
+
+  const unenrollCohortMutation = useMutation({
+    mutationFn: async ({ offeringId, cohortGroupId }: { offeringId: string; cohortGroupId: string }) => {
+      if (!periodId) throw new Error('No period selected.');
+      return unwrapOfferingsAxios(offeringsApi.unenrollCohort(periodId, offeringId, cohortGroupId));
+    },
+    onSuccess: async (count) => {
+      await invalidate();
+      alertAction({ title: 'Removed', message: `${count} enrollment(s) removed.` });
+    },
+    onError: (e: Error) => alertAction({ title: 'Remove failed', message: e.message }),
   });
 
   const deleteMutation = useMutation({
@@ -173,6 +222,10 @@ export function usePeriodOfferings(periodId: string | null) {
   return {
     offerings: offeringsQuery.data ?? [],
     loading: offeringsQuery.isLoading,
+    enrollmentOffering,
+    setEnrollmentOffering,
+    enrollmentRows: enrollmentsQuery.data ?? [],
+    enrollmentsLoading: enrollmentsQuery.isLoading,
     newName,
     setNewName,
     programGroupId,
@@ -184,6 +237,12 @@ export function usePeriodOfferings(periodId: string | null) {
     enrollProgramCohorts: (offeringId: string, programId: string) =>
       enrollMutation.mutate({ offeringId, programId: programId }),
     enrollLinkedPrograms: (offeringId: string) => enrollLinkedMutation.mutate(offeringId),
+    enrollCohort: (offeringId: string, cohortGroupId: string) =>
+      enrollCohortMutation.mutate({ offeringId, cohortGroupId }),
+    unenrollUser: (offeringId: string, userId: string) =>
+      unenrollUserMutation.mutate({ offeringId, userId }),
+    unenrollCohort: (offeringId: string, cohortGroupId: string) =>
+      unenrollCohortMutation.mutate({ offeringId, cohortGroupId }),
     confirmDeleteOffering,
     updateOfferingCredits: (offering: CourseOfferingDto, credits: number) =>
       updateCreditsMutation.mutate({ offering, credits }),
@@ -191,7 +250,17 @@ export function usePeriodOfferings(periodId: string | null) {
       offering: CourseOfferingDto,
       requiredAttendancePercent: number | null,
     ) => updateAttendanceRuleMutation.mutate({ offering, requiredAttendancePercent }),
-    isSaving: createMutation.isPending || setupMutation.isPending || enrollMutation.isPending || enrollLinkedMutation.isPending || deleteMutation.isPending || updateCreditsMutation.isPending || updateAttendanceRuleMutation.isPending,
+    isSaving:
+      createMutation.isPending ||
+      setupMutation.isPending ||
+      enrollMutation.isPending ||
+      enrollLinkedMutation.isPending ||
+      enrollCohortMutation.isPending ||
+      unenrollUserMutation.isPending ||
+      unenrollCohortMutation.isPending ||
+      deleteMutation.isPending ||
+      updateCreditsMutation.isPending ||
+      updateAttendanceRuleMutation.isPending,
     refetch: offeringsQuery.refetch,
   };
 }

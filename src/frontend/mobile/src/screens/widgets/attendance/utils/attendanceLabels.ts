@@ -79,13 +79,47 @@ export function attendanceStatusLabel(status: AttendanceStatus, kind: string | u
   switch (status) {
     case AttendanceStatus.Declined:
       return 'Absent';
-    case AttendanceStatus.Expected:
     case AttendanceStatus.Added:
     case AttendanceStatus.Accepted:
       return 'Present';
+    case AttendanceStatus.Expected:
+      return 'Not marked';
     case AttendanceStatus.Tentative:
       return 'Tentative';
     default:
       return AttendanceStatus[status] ?? String(status);
   }
+}
+
+export function normalizeAttendanceStatus(
+  status: AttendanceStatus | string | number | undefined | null,
+): AttendanceStatus {
+  if (status == null) return AttendanceStatus.None;
+  if (status === AttendanceStatus.None || status === 'None' || status === 0) return AttendanceStatus.None;
+  if (status === AttendanceStatus.Added || status === 'Added' || status === 1) return AttendanceStatus.Added;
+  if (status === AttendanceStatus.Declined || status === 'Declined' || status === 2) return AttendanceStatus.Declined;
+  if (status === AttendanceStatus.Expected || status === 'Expected') return AttendanceStatus.Expected;
+  if (status === AttendanceStatus.Accepted || status === 'Accepted') return AttendanceStatus.Accepted;
+  if (status === AttendanceStatus.Tentative || status === 'Tentative') return AttendanceStatus.Tentative;
+  return status as AttendanceStatus;
+}
+
+export function isAttendancePresent(
+  status: AttendanceStatus | string | number | undefined | null,
+  statusLabel?: string | null,
+): boolean {
+  const normalized = normalizeAttendanceStatus(status);
+  if (normalized === AttendanceStatus.Added || normalized === AttendanceStatus.Accepted) return true;
+  const label = (statusLabel ?? '').trim().toLowerCase();
+  return label === 'present' || label === 'accepted' || label === 'joined';
+}
+
+export function isAttendanceAbsent(
+  status: AttendanceStatus | string | number | undefined | null,
+  statusLabel?: string | null,
+): boolean {
+  const normalized = normalizeAttendanceStatus(status);
+  if (normalized === AttendanceStatus.Declined) return true;
+  const label = (statusLabel ?? '').trim().toLowerCase();
+  return label === 'absent' || label === 'declined';
 }

@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { QUERY_KEYS } from '@/src/api/queryKeys';
 import { secureDeleteItem, secureGetItem, secureSetItem } from '@/src/lib/secureStorage';
 import { jwtDecode } from 'jwt-decode';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -52,10 +54,18 @@ const KEY_SESSION_META = 'auth_sessions_meta';
 const PREFIX_ORG_TOKEN = 'token_org_';
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const queryClient = useQueryClient();
   const [token, setToken] = useState<string | null>(null);
   const [activeSession, setActiveSession] = useState<Session | null>(null);
   const [availableSessions, setAvailableSessions] = useState<Session[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const invalidateOrgSessionQueries = async (orgId: string) => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['userProfile'] }),
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.organization(orgId) }),
+    ]);
+  };
 
   useEffect(() => {
     const handleLogout = () => {
@@ -177,6 +187,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       await persistSessions(updatedList);
       await setAsActive(newToken, refreshToken);
+      await invalidateOrgSessionQueries(orgId);
     } catch (e) {
       console.error("[Auth] Failed to add session due to invalid token", e);
     }
@@ -187,6 +198,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const targetToken = await secureGetItem(getOrgTokenKey(targetOrgId));
       if (targetToken && isTokenValid(targetToken)) {
         await setAsActive(targetToken);
+        await invalidateOrgSessionQueries(targetOrgId);
         return;
       }
 
@@ -196,7 +208,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const response = await unwrap(authApi.switchOrganization(request));
       
       if (response && response.accessToken) {
-         await addSession(response.accessToken, response.refreshToken); 
+        await addSession(response.accessToken, response.refreshToken);
+        await invalidateOrgSessionQueries(targetOrgId);
       }
     } catch (e) {
       console.error('[Auth] Switch failed', e);

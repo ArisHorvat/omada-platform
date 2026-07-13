@@ -7,6 +7,9 @@ namespace Omada.Api.Services.Interfaces;
 public interface IScheduleService
 {
     Task<ServiceResponse<IEnumerable<ScheduleItemDto>>> GetScheduleAsync(GetScheduleRequest request);
+
+    /// <summary>Org admin: what a member would see on My schedule for the given window.</summary>
+    Task<ServiceResponse<IEnumerable<ScheduleItemDto>>> GetScheduleForUserAsync(Guid userId, GetScheduleRequest request);
     Task<ServiceResponse<ScheduleItemDto>> CreateEventAsync(CreateEventRequest request);
     Task<ServiceResponse<ScheduleItemDto>> UpdateEventAsync(Guid id, CreateEventRequest request);
     Task<ServiceResponse<bool>> UpdateAttendanceAsync(Guid eventId, UpdateAttendanceRequest request);

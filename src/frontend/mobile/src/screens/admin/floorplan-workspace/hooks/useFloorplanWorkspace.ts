@@ -15,15 +15,19 @@ import {
 import {
   CreateBuildingRequest,
   UpdateBuildingRequest,
+  UpdateFloorplanGeoJsonRequest,
   type BuildingDto,
   type FloorDto,
-  type UpdateFloorplanGeoJsonRequest,
 } from '@/src/api/generatedClient';
 import { useAuth } from '@/src/context/AuthContext';
 import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
 import { useThemeColors } from '@/src/hooks';
 import { alertAction } from '@/src/utils/confirmAction';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  formatPublishRoomsSummary,
+  formatSaveAndPublishMessage,
+} from '@/src/screens/admin/floorplan-workspace/utils/floorplanSavePublishMessages';
 import { useFloorplan } from '@/src/screens/widgets/map/hooks/useFloorplan';
 import {
   addDoorLineFromTwoTaps,
@@ -87,6 +91,7 @@ export function useFloorplanWorkspace() {
   const [selectedRoomIndex, setSelectedRoomIndex] = useState<number | null>(null);
   const [savingGeo, setSavingGeo] = useState(false);
   const [publishingRooms, setPublishingRooms] = useState(false);
+  const [savePublishNotice, setSavePublishNotice] = useState<string | null>(null);
   const [placePoiKind, setPlacePoiKind] = useState<FloorplanPoiKind | null>(null);
   const [selectedPoiIndex, setSelectedPoiIndex] = useState<number | null>(null);
   const [savingNewFloor, setSavingNewFloor] = useState(false);
@@ -388,13 +393,13 @@ export function useFloorplanWorkspace() {
       await queryClient.invalidateQueries({ queryKey: ['admin-map-floors', selectedBuildingId] });
       await queryClient.invalidateQueries({ queryKey: ['map', 'floorplan', dto.id] });
       await queryClient.invalidateQueries({ queryKey: ['map-floors'] });
-      Alert.alert(
-        'Extraction complete',
-        `${parsed.length} room region${parsed.length === 1 ? '' : 's'} parsed from ${fc} GeoJSON feature${fc === 1 ? '' : 's'}. Use “Refine rooms” to adjust polygons.`,
-      );
+      alertAction({
+        title: 'Extraction complete',
+        message: `${parsed.length} room region${parsed.length === 1 ? '' : 's'} parsed from ${fc} GeoJSON feature${fc === 1 ? '' : 's'}. Use “Refine rooms” to adjust polygons, then Save & publish.`,
+      });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Upload failed.';
-      Alert.alert('Processing failed', msg);
+      alertAction({ title: 'Processing failed', message: msg });
     } finally {
       setUploading(false);
     }
@@ -402,49 +407,63 @@ export function useFloorplanWorkspace() {
 
   const handleSaveGeoJson = async () => {
     if (!activeFloor?.floorplanId || !geoDoc) return;
+    setSavePublishNotice(null);
     try {
       setSavingGeo(true);
       const body = buildFloorplanFeatureCollectionString(geoDoc);
-      await unwrap(
+      const saved = await unwrap(
         floorplansApi.updateGeoJson(
           activeFloor.floorplanId,
           UpdateFloorplanGeoJsonRequest.fromJS({ geoJsonData: body }),
         ),
       );
-      await queryClient.invalidateQueries({ queryKey: ['map', 'floorplan', activeFloor.floorplanId] });
+      queryClient.setQueryData(['map', 'floorplan', activeFloor.floorplanId], saved);
       await queryClient.invalidateQueries({ queryKey: ['admin-map-floors', selectedBuildingId] });
-      Alert.alert('Saved', 'Floorplan GeoJSON (rooms and map pins) was updated for this floor.');
+      const message = 'Floorplan GeoJSON (rooms and map pins) was saved successfully.';
+      setSavePublishNotice(message);
+      alertAction({ title: 'Saved', message });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Save failed.';
-      Alert.alert('Could not save', msg);
+      alertAction({ title: 'Could not save', message: msg });
     } finally {
       setSavingGeo(false);
     }
   };
 
+  const invalidatePublishedRoomQueries = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['map-floors'] });
+    await queryClient.invalidateQueries({ queryKey: ['admin-map-floors', selectedBuildingId] });
+    await queryClient.invalidateQueries({ queryKey: ['admin-floorplan-linked-room'] });
+    await queryClient.invalidateQueries({ queryKey: ['map-rooms-floor'] });
+    await queryClient.invalidateQueries({ queryKey: ['rooms-search'] });
+    await queryClient.invalidateQueries({ queryKey: ['rooms-widget-available'] });
+  }, [queryClient, selectedBuildingId]);
+
   const handlePublishRoomsToDb = async () => {
     if (!activeFloor?.floorplanId) return;
     if (hasUnsavedChanges) {
-      Alert.alert(
-        'Save first',
-        'Save the floorplan so the server has the latest room polygons, then publish rooms for booking.',
-      );
+      alertAction({
+        title: 'Save first',
+        message: 'Save the floorplan so the server has the latest room polygons, then publish rooms for booking.',
+      });
       return;
     }
     setSelectedRoomIndex(null);
     setEditMode(false);
+    setSavePublishNotice(null);
     try {
       setPublishingRooms(true);
       const res = await unwrap(floorplansApi.publishRooms(activeFloor.floorplanId));
-      await queryClient.invalidateQueries({ queryKey: ['map-floors'] });
-      await queryClient.invalidateQueries({ queryKey: ['admin-map-floors', selectedBuildingId] });
-      Alert.alert(
-        'Rooms published',
-        `Created ${res.createdCount} room(s), updated ${res.updatedCount}. Non-bookable types (e.g. kitchens, restrooms) stay off the booking list unless you mark them bookable in GeoJSON.`,
-      );
+      await invalidatePublishedRoomQueries();
+      const message = formatPublishRoomsSummary(res);
+      setSavePublishNotice(message);
+      alertAction({
+        title: 'Rooms published',
+        message: `${message} Non-bookable types (e.g. kitchens, restrooms) stay off the booking list unless you mark them bookable in GeoJSON.`,
+      });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Publish failed.';
-      Alert.alert('Could not publish rooms', msg);
+      alertAction({ title: 'Could not publish rooms', message: msg });
     } finally {
       setPublishingRooms(false);
     }
@@ -456,34 +475,33 @@ export function useFloorplanWorkspace() {
     const hadUnsaved = hasUnsavedChanges;
     setSelectedRoomIndex(null);
     setEditMode(false);
+    setSavePublishNotice(null);
     try {
       if (hadUnsaved) {
         setSavingGeo(true);
         const body = buildFloorplanFeatureCollectionString(geoDoc);
-        await unwrap(
-        floorplansApi.updateGeoJson(
-          activeFloor.floorplanId,
-          UpdateFloorplanGeoJsonRequest.fromJS({ geoJsonData: body }),
-        ),
-      );
-        await queryClient.invalidateQueries({ queryKey: ['map', 'floorplan', activeFloor.floorplanId] });
+        const saved = await unwrap(
+          floorplansApi.updateGeoJson(
+            activeFloor.floorplanId,
+            UpdateFloorplanGeoJsonRequest.fromJS({ geoJsonData: body }),
+          ),
+        );
+        queryClient.setQueryData(['map', 'floorplan', activeFloor.floorplanId], saved);
         await queryClient.invalidateQueries({ queryKey: ['admin-map-floors', selectedBuildingId] });
         setSavingGeo(false);
       }
       setPublishingRooms(true);
       const res = await unwrap(floorplansApi.publishRooms(activeFloor.floorplanId));
-      await queryClient.invalidateQueries({ queryKey: ['map-floors'] });
-      await queryClient.invalidateQueries({ queryKey: ['admin-map-floors', selectedBuildingId] });
-      await queryClient.invalidateQueries({ queryKey: ['admin-floorplan-linked-room'] });
-      Alert.alert(
-        'Saved & published',
-        hadUnsaved
-          ? `Floorplan saved. Booking list: created ${res.createdCount} room(s), updated ${res.updatedCount}.`
-          : `Booking list synced from the saved floorplan: created ${res.createdCount} room(s), updated ${res.updatedCount}.`,
-      );
+      await invalidatePublishedRoomQueries();
+      const message = formatSaveAndPublishMessage(hadUnsaved, res);
+      setSavePublishNotice(message);
+      alertAction({
+        title: hadUnsaved ? 'Saved & published' : 'Published',
+        message,
+      });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Save or publish failed.';
-      Alert.alert('Could not save / publish', msg);
+      alertAction({ title: 'Could not save / publish', message: msg });
     } finally {
       setSavingGeo(false);
       setPublishingRooms(false);
@@ -1002,6 +1020,7 @@ export function useFloorplanWorkspace() {
     setSelectedRoomIndex,
     savingGeo,
     publishingRooms,
+    savePublishNotice,
     handlePublishRoomsToDb,
     placePoiKind,
     setPlacePoiKind,

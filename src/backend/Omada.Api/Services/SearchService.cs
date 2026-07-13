@@ -20,6 +20,7 @@ public class SearchService : ISearchService
         [SearchTypes.Schedule] = "Schedule",
         [SearchTypes.Groups] = "Groups",
         [SearchTypes.Grades] = "Grades",
+        [SearchTypes.Documents] = "Documents",
     };
 
     private static readonly Dictionary<string, string> TypeWidgetKeys = new(StringComparer.OrdinalIgnoreCase)
@@ -29,8 +30,9 @@ public class SearchService : ISearchService
         [SearchTypes.News] = WidgetKeys.News,
         [SearchTypes.Tasks] = WidgetKeys.Tasks,
         [SearchTypes.Schedule] = WidgetKeys.Schedule,
-        [SearchTypes.Groups] = WidgetKeys.Groups,
+        [SearchTypes.Groups] = WidgetKeys.Admin,
         [SearchTypes.Grades] = WidgetKeys.Grades,
+        [SearchTypes.Documents] = WidgetKeys.Documents,
     };
 
     private readonly IServiceScopeFactory _scopeFactory;
@@ -110,6 +112,7 @@ public class SearchService : ISearchService
             SearchTypes.Schedule => await SearchScheduleAsync(context, orgId, userId, lowered, limit),
             SearchTypes.Groups => await SearchGroupsAsync(context, orgId, lowered, limit),
             SearchTypes.Grades => await SearchGradesAsync(context, orgId, userId, lowered, limit),
+            SearchTypes.Documents => await SearchDocumentsAsync(context, orgId, lowered, limit),
             _ => null
         };
     }
@@ -427,6 +430,45 @@ public class SearchService : ISearchService
                 ? $"{g.Semester} · {g.Score:g}%"
                 : $"{g.Semester} · {g.LetterGrade} ({g.Score:g}%)",
             Route = "/grades"
+        }).ToList());
+    }
+
+    private async Task<SearchResultGroupDto?> SearchDocumentsAsync(
+        ApplicationDbContext context,
+        Guid orgId,
+        string lowered,
+        int limit)
+    {
+        var isCorporate = await context.Organizations
+            .AsNoTracking()
+            .AnyAsync(o => o.Id == orgId && !o.IsDeleted && o.OrganizationType == OrganizationType.Corporate);
+        if (!isCorporate)
+            return null;
+
+        var baseQuery = context.OrganizationDocuments
+            .AsNoTracking()
+            .Where(d => d.OrganizationId == orgId && !d.IsDeleted)
+            .Where(d =>
+                d.Title.ToLower().Contains(lowered) ||
+                d.OriginalFileName.ToLower().Contains(lowered) ||
+                (d.Description != null && d.Description.ToLower().Contains(lowered)));
+
+        var total = await baseQuery.CountAsync();
+        if (total == 0) return null;
+
+        var rows = await baseQuery
+            .OrderByDescending(d => d.CreatedAt)
+            .Take(limit)
+            .Select(d => new { d.Id, d.Title, d.OriginalFileName, d.Category })
+            .ToListAsync();
+
+        return BuildGroup(SearchTypes.Documents, total, rows.Select(d => new SearchHitDto
+        {
+            Id = d.Id.ToString(),
+            Type = SearchTypes.Documents,
+            Title = d.Title,
+            Subtitle = d.OriginalFileName,
+            Route = "/documents"
         }).ToList());
     }
 

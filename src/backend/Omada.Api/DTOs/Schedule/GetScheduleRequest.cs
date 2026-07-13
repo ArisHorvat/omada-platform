@@ -15,4 +15,13 @@ public class GetScheduleRequest
 
     /// <summary>Only events with <see cref="Entities.Event.IsPublic"/> (corporate feed).</summary>
     public bool PublicOnly { get; set; }
+
+    /// <summary>Filter offering-linked events for a reporting period.</summary>
+    public Guid? PeriodId { get; set; }
+
+    /// <summary>Filter events published from one course offering.</summary>
+    public Guid? OfferingId { get; set; }
+
+    /// <summary>Filter events whose offering is linked to this program group.</summary>
+    public Guid? ProgramGroupId { get; set; }
 }

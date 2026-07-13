@@ -23,6 +23,9 @@ public class CourseOfferingPackageItem : BaseEntity, IOrganizationScoped
     /// <summary>JSON array of <see cref="DTOs.Offerings.OfferingWeeklySessionDto"/> — copied to term offerings on apply.</summary>
     public string? WeeklySessionPlanJson { get; set; }
 
+    /// <summary>Transcript credits applied when the package is applied to a term.</summary>
+    public decimal Credits { get; set; }
+
     public virtual Organization Organization { get; set; } = null!;
 
     public virtual CourseOfferingPackage Package { get; set; } = null!;

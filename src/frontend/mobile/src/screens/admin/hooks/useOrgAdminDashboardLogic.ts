@@ -23,7 +23,7 @@ export const useOrgAdminDashboardLogic = () => {
   });
 
   const userQuery = useQuery({
-    queryKey: QUERY_KEYS.userProfile,
+    queryKey: QUERY_KEYS.userProfile(orgId),
     queryFn: () => unwrap(usersApi.getMe()),
     enabled: !!orgId,
   });

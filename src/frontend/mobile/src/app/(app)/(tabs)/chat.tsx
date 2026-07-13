@@ -1,5 +1,6 @@
-import ChatScreen from '@/src/screens/widgets/chat/components/ChatScreen'; 
+import { Redirect } from 'expo-router';
 
-export default function ChatRoute() {
-  return <ChatScreen />;
+/** Legacy tab route — announcements replaced org chat. */
+export default function ChatRedirect() {
+  return <Redirect href="/announcements" />;
 }

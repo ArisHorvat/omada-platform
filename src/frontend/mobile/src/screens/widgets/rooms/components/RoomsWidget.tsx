@@ -22,13 +22,13 @@ export const RoomsWidget: React.FC<BaseWidgetProps> = ({ variant, color }) => {
   const { organization } = useCurrentOrganization();
   const orgId = organization?.id;
   const { location } = useLocation();
-  const { token } = useAuth();
+  const { token, activeSession } = useAuth();
   const [quickBooking, setQuickBooking] = useState(false);
   const now = useMemo(() => new Date(), []);
   const windowEnd = new Date(now.getTime() + 30 * 60 * 1000);
 
   const { data: profile } = useQuery({
-    queryKey: QUERY_KEYS.userProfile,
+    queryKey: QUERY_KEYS.userProfile(activeSession?.orgId ?? ''),
     queryFn: () => unwrap(usersApi.getMe()),
     enabled: !!token && !!orgId,
     staleTime: 1000 * 60 * 5,

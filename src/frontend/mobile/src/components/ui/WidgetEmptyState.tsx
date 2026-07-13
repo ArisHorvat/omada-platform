@@ -38,8 +38,8 @@ export const WidgetEmptyState = ({
 
 const styles = StyleSheet.create({
   container: {
-    minHeight: 96,
-    borderRadius: 20,
+    minHeight: 72,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 12,

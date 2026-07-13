@@ -16,11 +16,16 @@ public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
     private readonly IDigitalIdService _digitalIdService;
+    private readonly IGroupService _groupService;
 
-    public UsersController(IUserService userService, IDigitalIdService digitalIdService)
+    public UsersController(
+        IUserService userService,
+        IDigitalIdService digitalIdService,
+        IGroupService groupService)
     {
         _userService = userService;
         _digitalIdService = digitalIdService;
+        _groupService = groupService;
     }
 
     /// <summary>Digital ID card payload + short-lived signed QR token for the current org.</summary>
@@ -90,6 +95,22 @@ public class UsersController : ControllerBase
         return response.IsSuccess ? Ok(response) : BadRequest(response);
     }
 
+    [HttpGet("directory/groups")]
+    [HasPermission(WidgetKeys.Users, nameof(AccessLevel.View))]
+    public async Task<ActionResult<ServiceResponse<IReadOnlyList<DirectoryGroupOptionDto>>>> GetDirectoryGroups()
+    {
+        var response = await _groupService.GetDirectoryFilterGroupsAsync();
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
+    }
+
+    [HttpGet("directory/roles")]
+    [HasPermission(WidgetKeys.Users, nameof(AccessLevel.View))]
+    public async Task<ActionResult<ServiceResponse<IReadOnlyList<string>>>> GetDirectoryRoles()
+    {
+        var response = await _userService.GetDirectoryRoleNamesAsync();
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
+    }
+
     [HttpGet("directory")]
     [HasPermission(WidgetKeys.Users, nameof(AccessLevel.View))]
     public async Task<ActionResult<ServiceResponse<PagedResponse<UserDirectoryItemDto>>>> GetDirectory(
@@ -97,9 +118,10 @@ public class UsersController : ControllerBase
         [FromQuery] string? q,
         [FromQuery] string? role,
         [FromQuery] Guid? managerId,
-        [FromQuery] Guid? departmentId)
+        [FromQuery] Guid? departmentId,
+        [FromQuery] Guid? groupId)
     {
-        var response = await _userService.GetUserDirectoryAsync(request, q, role, managerId, departmentId);
+        var response = await _userService.GetUserDirectoryAsync(request, q, role, managerId, departmentId, groupId);
         return response.IsSuccess ? Ok(response) : BadRequest(response);
     }
 

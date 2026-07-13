@@ -10,8 +10,8 @@ import type { PackageItemDraft } from '../hooks/useOfferingsWorkspace';
 import { useGroupStaffPicker } from '../hooks/useGroupStaffPicker';
 import { StaffMultiSelectField } from './StaffMultiSelectField';
 import { StaffSelectField } from './StaffSelectField';
-import { summarizeWeeklyPlan, type OfferingWeeklySession } from '../utils/offeringSessionPlan';
-import { WeeklySessionPlanEditor } from './WeeklySessionPlanEditor';
+import { summarizePackageActivityPlan, buildInstructorOptionsFromStaff, pruneActivityInstructorsForTeam, normalizePackageActivitySessions } from '../utils/offeringSessionPlan';
+import { PackageActivityPlanEditor } from './PackageActivityPlanEditor';
 import { createOfferingsWorkspaceStyles } from '../styles/offerings-workspace.styles';
 
 type Props = {
@@ -32,6 +32,14 @@ export function PackageCourseRow({ item, index, programLabel, onUpdate, onRemove
     ? allStaffOptions.find((o) => o.value === item.hostUserId)?.label
     : undefined;
   const displayName = item.name.trim() || `Course ${index + 1}`;
+
+  const planContext = useMemo(
+    () => ({
+      instructorOptions: buildInstructorOptionsFromStaff(allStaffOptions, item.hostUserId, item.teamUserIds),
+      cohortOptions: [],
+    }),
+    [allStaffOptions, item.hostUserId, item.teamUserIds],
+  );
 
   const confirmRemove = () => {
     confirmAction({
@@ -82,7 +90,14 @@ export function PackageCourseRow({ item, index, programLabel, onUpdate, onRemove
                 {item.weeklySessions.length > 0 ? (
                   <View style={[styles.courseMetaPill, { backgroundColor: colors.secondary + '18' }]}>
                     <AppText variant="caption" style={{ color: colors.secondary }} numberOfLines={1}>
-                      {summarizeWeeklyPlan(item.weeklySessions)}
+                      {summarizePackageActivityPlan(item.weeklySessions)}
+                    </AppText>
+                  </View>
+                ) : null}
+                {item.credits > 0 ? (
+                  <View style={[styles.courseMetaPill, { backgroundColor: colors.card }]}>
+                    <AppText variant="caption" style={{ color: colors.text }}>
+                      {item.credits} cr
                     </AppText>
                   </View>
                 ) : null}
@@ -138,6 +153,7 @@ export function PackageCourseRow({ item, index, programLabel, onUpdate, onRemove
                 onUpdate(item.key, {
                   hostUserId: id,
                   teamUserIds: item.teamUserIds.filter((uid) => uid !== id),
+                  weeklySessions: pruneActivityInstructorsForTeam(item.weeklySessions, id, item.teamUserIds.filter((uid) => uid !== id)),
                 })
               }
               pickerTitle="Lead instructor"
@@ -147,14 +163,31 @@ export function PackageCourseRow({ item, index, programLabel, onUpdate, onRemove
               label="Teaching team"
               hint="Co-instructors who share this offering."
               selectedIds={item.teamUserIds}
-              onChange={(ids) => onUpdate(item.key, { teamUserIds: ids })}
+              onChange={(ids) =>
+                onUpdate(item.key, {
+                  teamUserIds: ids,
+                  weeklySessions: pruneActivityInstructorsForTeam(item.weeklySessions, item.hostUserId, ids),
+                })
+              }
               excludeIds={item.hostUserId ? [item.hostUserId] : []}
               pickerTitle="Teaching team"
               placeholder="Add co-instructors"
             />
-            <WeeklySessionPlanEditor
+            <AdminTextInput
+              value={item.credits > 0 ? String(item.credits) : ''}
+              onChangeText={(v) => {
+                const n = Number(v.replace(',', '.'));
+                if (!Number.isNaN(n) && n >= 0) onUpdate(item.key, { credits: n });
+                else if (!v.trim()) onUpdate(item.key, { credits: 0 });
+              }}
+              placeholder="Credits (transcript)"
+              keyboardType="decimal-pad"
+              style={{ marginBottom: 10 }}
+            />
+            <PackageActivityPlanEditor
               sessions={item.weeklySessions}
               onChange={(weeklySessions) => onUpdate(item.key, { weeklySessions })}
+              teamInstructorOptions={planContext.instructorOptions}
             />
             <PressClay
               onPress={() => onUpdate(item.key, { applyToTerm: !item.applyToTerm })}

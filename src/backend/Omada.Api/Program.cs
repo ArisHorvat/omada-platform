@@ -11,6 +11,7 @@ using Omada.Api.Abstractions;
 using Omada.Api.Data;
 using Omada.Api.Hubs;
 using Omada.Api.Infrastructure;
+using Omada.Api.Infrastructure.Storage;
 using Omada.Api.Infrastructure.Configuration;
 using Omada.Api.Infrastructure.Filters;
 using Omada.Api.Infrastructure.Hangfire;
@@ -40,14 +41,8 @@ Log.Logger = new LoggerConfiguration()
 
 builder.Host.UseSerilog();
 
-// 1. CORS Setup
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowAll", policy =>
-    {
-        policy.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin();
-    });
-});
+// 1. CORS Setup (explicit origins — required for SignalR + JWT on web)
+CorsOriginPolicy.Configure(builder);
 
 // 2. Database & Entity Framework Core
 // Replaces the old IDbConnection / Dapper setup
@@ -90,6 +85,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IOrganizationService, OrganizationService>();
 builder.Services.AddScoped<IOrganizationAdminService, OrganizationAdminService>();
+builder.Services.AddScoped<IScrapedHostAliasService, ScrapedHostAliasService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddScoped<IPermissionCacheInvalidator, PermissionCacheInvalidator>();
 builder.Services.AddScoped<IGroupScopeService, GroupScopeService>();
@@ -118,6 +114,9 @@ builder.Services.Configure<DigitalIdOptions>(builder.Configuration.GetSection(Di
 builder.Services.AddScoped<IDigitalIdService, DigitalIdService>();
 builder.Services.AddScoped<INewsService, NewsService>();
 builder.Services.AddScoped<IChatService, ChatService>();
+builder.Services.AddScoped<IAnnouncementService, AnnouncementService>();
+builder.Services.AddScoped<IOrganizationDocumentStorage, OrganizationDocumentFileStorage>();
+builder.Services.AddScoped<IOrganizationDocumentService, OrganizationDocumentService>();
 builder.Services.AddScoped<IRoomService, RoomService>();
 builder.Services.AddScoped<IMapService, MapService>();
 builder.Services.AddOptions<RoboflowFloorplanOptions>()
@@ -144,6 +143,8 @@ builder.Services.AddScoped<INewsSpiderSyncService, NewsSpiderSyncService>();
 builder.Services.AddScoped<ISpiderSyncRunService, SpiderSyncRunService>();
 builder.Services.AddScoped<ISpiderUrlResolver, SpiderUrlResolver>();
 builder.Services.AddScoped<IWebSpiderAdminService, WebSpiderAdminService>();
+builder.Services.AddScoped<IScrapedScheduleApplyService, ScrapedScheduleApplyService>();
+builder.Services.AddScoped<IScrapedScheduleImportResolutionService, ScrapedScheduleImportResolutionService>();
 builder.Services.AddScoped<IScrapedEntityResolutionService, ScrapedEntityResolutionService>();
 builder.Services.AddScoped<ISearchService, SearchService>();
 builder.Services.AddSingleton<ScheduleSyncJobs>();
@@ -168,6 +169,18 @@ builder.Services.AddAuthentication(options =>
         RoleClaimType = ClaimTypes.Role,
         NameClaimType = ClaimTypes.NameIdentifier
     };
+
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/ws/app"))
+                context.Token = accessToken;
+            return Task.CompletedTask;
+        }
+    };
 });
 
 // Register the custom Permission Handler for [HasPermission] attributes
@@ -188,6 +201,8 @@ builder.Services.AddControllers(options =>
     {
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+        options.JsonSerializerOptions.Converters.Add(new UtcDateTimeJsonConverter());
+        options.JsonSerializerOptions.Converters.Add(new NullableUtcDateTimeJsonConverter());
     });
 
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
@@ -223,7 +238,8 @@ using (var scope = app.Services.CreateScope())
         await context.Database.MigrateAsync(); 
         
         // Run the seeder
-        await DbInitializer.SeedAsync(context);
+        var env = services.GetRequiredService<IWebHostEnvironment>();
+        await DbInitializer.SeedAsync(context, env);
     }
     catch (Exception ex)
     {
@@ -241,8 +257,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUi();
 }
 
-app.UseCors("AllowAll");
-
 // Enable static file serving from the wwwroot folder
 app.UseStaticFiles();
 
@@ -252,6 +266,8 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseRouting();
+
+app.UseCors(CorsOriginPolicy.PolicyName);
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -264,7 +280,7 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
 // Enable WebSockets BEFORE mapping controllers
 app.UseWebSockets();
 
-app.MapHub<AppHub>("/ws/app");
+app.MapHub<AppHub>("/ws/app").RequireCors(CorsOriginPolicy.PolicyName);
 
 app.MapControllers();
 

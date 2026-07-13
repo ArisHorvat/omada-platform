@@ -70,6 +70,7 @@ export default function RoomsScreen() {
     eventTypes,
     refreshNow,
     focusedRoomLoading,
+    canBookSchedule,
   } = useRoomsLogic({ focusRoomId: focusRoomFromMap });
 
   const [showFilterModal, setShowFilterModal] = React.useState(false);
@@ -143,7 +144,7 @@ export default function RoomsScreen() {
                 ? `${selectedRoom.isBookable ? 'You can book this space below.' : 'View-only — not bookable.'} Scroll for the day timeline or tap Book.`
                 : 'Could not load this room. It may be on another floor or unpublished.'}
             </AppText>
-            {selectedRoom?.isBookable ? (
+            {selectedRoom?.isBookable && canBookSchedule ? (
               <PressClay onPress={() => startBooking(selectedRoom.id)}>
                 <ClayView depth={5} color="#FFF" style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, alignSelf: 'flex-start' }}>
                   <AppText weight="bold" style={{ color: colors.primary }}>
@@ -253,13 +254,15 @@ export default function RoomsScreen() {
                   </View>
                 </TouchableOpacity>
                 <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10 }}>
-                  <PressClay onPress={() => startBooking(room.id)}>
-                    <ClayView depth={3} color={colors.primary} style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12 }}>
-                      <AppText weight="bold" style={{ color: '#FFF', fontSize: 13 }}>
-                        Book
-                      </AppText>
-                    </ClayView>
-                  </PressClay>
+                  {room.isBookable && canBookSchedule ? (
+                    <PressClay onPress={() => startBooking(room.id)}>
+                      <ClayView depth={3} color={colors.primary} style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12 }}>
+                        <AppText weight="bold" style={{ color: '#FFF', fontSize: 13 }}>
+                          Book
+                        </AppText>
+                      </ClayView>
+                    </PressClay>
+                  ) : null}
                 </View>
               </ClayView>
             </AnimatedItem>
@@ -346,6 +349,7 @@ export default function RoomsScreen() {
               roomTimeline={roomTimeline}
               roomTimelineLoading={roomTimelineLoading}
               onBook={() => selectedRoom && startBooking(selectedRoom.id)}
+              canBookSchedule={canBookSchedule}
             />
           </SplitPane>
         ) : (

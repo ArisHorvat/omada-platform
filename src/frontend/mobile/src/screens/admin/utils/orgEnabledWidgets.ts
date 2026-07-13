@@ -10,8 +10,7 @@ export const ALWAYS_ENABLED_WIDGET_KEYS: readonly WidgetKeyId[] = [
 
 /** Shared configurable widgets (both org types). */
 const SHARED_CATALOG_KEYS: readonly WidgetKeyId[] = [
-  WIDGET_KEYS.chat,
-  WIDGET_KEYS.news,
+  WIDGET_KEYS.announcements,
   WIDGET_KEYS.attendance,
   WIDGET_KEYS.users,
   WIDGET_KEYS.rooms,
@@ -19,10 +18,7 @@ const SHARED_CATALOG_KEYS: readonly WidgetKeyId[] = [
 ];
 
 /** University-only catalog widgets. */
-const UNIVERSITY_CATALOG_KEYS: readonly WidgetKeyId[] = [
-  WIDGET_KEYS.grades,
-  WIDGET_KEYS.assignments,
-];
+const UNIVERSITY_CATALOG_KEYS: readonly WidgetKeyId[] = [WIDGET_KEYS.grades];
 
 /** Corporate-only catalog widgets. */
 const CORPORATE_CATALOG_KEYS: readonly WidgetKeyId[] = [WIDGET_KEYS.documents];
@@ -43,6 +39,25 @@ export function getConfigurableWidgetKeys(orgType?: OrganizationType): readonly 
   return getCatalogWidgetKeysForOrgType(orgType);
 }
 
+function normalizeEnabledWidgetKey(key: string): string {
+  const lower = key.toLowerCase();
+  if (lower === 'chat' || lower === 'news') return WIDGET_KEYS.announcements;
+  return lower;
+}
+
+export function normalizeDashboardWidgets(widgets: string[]): string[] {
+  const out = new Set<string>();
+  for (const w of widgets) {
+    const key = normalizeEnabledWidgetKey(w);
+    if (key === WIDGET_KEYS.chat || key === WIDGET_KEYS.news) {
+      out.add(WIDGET_KEYS.announcements);
+    } else {
+      out.add(key);
+    }
+  }
+  return [...out];
+}
+
 export function buildEnabledWidgetSet(
   enabledWidgets: string[] | undefined | null,
   orgType?: OrganizationType,
@@ -54,7 +69,9 @@ export function buildEnabledWidgetSet(
     return new Set([...catalogKeys, ...always]);
   }
 
-  const configured = enabledWidgets.map((k) => k.trim().toLowerCase()).filter(Boolean);
+  const configured = enabledWidgets
+    .map((k) => normalizeEnabledWidgetKey(k.trim()))
+    .filter(Boolean);
   const optional = configured.filter((k) => catalogKeys.includes(k));
   if (optional.length === 0 && configured.every((k) => always.includes(k))) {
     return new Set([...always]);

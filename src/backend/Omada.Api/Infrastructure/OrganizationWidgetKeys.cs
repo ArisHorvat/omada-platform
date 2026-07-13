@@ -11,6 +11,18 @@ public static class OrganizationWidgetKeys
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
+    /// <summary>Legacy catalog keys merged into <see cref="WidgetKeys.Announcements"/>.</summary>
+    private static readonly HashSet<string> LegacyAnnouncementKeys = new(StringComparer.OrdinalIgnoreCase)
+    {
+        WidgetKeys.Chat,
+        WidgetKeys.News,
+    };
+
+    private static string NormalizeCatalogKey(string key)
+    {
+        return LegacyAnnouncementKeys.Contains(key) ? WidgetKeys.Announcements : key;
+    }
+
     public static bool MatchesAudience(WidgetInfo widget, OrganizationType orgType)
     {
         return widget.Audience switch
@@ -47,7 +59,7 @@ public static class OrganizationWidgetKeys
 
     public static bool IsRoleAssignable(WidgetInfo widget) =>
         !widget.IsCoreFeature
-        && (widget.IsInOrgCatalog || widget.IsAlwaysEnabled || widget.Key == WidgetKeys.Groups);
+        && (widget.IsInOrgCatalog || widget.IsAlwaysEnabled);
 
     public static HashSet<string>? ParseStoredKeys(string? json)
     {
@@ -76,7 +88,7 @@ public static class OrganizationWidgetKeys
         var catalogKeys = GetCatalogKeys(org);
         var normalized = keys
             .Where(k => !string.IsNullOrWhiteSpace(k))
-            .Select(k => k.Trim())
+            .Select(k => NormalizeCatalogKey(k.Trim()))
             .Where(catalogKeys.Contains)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(k => k, StringComparer.OrdinalIgnoreCase)
@@ -98,7 +110,11 @@ public static class OrganizationWidgetKeys
 
         var enabled = stored == null
             ? new HashSet<string>(catalogKeys, StringComparer.OrdinalIgnoreCase)
-            : stored.Where(catalogKeys.Contains).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            : stored.Select(NormalizeCatalogKey).Where(catalogKeys.Contains).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // Legacy orgs may still store chat/news — treat as announcements enabled.
+        if (stored != null && stored.Any(k => LegacyAnnouncementKeys.Contains(k)))
+            enabled.Add(WidgetKeys.Announcements);
 
         foreach (var widget in WidgetRegistry.AvailableWidgets.Where(w => w.IsAlwaysEnabled))
             enabled.Add(widget.Key);
@@ -111,17 +127,17 @@ public static class OrganizationWidgetKeys
         if (IsCoreWidget(widgetKey) || IsAlwaysEnabledWidget(widgetKey))
             return true;
 
-        if (widgetKey.Equals(WidgetKeys.Groups, StringComparison.OrdinalIgnoreCase))
-            return true;
-
         return GetEffectiveEnabledKeys(org).Contains(widgetKey);
     }
 
     public static IEnumerable<string> FilterWidgetKeys(Organization org, IEnumerable<string> widgetKeys)
     {
         var enabled = GetEffectiveEnabledKeys(org);
-        return widgetKeys.Where(k =>
-            IsCoreWidget(k) || IsAlwaysEnabledWidget(k) || enabled.Contains(k));
+        return widgetKeys
+            .Select(NormalizeCatalogKey)
+            .Where(k =>
+                IsCoreWidget(k) || IsAlwaysEnabledWidget(k) || enabled.Contains(k))
+            .Distinct(StringComparer.OrdinalIgnoreCase);
     }
 
     public static Dictionary<string, List<string>> FilterRoleWidgetMappings(

@@ -26,8 +26,14 @@ export const BASE_WIDGETS: Record<string, WidgetDef> = {
   },
 
   // Shared configurable
-  chat: { name: 'Chat', icon: 'chat', category: 'Social', priority: 1, availability: 'all', defaultSize: 'small' },
-  news: { name: 'News', icon: 'campaign', category: 'Social', priority: 3, availability: 'all', defaultSize: 'wide' },
+  announcements: {
+    name: 'Announcements',
+    icon: 'campaign',
+    category: 'Social',
+    priority: 1,
+    availability: 'all',
+    defaultSize: 'wide',
+  },
   attendance: { name: 'Attendance', icon: 'how-to-reg', category: 'Academics', priority: 2, availability: 'all', defaultSize: 'small' },
   users: { name: 'Directory', icon: 'group', category: 'Social', priority: 4, availability: 'all', defaultSize: 'wide' },
   map: { name: 'Map', icon: 'map', category: 'Facilities', priority: 3, availability: 'all', defaultSize: 'large' },
@@ -57,25 +63,25 @@ export const ORG_PRESETS: Record<string, OrgPreset> = {
     roles: [
       {
         name: 'Student',
-        widgets: { tasks: 'view', grades: 'view', attendance: 'view', map: 'view', rooms: 'view', chat: 'view', news: 'view' },
+        widgets: { tasks: 'view', grades: 'view', attendance: 'view', map: 'view', rooms: 'view', announcements: 'view' },
       },
       {
         name: 'Professor',
-        widgets: { tasks: 'edit', grades: 'edit', attendance: 'edit', users: 'view', chat: 'edit' },
+        widgets: { tasks: 'edit', grades: 'edit', attendance: 'edit', users: 'view', announcements: 'edit' },
       },
       { name: 'Teaching Assistant', widgets: { tasks: 'edit', grades: 'edit', attendance: 'edit' } },
-      { name: 'Dean', widgets: { news: 'edit', users: 'edit', map: 'view', rooms: 'edit' } },
+      { name: 'Dean', widgets: { announcements: 'edit', users: 'edit', map: 'view', rooms: 'edit' } },
       { name: 'Registrar', widgets: { grades: 'admin', attendance: 'admin', users: 'edit' } },
-      { name: 'Operations', widgets: { map: 'edit', rooms: 'edit', news: 'edit' } },
+      { name: 'Operations', widgets: { map: 'edit', rooms: 'edit', announcements: 'edit' } },
     ],
   },
   corporate: {
     roles: [
-      { name: 'Employee', widgets: { tasks: 'view', documents: 'view', map: 'view', rooms: 'view', attendance: 'view', chat: 'view', news: 'view' } },
-      { name: 'Team Lead', widgets: { tasks: 'edit', users: 'view', rooms: 'view', chat: 'edit', attendance: 'edit' } },
+      { name: 'Employee', widgets: { tasks: 'view', documents: 'view', map: 'view', rooms: 'view', attendance: 'view', announcements: 'view' } },
+      { name: 'Team Lead', widgets: { tasks: 'edit', users: 'view', rooms: 'view', announcements: 'edit', attendance: 'edit' } },
       { name: 'Project Manager', widgets: { tasks: 'admin', documents: 'edit', users: 'view' } },
-      { name: 'Director', widgets: { news: 'edit', users: 'view', documents: 'view' } },
-      { name: 'HR Manager', widgets: { documents: 'admin', users: 'admin', news: 'edit' } },
+      { name: 'Director', widgets: { announcements: 'edit', users: 'view', documents: 'view' } },
+      { name: 'HR Manager', widgets: { documents: 'admin', users: 'admin', announcements: 'edit' } },
       { name: 'Operations', widgets: { map: 'edit', rooms: 'edit' } },
     ],
   },

@@ -24,6 +24,9 @@ export default function UserProfileScreen() {
             onOpenUser={(managerId) =>
               router.push({ pathname: '/user-profile', params: { id: managerId } } as never)
             }
+            onFilterByGroup={(groupId) =>
+              router.replace({ pathname: '/users', params: { groupId } } as never)
+            }
           />
         </PageContainer>
       </ScreenTransition>

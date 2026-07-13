@@ -16,7 +16,6 @@ import { orgApi, unwrap } from '@/src/api';
 import { QUERY_KEYS } from '@/src/api/queryKeys';
 import { useCurrentOrganization } from '@/src/context/CurrentOrganizationContext';
 import { useSettingsPreferencesLogic } from '@/src/screens/widgets/settings/hooks/useSettingsPreferencesLogic';
-import type { LanguagePreferenceCode } from '@/src/stores/usePreferencesStore';
 import { ADMIN_ACCOUNT_HOME, adminAccountRoute } from '@/src/screens/admin/utils/adminAccountRoutes';
 
 export default function SettingsScreen({ adminConsole = false }: { adminConsole?: boolean }) {
@@ -28,12 +27,6 @@ export default function SettingsScreen({ adminConsole = false }: { adminConsole?
   const {
     darkModeEnabled,
     setDarkModeEnabled,
-    languagePreference,
-    setLanguage,
-    newsAlerts,
-    chatMessages,
-    setNewsAlerts,
-    setChatMessages,
     hideContactInDirectory,
     setHideContactInDirectory,
     isSaving,
@@ -70,34 +63,6 @@ export default function SettingsScreen({ adminConsole = false }: { adminConsole?
       </View>
     </View>
   );
-
-  const langChip = (code: LanguagePreferenceCode, label: string) => {
-    const active = languagePreference === code;
-    return (
-      <View style={{ flex: 1 }}>
-        <PressClay
-          onPress={() => {
-            void setLanguage(code);
-          }}
-        >
-          <View
-            style={{
-              paddingVertical: 14,
-              borderRadius: 16,
-              alignItems: 'center',
-              backgroundColor: active ? colors.primaryContainer : colors.card,
-              borderWidth: active ? 2 : 1,
-              borderColor: active ? colors.primary : colors.border,
-            }}
-          >
-            <AppText variant="body" weight={active ? 'bold' : 'regular'}>
-              {label}
-            </AppText>
-          </View>
-        </PressClay>
-      </View>
-    );
-  };
 
   const goBack = () => {
     if (adminConsole) {
@@ -140,26 +105,7 @@ export default function SettingsScreen({ adminConsole = false }: { adminConsole?
             darkModeEnabled,
             (v) => {
               void setDarkModeEnabled(v);
-            }
-          )}
-          <View style={[rowDivider, { borderBottomWidth: 0, paddingHorizontal: 16, paddingVertical: 12 }]}>
-            <AppText variant="body" weight="medium" style={{ marginBottom: 10 }}>
-              Language
-            </AppText>
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              {langChip('en', 'English')}
-              {langChip('ro', 'Română')}
-            </View>
-          </View>
-        </ClayGroupedSection>
-
-        <ClayGroupedSection title="Notifications">
-          {toggleRow('News alerts', 'Highlights and announcements.', newsAlerts, (v) => void setNewsAlerts(v))}
-          {toggleRow(
-            'Chat messages',
-            'Alerts for new chat activity.',
-            chatMessages,
-            (v) => void setChatMessages(v),
+            },
             true
           )}
         </ClayGroupedSection>

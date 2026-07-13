@@ -18,6 +18,7 @@ public class UserDeepProfileDto
 
     public string? Title { get; set; }
     public Guid? DepartmentId { get; set; }
+    public string? DepartmentName { get; set; }
     public Guid? ManagerId { get; set; }
 
     public string? Email { get; set; }
@@ -29,5 +30,7 @@ public class UserDeepProfileDto
     public string? Bio { get; set; }
 
     public bool IsPublicInDirectory { get; set; }
+
+    public List<UserGroupSummaryDto> Groups { get; set; } = [];
 }
 

@@ -13,7 +13,10 @@ public interface IScheduleRepository : IGenericRepository<Event>
         Guid? roomId = null,
         Guid? userId = null,
         bool myScheduleOnly = false,
-        bool publicOnly = false);
+        bool publicOnly = false,
+        Guid? periodId = null,
+        Guid? offeringId = null,
+        Guid? programGroupId = null);
     Task<Event?> GetConflictAsync(Guid orgId, DateTime startTime, DateTime endTime, Guid? roomId, Guid? hostId);
     Task<IEnumerable<User>> SearchHostsAsync(Guid orgId, string query);
 }

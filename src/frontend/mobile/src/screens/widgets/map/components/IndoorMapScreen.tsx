@@ -48,25 +48,17 @@ import {
 } from '@/src/screens/widgets/map/utils/floorplanMapLegendConstants';
 import { RoomBookingModal } from '@/src/screens/widgets/rooms/components/RoomBookingModal';
 import { useRoomBooking } from '@/src/screens/widgets/rooms/hooks/useRoomBooking';
+import {
+  normalizeFloorplanFeatureKey,
+  normalizeRoomName,
+  resolveRoomFromGeoOverlay,
+} from '@/src/screens/widgets/map/utils/resolveRoomFromGeoOverlay';
 
 function formatEventTime(isoStart: Date, isoEnd: Date): string {
   const o: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit' };
   const a = isoStart.toLocaleTimeString(undefined, o);
   const b = isoEnd.toLocaleTimeString(undefined, o);
   return `${a} – ${b}`;
-}
-
-function resolveRoomFromGeoOverlay(rooms: RoomDto[], geo: { roomName: string; roomId: string }): RoomDto | undefined {
-  const id = geo.roomId?.trim();
-  if (id) {
-    const byId = rooms.find((r) => r.id === id);
-    if (byId) return byId;
-    const byKey = rooms.find((r) => (r.floorplanFeatureKey ?? '').trim() === id);
-    if (byKey) return byKey;
-  }
-  const nm = geo.roomName?.trim().toLowerCase();
-  if (nm) return rooms.find((r) => r.name.trim().toLowerCase() === nm);
-  return undefined;
 }
 
 const IS_WEB = Platform.OS === 'web';
@@ -128,10 +120,6 @@ export default function IndoorMapScreen({ webPaneRect: webPaneRectProp = null }:
     };
   }, []);
 
-  useFocusEffect(
-    useCallback(() => () => setGeoRoomSheet(null), []),
-  );
-
   const floorsQuery = useQuery({
     queryKey: ['map-floors', buildingId],
     queryFn: async () => unwrap(mapsApi.getFloorsForBuilding(buildingId!)),
@@ -139,13 +127,13 @@ export default function IndoorMapScreen({ webPaneRect: webPaneRectProp = null }:
   });
 
   const roomsQuery = useQuery({
-    queryKey: ['map-rooms-floor', orgId, buildingId, activeFloorId],
+    queryKey: ['map-rooms-floor', orgId, activeFloorId],
     queryFn: async () => {
       const page = unwrap(
         await roomsApi.search(
           undefined,
           undefined,
-          buildingId ? [buildingId] : undefined,
+          undefined,
           undefined,
           undefined,
           activeFloorId!,
@@ -158,7 +146,7 @@ export default function IndoorMapScreen({ webPaneRect: webPaneRectProp = null }:
       );
       return page.items ?? [];
     },
-    enabled: !!orgId && !!activeFloorId && !!buildingId,
+    enabled: !!orgId && !!activeFloorId,
   });
 
   const scheduleQuery = useMapScheduleForToday();
@@ -206,6 +194,18 @@ export default function IndoorMapScreen({ webPaneRect: webPaneRectProp = null }:
 
   const floorplanQuery = useFloorplan(activeFloor?.floorplanId);
 
+  useFocusEffect(
+    useCallback(() => {
+      if (orgId && activeFloorId) {
+        void roomsQuery.refetch();
+      }
+      if (activeFloor?.floorplanId) {
+        void floorplanQuery.refetch();
+      }
+      return () => setGeoRoomSheet(null);
+    }, [orgId, activeFloorId, activeFloor?.floorplanId, roomsQuery, floorplanQuery]),
+  );
+
   const displayFloorplanImageUrl = useMemo(() => {
     const fromApi = floorplanQuery.data?.imageUrl;
     if (fromApi) return fromApi;
@@ -229,6 +229,58 @@ export default function IndoorMapScreen({ webPaneRect: webPaneRectProp = null }:
   const poiBg = (kind: FloorplanPoiKind) => DEFAULT_FLOORPLAN_POI_COLORS[kind];
 
   const roomsOnFloor: RoomDto[] = useMemo(() => roomsQuery.data ?? [], [roomsQuery.data]);
+
+  const localSheetRoom = useMemo(
+    () => (geoRoomSheet ? resolveRoomFromGeoOverlay(roomsOnFloor, geoRoomSheet) : undefined),
+    [geoRoomSheet, roomsOnFloor],
+  );
+
+  const geoLinkedRoomQuery = useQuery({
+    queryKey: ['map-geo-linked-room', activeFloorId, geoRoomSheet?.roomId, geoRoomSheet?.roomName],
+    enabled: !!activeFloorId && !!geoRoomSheet && !localSheetRoom,
+    queryFn: async () => {
+      const geo = geoRoomSheet!;
+      const featureKey =
+        normalizeFloorplanFeatureKey(geo.roomId) || geo.roomId.trim();
+      if (featureKey) {
+        const byKey = unwrap(
+          await roomsApi.search(
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            activeFloorId!,
+            featureKey,
+            undefined,
+            undefined,
+            1,
+            5,
+          ),
+        );
+        if (byKey.items?.[0]) return byKey.items[0];
+      }
+      const name = geo.roomName?.trim();
+      if (!name) return null;
+      const byName = unwrap(
+        await roomsApi.search(
+          name,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          activeFloorId!,
+          undefined,
+          undefined,
+          undefined,
+          1,
+          20,
+        ),
+      );
+      const target = normalizeRoomName(name);
+      return (byName.items ?? []).find((r) => normalizeRoomName(r.name) === target) ?? null;
+    },
+  });
 
   const useVectorFloorplan =
     !IS_WEB || indexedFloorplanPolygons.length <= WEB_MAX_VECTOR_POLYGONS;
@@ -277,10 +329,7 @@ export default function IndoorMapScreen({ webPaneRect: webPaneRectProp = null }:
       ? Math.min(mapLayoutHeight, Math.round(mapViewport.h - floorStripReserve))
       : mapLayoutHeight;
 
-  const sheetRoom = useMemo(
-    () => (geoRoomSheet ? resolveRoomFromGeoOverlay(roomsOnFloor, geoRoomSheet) : undefined),
-    [geoRoomSheet, roomsOnFloor],
-  );
+  const sheetRoom = localSheetRoom ?? geoLinkedRoomQuery.data ?? undefined;
 
   const sheetRoomBusy = sheetRoom ? busyRoomIds.has(sheetRoom.id) : false;
 
@@ -580,10 +629,17 @@ export default function IndoorMapScreen({ webPaneRect: webPaneRectProp = null }:
                   })()}
                 </AppText>
               </>
+            ) : geoLinkedRoomQuery.isLoading ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <AppText variant="caption" style={{ color: colors.subtle }}>
+                  Looking up the published room for this area…
+                </AppText>
+              </View>
             ) : (
               <AppText variant="caption" style={{ color: colors.primary, marginBottom: 12 }}>
-                This polygon is not linked to a bookable room yet. Ask an admin to publish rooms from the floorplan
-                editor.
+                This area is not linked to a room record yet. In the floorplan workspace, open this polygon, confirm it
+                is bookable, then use Save & publish so the room syncs to booking and the map.
               </AppText>
             )}
 

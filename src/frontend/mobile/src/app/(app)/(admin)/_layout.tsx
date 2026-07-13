@@ -15,9 +15,9 @@ export default function AdminLayout() {
       <Stack.Screen name="roles-workspace" />
       <Stack.Screen name="event-types-workspace" />
       <Stack.Screen name="periods-workspace" />
+      <Stack.Screen name="timetables-workspace" />
       <Stack.Screen name="offerings-workspace" />
       <Stack.Screen name="floorplan-workspace" />
-      <Stack.Screen name="web-spider-workspace" />
       <Stack.Screen name="groups-workspace" />
       <Stack.Screen name="assignments-workspace" />
       <Stack.Screen name="tasks-workspace" />

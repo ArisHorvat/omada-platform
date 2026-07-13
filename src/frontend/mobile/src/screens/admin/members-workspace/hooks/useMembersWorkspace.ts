@@ -67,6 +67,16 @@ export const useMembersWorkspace = () => {
 
   const members = membersQuery.data?.items ?? [];
   const totalMembers = membersQuery.data?.totalCount ?? 0;
+
+  const pickerMembersQuery = useQuery({
+    queryKey: QUERY_KEYS.orgAdmin.members(orgId, '', null),
+    queryFn: () =>
+      unwrap(orgAdminApi.getMembers(1, 100, null, null, undefined)),
+    enabled: !!orgId,
+    staleTime: 60_000,
+  });
+  const pickerMembers = pickerMembersQuery.data?.items ?? members;
+
   const org = orgQuery.data ?? organization;
 
   const invalidate = useCallback(async () => {
@@ -176,6 +186,7 @@ export const useMembersWorkspace = () => {
     roles,
     inviteableRoles,
     members,
+    pickerMembers,
     totalMembers,
     search,
     setSearch,

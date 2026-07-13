@@ -4,6 +4,7 @@ using Omada.Api.Abstractions;
 using Omada.Api.DTOs.Scraping;
 using Omada.Api.Entities;
 using Omada.Api.Infrastructure;
+using Omada.Api.Infrastructure.Security;
 using Omada.Api.Services.Interfaces;
 
 namespace Omada.Api.Controllers;
@@ -68,36 +69,6 @@ public class WebSpiderController : ControllerBase
         return response.IsSuccess ? Ok(response) : BadRequest(response);
     }
 
-    [HttpPost("news/preview")]
-    [HasPermission(WidgetKeys.Admin, nameof(AccessLevel.Admin))]
-    public async Task<ActionResult<ServiceResponse<SpiderPreviewNewsResultDto>>> PreviewNews(
-        [FromBody] SpiderUrlRequest request,
-        CancellationToken cancellationToken)
-    {
-        var response = await _webSpiderAdminService.PreviewNewsAsync(request, cancellationToken);
-        return response.IsSuccess ? Ok(response) : BadRequest(response);
-    }
-
-    [HttpPost("news/discover")]
-    [HasPermission(WidgetKeys.Admin, nameof(AccessLevel.Admin))]
-    public async Task<ActionResult<ServiceResponse<NewsDiscoveryResult>>> DiscoverNews(
-        [FromBody] SpiderUrlRequest request,
-        CancellationToken cancellationToken)
-    {
-        var response = await _webSpiderAdminService.DiscoverNewsAsync(request, cancellationToken);
-        return response.IsSuccess ? Ok(response) : BadRequest(response);
-    }
-
-    [HttpPost("news/sync")]
-    [HasPermission(WidgetKeys.Admin, nameof(AccessLevel.Admin))]
-    public async Task<ActionResult<ServiceResponse<SpiderSyncEnqueueResultDto>>> EnqueueNewsSync(
-        [FromBody] SpiderUrlRequest? request,
-        CancellationToken cancellationToken)
-    {
-        var response = await _webSpiderAdminService.EnqueueNewsSyncAsync(request, cancellationToken);
-        return response.IsSuccess ? Ok(response) : BadRequest(response);
-    }
-
     [HttpGet("sync/history")]
     [HasPermission(WidgetKeys.Admin, nameof(AccessLevel.Admin))]
     public async Task<ActionResult<ServiceResponse<IReadOnlyList<SpiderSyncRunDto>>>> GetSyncHistory(
@@ -114,6 +85,46 @@ public class WebSpiderController : ControllerBase
         CancellationToken cancellationToken)
     {
         var response = await _webSpiderAdminService.GetUnresolvedScheduleEventsAsync(cancellationToken);
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
+    }
+
+    /// <summary>Preview weekly session pattern from scoped scraped rows for one offering.</summary>
+    [HttpPost("schedule/apply-to-offering/preview")]
+    [RequiresOrgAdmin]
+    public async Task<ActionResult<ServiceResponse<ApplyScrapedSchedulePreviewResultDto>>> PreviewApplyScrapedToOffering(
+        [FromBody] ApplyScrapedScheduleRequest request,
+        [FromServices] IScrapedScheduleApplyService applyService,
+        CancellationToken cancellationToken)
+    {
+        var response = await applyService.PreviewApplyAsync(request, cancellationToken);
+        if (!response.IsSuccess && response.Error?.Code == ErrorCodes.NotFound)
+            return NotFound(response);
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
+    }
+
+    /// <summary>Write proposed weekly sessions onto the offering pattern (Build tab).</summary>
+    [HttpPost("schedule/apply-to-offering")]
+    [RequiresOrgAdmin]
+    public async Task<ActionResult<ServiceResponse<ApplyScrapedScheduleResultDto>>> ApplyScrapedToOffering(
+        [FromBody] ApplyScrapedScheduleRequest request,
+        [FromServices] IScrapedScheduleApplyService applyService,
+        CancellationToken cancellationToken)
+    {
+        var response = await applyService.ApplyAsync(request, cancellationToken);
+        if (!response.IsSuccess && response.Error?.Code == ErrorCodes.NotFound)
+            return NotFound(response);
+        return response.IsSuccess ? Ok(response) : BadRequest(response);
+    }
+
+    /// <summary>Suggest mappings for scraped labels → offerings, event types, hosts, rooms, groups.</summary>
+    [HttpPost("schedule/import-resolution")]
+    [RequiresOrgAdmin]
+    public async Task<ActionResult<ServiceResponse<ScrapedImportResolutionResultDto>>> ResolveImportMappings(
+        [FromBody] ScrapedImportResolutionRequest request,
+        [FromServices] IScrapedScheduleImportResolutionService resolutionService,
+        CancellationToken cancellationToken)
+    {
+        var response = await resolutionService.ResolveAsync(request, cancellationToken);
         return response.IsSuccess ? Ok(response) : BadRequest(response);
     }
 }

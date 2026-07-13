@@ -11,6 +11,13 @@ namespace Omada.Api.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.AddColumn<string>(
+                name: "InstructorsJson",
+                table: "CourseOfferingPackageItems",
+                type: "nvarchar(4000)",
+                maxLength: 4000,
+                nullable: true);
+
             migrationBuilder.DropIndex(
                 name: "IX_TaskItems_OrganizationId",
                 table: "TaskItems");
@@ -38,6 +45,10 @@ namespace Omada.Api.Migrations
             migrationBuilder.DropColumn(
                 name: "AssignmentBatchId",
                 table: "TaskItems");
+
+            migrationBuilder.DropColumn(
+                name: "InstructorsJson",
+                table: "CourseOfferingPackageItems");
 
             migrationBuilder.CreateIndex(
                 name: "IX_TaskItems_OrganizationId",

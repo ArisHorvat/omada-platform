@@ -37,6 +37,7 @@ export const AttendanceHero: React.FC<AttendanceHeroProps> = ({ accentColor }) =
     isTeacherView,
     checkIn,
     decline,
+    rsvpTentative,
     isMutating,
   } = useAttendanceWidgetLogic();
 
@@ -94,31 +95,47 @@ export const AttendanceHero: React.FC<AttendanceHeroProps> = ({ accentColor }) =
             {summary.presentStreakDays > 0 ? ` · ${streakLabel(summary.presentStreakDays, kind)}` : ''}
           </AppText>
           {next ? (
-            <ClayView depth={4} puffy={10} color={`${accentColor}10`} style={styles.nextBox}>
+            <ClayView
+              depth={4}
+              contentOverflow="visible"
+              color={`${accentColor}10`}
+              style={styles.nextBox}
+            >
               <AppText variant="caption" weight="bold" style={{ color: accentColor }}>
                 UP NEXT
               </AppText>
-              <AppText variant="body" weight="bold" numberOfLines={1}>
+              <AppText variant="body" weight="bold" numberOfLines={2}>
                 {next.title}
               </AppText>
-              <AppText variant="caption" style={{ color: colors.subtle }}>
+              <AppText variant="caption" style={{ color: colors.subtle, marginTop: 2 }}>
                 {formatSessionTime(next)}
               </AppText>
-              <View style={styles.actions}>
+              <View
+                style={isCorporateKind(kind) ? styles.actionsStack : styles.actions}
+              >
                 <AppButton
                   title={isCorporateKind(kind) ? 'Accept' : 'Check in'}
                   size="sm"
                   icon="check"
                   loading={isMutating}
                   onPress={() => void checkIn(next, kind ?? 'University')}
-                  style={{ flex: 1, marginRight: 8 }}
+                  style={isCorporateKind(kind) ? styles.actionBtnFull : styles.actionBtnHalf}
                 />
+                {isCorporateKind(kind) ? (
+                  <AppButton
+                    title="Maybe"
+                    size="sm"
+                    variant="secondary"
+                    onPress={() => void rsvpTentative(next, kind ?? 'Corporate')}
+                    style={styles.actionBtnFull}
+                  />
+                ) : null}
                 <AppButton
                   title={isCorporateKind(kind) ? 'Decline' : 'Mark absent'}
                   size="sm"
                   variant="secondary"
                   onPress={() => void decline(next, kind ?? 'University')}
-                  style={{ flex: 1 }}
+                  style={isCorporateKind(kind) ? styles.actionBtnFull : styles.actionBtnHalf}
                 />
               </View>
             </ClayView>
@@ -131,8 +148,11 @@ export const AttendanceHero: React.FC<AttendanceHeroProps> = ({ accentColor }) =
 
 const styles = StyleSheet.create({
   box: { minHeight: 160 },
-  clay: { borderRadius: 20, minHeight: 160 },
+  clay: { borderRadius: 20, minHeight: 160, padding: 14 },
   kicker: { marginBottom: 6, letterSpacing: 0.5 },
-  nextBox: { marginTop: 12, borderRadius: 14 },
-  actions: { flexDirection: 'row', marginTop: 10 },
+  nextBox: { marginTop: 12, borderRadius: 14, padding: 12 },
+  actions: { flexDirection: 'row', marginTop: 10, gap: 8 },
+  actionsStack: { marginTop: 10, gap: 8 },
+  actionBtnFull: { alignSelf: 'stretch' },
+  actionBtnHalf: { flex: 1, minWidth: 0 },
 });

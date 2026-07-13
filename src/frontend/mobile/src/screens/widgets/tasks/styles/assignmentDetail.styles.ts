@@ -33,12 +33,22 @@ export const createAssignmentDetailStyles = (
       flexWrap: 'wrap',
       gap: 10,
       marginTop: 12,
+      alignItems: 'stretch',
+    },
+    stackedActions: {
+      gap: 10,
+      marginTop: 12,
+    },
+    actionFull: {
+      alignSelf: 'stretch',
     },
     gradeDisplay: {
       flexDirection: 'row',
-      alignItems: 'baseline',
-      gap: 8,
+      alignItems: 'flex-end',
+      flexWrap: 'wrap',
+      gap: 6,
       marginBottom: 8,
+      minHeight: 52,
     },
     notice: {
       borderRadius: 16,

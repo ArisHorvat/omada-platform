@@ -121,7 +121,9 @@ app/
 
 **Admin ↔ member app:** Users who can access the org admin console (**Admin** / **SuperAdmin** role, or **admin** widget **Admin** on profile) see toggle buttons on profile screens — **Admin console** on member **`/profile`**, **Member app** on admin **`/admin-profile`**. **`OrgAdminExperienceContext`** tracks `console` vs `member` mode; **`useOrgAdminNavigationGuard`** only locks admins to the console in `console` mode. Resets to console on org switch. Helpers: **`utils/orgAdminAccess.ts`**, **`utils/orgAdminRoutes.ts`**.
 
-**Tab bar (5 tabs):** dashboard · tasks · chat · schedule · profile
+**Tab bar (5 tabs):** dashboard · tasks · **announcements** · schedule · profile
+
+Legacy routes **`/(tabs)/chat`** and **`/(widgets)/news`** redirect to **`/announcements`**. Tab visible when org catalog + role allow **`announcements`** (legacy **`chat`** / **`news`** keys count).
 
 On wide web shell (≥768px): bottom tab bar hidden → `SidebarNav` + `TabShell` instead.
 
@@ -136,7 +138,7 @@ On wide web shell (≥768px): bottom tab bar hidden → `SidebarNav` + `TabShell
 | `index.ts` | Singleton clients + `unwrap(ServiceResponse)` |
 | `queryKeys.ts` | React Query keys — include **org id** for tenant data |
 
-**Exported clients:** `authApi`, `orgApi`, `orgAdminApi`, `superAdminApi`, `adminApi`, `usersApi`, `scheduleApi`, `newsApi`, `tasksApi`, `gradesApi`, `attendanceApi`, `searchApi`, `chatApi`, `roomsApi`, `buildingsApi`, `mapsApi`, `floorplansApi`, `groupsApi`, `filesApi`, `toolsApi`, `webSpiderApi`
+**Exported clients:** `authApi`, `orgApi`, `orgAdminApi`, `superAdminApi`, `adminApi`, `usersApi`, `scheduleApi`, `newsApi`, `tasksApi`, `gradesApi`, `attendanceApi`, `searchApi`, `chatApi`, `announcementsApi`, `roomsApi`, `buildingsApi`, `mapsApi`, `floorplansApi`, `groupsApi`, `filesApi`, **`documentsApi`**, `toolsApi`, `webSpiderApi`
 
 **Supplement files** (RN/multipart or non-JSON responses — not duplicate NSwag endpoints):
 
@@ -145,6 +147,8 @@ On wide web shell (≥768px): bottom tab bar hidden → `SidebarNav` + `TabShell
 | `multipartMapEndpoints.ts`, `rnMultipart.ts` | Floorplan multipart uploads (RN-safe `FormData`) |
 | `uploadFile.ts`, `exportUserData.ts` | Public file upload + GDPR export (text/multipart) |
 | `offeringPackagesApi.ts`, `offeringsApi.ts`, `gradebookApi.ts` | Curriculum packages, term offerings, teacher gradebook (temporary until NSwag regen includes Swagger routes) |
+| `announcementsApi.ts` | Announcements client + temporary `apiClient` routes for comments/read until NSwag regen |
+| `documentsApi.ts` | `DocumentsClient` + manual multipart upload and blob download (RN/web safe) |
 
 ```bash
 cd src/frontend/mobile
@@ -202,14 +206,16 @@ screens/<feature>/
 |--------|----------|
 | `dashboard/` | 🏠 Bento grid, favorites, highlights, search bar |
 | `schedule/` | 📅 University vs corporate layouts (`.web.tsx` splits) |
-| `news/` | 📰 Feed, articles, create/edit |
+| `news/` | 📰 Legacy feed (routes redirect to announcements) |
+| `announcements/` | 📣 Channels, posts, comments, unread, SignalR — see [`Announcements.md`](Announcements.md) |
 | `tasks/` | ✅ Task list + widget |
-| `chat/` | 💬 Channels + widget |
+| `chat/` | 💬 Legacy (redirects to announcements) |
 | `grades/` | 📊 Grades widget — **My grades** (coursework 1–10, transcript, credits) + **Teaching** gradebook; dashboard heroes may use formal GPA |
 | `map/` | 🗺️ Campus + indoor floorplan viewer |
 | `rooms/` | 🚪 Search and booking |
 | `users/` | 👥 Directory + profiles |
 | `attendance/` | 📋 Records + widget |
+| `documents/` | 📁 Corporate file library — upload sheet, detail sheet — see [`Documents.md`](Documents.md) |
 | `assignments/` | 📝 Legacy assignments widget folder (university coursework lives under **`tasks/`** + admin **`assignments-workspace/`**) |
 | `digital-id/` | 🪪 Wallet pass (QR primary, barcode sheet), staff scanner, manual roll — see [`DigitalId.md`](DigitalId.md) |
 | `profile/`, `settings/`, `security/` | 👤 Account — **Security:** change password (`usersApi.changePassword`), 2FA toggle, export, delete; member profile includes **Admin console** when org admin |
@@ -272,7 +278,7 @@ On tablet landscape / desktop web, **`AppShell`** shows **`AdminSidebarNav`** (2
 | Wrapper | When |
 |---------|------|
 | `PageContainer fullBleed` | Most workspaces (`MembersWorkspaceScreen`, `RolesWorkspaceScreen`, …) |
-| `WidgetPageShell fullBleed` | Hub, profile, groups, web spider, locations & maps (`floorplan-workspace`) |
+| `WidgetPageShell fullBleed` | Hub, profile, groups, locations & maps (`floorplan-workspace`) |
 
 Shared scroll padding (optional): **`screens/admin/styles/adminWorkspaceLayout.ts`** → **`adminWorkspaceScrollContent`** (`paddingHorizontal: 16`, `paddingBottom: 120`).
 
@@ -284,10 +290,10 @@ Shared scroll padding (optional): **`screens/admin/styles/adminWorkspaceLayout.t
 | 🧩 Widgets | `/widgets-workspace` | Toggle optional org features (starts **empty** on new orgs); schedule/tasks/digital ID always on |
 | 📅 Periods | `/periods-workspace` | Reporting periods (semesters, quarters, or cycles); range calendar |
 | 📚 Offerings | `/offerings-workspace` | Curriculum packages, instructors, apply/revert to term (**university only**) |
+| 📅 Timetables | `/timetables-workspace` | View (preview, conflicts, scope incl. room, member Schedule check) · Build & publish · **Import schedule** (scrape + import wizard) |
 | 📝 Coursework | `/assignments-workspace` | Post batches, grade plan — org admin console (**university**); teachers also use **`/coursework-teaching`** |
 | 📝 Audit | `/audit-workspace` | Admin action log |
-| 🗺️ Locations & maps | `/floorplan-workspace` | Locations → levels → rooms; optional floorplan editor; sole room admin path |
-| 🕷️ Web spider | `/web-spider-workspace` | Timetable/news URLs, sync |
+| 🗺️ Locations & maps | `/floorplan-workspace` | Locations → levels → rooms; optional floorplan editor; unassigned rooms panel; sole room admin path |
 | 👥 Groups | `/groups-workspace` | Org chart: faculties/teams, nested groups, members — always in admin nav; RBAC via **`groups`** permission (not a member widget catalog entry) |
 | 🏷️ Event types | `/event-types-workspace` | Schedule categories + colors (schedule + room booking) |
 
@@ -328,6 +334,18 @@ Shared scroll padding (optional): **`screens/admin/styles/adminWorkspaceLayout.t
 - **Apply / revert:** select period → apply (auto-save, enroll cohorts, skip duplicate names) → read-only term list → **Undo on this term** via revert.
 - **Staff pickers:** **`useGroupStaffPicker`** — `pageSize` ≤ **100**; debounced **`q`** search on **`orgAdminApi.getMembers`** / **`groupsApi.getMembers`**.
 - Full reference: [`CurriculumOfferings.md`](CurriculumOfferings.md)
+
+**Timetables workspace (`screens/admin/timetables-workspace/`)**
+
+- **Route:** `/timetables-workspace` — Structure tile **Timetables**; tabs **View** · **Build & publish** · **Import (web)** (`?tab=import` from onboarding spider step).
+- Hook: **`useTimetablesWorkspace`** — period scope, teacher/program/group/course/**room** filters, preview query, publish status, bulk publish.
+- **View:** **`TimetablesViewTab`** — list + Mon–Fri **`TimetableWeekGrid`**, conflict banner, **`TimetablesScopeSheet`**, **`TimetableMemberScheduleCheck`** (admin preview of member **My schedule**).
+- **Build:** **`TimetablesBuildTab`** — per-offering pattern cards (from offerings workspace components), publish badges, bulk publish + **`TimetablesBulkPublishResultsSheet`**; scope banner when filters active (full-term conflict checks).
+- **Import (web):** **`TimetablesImportTab`** — embeds **`WebSpiderScheduleTab`**; large-scrape **`ImportScheduleScopePanel`**; **`ImportScheduleWeekPreview`**; **`ImportScheduleSessionList`** (per-row toggles); **`ImportScheduleApplyPanel`** (map activity/teacher/room/group/course, create-new, preview/apply). See [`WebSpider.md`](WebSpider.md).
+- **Rooms on patterns:** **`TimetableRoomPickerField`** (building → room); per **schedule block** when split blocks enabled — see offerings **`SessionCohortAudienceEditor`** / **`WeeklySessionRow`**.
+- **Display helpers:** **`timetableDisplaySlots.ts`** — room on grid/list/detail; **`TimetableSlotDetailSheet`**.
+- API (until NSwag regen): **`offeringsApi.ts`** — `previewTimetable`, `getTimetablePublishStatus`, `bulkPublishTimetable`, `publishTimetable`, `memberSchedulePreview`.
+- Full reference: [`Timetables.md`](Timetables.md) · rules **`domain-timetables.mdc`**
 
 **Coursework (`screens/admin/assignments-workspace/` + member routes)**
 
@@ -416,11 +434,11 @@ Three related layers:
 | Dashboard registry | `screens/widgets/dashboard/components/WidgetRegistry.tsx` | Key → React component |
 | Variant types | `constants/widgets.registry.ts` | `hero` · `card` · `bento` · `rail` |
 
-### Registered dashboard widgets (10)
+### Registered dashboard widgets (11)
 
-`news` · `schedule` · `tasks` · `map` · `users` · `attendance` · `assignments` · `chat` · `grades` · `rooms`
+`announcements` · `schedule` · `tasks` · `map` · `users` · `attendance` · `assignments` · `grades` · `rooms` · **`documents`** (corporate)
 
-**Org catalog (admin toggles):** university → grades + shared; corporate → documents + shared; shared → chat, news, attendance, users, map, rooms. **Always on:** schedule, tasks (includes **coursework**), digital ID. **Not member widgets:** events, transport, finance.
+**Org catalog (admin toggles):** university → grades + shared; corporate → documents + shared; shared → **announcements**, attendance, users, map, rooms. **Always on:** schedule, tasks (includes **coursework**), digital ID. **Not member widgets:** events, transport, finance. Legacy **`chat`** / **`news`** alias to **`announcements`**.
 
 **Data flow:**
 
@@ -495,6 +513,26 @@ Use **`useTranslation()`** — add keys to **both** languages.
 
 ---
 
+## 📁 Documents (`screens/widgets/documents/`)
+
+| Route | Screen | Notes |
+|-------|--------|-------|
+| `/documents` | `DocumentsScreen` | Corporate catalog widget; list + folder filter + search |
+
+**Upload:** file picker → **`DocumentFormSheet`** (display name, folder via **`OptionPickerSheet`**, optional notes) — not instant upload on pick.
+
+**Detail:** row tap → **`DocumentDetailSheet`** — metadata scrolls; **Open** and **Download** always; **Edit details** / **Delete** only when role has Edit / Admin.
+
+**Permissions:** `documents.view` (browse); `documents.upload` (upload + edit); `documents.manage` (delete). Org **Admin** role bypasses widget checks.
+
+**API:** **`documentsApi.ts`** — NSwag `DocumentsClient` + manual multipart/blob for upload/download.
+
+Full reference: [`Documents.md`](Documents.md) · rules **`domain-documents.mdc`**.
+
+**Hooks:** `useDocumentsScreenLogic`.
+
+---
+
 ## ➕ Adding a frontend feature
 
 ```text
@@ -518,6 +556,7 @@ Use **`useTranslation()`** — add keys to **both** languages.
 | [`WebSpider.md`](WebSpider.md) | Spider admin |
 | [`DigitalId.md`](DigitalId.md) | Pass, scanner, Clay sections |
 | [`CurriculumOfferings.md`](CurriculumOfferings.md) | Periods, packages, apply/revert |
+| [`Timetables.md`](Timetables.md) | Build, preview, publish, member Schedule check |
 | [`Coursework.md`](Coursework.md) | Teach workspace, batches, grading, grade plan |
 | [`../src/frontend/mobile/README.md`](../src/frontend/mobile/README.md) | Mobile quick start |
 | [`../src/frontend/mobile/TUTORIAL.md`](../src/frontend/mobile/TUTORIAL.md) | User flows |

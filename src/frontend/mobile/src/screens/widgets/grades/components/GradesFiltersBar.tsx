@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
-import { View } from 'react-native';
 
-import { AppText, ClayView, Icon } from '@/src/components/ui';
-import { PressClay } from '@/src/components/animations';
-import { useThemeColors } from '@/src/hooks';
+import { AppText } from '@/src/components/ui';
 import { SearchableOptionPickerSheet } from '@/src/screens/admin/web-spider-workspace/components/SearchableOptionPickerSheet';
-import { filterPickerRowStyles as pickerStyles, filterPanelCardStyles as panelStyles } from '@/src/styles/filterPickerRow';
+import { FilterPickerPanel, FilterPickerRow } from '@/src/components/ui/FilterPickerPanel';
+import { useThemeColors } from '@/src/hooks';
 
 interface GradesFiltersBarProps {
   periodOptions: { value: string; label: string; subtitle?: string }[];
@@ -34,45 +32,28 @@ export function GradesFiltersBar({
     offeringOptions.find((o) => o.value === activeOfferingId)?.label ?? 'All courses';
 
   return (
-    <ClayView depth={6} puffy={10} color={colors.card} style={panelStyles.card}>
-      <PressClay onPress={periodOptions.length > 0 ? () => setTermOpen(true) : undefined}>
-        <ClayView depth={2} color={colors.background} style={pickerStyles.row}>
-          <View style={pickerStyles.iconColumn}>
-            <Icon name="date-range" size={22} color={colors.primary} />
-          </View>
-          <View style={pickerStyles.labelBlock}>
-            <AppText variant="caption" style={[pickerStyles.caption, { color: colors.subtle }]}>
-              Term
-            </AppText>
-            <AppText variant="body" weight="bold" numberOfLines={1}>
-              {periodOptions.length === 0 ? 'No terms configured yet' : activeTermLabel}
-            </AppText>
-          </View>
-          {periodOptions.length > 0 ? <Icon name="expand-more" size={22} color={colors.subtle} /> : null}
-        </ClayView>
-      </PressClay>
+    <FilterPickerPanel>
+      <FilterPickerRow
+        icon="date-range"
+        caption="Term"
+        label={periodOptions.length === 0 ? 'No terms configured yet' : activeTermLabel}
+        onPress={periodOptions.length > 0 ? () => setTermOpen(true) : undefined}
+        disabled={periodOptions.length === 0}
+      />
 
-      <PressClay onPress={offeringOptions.length > 0 ? () => setCourseOpen(true) : undefined}>
-        <ClayView depth={2} color={colors.background} style={pickerStyles.row}>
-          <View style={pickerStyles.iconColumn}>
-            <Icon name="school" size={22} color={colors.primary} />
-          </View>
-          <View style={pickerStyles.labelBlock}>
-            <AppText variant="caption" style={[pickerStyles.caption, { color: colors.subtle }]}>
-              Course
-            </AppText>
-            <AppText variant="body" weight="bold" numberOfLines={1}>
-              {offeringOptions.length === 0 ? 'No enrolled courses' : activeCourseLabel}
-            </AppText>
-            {offeringOptions.length === 0 ? (
-              <AppText variant="caption" style={{ color: colors.subtle, marginTop: 4 }}>
-                Enroll in term offerings to see task grades here.
-              </AppText>
-            ) : null}
-          </View>
-          {offeringOptions.length > 0 ? <Icon name="expand-more" size={22} color={colors.subtle} /> : null}
-        </ClayView>
-      </PressClay>
+      <FilterPickerRow
+        icon="school"
+        caption="Course"
+        label={offeringOptions.length === 0 ? 'No enrolled courses' : activeCourseLabel}
+        onPress={offeringOptions.length > 0 ? () => setCourseOpen(true) : undefined}
+        disabled={offeringOptions.length === 0}
+      />
+
+      {offeringOptions.length === 0 ? (
+        <AppText variant="caption" style={{ color: colors.subtle, paddingHorizontal: 4 }}>
+          Enroll in term offerings to see task grades here.
+        </AppText>
+      ) : null}
 
       <SearchableOptionPickerSheet
         isVisible={termOpen}
@@ -100,6 +81,6 @@ export function GradesFiltersBar({
         includeAllOption={false}
         height={440}
       />
-    </ClayView>
+    </FilterPickerPanel>
   );
 }

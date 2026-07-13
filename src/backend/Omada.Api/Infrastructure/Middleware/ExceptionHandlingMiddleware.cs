@@ -30,6 +30,14 @@ public class ExceptionHandlingMiddleware
             _logger.LogWarning("Unauthorized access attempt: {Message}", ex.Message);
             await HandleExceptionAsync(context, ex, HttpStatusCode.Unauthorized, ErrorCodes.Unauthorized);
         }
+        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+        {
+            // Client navigated away or axios/React Query aborted — not a server fault.
+            if (!context.Response.HasStarted)
+            {
+                context.Response.StatusCode = StatusCodes.Status499ClientClosedRequest;
+            }
+        }
         catch (Exception ex)
         {
             // Catch EVERYTHING else

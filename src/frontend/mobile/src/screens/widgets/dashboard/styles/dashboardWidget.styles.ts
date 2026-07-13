@@ -35,7 +35,7 @@ export const createWidgetStyles = (
     height: cardMetrics.cardHeight,
     borderRadius: 32,
     marginRight: CARD_MARGIN,
-    padding: 24,
+    padding: 18,
   },
   cardContent: {
     flex: 1,
@@ -44,7 +44,7 @@ export const createWidgetStyles = (
   cardHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 10,
   },
   cardIconContainer: {
     width: 44,
@@ -110,10 +110,13 @@ export const createWidgetStyles = (
   bentoInner: {
     flex: 1,
     borderRadius: 28,
-    padding: 16,
+    padding: 12,
+    overflow: 'hidden',
   },
   bentoContentWrapper: {
     flex: 1,
+    minHeight: 0,
+    overflow: 'hidden',
   },
   bentoHeader: {
     flexDirection: 'row',
@@ -134,6 +137,9 @@ export const createWidgetStyles = (
   },
   bentoBody: {
     flex: 1,
+    minHeight: 0,
+    overflow: 'hidden',
+    justifyContent: 'center',
   },
   bentoFooterText: {
     marginTop: 8,

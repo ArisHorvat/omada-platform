@@ -12,6 +12,7 @@ import { useThemeColors } from '@/src/hooks';
 import type { OrganizationMemberDto } from '@/src/api/generatedClient';
 import { resolveMediaUrl } from '@/src/utils/resolveMediaUrl';
 import { useMembersWorkspace } from './hooks/useMembersWorkspace';
+import { ScrapedHostAliasesPanel } from './components/ScrapedHostAliasesPanel';
 import { filterAssignableRoles } from './utils/memberRoles';
 import { createMembersWorkspaceStyles } from './styles/members-workspace.styles';
 import { confirmAction } from '@/src/utils/confirmAction';
@@ -28,6 +29,7 @@ export default function MembersWorkspaceScreen() {
     roles,
     inviteableRoles,
     members,
+    pickerMembers,
     totalMembers,
     search,
     setSearch,
@@ -56,6 +58,8 @@ export default function MembersWorkspaceScreen() {
     isLoading,
     refetch,
   } = useMembersWorkspace();
+
+  const orgId = org?.id ?? '';
 
   const assignableRoles = useMemo(() => filterAssignableRoles(roles), [roles]);
   const memberFilterRoles = useMemo(
@@ -240,6 +244,13 @@ export default function MembersWorkspaceScreen() {
                   label="Role"
                   value={selectedMemberRoleFilterLabel}
                   onPress={() => setMemberRoleFilterOpen(true)}
+                  colors={colors}
+                  styles={styles}
+                />
+
+                <ScrapedHostAliasesPanel
+                  orgId={orgId}
+                  members={pickerMembers}
                   colors={colors}
                   styles={styles}
                 />

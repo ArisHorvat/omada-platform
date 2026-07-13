@@ -6,12 +6,22 @@ import { useAuthNavigationGuard } from '@/src/hooks/useAuthNavigationGuard';
 import { useOrgAdminNavigationGuard } from '@/src/hooks/useOrgAdminNavigationGuard';
 import { useAppSidebar } from '@/src/hooks/useAppSidebar';
 import { useThemeColors } from '@/src/hooks';
+import { useAuth } from '@/src/context/AuthContext';
+import { useAnnouncementsTabEnabled } from '@/src/hooks/useAnnouncementsTabEnabled';
+import { useAnnouncementsRealtime } from '@/src/hooks/useAnnouncementsRealtime';
 
 export default function AppLayout() {
   const colors = useThemeColors();
   const showSidebar = useAppSidebar();
+  const { activeSession, token } = useAuth();
+  const announcementsEnabled = useAnnouncementsTabEnabled();
   useAuthNavigationGuard('app');
   useOrgAdminNavigationGuard();
+
+  useAnnouncementsRealtime(
+    announcementsEnabled ? activeSession?.orgId ?? '' : '',
+    token,
+  );
 
   const stackAnimation =
     Platform.OS === 'web' && showSidebar ? ('none' as const) : ('default' as const);

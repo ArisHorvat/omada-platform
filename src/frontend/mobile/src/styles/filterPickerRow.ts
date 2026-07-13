@@ -29,11 +29,11 @@ export const filterPickerRowStyles = StyleSheet.create({
 /** Outer card for stacked filter panels — use explicit padding (ClayView puffy is shadow only). */
 export const filterPanelCardStyles = StyleSheet.create({
   card: {
-    marginHorizontal: 20,
     marginBottom: 12,
     borderRadius: 20,
     padding: 16,
     gap: 12,
+    alignSelf: 'stretch',
   },
   searchWrap: {
     marginTop: 2,

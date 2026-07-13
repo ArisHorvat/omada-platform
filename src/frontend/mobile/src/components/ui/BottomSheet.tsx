@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -24,6 +24,7 @@ import type { WebOverlayAnchor } from '@/src/hooks/usePaneOverlayAnchor';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const IS_WEB = Platform.OS === 'web';
+const BACKDROP_PRESS_GRACE_MS = 400;
 
 interface BottomSheetProps {
   isVisible: boolean;
@@ -58,8 +59,9 @@ export const BottomSheet = ({
   useEscapeKey(isVisible, onClose);
 
   const activeHeight = height || SCREEN_HEIGHT * 0.5;
-  const translateY = useSharedValue(isVisible ? 0 : activeHeight);
+  const translateY = useSharedValue(activeHeight);
   const activeHeightShared = useSharedValue(activeHeight);
+  const openedAtRef = useRef(0);
 
   const scrollTo = useCallback((destination: number) => {
     'worklet';
@@ -67,17 +69,27 @@ export const BottomSheet = ({
       duration: 300,
       easing: Easing.out(Easing.ease),
     });
-  }, []);
+  }, [translateY]);
 
   useEffect(() => {
-    activeHeightShared.value = activeHeight;
-    if (IS_WEB) return;
     if (isVisible) {
-      scrollTo(0);
-    } else {
+      openedAtRef.current = Date.now();
+      activeHeightShared.value = activeHeight;
+      translateY.value = activeHeight;
+      if (!IS_WEB) {
+        requestAnimationFrame(() => scrollTo(0));
+      }
+      return;
+    }
+    if (!IS_WEB) {
       scrollTo(activeHeight);
     }
-  }, [isVisible, activeHeight, scrollTo, activeHeightShared]);
+  }, [isVisible, activeHeight, scrollTo, activeHeightShared, translateY]);
+
+  const handleBackdropPress = useCallback(() => {
+    if (Date.now() - openedAtRef.current < BACKDROP_PRESS_GRACE_MS) return;
+    onClose();
+  }, [onClose]);
 
   useEffect(() => {
     if (!IS_WEB || typeof document === 'undefined') return;
@@ -165,15 +177,14 @@ export const BottomSheet = ({
     </>
   );
 
+  const hostStyle = webPaneHostStyle ?? (IS_WEB ? styles.webHost : styles.nativeHost);
+
   const overlay = (
-    <View
-      style={webPaneHostStyle ?? (IS_WEB ? styles.webHost : undefined)}
-      pointerEvents="box-none"
-    >
+    <View style={hostStyle} pointerEvents="box-none" collapsable={false}>
       <Animated.View
         style={[
           styles.backdrop,
-          webPaneHostStyle ? StyleSheet.absoluteFillObject : IS_WEB && styles.webFixed,
+          webPaneHostStyle ? StyleSheet.absoluteFillObject : IS_WEB ? styles.webFixed : StyleSheet.absoluteFillObject,
           rBackdropStyle,
           {
             zIndex: webPaneHostStyle ? 0 : zIndexBase,
@@ -181,7 +192,11 @@ export const BottomSheet = ({
           },
         ]}
       >
-        <Pressable style={{ flex: 1 }} onPress={onClose} accessibilityRole="button" />
+        <Pressable
+          style={styles.backdropPressable}
+          onPress={handleBackdropPress}
+          accessibilityRole="button"
+        />
       </Animated.View>
 
       <GestureDetector gesture={gesture}>
@@ -204,21 +219,18 @@ export const BottomSheet = ({
     </View>
   );
 
-  if (IS_WEB) {
-    return (
-      <Modal
-        visible={isVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={onClose}
-        statusBarTranslucent
-      >
-        {overlay}
-      </Modal>
-    );
-  }
-
-  return overlay;
+  return (
+    <Modal
+      visible={isVisible}
+      transparent
+      animationType={IS_WEB ? 'fade' : 'none'}
+      onRequestClose={onClose}
+      statusBarTranslucent
+      hardwareAccelerated
+    >
+      {isVisible ? overlay : null}
+    </Modal>
+  );
 };
 
 const webFixedBase = {
@@ -233,9 +245,16 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  nativeHost: {
+    flex: 1,
+    width: '100%',
+  },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'black',
+  },
+  backdropPressable: {
+    flex: 1,
   },
   webFixed: {
     ...webFixedBase,

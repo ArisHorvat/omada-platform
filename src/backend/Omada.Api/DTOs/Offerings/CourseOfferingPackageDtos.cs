@@ -55,6 +55,9 @@ public class CourseOfferingPackageItemDto
 
     [Required]
     public required IReadOnlyList<OfferingWeeklySessionDto> WeeklySessions { get; set; }
+
+    [Required]
+    public required decimal Credits { get; set; }
 }
 
 public class CreateCourseOfferingPackageRequest
@@ -99,6 +102,8 @@ public class UpsertCourseOfferingPackageItemRequest
     public List<Guid>? ProgramGroupIds { get; set; }
 
     public List<OfferingWeeklySessionDto>? WeeklySessions { get; set; }
+
+    public decimal Credits { get; set; }
 }
 
 public class SaveCourseOfferingPackageItemsRequest

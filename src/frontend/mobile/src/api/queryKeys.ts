@@ -1,6 +1,6 @@
 export const QUERY_KEYS = {
   // Global (Not scoped to an org)
-  userProfile: ['userProfile'],
+  userProfile: (orgId: string) => ['userProfile', orgId] as const,
   myOrganizations: ['myOrganizations'],
   
   // Scoped to a specific Organization
@@ -28,8 +28,13 @@ export const QUERY_KEYS = {
     all: (orgId: string) => ['schedule', orgId],
     byDateAndMode: (orgId: string, date: string | null, viewMode: string) => ['schedule', orgId, date, viewMode],
   },
-  chat: {
-    recent: (orgId: string) => ['chat', orgId],
+  announcements: {
+    channels: (orgId: string) => ['announcements', orgId, 'channels'] as const,
+    posts: (orgId: string, channelId: string) =>
+      ['announcements', orgId, 'posts', channelId.trim().toLowerCase()] as const,
+    feed: (orgId: string) => ['announcements', orgId, 'feed'] as const,
+    comments: (orgId: string, postId: string) =>
+      ['announcements', orgId, 'comments', postId] as const,
   },
   grades: {
     /** Current user’s grades + GPA for the active org (JWT). */
@@ -48,6 +53,12 @@ export const QUERY_KEYS = {
   digitalId: {
     /** Digital ID card payload for the active org (JWT). */
     me: (orgId: string) => ['digital-id', orgId, 'me'] as const,
+  },
+  documents: {
+    all: (orgId: string) => ['documents', orgId] as const,
+    categories: (orgId: string) => ['documents', orgId, 'categories'] as const,
+    list: (orgId: string, q: string, category: string | null, page: number) =>
+      ['documents', orgId, 'list', q || '', category ?? 'all', page] as const,
   },
   offerings: {
     assignable: (orgId: string, periodId?: string | null) =>
@@ -71,10 +82,22 @@ export const QUERY_KEYS = {
   search: {
     universal: (orgId: string, query: string) => ['search', orgId, query] as const,
   },
+  users: {
+    directory: (orgId: string, q: string, groupId: string | null, roleName: string | null) =>
+      ['users', orgId, 'directory', q || '', groupId ?? 'all-groups', roleName ?? 'all-roles'] as const,
+    directoryGroups: (orgId: string) => ['users', orgId, 'directory', 'groups'] as const,
+    directoryRoles: (orgId: string) => ['users', orgId, 'directory', 'roles'] as const,
+    profile: (orgId: string, userId: string) => ['users', orgId, 'profile', userId] as const,
+    widgetTeam: (orgId: string, managerId: string | null, pageSize: number) =>
+      ['users', orgId, 'widget-team', managerId ?? 'none', pageSize] as const,
+    widgetManager: (orgId: string, managerId: string | null) =>
+      ['users', orgId, 'widget-manager', managerId ?? 'none'] as const,
+  },
   orgAdmin: {
     current: (orgId: string) => ['orgAdmin', orgId, 'current'] as const,
     members: (orgId: string, q: string, roleId: string | null) =>
       ['orgAdmin', orgId, 'members', q, roleId ?? 'all'] as const,
+    scrapedHostAliases: (orgId: string) => ['orgAdmin', orgId, 'scraped-host-aliases'] as const,
     memberCount: (orgId: string) => ['orgAdmin', orgId, 'memberCount'] as const,
     roles: (orgId: string) => ['orgAdmin', orgId, 'roles'] as const,
     roleDetail: (orgId: string, roleId: string) => ['orgAdmin', orgId, 'role', roleId] as const,
@@ -94,6 +117,14 @@ export const QUERY_KEYS = {
       ['orgAdmin', orgId, 'attendanceAdmin', page, groupId ?? 'all'] as const,
     rooms: (orgId: string, q: string) => ['orgAdmin', orgId, 'rooms', q || 'all'] as const,
     auditLogs: (orgId: string) => ['orgAdmin', orgId, 'auditLogs'] as const,
+    timetablesPreview: (
+      orgId: string,
+      periodId: string,
+      weekIso: string,
+      scopeStamp: string,
+    ) => ['timetables-preview', orgId, periodId, weekIso, scopeStamp] as const,
+    timetablesPublishStatus: (orgId: string, periodId: string, scopeStamp: string) =>
+      ['timetables-publish-status', orgId, periodId, scopeStamp] as const,
   },
   superAdmin: {
     organizations: (page: number, pageSize: number) => ['superAdmin', 'organizations', page, pageSize] as const,
